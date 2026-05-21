@@ -12,12 +12,26 @@ import Tracks from './pages/Tracks';
 import Setups from './pages/Setups';
 import Progress from './pages/Progress';
 
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
+// publishableKeyFromHost is Replit-specific — it derives a key + proxy from
+// the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
+// subdomain doesn't exist, so we fall straight through to the env var key.
+const isReplitHost =
+  window.location.hostname.endsWith('.replit.app') ||
+  window.location.hostname.endsWith('.replit.dev') ||
+  window.location.hostname.endsWith('.repl.co') ||
+  window.location.hostname.endsWith('.picard.replit.dev');
 
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const clerkPubKey = isReplitHost
+  ? publishableKeyFromHost(
+      window.location.hostname,
+      import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    )
+  : import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+// Only use the Replit-managed proxy when actually on Replit.
+const clerkProxyUrl = isReplitHost
+  ? import.meta.env.VITE_CLERK_PROXY_URL
+  : undefined;
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
