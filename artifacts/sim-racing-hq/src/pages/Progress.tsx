@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceDot, Legend, Cell,
+  Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getSessions, lapToSeconds } from '../lib/storage';
+import { useGetSessions } from '@workspace/api-client-react';
+import { lapToSeconds } from '../lib/storage';
 import { F1_TRACKS } from '../data/f1Tracks';
 
 function formatLapTime(seconds: number): string {
@@ -34,7 +35,7 @@ function LapTooltip({ active, payload, label }: TooltipProps) {
 }
 
 export default function Progress() {
-  const allSessions = useMemo(() => getSessions(), []);
+  const { data: allSessions = [] } = useGetSessions();
   const [filterTrack, setFilterTrack] = useState('');
   const [filterCar, setFilterCar] = useState('');
 
@@ -48,7 +49,6 @@ export default function Progress() {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [allSessions, filterTrack, filterCar]);
 
-  // PB progression data
   const progressionData = useMemo(() => {
     let runningPB = Infinity;
     return filtered
@@ -66,7 +66,6 @@ export default function Progress() {
       });
   }, [filtered]);
 
-  // Variance data
   const varianceData = useMemo(() => {
     return filtered
       .filter(s => s.bestLap && s.bestLap.trim() !== '')
@@ -78,7 +77,6 @@ export default function Progress() {
       }));
   }, [filtered]);
 
-  // All-time PBs across all tracks
   const allTimePBs = useMemo(() => {
     const pbMap: Record<string, { trackId: string; car: string; bestLap: string; date: string; sessions: number }> = {};
     const sessionCounts: Record<string, number> = {};
@@ -118,7 +116,6 @@ export default function Progress() {
         <h1 className="page-title">Progression</h1>
       </div>
 
-      {/* Filters */}
       <div className="filter-bar" style={{ marginBottom: 28 }}>
         <select className="filter-select" value={filterTrack} onChange={e => setFilterTrack(e.target.value)}>
           <option value="">All Tracks</option>
@@ -132,7 +129,6 @@ export default function Progress() {
         />
       </div>
 
-      {/* Chart 1 — PB Progression */}
       <div className="chart-section">
         <div className="section-title">PB Progression</div>
         {progressionData.length === 0 ? (
@@ -190,7 +186,6 @@ export default function Progress() {
         )}
       </div>
 
-      {/* Chart 2 — Lap Time Variance */}
       <div className="chart-section">
         <div className="section-title">Lap Time Variance</div>
         {varianceData.length === 0 ? (
@@ -224,7 +219,6 @@ export default function Progress() {
         )}
       </div>
 
-      {/* PB Records Table */}
       <div className="section-title">All-Time Personal Bests</div>
       {allTimePBs.length === 0 ? (
         <div className="table-wrap">

@@ -1,4 +1,5 @@
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut } from 'lucide-react';
+import { useClerk, useUser } from '@clerk/react';
 
 interface NavProps {
   page: string;
@@ -13,7 +14,12 @@ const NAV_ITEMS = [
   { id: 'progress', label: 'Progress', Icon: TrendingUp },
 ];
 
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export default function Nav({ page, setPage }: NavProps) {
+  const { signOut } = useClerk();
+  const { user } = useUser();
+
   return (
     <nav className="nav-sidebar">
       <div className="nav-logo">
@@ -33,6 +39,46 @@ export default function Nav({ page, setPage }: NavProps) {
           </li>
         ))}
       </ul>
+      <div style={{
+        marginTop: 'auto',
+        padding: '16px 20px',
+        borderTop: '1px solid var(--border)',
+      }}>
+        {user && (
+          <div style={{
+            fontSize: 11,
+            fontFamily: 'var(--font-body)',
+            color: 'var(--gray-mid)',
+            marginBottom: 10,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {user.primaryEmailAddress?.emailAddress ?? user.firstName ?? 'Driver'}
+          </div>
+        )}
+        <button
+          onClick={() => signOut({ redirectUrl: basePath || '/' })}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'none',
+            border: 'none',
+            color: 'var(--gray)',
+            cursor: 'pointer',
+            fontSize: 12,
+            fontFamily: 'var(--font-body)',
+            padding: 0,
+            width: '100%',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--red)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--gray)')}
+        >
+          <LogOut size={14} />
+          Sign Out
+        </button>
+      </div>
     </nav>
   );
 }

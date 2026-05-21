@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { getSessions, getSetups } from '../lib/storage';
+import { useGetSessions, useGetSetups } from '@workspace/api-client-react';
+import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
 
 const TYPE_BADGE: Record<string, string> = {
@@ -19,8 +20,7 @@ function RatingDots({ rating }: { rating: number }) {
   );
 }
 
-function buildHeatmap() {
-  const sessions = getSessions();
+function buildHeatmap(sessions: SessionRecord[]) {
   const countMap: Record<string, number> = {};
   sessions.forEach(s => {
     if (s.date) countMap[s.date] = (countMap[s.date] || 0) + 1;
@@ -31,7 +31,6 @@ function buildHeatmap() {
   const startDate = new Date(today);
   startDate.setDate(today.getDate() - 364);
 
-  // Align to Sunday
   const dayOfWeek = startDate.getDay();
   startDate.setDate(startDate.getDate() - dayOfWeek);
 
@@ -71,19 +70,19 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ setPage }: DashboardProps) {
-  const sessions = useMemo(() => getSessions(), []);
-  const setups = useMemo(() => getSetups(), []);
+  const { data: sessions = [] } = useGetSessions();
+  const { data: setups = [] } = useGetSetups();
 
   const totalSessions = sessions.length;
   const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
   const pbsSet = sessions.filter(s => s.isPB).length;
   const setupsSaved = setups.length;
 
-  const recentSessions = [...sessions]
+  const recentSessions = useMemo(() => [...sessions]
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 5);
+    .slice(0, 5), [sessions]);
 
-  const { cells } = useMemo(buildHeatmap, []);
+  const { cells } = useMemo(() => buildHeatmap(sessions), [sessions]);
   const monthLabels = useMemo(() => buildMonthLabels(cells), [cells]);
 
   const trackName = (id: string) => {
@@ -122,17 +121,9 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         </div>
 
-        {/* Month labels */}
         <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 24 }}>
           {monthLabels.map(({ label, col }) => (
-            <div
-              key={`${label}-${col}`}
-              style={{
-                position: 'relative',
-                minWidth: 13,
-                marginLeft: col === 0 ? 0 : `${(col - (monthLabels.find((m, i) => monthLabels[i - 1] ? monthLabels[i - 1].col : 0)?.col || 0)) * 0}px`,
-              }}
-            >
+            <div key={`${label}-${col}`} style={{ position: 'relative', minWidth: 13 }}>
               <span style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: 8,

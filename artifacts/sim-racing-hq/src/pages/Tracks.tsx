@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 import { F1_TRACKS, F1Track } from '../data/f1Tracks';
-import { getSessions, getTrackNotes, saveTrackNotes, lapToSeconds, TrackNotes, Corner } from '../lib/storage';
+import { useGetSessions, useGetTrackNotes, useUpsertTrackNotes, getGetTrackNotesQueryKey } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import type { CornerNote, SessionRecord } from '@workspace/api-client-react';
+import { lapToSeconds } from '../lib/storage';
 
 const TYPE_BADGE: Record<string, string> = {
   Practice: 'badge-practice',
@@ -20,13 +23,13 @@ function RatingDots({ rating }: { rating: number }) {
   );
 }
 
-function TrackGrid({ onSelect }: { onSelect: (t: F1Track) => void }) {
-  const sessions = getSessions();
+function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; sessions: SessionRecord[] }) {
+  const allSessions = sessions;
   const countByTrack: Record<string, number> = {};
-  sessions.forEach(s => { countByTrack[s.trackId] = (countByTrack[s.trackId] || 0) + 1; });
+  allSessions.forEach(s => { countByTrack[s.trackId] = (countByTrack[s.trackId] || 0) + 1; });
 
   const pbByTrack: Record<string, string> = {};
-  sessions.forEach(s => {
+  allSessions.forEach(s => {
     if (!s.bestLap || s.bestLap.trim() === '') return;
     const cur = pbByTrack[s.trackId];
     if (!cur || lapToSeconds(s.bestLap) < lapToSeconds(cur)) {
@@ -118,13 +121,31 @@ function EditableCell({
   );
 }
 
-function TrackDetail({ track, onBack }: { track: F1Track; onBack: () => void }) {
-  const allSessions = getSessions();
+function TrackDetail({
+  track,
+  onBack,
+  sessions,
+}: {
+  track: F1Track;
+  onBack: () => void;
+  sessions: SessionRecord[];
+}) {
+  const qc = useQueryClient();
+  const allSessions = sessions;
   const trackSessions = allSessions.filter(s => s.trackId === track.id);
-  const [notes, setNotes] = useState<TrackNotes>(() => {
-    const all = getTrackNotes();
-    if (all[track.id]) return all[track.id];
-    const corners: Corner[] = Array.from({ length: track.corners }, (_, i) => ({
+
+  const { data: trackNotesData } = useGetTrackNotes(track.id);
+  const { mutate: upsertTrackNotes } = useUpsertTrackNotes({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetTrackNotesQueryKey(track.id) });
+      },
+    },
+  });
+
+  const [notesId] = useState(() => crypto.randomUUID());
+  const [corners, setCorners] = useState<CornerNote[]>(() => {
+    return Array.from({ length: track.corners }, (_, i) => ({
       id: crypto.randomUUID(),
       number: i + 1,
       name: '',
@@ -133,60 +154,55 @@ function TrackDetail({ track, onBack }: { track: F1Track; onBack: () => void }) 
       lineNotes: '',
       myNotes: '',
     }));
-    return { corners };
   });
 
   useEffect(() => {
-    const all = getTrackNotes();
-    if (!all[track.id]) {
-      all[track.id] = notes;
-      saveTrackNotes(all);
+    if (trackNotesData) {
+      setCorners(trackNotesData.corners as CornerNote[]);
     }
-  }, [track.id]);
+  }, [trackNotesData]);
 
-  const saveCorner = useCallback((id: string, field: keyof Corner, value: string) => {
-    setNotes(prev => {
-      const updated: TrackNotes = {
-        ...prev,
-        corners: prev.corners.map(c => c.id === id ? { ...c, [field]: value } : c),
-      };
-      const all = getTrackNotes();
-      all[track.id] = updated;
-      saveTrackNotes(all);
+  const saveCorners = useCallback((updatedCorners: CornerNote[]) => {
+    const id = trackNotesData?.id ?? notesId;
+    upsertTrackNotes({
+      trackId: track.id,
+      data: { id, corners: updatedCorners },
+    });
+  }, [trackNotesData, notesId, track.id, upsertTrackNotes]);
+
+  const saveCorner = useCallback((id: string, field: keyof CornerNote, value: string) => {
+    setCorners(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, [field]: value } : c);
+      saveCorners(updated);
       return updated;
     });
-  }, [track.id]);
+  }, [saveCorners]);
 
   const addCorner = () => {
-    setNotes(prev => {
-      const newCorner: Corner = {
+    setCorners(prev => {
+      const newCorner: CornerNote = {
         id: crypto.randomUUID(),
-        number: prev.corners.length + 1,
+        number: prev.length + 1,
         name: '',
         gear: '',
         brakingPoint: '',
         lineNotes: '',
         myNotes: '',
       };
-      const updated = { ...prev, corners: [...prev.corners, newCorner] };
-      const all = getTrackNotes();
-      all[track.id] = updated;
-      saveTrackNotes(all);
+      const updated = [...prev, newCorner];
+      saveCorners(updated);
       return updated;
     });
   };
 
   const deleteCorner = (id: string) => {
-    setNotes(prev => {
-      const updated: TrackNotes = { ...prev, corners: prev.corners.filter(c => c.id !== id) };
-      const all = getTrackNotes();
-      all[track.id] = updated;
-      saveTrackNotes(all);
+    setCorners(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      saveCorners(updated);
       return updated;
     });
   };
 
-  // Best stats
   const bestLap = trackSessions.reduce((best, s) => {
     if (!s.bestLap || s.bestLap.trim() === '') return best;
     if (!best || lapToSeconds(s.bestLap) < lapToSeconds(best)) return s.bestLap;
@@ -211,7 +227,6 @@ function TrackDetail({ track, onBack }: { track: F1Track; onBack: () => void }) 
         </div>
       </div>
 
-      {/* Stats Row */}
       <div className="track-stats-row">
         {[
           { label: 'PB Time', value: bestLap || '—', mono: true },
@@ -228,7 +243,6 @@ function TrackDetail({ track, onBack }: { track: F1Track; onBack: () => void }) 
         ))}
       </div>
 
-      {/* Corner Breakdown */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div className="section-title" style={{ marginBottom: 0 }}>Corner Breakdown</div>
@@ -248,7 +262,7 @@ function TrackDetail({ track, onBack }: { track: F1Track; onBack: () => void }) 
               </tr>
             </thead>
             <tbody>
-              {notes.corners.length === 0 ? (
+              {corners.length === 0 ? (
                 <tr>
                   <td colSpan={7}>
                     <div className="empty-state" style={{ padding: '24px 0' }}>
@@ -257,7 +271,7 @@ function TrackDetail({ track, onBack }: { track: F1Track; onBack: () => void }) 
                     </div>
                   </td>
                 </tr>
-              ) : notes.corners.map(c => (
+              ) : corners.map(c => (
                 <tr key={c.id}>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-mid)' }}>{c.number}</td>
                   <td><EditableCell value={c.name} onSave={v => saveCorner(c.id, 'name', v)} placeholder="Corner name" /></td>
@@ -275,7 +289,6 @@ function TrackDetail({ track, onBack }: { track: F1Track; onBack: () => void }) 
         </div>
       </div>
 
-      {/* Sessions at this track */}
       <div className="section-title">Sessions at {track.short}</div>
       {trackSessions.length === 0 ? (
         <div className="table-wrap">
@@ -318,10 +331,11 @@ function TrackDetail({ track, onBack }: { track: F1Track; onBack: () => void }) 
 }
 
 export default function Tracks() {
+  const { data: sessions = [] } = useGetSessions();
   const [selectedTrack, setSelectedTrack] = useState<F1Track | null>(null);
 
   if (selectedTrack) {
-    return <TrackDetail track={selectedTrack} onBack={() => setSelectedTrack(null)} />;
+    return <TrackDetail track={selectedTrack} onBack={() => setSelectedTrack(null)} sessions={sessions} />;
   }
-  return <TrackGrid onSelect={setSelectedTrack} />;
+  return <TrackGrid onSelect={setSelectedTrack} sessions={sessions} />;
 }

@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText } from 'lucide-react';
-import { getSessions, addSession, Session } from '../lib/storage';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2 } from 'lucide-react';
+import { useGetSessions, useCreateSession, useDeleteSession } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { getGetSessionsQueryKey } from '@workspace/api-client-react';
+import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, ASSISTS } from '../data/f1Tracks';
 
 const TYPE_BADGE: Record<string, string> = {
@@ -50,7 +53,25 @@ const defaultForm = () => ({
 });
 
 export default function Sessions() {
-  const [sessions, setSessions] = useState<Session[]>(() => getSessions());
+  const qc = useQueryClient();
+  const { data: sessions = [], isLoading } = useGetSessions();
+  const { mutate: createSession, isPending: saving } = useCreateSession({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
+        setShowModal(false);
+        setForm(defaultForm());
+      },
+    },
+  });
+  const { mutate: deleteSession } = useDeleteSession({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
+      },
+    },
+  });
+
   const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm());
@@ -76,10 +97,32 @@ export default function Sessions() {
 
   const handleSave = () => {
     if (!form.trackId || !form.car || !form.bestLap) return;
-    addSession({ ...form, fuelLoad: Number(form.fuelLoad) });
-    setSessions(getSessions());
-    setShowModal(false);
-    setForm(defaultForm());
+    createSession({
+      data: {
+        id: crypto.randomUUID(),
+        date: form.date,
+        trackId: form.trackId,
+        car: form.car,
+        type: form.type,
+        bestLap: form.bestLap,
+        avgLap: form.avgLap,
+        worstLap: form.worstLap,
+        s1: form.s1,
+        s2: form.s2,
+        s3: form.s3,
+        tires: form.tires,
+        fuelLoad: Number(form.fuelLoad),
+        conditions: form.conditions,
+        assists: form.assists,
+        rating: form.rating,
+        notes: form.notes,
+      },
+    });
+  };
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteSession({ id });
   };
 
   const set = (k: string, v: string | number) => setForm(f => ({ ...f, [k]: v }));
@@ -112,7 +155,13 @@ export default function Sessions() {
       </div>
 
       {/* Table */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="table-wrap">
+          <div className="empty-state">
+            <div className="empty-state-title">Loading Sessions…</div>
+          </div>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="table-wrap">
           <div className="empty-state">
             <div className="empty-state-title">No Sessions Found</div>
@@ -195,6 +244,16 @@ export default function Sessions() {
                               {s.notes}
                             </div>
                           )}
+                          <div style={{ marginLeft: 'auto', alignSelf: 'flex-start', paddingTop: 4 }}>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ fontSize: 11, padding: '4px 10px', color: 'var(--red)', borderColor: 'var(--red)' }}
+                              onClick={(e) => handleDelete(s.id, e)}
+                            >
+                              <Trash2 size={11} style={{ marginRight: 4 }} />
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -295,7 +354,9 @@ export default function Sessions() {
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSave}>Save Session</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save Session'}
+              </button>
             </div>
           </div>
         </div>

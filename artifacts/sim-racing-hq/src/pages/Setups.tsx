@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import { Plus, Eye, Trash2 } from 'lucide-react';
-import { getSetups, saveSetups, Setup } from '../lib/storage';
+import { useGetSetups, useCreateSetup, useDeleteSetup, getGetSetupsQueryKey } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import type { SetupRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, SETUP_TAGS } from '../data/f1Tracks';
 
-const defaultForm = (): Omit<Setup, 'id'> => ({
+const defaultForm = (): Omit<SetupRecord, 'id'> => ({
   label: '',
   car: '',
   trackId: '',
@@ -24,7 +26,7 @@ const defaultForm = (): Omit<Setup, 'id'> => ({
   notes: '',
 });
 
-const COMPARE_FIELDS: { key: keyof Setup; label: string }[] = [
+const COMPARE_FIELDS: { key: keyof SetupRecord; label: string }[] = [
   { key: 'label', label: 'Setup Label' },
   { key: 'car', label: 'Car' },
   { key: 'trackId', label: 'Track' },
@@ -51,7 +53,7 @@ const TAG_BADGE: Record<string, string> = {
   Sprint: 'badge-hotlap',
 };
 
-function SetupViewModal({ setup, onClose }: { setup: Setup; onClose: () => void }) {
+function SetupViewModal({ setup, onClose }: { setup: SetupRecord; onClose: () => void }) {
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -88,10 +90,10 @@ function SetupViewModal({ setup, onClose }: { setup: Setup; onClose: () => void 
   );
 }
 
-function CompareView({ setups, onBack }: { setups: [Setup, Setup]; onBack: () => void }) {
+function CompareView({ setups, onBack }: { setups: [SetupRecord, SetupRecord]; onBack: () => void }) {
   const [a, b] = setups;
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
-  const val = (s: Setup, key: keyof Setup) => key === 'trackId' ? trackName(String(s[key])) : String(s[key] ?? '');
+  const val = (s: SetupRecord, key: keyof SetupRecord) => key === 'trackId' ? trackName(String(s[key])) : String(s[key] ?? '');
 
   return (
     <div className="page">
@@ -129,16 +131,34 @@ function CompareView({ setups, onBack }: { setups: [Setup, Setup]; onBack: () =>
 }
 
 export default function Setups() {
-  const [setups, setSetupsState] = useState<Setup[]>(() => getSetups());
+  const qc = useQueryClient();
+  const { data: setups = [], isLoading } = useGetSetups();
+  const { mutate: createSetup, isPending: saving } = useCreateSetup({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetSetupsQueryKey() });
+        setShowModal(false);
+        setForm(defaultForm());
+      },
+    },
+  });
+  const { mutate: deleteSetup } = useDeleteSetup({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetSetupsQueryKey() });
+      },
+    },
+  });
+
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState<Omit<Setup, 'id'>>(defaultForm());
+  const [form, setForm] = useState<Omit<SetupRecord, 'id'>>(defaultForm());
   const [filterTrack, setFilterTrack] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
-  const [viewSetup, setViewSetup] = useState<Setup | null>(null);
+  const [viewSetup, setViewSetup] = useState<SetupRecord | null>(null);
   const [comparing, setComparing] = useState(false);
 
-  const setField = (k: keyof Omit<Setup, 'id'>, v: string | number) => setForm(f => ({ ...f, [k]: v }));
+  const setField = (k: keyof Omit<SetupRecord, 'id'>, v: string | number) => setForm(f => ({ ...f, [k]: v }));
 
   const filtered = useMemo(() => setups.filter(s => {
     if (filterTrack && s.trackId !== filterTrack) return false;
@@ -148,18 +168,33 @@ export default function Setups() {
 
   const handleSave = () => {
     if (!form.label || !form.car || !form.trackId) return;
-    const newSetup: Setup = { ...form, id: crypto.randomUUID() };
-    const updated = [...setups, newSetup];
-    saveSetups(updated);
-    setSetupsState(updated);
-    setShowModal(false);
-    setForm(defaultForm());
+    createSetup({
+      data: {
+        id: crypto.randomUUID(),
+        label: form.label,
+        car: form.car,
+        trackId: form.trackId,
+        tag: form.tag,
+        date: form.date,
+        frontWing: String(form.frontWing),
+        rearWing: String(form.rearWing),
+        frontARB: String(form.frontARB),
+        rearARB: String(form.rearARB),
+        frontRideHeight: String(form.frontRideHeight),
+        rearRideHeight: String(form.rearRideHeight),
+        frontSprings: String(form.frontSprings),
+        rearSprings: String(form.rearSprings),
+        brakeBias: String(form.brakeBias),
+        brakePressure: String(form.brakePressure),
+        onThrottle: String(form.onThrottle),
+        offThrottle: String(form.offThrottle),
+        notes: form.notes,
+      },
+    });
   };
 
   const handleDelete = (id: string) => {
-    const updated = setups.filter(s => s.id !== id);
-    saveSetups(updated);
-    setSetupsState(updated);
+    deleteSetup({ id });
     setSelected(sel => sel.filter(s => s !== id));
   };
 
@@ -212,7 +247,13 @@ export default function Setups() {
       </div>
 
       {/* Setup Grid */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="card" style={{ padding: 0 }}>
+          <div className="empty-state">
+            <div className="empty-state-title">Loading Setups…</div>
+          </div>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="card" style={{ padding: 0 }}>
           <div className="empty-state">
             <div className="empty-state-title">No Setups Found</div>
@@ -370,7 +411,9 @@ export default function Setups() {
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSave}>Save Setup</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save Setup'}
+              </button>
             </div>
           </div>
         </div>

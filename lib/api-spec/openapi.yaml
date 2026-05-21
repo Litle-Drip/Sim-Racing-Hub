@@ -10,6 +10,12 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: sessions
+    description: Racing session operations
+  - name: setups
+    description: Car setup operations
+  - name: trackNotes
+    description: Track notes operations
 paths:
   /healthz:
     get:
@@ -24,7 +30,180 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /sessions:
+    get:
+      operationId: getSessions
+      tags: [sessions]
+      summary: Get all sessions for current user
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SessionRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Create a new session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /sessions/{id}:
+    delete:
+      operationId: deleteSession
+      tags: [sessions]
+      summary: Delete a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /setups:
+    get:
+      operationId: getSetups
+      tags: [setups]
+      summary: Get all setups for current user
+      responses:
+        "200":
+          description: List of setups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SetupRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createSetup
+      tags: [setups]
+      summary: Create a new setup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSetupRequest"
+      responses:
+        "201":
+          description: Setup created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /setups/{id}:
+    delete:
+      operationId: deleteSetup
+      tags: [setups]
+      summary: Delete a setup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Setup deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /track-notes/{trackId}:
+    get:
+      operationId: getTrackNotes
+      tags: [trackNotes]
+      summary: Get track notes for a specific track
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Track notes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackNotesRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: upsertTrackNotes
+      tags: [trackNotes]
+      summary: Create or update track notes for a specific track
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertTrackNotesRequest"
+      responses:
+        "200":
+          description: Track notes saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackNotesRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +213,303 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    CornerNote:
+      type: object
+      properties:
+        id:
+          type: string
+        number:
+          type: integer
+        name:
+          type: string
+        gear:
+          type: string
+        brakingPoint:
+          type: string
+        lineNotes:
+          type: string
+        myNotes:
+          type: string
+      required:
+        - id
+        - number
+        - name
+        - gear
+        - brakingPoint
+        - lineNotes
+        - myNotes
+
+    SessionRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        trackId:
+          type: string
+        car:
+          type: string
+        type:
+          type: string
+        bestLap:
+          type: string
+        avgLap:
+          type: string
+        worstLap:
+          type: string
+        s1:
+          type: string
+        s2:
+          type: string
+        s3:
+          type: string
+        tires:
+          type: string
+        fuelLoad:
+          type: number
+        conditions:
+          type: string
+        assists:
+          type: string
+        rating:
+          type: integer
+        notes:
+          type: string
+        isPB:
+          type: boolean
+      required:
+        - id
+        - date
+        - trackId
+        - car
+        - type
+        - bestLap
+        - avgLap
+        - worstLap
+        - s1
+        - s2
+        - s3
+        - tires
+        - fuelLoad
+        - conditions
+        - assists
+        - rating
+        - notes
+        - isPB
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        trackId:
+          type: string
+        car:
+          type: string
+        type:
+          type: string
+        bestLap:
+          type: string
+        avgLap:
+          type: string
+        worstLap:
+          type: string
+        s1:
+          type: string
+        s2:
+          type: string
+        s3:
+          type: string
+        tires:
+          type: string
+        fuelLoad:
+          type: number
+        conditions:
+          type: string
+        assists:
+          type: string
+        rating:
+          type: integer
+        notes:
+          type: string
+      required:
+        - id
+        - date
+        - trackId
+        - car
+        - type
+        - bestLap
+        - avgLap
+        - worstLap
+        - s1
+        - s2
+        - s3
+        - tires
+        - fuelLoad
+        - conditions
+        - assists
+        - rating
+        - notes
+
+    SetupRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        car:
+          type: string
+        trackId:
+          type: string
+        tag:
+          type: string
+        date:
+          type: string
+        frontWing:
+          type: string
+        rearWing:
+          type: string
+        frontARB:
+          type: string
+        rearARB:
+          type: string
+        frontRideHeight:
+          type: string
+        rearRideHeight:
+          type: string
+        frontSprings:
+          type: string
+        rearSprings:
+          type: string
+        brakeBias:
+          type: string
+        brakePressure:
+          type: string
+        onThrottle:
+          type: string
+        offThrottle:
+          type: string
+        notes:
+          type: string
+      required:
+        - id
+        - label
+        - car
+        - trackId
+        - tag
+        - date
+        - frontWing
+        - rearWing
+        - frontARB
+        - rearARB
+        - frontRideHeight
+        - rearRideHeight
+        - frontSprings
+        - rearSprings
+        - brakeBias
+        - brakePressure
+        - onThrottle
+        - offThrottle
+        - notes
+
+    CreateSetupRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        car:
+          type: string
+        trackId:
+          type: string
+        tag:
+          type: string
+        date:
+          type: string
+        frontWing:
+          type: string
+        rearWing:
+          type: string
+        frontARB:
+          type: string
+        rearARB:
+          type: string
+        frontRideHeight:
+          type: string
+        rearRideHeight:
+          type: string
+        frontSprings:
+          type: string
+        rearSprings:
+          type: string
+        brakeBias:
+          type: string
+        brakePressure:
+          type: string
+        onThrottle:
+          type: string
+        offThrottle:
+          type: string
+        notes:
+          type: string
+      required:
+        - id
+        - label
+        - car
+        - trackId
+        - date
+        - frontWing
+        - rearWing
+        - frontARB
+        - rearARB
+        - frontRideHeight
+        - rearRideHeight
+        - frontSprings
+        - rearSprings
+        - brakeBias
+        - brakePressure
+        - onThrottle
+        - offThrottle
+        - notes
+
+    TrackNotesRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        trackId:
+          type: string
+        corners:
+          type: array
+          items:
+            $ref: "#/components/schemas/CornerNote"
+      required:
+        - id
+        - trackId
+        - corners
+
+    UpsertTrackNotesRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        corners:
+          type: array
+          items:
+            $ref: "#/components/schemas/CornerNote"
+      required:
+        - id
+        - corners

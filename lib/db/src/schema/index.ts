@@ -1,20 +1,65 @@
-// Export your models here. Add one export per file
-// export * from "./posts";
-//
-// Each model/table should ideally be split into different files.
-// Each model/table should define a Drizzle table, insert schema, and types:
-//
-//   import { pgTable, text, serial } from "drizzle-orm/pg-core";
-//   import { createInsertSchema } from "drizzle-zod";
-//   import { z } from "zod/v4";
-//
-//   export const postsTable = pgTable("posts", {
-//     id: serial("id").primaryKey(),
-//     title: text("title").notNull(),
-//   });
-//
-//   export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true });
-//   export type InsertPost = z.infer<typeof insertPostSchema>;
-//   export type Post = typeof postsTable.$inferSelect;
+import { pgTable, text, integer, boolean, real, timestamp, jsonb } from "drizzle-orm/pg-core";
 
-export {}
+export const sessionsTable = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  date: text("date").notNull(),
+  trackId: text("track_id").notNull(),
+  car: text("car").notNull(),
+  type: text("type").notNull(),
+  bestLap: text("best_lap").notNull().default(""),
+  avgLap: text("avg_lap").notNull().default(""),
+  worstLap: text("worst_lap").notNull().default(""),
+  s1: text("s1").notNull().default(""),
+  s2: text("s2").notNull().default(""),
+  s3: text("s3").notNull().default(""),
+  tires: text("tires").notNull().default(""),
+  fuelLoad: real("fuel_load").notNull().default(0),
+  conditions: text("conditions").notNull().default(""),
+  assists: text("assists").notNull().default(""),
+  rating: integer("rating").notNull().default(0),
+  notes: text("notes").notNull().default(""),
+  isPB: boolean("is_pb").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type DbSession = typeof sessionsTable.$inferSelect;
+export type InsertDbSession = typeof sessionsTable.$inferInsert;
+
+export const setupsTable = pgTable("setups", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  label: text("label").notNull(),
+  car: text("car").notNull(),
+  trackId: text("track_id").notNull(),
+  tag: text("tag").notNull().default(""),
+  date: text("date").notNull(),
+  frontWing: text("front_wing").notNull().default(""),
+  rearWing: text("rear_wing").notNull().default(""),
+  frontARB: text("front_arb").notNull().default(""),
+  rearARB: text("rear_arb").notNull().default(""),
+  frontRideHeight: text("front_ride_height").notNull().default(""),
+  rearRideHeight: text("rear_ride_height").notNull().default(""),
+  frontSprings: text("front_springs").notNull().default(""),
+  rearSprings: text("rear_springs").notNull().default(""),
+  brakeBias: text("brake_bias").notNull().default(""),
+  brakePressure: text("brake_pressure").notNull().default(""),
+  onThrottle: text("on_throttle").notNull().default(""),
+  offThrottle: text("off_throttle").notNull().default(""),
+  notes: text("notes").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type DbSetup = typeof setupsTable.$inferSelect;
+export type InsertDbSetup = typeof setupsTable.$inferInsert;
+
+export const trackNotesTable = pgTable("track_notes", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  trackId: text("track_id").notNull(),
+  corners: jsonb("corners").notNull().default([]),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type DbTrackNotes = typeof trackNotesTable.$inferSelect;
+export type InsertDbTrackNotes = typeof trackNotesTable.$inferInsert;
