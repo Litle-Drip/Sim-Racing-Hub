@@ -1,0 +1,445 @@
+# SIM RACING HQ — Full Build Spec for Replit AI
+
+## Project Overview
+Build a personal sim racing companion web app called **Sim Racing HQ**. This is a single-user personal tool to log sessions, track improvement, manage car setups, and study F1 circuits. It should feel like a professional F1 team's internal dashboard — dark, elegant, technical, and precise.
+
+---
+
+## Tech Stack
+- **Framework:** React (Vite)
+- **Styling:** Pure CSS with CSS variables — NO Tailwind, NO component libraries
+- **Charts:** Recharts (npm install recharts)
+- **Icons:** Lucide React (npm install lucide-react)
+- **Data persistence:** localStorage only — no backend, no auth, no database
+- **Routing:** State-based navigation (no React Router) — a single `page` state variable controls which page renders
+
+---
+
+## Design System — F1 Elegant Theme
+
+### Fonts (load via Google Fonts in index.html)
+```
+Orbitron — headers, nav items, lap times, page titles (weights 400–900)
+Rajdhani — body text, labels, form fields, descriptions (weights 300–700)
+Space Mono — all time values, sector splits, numerical data
+```
+
+### CSS Variables
+```css
+:root {
+  --bg: #080808;
+  --bg-card: #111111;
+  --bg-elevated: #1A1A1A;
+  --border: #1E1E1E;
+  --border-accent: #2A2A2A;
+  --red: #E8002D;
+  --red-dim: rgba(232, 0, 45, 0.12);
+  --red-glow: rgba(232, 0, 45, 0.35);
+  --white: #F0F0F0;
+  --gray: #555555;
+  --gray-mid: #888888;
+  --gray-light: #AAAAAA;
+  --teal: #00D2BE;
+  --yellow: #FFF200;
+  --green: #39B54A;
+  --font-display: 'Orbitron', monospace;
+  --font-body: 'Rajdhani', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+```
+
+### Design Rules
+- Background is near-black `#080808` — everything lives on this
+- Cards use `#111111` with `1px solid #1E1E1E` borders
+- **Red** (`#E8002D`) is the ONLY accent color for active states, CTAs, highlights
+- **Teal** (`#00D2BE`) for lap times and sector data — the classic F1 timing color
+- **Yellow** (`#FFF200`) for PB/personal best indicators only
+- **NO rounded corners** — everything is sharp/square, like a telemetry display
+- A 2px red top border on cards indicates importance or hover
+- All text labels in `Orbitron` uppercase with wide letter-spacing
+- Nav is a fixed left sidebar, 240px wide
+- All buttons are flat, uppercase, letter-spaced — never pill-shaped
+- Tables have minimal borders, just bottom borders per row
+- Hover states are subtle: `rgba(255,255,255,0.02)` background shift
+
+---
+
+## App Structure
+
+### Navigation — Fixed Left Sidebar (240px)
+Logo area at top:
+- "SIM RACING HQ" in Orbitron red, small, all-caps
+- Subtitle: "DRIVER DASHBOARD" in gray
+
+Nav links (with Lucide icons):
+1. **Dashboard** — LayoutDashboard icon
+2. **Sessions** — ClipboardList icon
+3. **Tracks** — Map icon
+4. **Setups** — Settings2 icon
+5. **Progress** — TrendingUp icon
+
+Active link: red left border (3px), red text, red-dim background
+Inactive link: gray text, no border
+
+---
+
+## Pages
+
+---
+
+### PAGE 1: Dashboard
+
+**Top stat row — 4 cards in a grid:**
+- Total Sessions (count of all sessions in localStorage)
+- Tracks Practiced (count of unique tracks across all sessions)
+- Personal Bests Set (count of times a session set a new PB for that track+car combo)
+- Setups Saved (count of setups in localStorage)
+
+Each stat card has a 2px red bottom border, Orbitron number large, Rajdhani label small above.
+
+**Activity Heatmap (GitHub-style calendar)**
+- Show last 365 days as a 52-column × 7-row grid
+- Each cell is a small square
+- Color intensity based on sessions that day:
+  - 0 sessions: `#1E1E1E`
+  - 1 session: `rgba(232, 0, 45, 0.3)`
+  - 2 sessions: `rgba(232, 0, 45, 0.55)`
+  - 3+ sessions: `#E8002D`
+- Month labels above the grid
+- Section title: "ACTIVITY — LAST 365 DAYS"
+
+**Recent Sessions — last 5 sessions as a table:**
+Columns: Date, Track, Car, Best Lap, Type, Rating
+- Best Lap in Space Mono teal
+- Session type as colored badge (Practice=teal, Qualifying=yellow, Race=red, Hotlap=green)
+- Rating shown as filled/empty dots (● ●  ● ○ ○)
+
+---
+
+### PAGE 2: Sessions
+
+**Page header:** "SESSION LOG" title + "LOG SESSION" red button top right
+
+**Filter bar** (below header):
+- Dropdown: All Tracks / [each track]
+- Dropdown: All Types / Practice / Qualifying / Race / Hotlap
+- Text search on car name
+
+**Sessions Table:**
+Columns: Date | Track | Car | Best Lap | Avg Lap | Worst Lap | Type | Tires | Rating | Notes icon
+- Clicking a row expands it inline to show: Sectors, Conditions, Fuel Load, Assists, full Notes text
+- Best lap in teal Space Mono
+- If this session is a PB for that track+car: show a yellow ★ PB badge next to the time
+
+**Log Session Modal** (opens on button click):
+Form fields in a 2-column grid:
+```
+Date (date input, default today)          Track (select from F1_TRACKS list)
+Car (text input)                          Session Type (Practice/Qualifying/Race/Hotlap)
+Best Lap Time (text, placeholder 1:23.456) Avg Lap Time (text)
+Worst Lap Time (text)                     Tire Compound (Soft/Medium/Hard/Inter/Wet)
+Sector 1 (text)                           Sector 2 (text)
+Sector 3 (text)                           Fuel Load % (number 0-100)
+Conditions (Dry/Damp/Wet)                 Assists (None/Partial/Full)
+Rating 1-5 (star click selector)          [full width] Notes (textarea)
+```
+Footer buttons: CANCEL (secondary) + SAVE SESSION (red primary)
+
+On save: push to sessions array in localStorage, auto-check if it's a new PB for that track+car combo.
+
+---
+
+### PAGE 3: Tracks
+
+**Default view — Track Grid:**
+"TRACK BIBLE" as page title
+
+Grid of cards, one per F1 track (all 24 tracks pre-loaded):
+Each card shows:
+- Country flag emoji (large)
+- Track short name in Orbitron
+- Country in gray Rajdhani
+- PB time in teal Space Mono (or "NO TIME" in gray if none logged)
+- Session count in top-right corner (e.g. "4 sessions")
+
+On hover: red top border appears, card lifts slightly
+
+**Track Detail View** (clicking a track card):
+Back button to return to grid
+
+Header: Flag + Track name + country + total sessions count
+
+Three sections:
+
+**Section A — Personal Best & Stats**
+Row of mini-stats: PB Time | Best Sector 1 | Best Sector 2 | Best Sector 3 | Sessions | Last Driven
+
+**Section B — Corner Breakdown**
+Table with columns: # | Name | Gear | Braking Point | Line Notes | My Notes
+- Each row is editable inline — clicking a cell makes it an input
+- "ADD CORNER" button adds a new row
+- DELETE button (×) at end of each row
+- Data autosaves to localStorage keyed by trackId
+- Pre-populate corner numbers 1 through N (based on track.corners count) with empty fields on first open
+
+**Section C — Sessions at This Track**
+Mini table showing all sessions logged for this track:
+Date | Car | Best Lap | Type | Rating
+Same style as Sessions page but condensed
+
+---
+
+### PAGE 4: Setups
+
+**Page header:** "SETUP VAULT" + "ADD SETUP" red button
+
+**Filter row:** Filter by track dropdown + filter by tag dropdown
+
+**Setups Grid** — cards in a 2-column grid:
+Each setup card shows:
+- Track name + flag
+- Car name
+- Setup label (user-defined name like "Quali Trim Monza")
+- Tag badge (Qualifying/Race/Wet etc) in colored badge
+- Date saved
+- Preview of key values: Front Wing / Rear Wing / Brake Bias
+- "VIEW" and "DELETE" buttons
+
+**Compare Mode:**
+Checkbox on each card to select it. When 2 are selected, a "COMPARE SELECTED" red button appears at top.
+Compare view: side-by-side table showing all setup values with differences highlighted in red.
+
+**Add Setup Modal:**
+```
+Setup Label (text)                        Car (text)
+Track (select)                            Tag (select)
+--- AERODYNAMICS ---
+Front Wing (0-50, number)                 Rear Wing (0-50, number)
+--- SUSPENSION ---
+Front ARB (1-11, number)                  Rear ARB (1-11, number)
+Front Ride Height (mm, number)            Rear Ride Height (mm, number)
+Front Springs (number)                    Rear Springs (number)
+--- BRAKES ---
+Brake Bias % (number, e.g. 56)           Brake Pressure % (number)
+--- DIFFERENTIAL ---
+On Throttle % (number)                    Off Throttle % (number)
+--- [full width] ---
+Notes (textarea)
+```
+Footer: CANCEL + SAVE SETUP
+
+---
+
+### PAGE 5: Progress
+
+**Page header:** "PROGRESSION"
+
+**Filter controls (top):**
+- Track selector dropdown
+- Car text filter
+- These filter all charts below
+
+**Chart 1 — PB Progression Line Chart (Recharts LineChart)**
+- X axis: date of sessions
+- Y axis: lap time in seconds (show as M:SS.mmm formatted ticks)
+- One line showing best lap per session
+- PB moments highlighted with a yellow dot
+- If no data: show empty state "LOG SESSIONS TO SEE YOUR PROGRESS"
+- Chart background dark, grid lines `#1E1E1E`, line color teal `#00D2BE`
+
+**Chart 2 — Lap Time Variance Bar Chart (Recharts BarChart)**
+- X axis: session date
+- Y axis: lap time in seconds
+- Three bars per session: Best (teal) / Average (gray) / Worst (red-dim)
+- Shows consistency at a glance
+
+**Chart 3 — PB Records Table**
+All-time PB table across all tracks:
+Track | Car | PB Time | Date Set | Sessions to Achieve
+PB time in yellow Space Mono
+
+---
+
+## Data Structures (localStorage)
+
+### sessions — array of objects
+```json
+{
+  "id": "uuid",
+  "date": "2025-01-15",
+  "trackId": "monza",
+  "car": "Ferrari SF-24",
+  "type": "Qualifying",
+  "bestLap": "1:21.456",
+  "avgLap": "1:22.103",
+  "worstLap": "1:23.891",
+  "s1": "24.123",
+  "s2": "28.456",
+  "s3": "28.877",
+  "tires": "Soft",
+  "fuelLoad": 20,
+  "conditions": "Dry",
+  "assists": "None",
+  "rating": 4,
+  "notes": "Nailed Lesmo 1, still losing time in Ascari",
+  "isPB": true
+}
+```
+
+### trackNotes — object keyed by trackId
+```json
+{
+  "monza": {
+    "corners": [
+      {
+        "id": "uuid",
+        "number": 1,
+        "name": "Prima Variante",
+        "gear": "2",
+        "brakingPoint": "150m board",
+        "lineNotes": "Hug the right kerb on exit",
+        "myNotes": "Brake earlier than feels right"
+      }
+    ]
+  }
+}
+```
+
+### setups — array of objects
+```json
+{
+  "id": "uuid",
+  "label": "Quali Trim Low Drag",
+  "car": "Ferrari SF-24",
+  "trackId": "monza",
+  "tag": "Qualifying",
+  "date": "2025-01-15",
+  "frontWing": 2,
+  "rearWing": 3,
+  "frontARB": 5,
+  "rearARB": 4,
+  "frontRideHeight": 25,
+  "rearRideHeight": 35,
+  "frontSprings": 142000,
+  "rearSprings": 127000,
+  "brakeBias": 56,
+  "brakePressure": 88,
+  "onThrottle": 60,
+  "offThrottle": 55,
+  "notes": "Very low drag, twitchy under braking"
+}
+```
+
+---
+
+## Pre-loaded Track List (import as constant)
+```js
+export const F1_TRACKS = [
+  { id: 'bahrain', name: 'Bahrain International Circuit', short: 'Bahrain', country: 'Bahrain', flag: '🇧🇭', corners: 15 },
+  { id: 'jeddah', name: 'Jeddah Corniche Circuit', short: 'Saudi Arabia', country: 'Saudi Arabia', flag: '🇸🇦', corners: 27 },
+  { id: 'albert_park', name: 'Albert Park Circuit', short: 'Australia', country: 'Australia', flag: '🇦🇺', corners: 16 },
+  { id: 'suzuka', name: 'Suzuka Circuit', short: 'Japan', country: 'Japan', flag: '🇯🇵', corners: 18 },
+  { id: 'shanghai', name: 'Shanghai International Circuit', short: 'China', country: 'China', flag: '🇨🇳', corners: 16 },
+  { id: 'miami', name: 'Miami International Autodrome', short: 'Miami', country: 'USA', flag: '🇺🇸', corners: 19 },
+  { id: 'imola', name: 'Autodromo Enzo e Dino Ferrari', short: 'Imola', country: 'Italy', flag: '🇮🇹', corners: 19 },
+  { id: 'monaco', name: 'Circuit de Monaco', short: 'Monaco', country: 'Monaco', flag: '🇲🇨', corners: 19 },
+  { id: 'barcelona', name: 'Circuit de Barcelona-Catalunya', short: 'Barcelona', country: 'Spain', flag: '🇪🇸', corners: 16 },
+  { id: 'montreal', name: 'Circuit Gilles Villeneuve', short: 'Canada', country: 'Canada', flag: '🇨🇦', corners: 14 },
+  { id: 'red_bull_ring', name: 'Red Bull Ring', short: 'Austria', country: 'Austria', flag: '🇦🇹', corners: 10 },
+  { id: 'silverstone', name: 'Silverstone Circuit', short: 'Silverstone', country: 'UK', flag: '🇬🇧', corners: 18 },
+  { id: 'hungaroring', name: 'Hungaroring', short: 'Hungary', country: 'Hungary', flag: '🇭🇺', corners: 14 },
+  { id: 'spa', name: 'Circuit de Spa-Francorchamps', short: 'Spa', country: 'Belgium', flag: '🇧🇪', corners: 19 },
+  { id: 'zandvoort', name: 'Circuit Zandvoort', short: 'Zandvoort', country: 'Netherlands', flag: '🇳🇱', corners: 14 },
+  { id: 'monza', name: 'Autodromo Nazionale Monza', short: 'Monza', country: 'Italy', flag: '🇮🇹', corners: 11 },
+  { id: 'baku', name: 'Baku City Circuit', short: 'Baku', country: 'Azerbaijan', flag: '🇦🇿', corners: 20 },
+  { id: 'marina_bay', name: 'Marina Bay Street Circuit', short: 'Singapore', country: 'Singapore', flag: '🇸🇬', corners: 19 },
+  { id: 'cota', name: 'Circuit of the Americas', short: 'COTA', country: 'USA', flag: '🇺🇸', corners: 20 },
+  { id: 'rodriguez', name: 'Autodromo Hermanos Rodriguez', short: 'Mexico City', country: 'Mexico', flag: '🇲🇽', corners: 17 },
+  { id: 'interlagos', name: 'Autodromo Jose Carlos Pace', short: 'Interlagos', country: 'Brazil', flag: '🇧🇷', corners: 15 },
+  { id: 'las_vegas', name: 'Las Vegas Strip Circuit', short: 'Las Vegas', country: 'USA', flag: '🇺🇸', corners: 17 },
+  { id: 'losail', name: 'Losail International Circuit', short: 'Qatar', country: 'Qatar', flag: '🇶🇦', corners: 16 },
+  { id: 'yas_marina', name: 'Yas Marina Circuit', short: 'Abu Dhabi', country: 'UAE', flag: '🇦🇪', corners: 16 },
+]
+```
+
+---
+
+## File Structure to Generate
+```
+/src
+  App.jsx              — main app, state, routing
+  index.css            — full CSS theme (all global styles)
+  /components
+    Nav.jsx            — fixed left sidebar navigation
+  /pages
+    Dashboard.jsx      — heatmap + stats + recent sessions
+    Sessions.jsx       — session log + add session modal
+    Tracks.jsx         — track grid + track detail + corner editor
+    Setups.jsx         — setup vault + compare mode + add setup modal
+    Progress.jsx       — PB line chart + variance bar chart + PB table
+  /data
+    f1Tracks.js        — F1_TRACKS array + CARS, TIRE_COMPOUNDS constants
+```
+
+---
+
+## Key Functional Requirements
+
+1. **PB auto-detection:** When saving a session, compare bestLap against all previous sessions for the same trackId + car combo. If faster (or first session for that combo), set `isPB: true` on that session object.
+
+2. **Lap time storage:** Store times as strings (e.g. `"1:21.456"`). For chart comparisons and sorting, convert to seconds using a helper: split on `:`, parse minutes and seconds, return `minutes * 60 + seconds`.
+
+3. **Corner table editing:** Clicking any cell in the corners table makes it an editable input. On blur, autosave to localStorage. No save button needed.
+
+4. **Setup compare:** User checks two setup cards, click COMPARE. Render a two-column table. Any value that differs between the two setups gets highlighted with red text on both sides.
+
+5. **Heatmap generation:** On mount, build a map of `date → session count` from sessions array. Generate 365 day cells from today backwards. Assign CSS class based on count: 0 = empty, 1 = l1, 2 = l2, 3+ = l3.
+
+6. **localStorage keys:** Use `sim_sessions`, `sim_track_notes`, `sim_setups` as keys.
+
+7. **ID generation:** Use `crypto.randomUUID()` for all new record IDs.
+
+8. **Empty states:** Every page/section with no data should show a centered empty state with an Orbitron heading and Rajdhani description prompting the user to add data.
+
+---
+
+## Visual Details to Nail
+- The sidebar logo "SIM RACING HQ" should have a thin red underline or left-border accent
+- Stat cards on Dashboard have a 2px red bottom border (not top)
+- Lap times throughout the app are ALWAYS in Space Mono teal
+- PB times are ALWAYS in Space Mono yellow
+- Session type badges are small, uppercase, with a subtle transparent background matching their color
+- The heatmap section header has: label on left, a color legend (○ None → ● Active) on right
+- Modal overlays are `rgba(0,0,0,0.88)` — very dark
+- Every modal has a thin red top border
+- Table row hover background is `rgba(255,255,255,0.025)`
+- All inputs have a red bottom border on focus (not a box glow — just the bottom border)
+- No box shadows except for modals (subtle `0 20px 60px rgba(0,0,0,0.8)`)
+- The Progress page charts should have a dark background matching cards, with subtle `#1E1E1E` gridlines
+
+---
+
+## index.html — Add to `<head>`
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<title>Sim Racing HQ</title>
+```
+
+---
+
+## npm packages to install
+```bash
+npm install recharts lucide-react
+```
+
+---
+
+## Notes for Replit AI
+- Generate ALL files completely — no placeholders or `// TODO` comments
+- The app must be fully functional with real working CRUD operations via localStorage
+- Every page must render without errors even with zero data in localStorage
+- Do not use any external UI component library — pure CSS only
+- Charts must have proper responsive containers using Recharts `<ResponsiveContainer>`
+- The overall feel should be: **McLaren/Ferrari team wall — precision, darkness, speed**
