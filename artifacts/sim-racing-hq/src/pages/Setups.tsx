@@ -133,12 +133,29 @@ function CompareView({ setups, onBack }: { setups: [SetupRecord, SetupRecord]; o
 export default function Setups() {
   const qc = useQueryClient();
   const { data: setups = [], isLoading } = useGetSetups();
+
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<Omit<SetupRecord, 'id'>>(defaultForm());
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [saveError, setSaveError] = useState('');
+  const [filterTrack, setFilterTrack] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [viewSetup, setViewSetup] = useState<SetupRecord | null>(null);
+  const [comparing, setComparing] = useState(false);
+
   const { mutate: createSetup, isPending: saving } = useCreateSetup({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetSetupsQueryKey() });
         setShowModal(false);
         setForm(defaultForm());
+        setFormErrors({});
+        setSaveError('');
+      },
+      onError: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Failed to save setup. Please try again.';
+        setSaveError(msg);
       },
     },
   });
@@ -150,14 +167,6 @@ export default function Setups() {
     },
   });
 
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState<Omit<SetupRecord, 'id'>>(defaultForm());
-  const [filterTrack, setFilterTrack] = useState('');
-  const [filterTag, setFilterTag] = useState('');
-  const [selected, setSelected] = useState<string[]>([]);
-  const [viewSetup, setViewSetup] = useState<SetupRecord | null>(null);
-  const [comparing, setComparing] = useState(false);
-
   const setField = (k: keyof Omit<SetupRecord, 'id'>, v: string | number) => setForm(f => ({ ...f, [k]: v }));
 
   const filtered = useMemo(() => setups.filter(s => {
@@ -167,7 +176,16 @@ export default function Setups() {
   }), [setups, filterTrack, filterTag]);
 
   const handleSave = () => {
-    if (!form.label || !form.car || !form.trackId) return;
+    const errors: Record<string, string> = {};
+    if (!form.label.trim()) errors.label = 'Please enter a setup label';
+    if (!form.car.trim()) errors.car = 'Please enter a car name';
+    if (!form.trackId) errors.trackId = 'Please select a track';
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+    setSaveError('');
     createSetup({
       data: {
         id: crypto.randomUUID(),
@@ -321,24 +339,32 @@ export default function Setups() {
           <div className="modal">
             <div className="modal-header">
               <span className="modal-title">Add Setup</span>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+              <button className="modal-close" onClick={() => { setShowModal(false); setFormErrors({}); setSaveError(''); }}>×</button>
             </div>
             <div className="modal-body">
+              {saveError && (
+                <div style={{ background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)', color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '10px 14px', marginBottom: 16 }}>
+                  {saveError}
+                </div>
+              )}
               <div className="form-grid">
                 <div className="field">
-                  <label className="field-label">Setup Label</label>
-                  <input type="text" placeholder="Quali Trim Monza" value={form.label} onChange={e => setField('label', e.target.value)} />
+                  <label className="field-label">Setup Label <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <input type="text" placeholder="Quali Trim Monza" value={form.label} onChange={e => { setField('label', e.target.value); setFormErrors(fe => ({ ...fe, label: '' })); }} style={formErrors.label ? { borderBottomColor: 'var(--red)' } : {}} />
+                  {formErrors.label && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.label}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Car</label>
-                  <input type="text" placeholder="Ferrari SF-24" value={form.car} onChange={e => setField('car', e.target.value)} />
+                  <label className="field-label">Car <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <input type="text" placeholder="Ferrari SF-24" value={form.car} onChange={e => { setField('car', e.target.value); setFormErrors(fe => ({ ...fe, car: '' })); }} style={formErrors.car ? { borderBottomColor: 'var(--red)' } : {}} />
+                  {formErrors.car && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.car}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Track</label>
-                  <select value={form.trackId} onChange={e => setField('trackId', e.target.value)}>
+                  <label className="field-label">Track <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <select value={form.trackId} onChange={e => { setField('trackId', e.target.value); setFormErrors(fe => ({ ...fe, trackId: '' })); }} style={formErrors.trackId ? { borderBottomColor: 'var(--red)' } : {}}>
                     <option value="">Select Track</option>
                     {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.flag} {t.short}</option>)}
                   </select>
+                  {formErrors.trackId && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.trackId}</span>}
                 </div>
                 <div className="field">
                   <label className="field-label">Tag</label>

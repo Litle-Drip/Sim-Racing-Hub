@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Plus, ChevronDown, ChevronUp, FileText, Trash2 } from 'lucide-react';
 import { useGetSessions, useCreateSession, useDeleteSession } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -209,8 +209,8 @@ export default function Sessions() {
             </thead>
             <tbody>
               {filtered.map(s => (
-                <>
-                  <tr key={s.id} onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
+                <React.Fragment key={s.id}>
+                  <tr onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
                     <td>{trackName(s.trackId)}</td>
                     <td style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
@@ -276,7 +276,7 @@ export default function Sessions() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
