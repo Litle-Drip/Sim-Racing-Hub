@@ -39,12 +39,28 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// On Replit, publishableKeyFromHost derives a key tied to the managed Clerk
+// proxy for the current hostname. On external hosts (Render, etc.) that proxy
+// doesn't exist, so we fall straight through to the env var key directly.
+const REPLIT_HOST_SUFFIXES = [
+  ".replit.app",
+  ".replit.dev",
+  ".repl.co",
+  ".picard.replit.dev",
+];
+
+function resolveClerkKey(host: string): string | undefined {
+  const isReplit = REPLIT_HOST_SUFFIXES.some((s) => host.endsWith(s));
+  if (isReplit) {
+    return publishableKeyFromHost(host, process.env.CLERK_PUBLISHABLE_KEY);
+  }
+  return process.env.CLERK_PUBLISHABLE_KEY;
+}
+
 app.use(
   clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
-    ),
+    publishableKey: resolveClerkKey(getClerkProxyHost(req) ?? ""),
+    secretKey: process.env.CLERK_SECRET_KEY,
   })),
 );
 
