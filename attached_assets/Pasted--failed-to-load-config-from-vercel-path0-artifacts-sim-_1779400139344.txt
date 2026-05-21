@@ -1,0 +1,32 @@
+
+failed to load config from /vercel/path0/artifacts/sim-racing-hq/vite.config.ts
+16:48:36.228 
+error during build:
+16:48:36.228 
+Error: PORT environment variable is required but was not provided.
+16:48:36.228 
+    at file:///vercel/path0/artifacts/sim-racing-hq/node_modules/.vite-temp/vite.config.ts.timestamp-1779400116098-a9daf4b45b35d8.mjs:10:9
+16:48:36.229 
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+16:48:36.229 
+    at async node:internal/modules/esm/loader:639:26
+16:48:36.229 
+    at async loadConfigFromBundledFile (file:///vercel/path0/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_terser@5.47.1_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35936:12)
+16:48:36.229 
+    at async bundleAndLoadConfigFile (file:///vercel/path0/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_terser@5.47.1_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35824:17)
+16:48:36.229 
+    at async loadConfigFromFile (file:///vercel/path0/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_terser@5.47.1_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35791:42)
+16:48:36.229 
+    at async resolveConfig (file:///vercel/path0/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_terser@5.47.1_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35440:22)
+16:48:36.229 
+    at async createBuilder (file:///vercel/path0/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_terser@5.47.1_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:33895:19)
+16:48:36.229 
+    at async CAC.<anonymous> (file:///vercel/path0/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_terser@5.47.1_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/cli.js:629:10)
+16:48:36.253 
+/vercel/path0/artifacts/sim-racing-hq:
+16:48:36.253 
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/sim-racing-hq@0.0.0 build: `vite build --config vite.config.ts`
+16:48:36.253 
+Exit status 1
+16:48:36.271 
+Error: Command "pnpm --filter @workspace/sim-racing-hq run build" exited with 1
