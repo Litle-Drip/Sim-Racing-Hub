@@ -14,6 +14,13 @@ function formatLapTime(seconds: number): string {
   return `${mins}:${parseFloat(secs) < 10 ? '0' : ''}${secs}`;
 }
 
+function formatAxisTick(seconds: number): string {
+  if (!isFinite(seconds) || seconds === 0) return '';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds - mins * 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
 interface TooltipProps {
   active?: boolean;
   payload?: { value: number; name: string; color: string }[];
@@ -142,17 +149,17 @@ export default function Progress() {
               <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#555', letterSpacing: '0.06em' }}
+                tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#A8A8A8', letterSpacing: '0.06em' }}
                 axisLine={{ stroke: '#1E1E1E' }}
                 tickLine={false}
               />
               <YAxis
                 domain={[minY, maxY]}
-                tickFormatter={formatLapTime}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#555' }}
+                tickFormatter={formatAxisTick}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
                 axisLine={{ stroke: '#1E1E1E' }}
                 tickLine={false}
-                width={70}
+                width={56}
               />
               <Tooltip content={<LapTooltip />} />
               <Line
@@ -199,16 +206,16 @@ export default function Progress() {
               <CartesianGrid stroke="#1E1E1E" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#555', letterSpacing: '0.06em' }}
+                tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#A8A8A8', letterSpacing: '0.06em' }}
                 axisLine={{ stroke: '#1E1E1E' }}
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={formatLapTime}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#555' }}
+                tickFormatter={formatAxisTick}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
                 axisLine={{ stroke: '#1E1E1E' }}
                 tickLine={false}
-                width={70}
+                width={56}
               />
               <Tooltip content={<LapTooltip />} />
               <Bar dataKey="best" name="Best" fill="#00D2BE" />

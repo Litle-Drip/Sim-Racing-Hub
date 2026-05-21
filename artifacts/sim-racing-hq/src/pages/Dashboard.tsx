@@ -122,18 +122,22 @@ export default function Dashboard({ setPage }: DashboardProps) {
         </div>
 
         <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 24 }}>
-          {monthLabels.map(({ label, col }) => (
-            <div key={`${label}-${col}`} style={{ position: 'relative', minWidth: 13 }}>
-              <span style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 8,
-                color: 'var(--gray)',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                whiteSpace: 'nowrap',
-              }}>{label}</span>
-            </div>
-          ))}
+          {monthLabels.map(({ label, col }, idx) => {
+            const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
+            const spanWidth = (nextCol - col) * 13;
+            return (
+              <div key={`${label}-${col}`} style={{ width: spanWidth, flexShrink: 0, overflow: 'hidden' }}>
+                <span style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 8,
+                  color: 'var(--gray)',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                }}>{label}</span>
+              </div>
+            );
+          })}
         </div>
 
         <div className="heatmap-grid">
