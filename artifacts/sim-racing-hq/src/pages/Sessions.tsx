@@ -55,12 +55,28 @@ const defaultForm = () => ({
 export default function Sessions() {
   const qc = useQueryClient();
   const { data: sessions = [], isLoading } = useGetSessions();
+
+  const [showModal, setShowModal] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [form, setForm] = useState(defaultForm());
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [saveError, setSaveError] = useState('');
+  const [filterTrack, setFilterTrack] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterCar, setFilterCar] = useState('');
+
   const { mutate: createSession, isPending: saving } = useCreateSession({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
         setShowModal(false);
         setForm(defaultForm());
+        setFormErrors({});
+        setSaveError('');
+      },
+      onError: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Failed to save session. Please try again.';
+        setSaveError(msg);
       },
     },
   });
@@ -71,13 +87,6 @@ export default function Sessions() {
       },
     },
   });
-
-  const [showModal, setShowModal] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [form, setForm] = useState(defaultForm());
-  const [filterTrack, setFilterTrack] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [filterCar, setFilterCar] = useState('');
 
   const trackName = (id: string) => {
     const t = F1_TRACKS.find(t => t.id === id);
@@ -96,7 +105,16 @@ export default function Sessions() {
   }, [sessions, filterTrack, filterType, filterCar]);
 
   const handleSave = () => {
-    if (!form.trackId || !form.car || !form.bestLap) return;
+    const errors: Record<string, string> = {};
+    if (!form.trackId) errors.trackId = 'Please select a track';
+    if (!form.car.trim()) errors.car = 'Please enter a car name';
+    if (!form.bestLap.trim()) errors.bestLap = 'Please enter a best lap time';
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+    setSaveError('');
     createSession({
       data: {
         id: crypto.randomUUID(),
@@ -271,24 +289,31 @@ export default function Sessions() {
           <div className="modal">
             <div className="modal-header">
               <span className="modal-title">Log Session</span>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+              <button className="modal-close" onClick={() => { setShowModal(false); setFormErrors({}); setSaveError(''); }}>×</button>
             </div>
             <div className="modal-body">
+              {saveError && (
+                <div style={{ background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)', color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '10px 14px', marginBottom: 16 }}>
+                  {saveError}
+                </div>
+              )}
               <div className="form-grid">
                 <div className="field">
                   <label className="field-label">Date</label>
                   <input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
                 </div>
                 <div className="field">
-                  <label className="field-label">Track</label>
-                  <select value={form.trackId} onChange={e => set('trackId', e.target.value)}>
+                  <label className="field-label">Track <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <select value={form.trackId} onChange={e => { set('trackId', e.target.value); setFormErrors(fe => ({ ...fe, trackId: '' })); }} style={formErrors.trackId ? { borderBottomColor: 'var(--red)' } : {}}>
                     <option value="">Select Track</option>
                     {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.flag} {t.short}</option>)}
                   </select>
+                  {formErrors.trackId && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.trackId}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Car</label>
-                  <input type="text" placeholder="e.g. Ferrari SF-24" value={form.car} onChange={e => set('car', e.target.value)} />
+                  <label className="field-label">Car <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <input type="text" placeholder="e.g. Ferrari SF-24" value={form.car} onChange={e => { set('car', e.target.value); setFormErrors(fe => ({ ...fe, car: '' })); }} style={formErrors.car ? { borderBottomColor: 'var(--red)' } : {}} />
+                  {formErrors.car && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.car}</span>}
                 </div>
                 <div className="field">
                   <label className="field-label">Session Type</label>
@@ -297,8 +322,9 @@ export default function Sessions() {
                   </select>
                 </div>
                 <div className="field">
-                  <label className="field-label">Best Lap Time</label>
-                  <input type="text" placeholder="1:23.456" value={form.bestLap} onChange={e => set('bestLap', e.target.value)} />
+                  <label className="field-label">Best Lap Time <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <input type="text" placeholder="1:23.456" value={form.bestLap} onChange={e => { set('bestLap', e.target.value); setFormErrors(fe => ({ ...fe, bestLap: '' })); }} style={formErrors.bestLap ? { borderBottomColor: 'var(--red)' } : {}} />
+                  {formErrors.bestLap && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.bestLap}</span>}
                 </div>
                 <div className="field">
                   <label className="field-label">Avg Lap Time</label>
