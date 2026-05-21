@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Sim Racing HQ"
+version = "1.0.0"
+id = "artifacts/sim-racing-hq"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20416
+
+[services.development]
+run = "pnpm --filter @workspace/sim-racing-hq run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sim-racing-hq", "run", "build" ]
+publicDir = "artifacts/sim-racing-hq/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20416"
+BASE_PATH = "/"
