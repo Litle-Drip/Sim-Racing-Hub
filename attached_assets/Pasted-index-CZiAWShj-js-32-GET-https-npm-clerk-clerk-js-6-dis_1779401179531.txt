@@ -1,0 +1,175 @@
+index-CZiAWShj.js:32  GET https://npm/@clerk/clerk-js@6/dist/clerk.browser.js net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ index-CZiAWShj.js:32
+Iz.shouldRetry @ index-CZiAWShj.js:32
+Iz @ index-CZiAWShj.js:32
+rk @ index-CZiAWShj.js:32
+Wz @ index-CZiAWShj.js:32
+getClerkJsEntryChunk @ index-CZiAWShj.js:32
+getEntryChunks @ index-CZiAWShj.js:32
+dk @ index-CZiAWShj.js:32
+getOrCreateInstance @ index-CZiAWShj.js:32
+f$ @ index-CZiAWShj.js:32
+u$ @ index-CZiAWShj.js:32
+Gh @ index-CZiAWShj.js:8
+up @ index-CZiAWShj.js:8
+K_ @ index-CZiAWShj.js:8
+bO @ index-CZiAWShj.js:8
+uL @ index-CZiAWShj.js:8
+Rp @ index-CZiAWShj.js:8
+pO @ index-CZiAWShj.js:8
+kO @ index-CZiAWShj.js:8
+N @ index-CZiAWShj.js:1
+postMessage
+z @ index-CZiAWShj.js:1
+e.unstable_scheduleCallback @ index-CZiAWShj.js:1
+MO @ index-CZiAWShj.js:8
+PO @ index-CZiAWShj.js:8
+(anonymous) @ index-CZiAWShj.js:8
+index-CZiAWShj.js:32  GET https://npm/@clerk/clerk-js@6/dist/clerk.browser.js net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ index-CZiAWShj.js:32
+Iz.shouldRetry @ index-CZiAWShj.js:32
+Iz @ index-CZiAWShj.js:32
+await in Iz
+rk @ index-CZiAWShj.js:32
+Wz @ index-CZiAWShj.js:32
+getClerkJsEntryChunk @ index-CZiAWShj.js:32
+getEntryChunks @ index-CZiAWShj.js:32
+dk @ index-CZiAWShj.js:32
+getOrCreateInstance @ index-CZiAWShj.js:32
+f$ @ index-CZiAWShj.js:32
+u$ @ index-CZiAWShj.js:32
+Gh @ index-CZiAWShj.js:8
+up @ index-CZiAWShj.js:8
+K_ @ index-CZiAWShj.js:8
+bO @ index-CZiAWShj.js:8
+uL @ index-CZiAWShj.js:8
+Rp @ index-CZiAWShj.js:8
+pO @ index-CZiAWShj.js:8
+kO @ index-CZiAWShj.js:8
+N @ index-CZiAWShj.js:1
+postMessage
+z @ index-CZiAWShj.js:1
+e.unstable_scheduleCallback @ index-CZiAWShj.js:1
+MO @ index-CZiAWShj.js:8
+PO @ index-CZiAWShj.js:8
+(anonymous) @ index-CZiAWShj.js:8
+index-CZiAWShj.js:32  GET https://npm/@clerk/clerk-js@6/dist/clerk.browser.js net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ index-CZiAWShj.js:32
+Iz.shouldRetry @ index-CZiAWShj.js:32
+Iz @ index-CZiAWShj.js:32
+await in Iz
+rk @ index-CZiAWShj.js:32
+Wz @ index-CZiAWShj.js:32
+getClerkJsEntryChunk @ index-CZiAWShj.js:32
+getEntryChunks @ index-CZiAWShj.js:32
+dk @ index-CZiAWShj.js:32
+getOrCreateInstance @ index-CZiAWShj.js:32
+f$ @ index-CZiAWShj.js:32
+u$ @ index-CZiAWShj.js:32
+Gh @ index-CZiAWShj.js:8
+up @ index-CZiAWShj.js:8
+K_ @ index-CZiAWShj.js:8
+bO @ index-CZiAWShj.js:8
+uL @ index-CZiAWShj.js:8
+Rp @ index-CZiAWShj.js:8
+pO @ index-CZiAWShj.js:8
+kO @ index-CZiAWShj.js:8
+N @ index-CZiAWShj.js:1
+postMessage
+z @ index-CZiAWShj.js:1
+e.unstable_scheduleCallback @ index-CZiAWShj.js:1
+MO @ index-CZiAWShj.js:8
+PO @ index-CZiAWShj.js:8
+(anonymous) @ index-CZiAWShj.js:8
+index-CZiAWShj.js:32  GET https://npm/@clerk/clerk-js@6/dist/clerk.browser.js net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ index-CZiAWShj.js:32
+Iz.shouldRetry @ index-CZiAWShj.js:32
+Iz @ index-CZiAWShj.js:32
+await in Iz
+rk @ index-CZiAWShj.js:32
+Wz @ index-CZiAWShj.js:32
+getClerkJsEntryChunk @ index-CZiAWShj.js:32
+getEntryChunks @ index-CZiAWShj.js:32
+dk @ index-CZiAWShj.js:32
+getOrCreateInstance @ index-CZiAWShj.js:32
+f$ @ index-CZiAWShj.js:32
+u$ @ index-CZiAWShj.js:32
+Gh @ index-CZiAWShj.js:8
+up @ index-CZiAWShj.js:8
+K_ @ index-CZiAWShj.js:8
+bO @ index-CZiAWShj.js:8
+uL @ index-CZiAWShj.js:8
+Rp @ index-CZiAWShj.js:8
+pO @ index-CZiAWShj.js:8
+kO @ index-CZiAWShj.js:8
+N @ index-CZiAWShj.js:1
+postMessage
+z @ index-CZiAWShj.js:1
+e.unstable_scheduleCallback @ index-CZiAWShj.js:1
+MO @ index-CZiAWShj.js:8
+PO @ index-CZiAWShj.js:8
+(anonymous) @ index-CZiAWShj.js:8
+index-CZiAWShj.js:32  GET https://npm/@clerk/clerk-js@6/dist/clerk.browser.js net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ index-CZiAWShj.js:32
+Iz.shouldRetry @ index-CZiAWShj.js:32
+Iz @ index-CZiAWShj.js:32
+await in Iz
+rk @ index-CZiAWShj.js:32
+Wz @ index-CZiAWShj.js:32
+getClerkJsEntryChunk @ index-CZiAWShj.js:32
+getEntryChunks @ index-CZiAWShj.js:32
+dk @ index-CZiAWShj.js:32
+getOrCreateInstance @ index-CZiAWShj.js:32
+f$ @ index-CZiAWShj.js:32
+u$ @ index-CZiAWShj.js:32
+Gh @ index-CZiAWShj.js:8
+up @ index-CZiAWShj.js:8
+K_ @ index-CZiAWShj.js:8
+bO @ index-CZiAWShj.js:8
+uL @ index-CZiAWShj.js:8
+Rp @ index-CZiAWShj.js:8
+pO @ index-CZiAWShj.js:8
+kO @ index-CZiAWShj.js:8
+N @ index-CZiAWShj.js:1
+postMessage
+z @ index-CZiAWShj.js:1
+e.unstable_scheduleCallback @ index-CZiAWShj.js:1
+MO @ index-CZiAWShj.js:8
+PO @ index-CZiAWShj.js:8
+(anonymous) @ index-CZiAWShj.js:8
+index-CZiAWShj.js:32  GET https://npm/@clerk/clerk-js@6/dist/clerk.browser.js net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ index-CZiAWShj.js:32
+Iz.shouldRetry @ index-CZiAWShj.js:32
+Iz @ index-CZiAWShj.js:32
+await in Iz
+rk @ index-CZiAWShj.js:32
+Wz @ index-CZiAWShj.js:32
+getClerkJsEntryChunk @ index-CZiAWShj.js:32
+getEntryChunks @ index-CZiAWShj.js:32
+dk @ index-CZiAWShj.js:32
+getOrCreateInstance @ index-CZiAWShj.js:32
+f$ @ index-CZiAWShj.js:32
+u$ @ index-CZiAWShj.js:32
+Gh @ index-CZiAWShj.js:8
+up @ index-CZiAWShj.js:8
+K_ @ index-CZiAWShj.js:8
+bO @ index-CZiAWShj.js:8
+uL @ index-CZiAWShj.js:8
+Rp @ index-CZiAWShj.js:8
+pO @ index-CZiAWShj.js:8
+kO @ index-CZiAWShj.js:8
+N @ index-CZiAWShj.js:1
+postMessage
+z @ index-CZiAWShj.js:1
+e.unstable_scheduleCallback @ index-CZiAWShj.js:1
+MO @ index-CZiAWShj.js:8
+PO @ index-CZiAWShj.js:8
+(anonymous) @ index-CZiAWShj.js:8
+index-CZiAWShj.js:32 Uncaught (in promise) R2: Clerk: Failed to load Clerk JS, failed to load script: https:///npm/@clerk/clerk-js@6/dist/clerk.browser.js
+
+(code="failed_to_load_clerk_js")
+
+
+    at n (index-CZiAWShj.js:32:3447)
+    at index-CZiAWShj.js:32:3921Caused by: Error: failed to load script: https:///npm/@clerk/clerk-js@6/dist/clerk.browser.js
+    at HTMLScriptElement.<anonymous> (index-CZiAWShj.js:32:2091)
