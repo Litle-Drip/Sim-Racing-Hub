@@ -181,6 +181,7 @@ export const GetCommunitySetupsResponseItem = zod.object({
   "offThrottle": zod.string(),
   "notes": zod.string(),
   "authorName": zod.string(),
+  "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
   "ratingCount": zod.number(),
   "sharedAt": zod.string().nullish()
@@ -216,6 +217,7 @@ export const GetCommunitySetupResponse = zod.object({
   "offThrottle": zod.string(),
   "notes": zod.string(),
   "authorName": zod.string(),
+  "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
   "ratingCount": zod.number(),
   "sharedAt": zod.string().nullish()

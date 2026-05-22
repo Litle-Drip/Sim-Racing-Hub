@@ -662,6 +662,8 @@ components:
           type: string
         authorName:
           type: string
+        isOwn:
+          type: boolean
         avgRating:
           type: number
           nullable: true
@@ -691,6 +693,7 @@ components:
         - offThrottle
         - notes
         - authorName
+        - isOwn
         - ratingCount
 
     ShareSetupResponse:

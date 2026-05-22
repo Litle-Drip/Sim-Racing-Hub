@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, avg, count, sql } from "drizzle-orm";
 import { db, setupsTable, setupRatingsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
+import { getAuth } from "@clerk/express";
 
 const router = Router();
 
@@ -33,6 +34,7 @@ function serializeCommunitySetup(
   avgRating: number | null,
   ratingCount: number,
   authorName: string,
+  isOwn: boolean,
 ) {
   return {
     id: r.id,
@@ -55,6 +57,7 @@ function serializeCommunitySetup(
     offThrottle: r.offThrottle,
     notes: r.notes,
     authorName,
+    isOwn,
     avgRating,
     ratingCount,
     sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
@@ -63,6 +66,7 @@ function serializeCommunitySetup(
 
 router.get("/community/setups", async (req, res) => {
   const { trackId, car, tag } = req.query as Record<string, string | undefined>;
+  const { userId: currentUserId } = getAuth(req);
   try {
     const rows = await db
       .select({
@@ -92,6 +96,7 @@ router.get("/community/setups", async (req, res) => {
           r.avgRating ? Number(r.avgRating) : null,
           Number(r.ratingCount),
           nameMap[r.setup.userId] ?? "Anonymous",
+          currentUserId ? r.setup.userId === currentUserId : false,
         ),
       ),
     );
@@ -120,6 +125,7 @@ router.get("/community/setups/:id", async (req, res) => {
       return;
     }
 
+    const { userId: currentUserId } = getAuth(req);
     const nameMap = await getDisplayNames([row.setup.userId]);
     res.json(
       serializeCommunitySetup(
@@ -127,6 +133,7 @@ router.get("/community/setups/:id", async (req, res) => {
         row.avgRating ? Number(row.avgRating) : null,
         Number(row.ratingCount),
         nameMap[row.setup.userId] ?? "Anonymous",
+        currentUserId ? row.setup.userId === currentUserId : false,
       ),
     );
   } catch (err) {

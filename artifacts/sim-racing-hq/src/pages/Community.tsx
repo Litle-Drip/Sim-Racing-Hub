@@ -8,7 +8,6 @@ import {
   getGetCommunitySetupsQueryKey,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useUser } from '@clerk/react';
 import type { CommunitySetupRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, SETUP_TAGS } from '../data/f1Tracks';
 
@@ -60,14 +59,12 @@ function StarRating({
 
 function CommunityCard({
   setup,
-  currentUserId,
   onRate,
   onImport,
   importing,
   localRating,
 }: {
   setup: CommunitySetupRecord;
-  currentUserId?: string;
   onRate: (id: string, stars: number) => void;
   onImport: (id: string) => void;
   importing: boolean;
@@ -77,7 +74,7 @@ function CommunityCard({
     const t = F1_TRACKS.find((t) => t.id === id);
     return t ? `${t.flag} ${t.short}` : id;
   };
-  const isOwn = setup.authorId === currentUserId;
+  const isOwn = setup.isOwn ?? false;
 
   return (
     <div className="community-card">
@@ -140,7 +137,6 @@ function CommunityCard({
 
 export default function Community() {
   const qc = useQueryClient();
-  const { user } = useUser();
   const [filterTrack, setFilterTrack] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
@@ -261,7 +257,6 @@ export default function Community() {
             <CommunityCard
               key={setup.id}
               setup={setup}
-              currentUserId={user?.id}
               onRate={handleRate}
               onImport={handleImport}
               importing={importingId === setup.id}

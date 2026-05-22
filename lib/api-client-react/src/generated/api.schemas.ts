@@ -109,6 +109,7 @@ export interface CommunitySetupRecord {
   offThrottle: string;
   notes: string;
   authorName: string;
+  isOwn: boolean;
   avgRating?: number | null;
   ratingCount: number;
   sharedAt?: string | null;
