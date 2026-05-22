@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
 import Tracks from './pages/Tracks';
 import Setups from './pages/Setups';
+import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
@@ -188,6 +189,7 @@ function MainApp() {
       case 'sessions': return <Sessions />;
       case 'tracks': return <Tracks />;
       case 'setups': return <Setups />;
+      case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress />;
       default: return <Dashboard setPage={setPage} />;
     }

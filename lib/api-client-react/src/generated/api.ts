@@ -20,8 +20,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CreateHardwareRequest,
   CreateSessionRequest,
   CreateSetupRequest,
+  HardwareRecord,
   HealthStatus,
   NotFoundResponse,
   SessionRecord,
@@ -555,6 +557,224 @@ export const useDeleteSetup = <TError = ErrorType<UnauthorizedResponse | NotFoun
         TContext
       > => {
       return useMutation(getDeleteSetupMutationOptions(options));
+    }
+
+export const getGetHardwareUrl = () => {
+
+
+
+
+  return `/api/hardware`
+}
+
+/**
+ * @summary Get all hardware profiles for current user
+ */
+export const getHardware = async ( options?: RequestInit): Promise<HardwareRecord[]> => {
+
+  return customFetch<HardwareRecord[]>(getGetHardwareUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHardwareQueryKey = () => {
+    return [
+    `/api/hardware`
+    ] as const;
+    }
+
+
+export const getGetHardwareQueryOptions = <TData = Awaited<ReturnType<typeof getHardware>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHardware>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHardwareQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHardware>>> = ({ signal }) => getHardware({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHardware>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHardwareQueryResult = NonNullable<Awaited<ReturnType<typeof getHardware>>>
+export type GetHardwareQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get all hardware profiles for current user
+ */
+
+export function useGetHardware<TData = Awaited<ReturnType<typeof getHardware>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHardware>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHardwareQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateHardwareUrl = () => {
+
+
+
+
+  return `/api/hardware`
+}
+
+/**
+ * @summary Create a new hardware profile
+ */
+export const createHardware = async (createHardwareRequest: CreateHardwareRequest, options?: RequestInit): Promise<HardwareRecord> => {
+
+  return customFetch<HardwareRecord>(getCreateHardwareUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createHardwareRequest,)
+  }
+);}
+
+
+
+
+export const getCreateHardwareMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHardware>>, TError,{data: BodyType<CreateHardwareRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createHardware>>, TError,{data: BodyType<CreateHardwareRequest>}, TContext> => {
+
+const mutationKey = ['createHardware'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createHardware>>, {data: BodyType<CreateHardwareRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createHardware(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateHardwareMutationResult = NonNullable<Awaited<ReturnType<typeof createHardware>>>
+    export type CreateHardwareMutationBody = BodyType<CreateHardwareRequest>
+    export type CreateHardwareMutationError = ErrorType<UnauthorizedResponse>
+
+    /**
+ * @summary Create a new hardware profile
+ */
+export const useCreateHardware = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHardware>>, TError,{data: BodyType<CreateHardwareRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createHardware>>,
+        TError,
+        {data: BodyType<CreateHardwareRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateHardwareMutationOptions(options));
+    }
+
+export const getDeleteHardwareUrl = (id: string,) => {
+
+
+
+
+  return `/api/hardware/${id}`
+}
+
+/**
+ * @summary Delete a hardware profile
+ */
+export const deleteHardware = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteHardwareUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteHardwareMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHardware>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteHardware>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteHardware'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteHardware>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteHardware(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteHardwareMutationResult = NonNullable<Awaited<ReturnType<typeof deleteHardware>>>
+
+    export type DeleteHardwareMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Delete a hardware profile
+ */
+export const useDeleteHardware = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHardware>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteHardware>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteHardwareMutationOptions(options));
     }
 
 export const getGetTrackNotesUrl = (trackId: string,) => {

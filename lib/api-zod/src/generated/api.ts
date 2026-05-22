@@ -137,6 +137,59 @@ export const DeleteSetupParams = zod.object({
 
 
 /**
+ * @summary Get all hardware profiles for current user
+ */
+export const GetHardwareResponseItem = zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "peripheralType": zod.string(),
+  "brand": zod.string(),
+  "model": zod.string(),
+  "trackId": zod.string(),
+  "game": zod.string(),
+  "date": zod.string(),
+  "ffbStrength": zod.string(),
+  "maxForce": zod.string(),
+  "damper": zod.string(),
+  "friction": zod.string(),
+  "linearity": zod.string(),
+  "steeringRange": zod.string(),
+  "notes": zod.string()
+})
+export const GetHardwareResponse = zod.array(GetHardwareResponseItem)
+
+
+/**
+ * @summary Create a new hardware profile
+ */
+export const CreateHardwareBody = zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "peripheralType": zod.string(),
+  "brand": zod.string(),
+  "model": zod.string(),
+  "trackId": zod.string(),
+  "game": zod.string(),
+  "date": zod.string(),
+  "ffbStrength": zod.string(),
+  "maxForce": zod.string(),
+  "damper": zod.string(),
+  "friction": zod.string(),
+  "linearity": zod.string(),
+  "steeringRange": zod.string(),
+  "notes": zod.string()
+})
+
+
+/**
+ * @summary Delete a hardware profile
+ */
+export const DeleteHardwareParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
  * @summary Get track notes for a specific track
  */
 export const GetTrackNotesParams = zod.object({

@@ -7,9 +7,11 @@
  */
 
 export * from './cornerNote';
+export * from './createHardwareRequest';
 export * from './createSessionRequest';
 export * from './createSetupRequest';
 export * from './errorResponse';
+export * from './hardwareRecord';
 export * from './healthStatus';
 export * from './notFoundResponse';
 export * from './sessionRecord';

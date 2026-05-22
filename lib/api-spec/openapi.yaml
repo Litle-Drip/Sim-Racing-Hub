@@ -16,6 +16,8 @@ tags:
     description: Car setup operations
   - name: trackNotes
     description: Track notes operations
+  - name: hardware
+    description: Hardware settings operations
 paths:
   /healthz:
     get:
@@ -136,6 +138,61 @@ paths:
       responses:
         "204":
           description: Setup deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /hardware:
+    get:
+      operationId: getHardware
+      tags: [hardware]
+      summary: Get all hardware profiles for current user
+      responses:
+        "200":
+          description: List of hardware profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HardwareRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createHardware
+      tags: [hardware]
+      summary: Create a new hardware profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHardwareRequest"
+      responses:
+        "201":
+          description: Hardware profile created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HardwareRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /hardware/{id}:
+    delete:
+      operationId: deleteHardware
+      tags: [hardware]
+      summary: Delete a hardware profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Hardware profile deleted
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -513,3 +570,103 @@ components:
       required:
         - id
         - corners
+
+    HardwareRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        peripheralType:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        trackId:
+          type: string
+        game:
+          type: string
+        date:
+          type: string
+        ffbStrength:
+          type: string
+        maxForce:
+          type: string
+        damper:
+          type: string
+        friction:
+          type: string
+        linearity:
+          type: string
+        steeringRange:
+          type: string
+        notes:
+          type: string
+      required:
+        - id
+        - label
+        - peripheralType
+        - brand
+        - model
+        - trackId
+        - game
+        - date
+        - ffbStrength
+        - maxForce
+        - damper
+        - friction
+        - linearity
+        - steeringRange
+        - notes
+
+    CreateHardwareRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        peripheralType:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        trackId:
+          type: string
+        game:
+          type: string
+        date:
+          type: string
+        ffbStrength:
+          type: string
+        maxForce:
+          type: string
+        damper:
+          type: string
+        friction:
+          type: string
+        linearity:
+          type: string
+        steeringRange:
+          type: string
+        notes:
+          type: string
+      required:
+        - id
+        - label
+        - peripheralType
+        - brand
+        - model
+        - trackId
+        - game
+        - date
+        - ffbStrength
+        - maxForce
+        - damper
+        - friction
+        - linearity
+        - steeringRange
+        - notes

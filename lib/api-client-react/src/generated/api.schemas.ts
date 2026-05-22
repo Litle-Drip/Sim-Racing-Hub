@@ -119,6 +119,42 @@ export interface UpsertTrackNotesRequest {
   corners: CornerNote[];
 }
 
+export interface HardwareRecord {
+  id: string;
+  label: string;
+  peripheralType: string;
+  brand: string;
+  model: string;
+  trackId: string;
+  game: string;
+  date: string;
+  ffbStrength: string;
+  maxForce: string;
+  damper: string;
+  friction: string;
+  linearity: string;
+  steeringRange: string;
+  notes: string;
+}
+
+export interface CreateHardwareRequest {
+  id: string;
+  label: string;
+  peripheralType: string;
+  brand: string;
+  model: string;
+  trackId: string;
+  game: string;
+  date: string;
+  ffbStrength: string;
+  maxForce: string;
+  damper: string;
+  friction: string;
+  linearity: string;
+  steeringRange: string;
+  notes: string;
+}
+
 /**
  * Unauthorized
  */

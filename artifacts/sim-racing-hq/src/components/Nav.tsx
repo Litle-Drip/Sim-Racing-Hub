@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 
 interface NavProps {
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { id: 'sessions', label: 'Sessions', Icon: ClipboardList },
   { id: 'tracks', label: 'Tracks', Icon: Map },
   { id: 'setups', label: 'Setups', Icon: Settings2 },
+  { id: 'hardware', label: 'Hardware', Icon: Cpu },
   { id: 'progress', label: 'Progress', Icon: TrendingUp },
 ];
 

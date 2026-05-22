@@ -63,3 +63,26 @@ export const trackNotesTable = pgTable("track_notes", {
 
 export type DbTrackNotes = typeof trackNotesTable.$inferSelect;
 export type InsertDbTrackNotes = typeof trackNotesTable.$inferInsert;
+
+export const hardwareSettingsTable = pgTable("hardware_settings", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  label: text("label").notNull(),
+  peripheralType: text("peripheral_type").notNull().default("Wheel Base"),
+  brand: text("brand").notNull().default(""),
+  model: text("model").notNull().default(""),
+  trackId: text("track_id").notNull().default(""),
+  game: text("game").notNull().default(""),
+  date: text("date").notNull(),
+  ffbStrength: text("ffb_strength").notNull().default(""),
+  maxForce: text("max_force").notNull().default(""),
+  damper: text("damper").notNull().default(""),
+  friction: text("friction").notNull().default(""),
+  linearity: text("linearity").notNull().default(""),
+  steeringRange: text("steering_range").notNull().default(""),
+  notes: text("notes").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type DbHardwareSetting = typeof hardwareSettingsTable.$inferSelect;
+export type InsertDbHardwareSetting = typeof hardwareSettingsTable.$inferInsert;

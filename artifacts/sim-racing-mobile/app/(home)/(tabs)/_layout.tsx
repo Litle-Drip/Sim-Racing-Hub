@@ -19,13 +19,13 @@ function NativeTabLayout() {
         <Icon sf={{ default: "list.bullet", selected: "list.bullet" }} />
         <Label>Sessions</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="tracks">
-        <Icon sf={{ default: "map", selected: "map.fill" }} />
-        <Label>Tracks</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="setups">
         <Icon sf={{ default: "slider.horizontal.3", selected: "slider.horizontal.3" }} />
         <Label>Setups</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="hardware">
+        <Icon sf={{ default: "cpu", selected: "cpu.fill" }} />
+        <Label>Hardware</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
@@ -120,6 +120,18 @@ function ClassicTabLayout() {
               <SymbolView name="slider.horizontal.3" tintColor={color} size={22} />
             ) : (
               <Feather name="sliders" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="hardware"
+        options={{
+          title: "Hardware",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="cpu" tintColor={color} size={22} />
+            ) : (
+              <Feather name="cpu" size={22} color={color} />
             ),
         }}
       />
