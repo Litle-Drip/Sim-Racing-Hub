@@ -19,6 +19,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "list.bullet", selected: "list.bullet" }} />
         <Label>Sessions</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="tracks">
+        <Icon sf={{ default: "map", selected: "map.fill" }} />
+        <Label>Tracks</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="setups">
         <Icon sf={{ default: "slider.horizontal.3", selected: "slider.horizontal.3" }} />
         <Label>Setups</Label>

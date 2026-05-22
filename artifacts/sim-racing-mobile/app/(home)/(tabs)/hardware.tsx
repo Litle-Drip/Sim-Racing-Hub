@@ -1,13 +1,8 @@
-import { useDeleteHardware, useGetHardware, getGetHardwareQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
+import { useGetHardware } from "@workspace/api-client-react";
 import React from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
-  Platform,
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -39,11 +34,9 @@ const FFB_FIELDS: { key: keyof HardwareRecord; label: string; unit: string }[] =
 function HardwareCard({
   profile,
   colors,
-  onDelete,
 }: {
   profile: HardwareRecord;
   colors: ReturnType<typeof useColors>;
-  onDelete: (id: string) => void;
 }) {
   const track = profile.trackId ? getTrackById(profile.trackId) : null;
   const typeColor = PERIPHERAL_COLORS[profile.peripheralType] ?? colors.primary;
@@ -72,12 +65,6 @@ function HardwareCard({
               {track.short}
             </Text>
           )}
-          <Pressable
-            onPress={() => onDelete(profile.id)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginTop: 8 }]}
-          >
-            <Feather name="trash-2" size={16} color={colors.mutedForeground} />
-          </Pressable>
         </View>
       </View>
 
@@ -140,16 +127,8 @@ const cardStyles = StyleSheet.create({
 export default function HardwareScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
 
   const { data: profiles = [], isLoading, refetch, isRefetching } = useGetHardware();
-  const { mutate: deleteHardware } = useDeleteHardware({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetHardwareQueryKey() });
-      },
-    },
-  });
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 + 84 : insets.bottom + 84;
@@ -157,24 +136,6 @@ export default function HardwareScreen() {
   const sorted = [...profiles].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
-
-  const handleDelete = (id: string) => {
-    if (Platform.OS === "web") {
-      deleteHardware({ id });
-      return;
-    }
-    Alert.alert("Delete Profile", "Remove this hardware profile?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          deleteHardware({ id });
-        },
-      },
-    ]);
-  };
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -246,7 +207,7 @@ export default function HardwareScreen() {
         data={sorted}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <HardwareCard profile={item} colors={colors} onDelete={handleDelete} />
+          <HardwareCard profile={item} colors={colors} />
         )}
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}
