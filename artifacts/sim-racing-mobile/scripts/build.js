@@ -31,10 +31,9 @@ function getDeploymentDomain() {
     console.log(`Derived production domain from REPL_SLUG/REPL_OWNER: ${domain}`);
     return domain;
   }
-  console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
-  );
-  process.exit(1);
+  const hardcodedDomain = "sim-racing-hub-Guzzy.replit.app";
+  console.log(`Using hardcoded production domain: ${hardcodedDomain}`);
+  return hardcodedDomain;
 }
 
 function prepareDirectories() {
