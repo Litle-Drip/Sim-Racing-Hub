@@ -2,15 +2,95 @@ import app from "./app";
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 
-const REQUIRED_TABLES = [
-  "sessions",
-  "setups",
-  "setup_ratings",
-  "track_notes",
-  "hardware_settings",
-];
+const CREATE_TABLES_SQL = `
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  track_id TEXT NOT NULL,
+  car TEXT NOT NULL,
+  type TEXT NOT NULL,
+  best_lap TEXT NOT NULL DEFAULT '',
+  avg_lap TEXT NOT NULL DEFAULT '',
+  worst_lap TEXT NOT NULL DEFAULT '',
+  s1 TEXT NOT NULL DEFAULT '',
+  s2 TEXT NOT NULL DEFAULT '',
+  s3 TEXT NOT NULL DEFAULT '',
+  tires TEXT NOT NULL DEFAULT '',
+  fuel_load REAL NOT NULL DEFAULT 0,
+  conditions TEXT NOT NULL DEFAULT '',
+  assists TEXT NOT NULL DEFAULT '',
+  rating INTEGER NOT NULL DEFAULT 0,
+  notes TEXT NOT NULL DEFAULT '',
+  is_pb BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
-async function checkDatabase(): Promise<void> {
+CREATE TABLE IF NOT EXISTS setups (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  car TEXT NOT NULL,
+  track_id TEXT NOT NULL,
+  tag TEXT NOT NULL DEFAULT '',
+  date TEXT NOT NULL,
+  front_wing TEXT NOT NULL DEFAULT '',
+  rear_wing TEXT NOT NULL DEFAULT '',
+  front_arb TEXT NOT NULL DEFAULT '',
+  rear_arb TEXT NOT NULL DEFAULT '',
+  front_ride_height TEXT NOT NULL DEFAULT '',
+  rear_ride_height TEXT NOT NULL DEFAULT '',
+  front_springs TEXT NOT NULL DEFAULT '',
+  rear_springs TEXT NOT NULL DEFAULT '',
+  brake_bias TEXT NOT NULL DEFAULT '',
+  brake_pressure TEXT NOT NULL DEFAULT '',
+  on_throttle TEXT NOT NULL DEFAULT '',
+  off_throttle TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  is_public BOOLEAN NOT NULL DEFAULT FALSE,
+  shared_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS setup_ratings (
+  id TEXT PRIMARY KEY,
+  setup_id TEXT NOT NULL,
+  rater_id TEXT NOT NULL,
+  stars INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  CONSTRAINT setup_ratings_uniq UNIQUE (setup_id, rater_id)
+);
+
+CREATE TABLE IF NOT EXISTS track_notes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  track_id TEXT NOT NULL,
+  corners JSONB NOT NULL DEFAULT '[]',
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS hardware_settings (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  peripheral_type TEXT NOT NULL DEFAULT 'Wheel Base',
+  brand TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '',
+  track_id TEXT NOT NULL DEFAULT '',
+  game TEXT NOT NULL DEFAULT '',
+  date TEXT NOT NULL,
+  ffb_strength TEXT NOT NULL DEFAULT '',
+  max_force TEXT NOT NULL DEFAULT '',
+  damper TEXT NOT NULL DEFAULT '',
+  friction TEXT NOT NULL DEFAULT '',
+  linearity TEXT NOT NULL DEFAULT '',
+  steering_range TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+`;
+
+async function ensureDatabase(): Promise<void> {
   try {
     await pool.query("SELECT 1");
     logger.info("Database connection OK");
@@ -23,21 +103,11 @@ async function checkDatabase(): Promise<void> {
   }
 
   try {
-    const { rows } = await pool.query<{ tablename: string }>(
-      `SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
-    );
-    const existing = new Set(rows.map((r) => r.tablename));
-    const missing = REQUIRED_TABLES.filter((t) => !existing.has(t));
-    if (missing.length > 0) {
-      logger.error(
-        { missing },
-        "Missing database tables. Run: pnpm --filter @workspace/db run push",
-      );
-    } else {
-      logger.info("All required database tables exist");
-    }
+    await pool.query(CREATE_TABLES_SQL);
+    logger.info("Database tables verified / created");
   } catch (err) {
-    logger.warn({ err }, "Could not verify database tables");
+    logger.error({ err }, "Failed to create database tables");
+    throw err;
   }
 }
 
@@ -55,7 +125,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-checkDatabase()
+ensureDatabase()
   .catch(() => {
     /* already logged */
   })
