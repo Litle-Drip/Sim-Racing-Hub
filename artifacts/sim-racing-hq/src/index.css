@@ -1240,3 +1240,174 @@ table { border-collapse: collapse; width: 100%; }
   color: var(--teal);
   letter-spacing: 0.08em;
 }
+
+/* =========================================================
+   MOBILE RESPONSIVE — ≤767px
+   ========================================================= */
+
+@media (max-width: 767px) {
+  /* Page padding */
+  .page {
+    padding: 16px;
+  }
+
+  /* Page header wraps so title and action button stack */
+  .page-header {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+  }
+
+  /* ── Dashboard ── */
+
+  /* Stat grid: 2-column on mobile */
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    padding: 14px 16px;
+  }
+
+  .stat-value {
+    font-size: 26px;
+  }
+
+  /* Heatmap: allow horizontal scroll so it doesn't crush */
+  .heatmap-section {
+    padding: 14px;
+    overflow-x: auto;
+  }
+
+  .heatmap-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    gap: 8px;
+  }
+
+  .filter-select {
+    min-width: 0;
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .filter-input {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  /* ── Tables ── */
+
+  /* table-wrap already has overflow-x:auto — just tighten cell padding */
+  .data-table th,
+  .data-table td {
+    padding: 8px 10px;
+  }
+
+  /* Sessions expanded row: 2 columns instead of 4 */
+  .expanded-content {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* ── Modals ── */
+
+  /* Full-screen sheet from the bottom */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-width: 100%;
+    max-height: 95vh;
+    border-top: 2px solid var(--red);
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .modal-header {
+    padding: 14px 16px 12px;
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  /* ── Form grid: single column ── */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field.full {
+    grid-column: 1;
+  }
+
+  .form-section-title {
+    grid-column: 1;
+  }
+
+  /* ── Setups ── */
+
+  /* Cards: single column */
+  .setup-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Compare bar: allow wrapping */
+  .compare-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+  /* ── Progress charts ── */
+
+  .chart-section {
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  /* ── Tracks ── */
+
+  /* Track grid: force single column */
+  .track-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Track detail header */
+  .track-detail-header {
+    gap: 14px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  /* Track stats: 3 columns (fits ~390px) */
+  .track-stats-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .track-stat {
+    padding: 10px 12px;
+  }
+
+  .track-stat-value {
+    font-size: 12px;
+  }
+}
