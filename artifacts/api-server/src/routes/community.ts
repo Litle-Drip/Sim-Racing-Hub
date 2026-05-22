@@ -18,10 +18,21 @@ async function getDisplayNames(userIds: string[]): Promise<Record<string, string
       headers: { Authorization: `Bearer ${secretKey}` },
     });
     if (!resp.ok) return {};
-    const data = (await resp.json()) as Array<{ id: string; first_name?: string; username?: string }>;
+    const data = (await resp.json()) as Array<{
+      id: string;
+      first_name?: string | null;
+      last_name?: string | null;
+      username?: string | null;
+    }>;
     const map: Record<string, string> = {};
     for (const u of data) {
-      map[u.id] = u.first_name || u.username || "Anonymous";
+      if (u.username) {
+        map[u.id] = u.username;
+      } else if (u.first_name && !u.first_name.includes("@")) {
+        map[u.id] = u.last_name ? `${u.first_name} ${u.last_name}` : u.first_name;
+      } else {
+        map[u.id] = "Anonymous";
+      }
     }
     return map;
   } catch {
