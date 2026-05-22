@@ -20,6 +20,7 @@ const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
+  ".hbc": "application/javascript",
   ".json": "application/json; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".png": "image/png",
