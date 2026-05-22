@@ -145,14 +145,11 @@ export default function Community() {
   const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
   const [importError, setImportError] = useState('');
 
-  const { data: setups = [], isLoading } = useGetCommunitySetups(
-    {
-      trackId: filterTrack || undefined,
-      tag: filterTag || undefined,
-      car: filterCar || undefined,
-    },
-    { query: { staleTime: 30_000 } },
-  );
+  const { data: setups = [], isLoading } = useGetCommunitySetups({
+    trackId: filterTrack || undefined,
+    tag: filterTag || undefined,
+    car: filterCar || undefined,
+  });
 
   const { mutate: rateSetup } = useRateSetup({
     mutation: {
