@@ -20,14 +20,19 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CommunitySetupRecord,
   CreateHardwareRequest,
   CreateSessionRequest,
   CreateSetupRequest,
+  GetCommunitySetupsParams,
   HardwareRecord,
   HealthStatus,
   NotFoundResponse,
+  RateSetupRequest,
+  RateSetupResponse,
   SessionRecord,
   SetupRecord,
+  ShareSetupResponse,
   TrackNotesRecord,
   UnauthorizedResponse,
   UpsertTrackNotesRequest
@@ -557,6 +562,379 @@ export const useDeleteSetup = <TError = ErrorType<UnauthorizedResponse | NotFoun
         TContext
       > => {
       return useMutation(getDeleteSetupMutationOptions(options));
+    }
+
+export const getShareSetupUrl = (id: string,) => {
+
+
+
+
+  return `/api/setups/${id}/share`
+}
+
+/**
+ * @summary Toggle public sharing on a setup
+ */
+export const shareSetup = async (id: string, options?: RequestInit): Promise<ShareSetupResponse> => {
+
+  return customFetch<ShareSetupResponse>(getShareSetupUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getShareSetupMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSetup>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof shareSetup>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['shareSetup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof shareSetup>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  shareSetup(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ShareSetupMutationResult = NonNullable<Awaited<ReturnType<typeof shareSetup>>>
+
+    export type ShareSetupMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Toggle public sharing on a setup
+ */
+export const useShareSetup = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSetup>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof shareSetup>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getShareSetupMutationOptions(options));
+    }
+
+export const getGetCommunitySetupsUrl = (params?: GetCommunitySetupsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/community/setups?${stringifiedParams}` : `/api/community/setups`
+}
+
+/**
+ * @summary Get all publicly shared setups
+ */
+export const getCommunitySetups = async (params?: GetCommunitySetupsParams, options?: RequestInit): Promise<CommunitySetupRecord[]> => {
+
+  return customFetch<CommunitySetupRecord[]>(getGetCommunitySetupsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCommunitySetupsQueryKey = (params?: GetCommunitySetupsParams,) => {
+    return [
+    `/api/community/setups`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCommunitySetupsQueryOptions = <TData = Awaited<ReturnType<typeof getCommunitySetups>>, TError = ErrorType<unknown>>(params?: GetCommunitySetupsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCommunitySetupsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunitySetups>>> = ({ signal }) => getCommunitySetups(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetups>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCommunitySetupsQueryResult = NonNullable<Awaited<ReturnType<typeof getCommunitySetups>>>
+export type GetCommunitySetupsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all publicly shared setups
+ */
+
+export function useGetCommunitySetups<TData = Awaited<ReturnType<typeof getCommunitySetups>>, TError = ErrorType<unknown>>(
+ params?: GetCommunitySetupsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCommunitySetupsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetCommunitySetupUrl = (id: string,) => {
+
+
+
+
+  return `/api/community/setups/${id}`
+}
+
+/**
+ * @summary Get a single public community setup
+ */
+export const getCommunitySetup = async (id: string, options?: RequestInit): Promise<CommunitySetupRecord> => {
+
+  return customFetch<CommunitySetupRecord>(getGetCommunitySetupUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCommunitySetupQueryKey = (id: string,) => {
+    return [
+    `/api/community/setups/${id}`
+    ] as const;
+    }
+
+
+export const getGetCommunitySetupQueryOptions = <TData = Awaited<ReturnType<typeof getCommunitySetup>>, TError = ErrorType<NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCommunitySetupQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunitySetup>>> = ({ signal }) => getCommunitySetup(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCommunitySetupQueryResult = NonNullable<Awaited<ReturnType<typeof getCommunitySetup>>>
+export type GetCommunitySetupQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get a single public community setup
+ */
+
+export function useGetCommunitySetup<TData = Awaited<ReturnType<typeof getCommunitySetup>>, TError = ErrorType<NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCommunitySetupQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getRateSetupUrl = (id: string,) => {
+
+
+
+
+  return `/api/community/setups/${id}/rate`
+}
+
+/**
+ * @summary Rate a community setup (1-5 stars)
+ */
+export const rateSetup = async (id: string,
+    rateSetupRequest: RateSetupRequest, options?: RequestInit): Promise<RateSetupResponse> => {
+
+  return customFetch<RateSetupResponse>(getRateSetupUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      rateSetupRequest,)
+  }
+);}
+
+
+
+
+export const getRateSetupMutationOptions = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rateSetup>>, TError,{id: string;data: BodyType<RateSetupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rateSetup>>, TError,{id: string;data: BodyType<RateSetupRequest>}, TContext> => {
+
+const mutationKey = ['rateSetup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rateSetup>>, {id: string;data: BodyType<RateSetupRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rateSetup(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RateSetupMutationResult = NonNullable<Awaited<ReturnType<typeof rateSetup>>>
+    export type RateSetupMutationBody = BodyType<RateSetupRequest>
+    export type RateSetupMutationError = ErrorType<NotFoundResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Rate a community setup (1-5 stars)
+ */
+export const useRateSetup = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rateSetup>>, TError,{id: string;data: BodyType<RateSetupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rateSetup>>,
+        TError,
+        {id: string;data: BodyType<RateSetupRequest>},
+        TContext
+      > => {
+      return useMutation(getRateSetupMutationOptions(options));
+    }
+
+export const getImportSetupUrl = (id: string,) => {
+
+
+
+
+  return `/api/community/setups/${id}/import`
+}
+
+/**
+ * @summary Import a community setup into the caller's vault
+ */
+export const importSetup = async (id: string, options?: RequestInit): Promise<SetupRecord> => {
+
+  return customFetch<SetupRecord>(getImportSetupUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getImportSetupMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importSetup>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importSetup>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['importSetup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importSetup>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  importSetup(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportSetupMutationResult = NonNullable<Awaited<ReturnType<typeof importSetup>>>
+
+    export type ImportSetupMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Import a community setup into the caller's vault
+ */
+export const useImportSetup = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importSetup>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importSetup>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getImportSetupMutationOptions(options));
     }
 
 export const getGetHardwareUrl = () => {

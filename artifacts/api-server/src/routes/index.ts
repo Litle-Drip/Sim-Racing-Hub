@@ -4,6 +4,7 @@ import sessionsRouter from "./sessions";
 import setupsRouter from "./setups";
 import trackNotesRouter from "./trackNotes";
 import hardwareRouter from "./hardware";
+import communityRouter from "./community";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(sessionsRouter);
 router.use(setupsRouter);
 router.use(trackNotesRouter);
 router.use(hardwareRouter);
+router.use(communityRouter);
 
 export default router;

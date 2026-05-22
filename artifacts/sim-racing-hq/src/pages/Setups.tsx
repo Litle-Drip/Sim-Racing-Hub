@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Eye, Trash2 } from 'lucide-react';
-import { useGetSetups, useCreateSetup, useDeleteSetup, getGetSetupsQueryKey } from '@workspace/api-client-react';
+import { Plus, Eye, Trash2, Share2, Lock } from 'lucide-react';
+import { useGetSetups, useCreateSetup, useDeleteSetup, useShareSetup, getGetSetupsQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SetupRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, SETUP_TAGS } from '../data/f1Tracks';
@@ -167,6 +167,14 @@ export default function Setups() {
     },
   });
 
+  const { mutate: shareSetup } = useShareSetup({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetSetupsQueryKey() });
+      },
+    },
+  });
+
   const setField = (k: keyof Omit<SetupRecord, 'id'>, v: string | number) => setForm(f => ({ ...f, [k]: v }));
 
   const filtered = useMemo(() => setups.filter(s => {
@@ -317,8 +325,19 @@ export default function Setups() {
                 </div>
               </div>
               <div className="setup-card-actions">
+                {(setup as any).isPublic && (
+                  <span className="badge badge-community">Public</span>
+                )}
                 <button className="btn btn-ghost btn-sm" onClick={() => setViewSetup(setup)}>
                   <Eye size={11} /> View
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => shareSetup({ id: setup.id })}
+                  title={(setup as any).isPublic ? 'Unshare from Community' : 'Share to Community'}
+                >
+                  {(setup as any).isPublic ? <Lock size={11} /> : <Share2 size={11} />}
+                  {(setup as any).isPublic ? 'Unshare' : 'Share'}
                 </button>
                 <button className="btn btn-danger" onClick={() => handleDelete(setup.id)}>
                   <Trash2 size={11} /> Delete

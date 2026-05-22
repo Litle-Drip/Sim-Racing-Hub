@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 
 interface NavProps {
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { id: 'setups', label: 'Setups', Icon: Settings2 },
   { id: 'hardware', label: 'Hardware', Icon: Cpu },
   { id: 'progress', label: 'Progress', Icon: TrendingUp },
+  { id: 'community', label: 'Community', Icon: Users },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');

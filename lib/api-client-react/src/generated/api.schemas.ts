@@ -84,6 +84,53 @@ export interface SetupRecord {
   onThrottle: string;
   offThrottle: string;
   notes: string;
+  isPublic?: boolean;
+  sharedAt?: string | null;
+}
+
+export interface CommunitySetupRecord {
+  id: string;
+  label: string;
+  car: string;
+  trackId: string;
+  tag: string;
+  date: string;
+  frontWing: string;
+  rearWing: string;
+  frontARB: string;
+  rearARB: string;
+  frontRideHeight: string;
+  rearRideHeight: string;
+  frontSprings: string;
+  rearSprings: string;
+  brakeBias: string;
+  brakePressure: string;
+  onThrottle: string;
+  offThrottle: string;
+  notes: string;
+  authorId: string;
+  authorName: string;
+  avgRating?: number | null;
+  ratingCount: number;
+  sharedAt?: string | null;
+}
+
+export interface ShareSetupResponse {
+  isPublic: boolean;
+  sharedAt?: string | null;
+}
+
+export interface RateSetupRequest {
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  stars: number;
+}
+
+export interface RateSetupResponse {
+  avgRating?: number | null;
+  ratingCount: number;
 }
 
 export interface CreateSetupRequest {
@@ -164,4 +211,10 @@ export type UnauthorizedResponse = ErrorResponse;
  * Not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+export type GetCommunitySetupsParams = {
+trackId?: string;
+car?: string;
+tag?: string;
+};
 

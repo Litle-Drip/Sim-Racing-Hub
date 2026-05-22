@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SetupRecord {
+export interface CommunitySetupRecord {
   id: string;
   label: string;
   car: string;
@@ -26,6 +26,9 @@ export interface SetupRecord {
   onThrottle: string;
   offThrottle: string;
   notes: string;
-  isPublic?: boolean;
+  authorId: string;
+  authorName: string;
+  avgRating?: number | null;
+  ratingCount: number;
   sharedAt?: string | null;
 }

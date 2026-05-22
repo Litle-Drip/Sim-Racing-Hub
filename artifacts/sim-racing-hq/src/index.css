@@ -1253,6 +1253,182 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 /* =========================================================
+   COMMUNITY PAGE
+   ========================================================= */
+
+.community-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.community-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-accent);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-top-color 0.15s;
+}
+
+.community-card:hover {
+  border-top-color: var(--teal);
+}
+
+.community-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.community-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.community-card-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.community-card-car {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--gray-light);
+}
+
+.community-card-track {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-mid);
+}
+
+.community-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.community-card-author {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--gray-mid);
+}
+
+.community-card-params {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.community-param-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.community-param-label {
+  font-family: var(--font-display);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gray-mid);
+}
+
+.community-param-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--teal);
+}
+
+.community-card-notes {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--gray-mid);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.community-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+/* Star rating */
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.star {
+  font-size: 16px;
+  color: var(--border-accent);
+  line-height: 1;
+  transition: color 0.1s;
+}
+
+.star--filled {
+  color: var(--yellow);
+}
+
+.star-avg {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--yellow);
+  margin-left: 4px;
+}
+
+.star-count {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--gray-mid);
+}
+
+/* Community badge on setup cards */
+.badge-community {
+  background: rgba(0, 210, 190, 0.15);
+  color: var(--teal);
+  border: 1px solid rgba(0, 210, 190, 0.3);
+}
+
+@media (max-width: 767px) {
+  .community-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .community-card-params {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* =========================================================
    COMPARE VIEW
    ========================================================= */
 

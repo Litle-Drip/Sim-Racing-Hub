@@ -31,6 +31,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "cpu", selected: "cpu.fill" }} />
         <Label>Hardware</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="community">
+        <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
+        <Label>Community</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
         <Label>Profile</Label>
@@ -136,6 +140,18 @@ function ClassicTabLayout() {
               <SymbolView name="cpu" tintColor={color} size={22} />
             ) : (
               <Feather name="cpu" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "Community",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="person.2" tintColor={color} size={22} />
+            ) : (
+              <Feather name="users" size={22} color={color} />
             ),
         }}
       />

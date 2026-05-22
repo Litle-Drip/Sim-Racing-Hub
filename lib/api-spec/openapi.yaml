@@ -18,6 +18,8 @@ tags:
     description: Track notes operations
   - name: hardware
     description: Hardware settings operations
+  - name: community
+    description: Community setup sharing operations
 paths:
   /healthz:
     get:
@@ -138,6 +140,137 @@ paths:
       responses:
         "204":
           description: Setup deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /setups/{id}/share:
+    post:
+      operationId: shareSetup
+      tags: [setups]
+      summary: Toggle public sharing on a setup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Share state updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareSetupResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /community/setups:
+    get:
+      operationId: getCommunitySetups
+      tags: [community]
+      summary: Get all publicly shared setups
+      parameters:
+        - name: trackId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: car
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of community setups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommunitySetupRecord"
+
+  /community/setups/{id}:
+    get:
+      operationId: getCommunitySetup
+      tags: [community]
+      summary: Get a single public community setup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Community setup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunitySetupRecord"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /community/setups/{id}/rate:
+    post:
+      operationId: rateSetup
+      tags: [community]
+      summary: Rate a community setup (1-5 stars)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateSetupRequest"
+      responses:
+        "200":
+          description: Rating saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateSetupResponse"
+        "400":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/NotFound"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /community/setups/{id}/import:
+    post:
+      operationId: importSetup
+      tags: [community]
+      summary: Import a community setup into the caller's vault
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Setup imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupRecord"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -460,6 +593,11 @@ components:
           type: string
         notes:
           type: string
+        isPublic:
+          type: boolean
+        sharedAt:
+          type: string
+          nullable: true
       required:
         - id
         - label
@@ -480,6 +618,115 @@ components:
         - onThrottle
         - offThrottle
         - notes
+
+    CommunitySetupRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        car:
+          type: string
+        trackId:
+          type: string
+        tag:
+          type: string
+        date:
+          type: string
+        frontWing:
+          type: string
+        rearWing:
+          type: string
+        frontARB:
+          type: string
+        rearARB:
+          type: string
+        frontRideHeight:
+          type: string
+        rearRideHeight:
+          type: string
+        frontSprings:
+          type: string
+        rearSprings:
+          type: string
+        brakeBias:
+          type: string
+        brakePressure:
+          type: string
+        onThrottle:
+          type: string
+        offThrottle:
+          type: string
+        notes:
+          type: string
+        authorId:
+          type: string
+        authorName:
+          type: string
+        avgRating:
+          type: number
+          nullable: true
+        ratingCount:
+          type: integer
+        sharedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - label
+        - car
+        - trackId
+        - tag
+        - date
+        - frontWing
+        - rearWing
+        - frontARB
+        - rearARB
+        - frontRideHeight
+        - rearRideHeight
+        - frontSprings
+        - rearSprings
+        - brakeBias
+        - brakePressure
+        - onThrottle
+        - offThrottle
+        - notes
+        - authorId
+        - authorName
+        - ratingCount
+
+    ShareSetupResponse:
+      type: object
+      properties:
+        isPublic:
+          type: boolean
+        sharedAt:
+          type: string
+          nullable: true
+      required:
+        - isPublic
+
+    RateSetupRequest:
+      type: object
+      properties:
+        stars:
+          type: integer
+          minimum: 1
+          maximum: 5
+      required:
+        - stars
+
+    RateSetupResponse:
+      type: object
+      properties:
+        avgRating:
+          type: number
+          nullable: true
+        ratingCount:
+          type: integer
+      required:
+        - ratingCount
 
     CreateSetupRequest:
       type: object

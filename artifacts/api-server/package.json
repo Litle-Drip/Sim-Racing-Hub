@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@clerk/backend": "^3.4.11",
     "@clerk/express": "^2.1.19",
     "@clerk/shared": "^4.12.2",
     "@workspace/api-zod": "workspace:*",

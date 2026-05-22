@@ -12,6 +12,7 @@ import Tracks from './pages/Tracks';
 import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
+import Community from './pages/Community';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -191,6 +192,7 @@ function MainApp() {
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress />;
+      case 'community': return <Community />;
       default: return <Dashboard setPage={setPage} />;
     }
   };

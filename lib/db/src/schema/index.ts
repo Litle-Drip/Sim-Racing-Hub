@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, real, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, real, timestamp, jsonb, unique } from "drizzle-orm/pg-core";
 
 export const sessionsTable = pgTable("sessions", {
   id: text("id").primaryKey(),
@@ -47,11 +47,26 @@ export const setupsTable = pgTable("setups", {
   onThrottle: text("on_throttle").notNull().default(""),
   offThrottle: text("off_throttle").notNull().default(""),
   notes: text("notes").notNull().default(""),
+  isPublic: boolean("is_public").notNull().default(false),
+  sharedAt: timestamp("shared_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export type DbSetup = typeof setupsTable.$inferSelect;
 export type InsertDbSetup = typeof setupsTable.$inferInsert;
+
+export const setupRatingsTable = pgTable("setup_ratings", {
+  id: text("id").primaryKey(),
+  setupId: text("setup_id").notNull(),
+  raterId: text("rater_id").notNull(),
+  stars: integer("stars").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  unique("setup_ratings_uniq").on(t.setupId, t.raterId),
+]);
+
+export type DbSetupRating = typeof setupRatingsTable.$inferSelect;
+export type InsertDbSetupRating = typeof setupRatingsTable.$inferInsert;
 
 export const trackNotesTable = pgTable("track_notes", {
   id: text("id").primaryKey(),

@@ -97,7 +97,9 @@ export const GetSetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string()
+  "notes": zod.string(),
+  "isPublic": zod.boolean().optional(),
+  "sharedAt": zod.string().nullish()
 })
 export const GetSetupsResponse = zod.array(GetSetupsResponseItem)
 
@@ -132,6 +134,121 @@ export const CreateSetupBody = zod.object({
  * @summary Delete a setup
  */
 export const DeleteSetupParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Toggle public sharing on a setup
+ */
+export const ShareSetupParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ShareSetupResponse = zod.object({
+  "isPublic": zod.boolean(),
+  "sharedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get all publicly shared setups
+ */
+export const GetCommunitySetupsQueryParams = zod.object({
+  "trackId": zod.coerce.string().optional(),
+  "car": zod.coerce.string().optional(),
+  "tag": zod.coerce.string().optional()
+})
+
+export const GetCommunitySetupsResponseItem = zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "car": zod.string(),
+  "trackId": zod.string(),
+  "tag": zod.string(),
+  "date": zod.string(),
+  "frontWing": zod.string(),
+  "rearWing": zod.string(),
+  "frontARB": zod.string(),
+  "rearARB": zod.string(),
+  "frontRideHeight": zod.string(),
+  "rearRideHeight": zod.string(),
+  "frontSprings": zod.string(),
+  "rearSprings": zod.string(),
+  "brakeBias": zod.string(),
+  "brakePressure": zod.string(),
+  "onThrottle": zod.string(),
+  "offThrottle": zod.string(),
+  "notes": zod.string(),
+  "authorId": zod.string(),
+  "authorName": zod.string(),
+  "avgRating": zod.number().nullish(),
+  "ratingCount": zod.number(),
+  "sharedAt": zod.string().nullish()
+})
+export const GetCommunitySetupsResponse = zod.array(GetCommunitySetupsResponseItem)
+
+
+/**
+ * @summary Get a single public community setup
+ */
+export const GetCommunitySetupParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetCommunitySetupResponse = zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "car": zod.string(),
+  "trackId": zod.string(),
+  "tag": zod.string(),
+  "date": zod.string(),
+  "frontWing": zod.string(),
+  "rearWing": zod.string(),
+  "frontARB": zod.string(),
+  "rearARB": zod.string(),
+  "frontRideHeight": zod.string(),
+  "rearRideHeight": zod.string(),
+  "frontSprings": zod.string(),
+  "rearSprings": zod.string(),
+  "brakeBias": zod.string(),
+  "brakePressure": zod.string(),
+  "onThrottle": zod.string(),
+  "offThrottle": zod.string(),
+  "notes": zod.string(),
+  "authorId": zod.string(),
+  "authorName": zod.string(),
+  "avgRating": zod.number().nullish(),
+  "ratingCount": zod.number(),
+  "sharedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Rate a community setup (1-5 stars)
+ */
+export const RateSetupParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const rateSetupBodyStarsMax = 5;
+
+
+
+export const RateSetupBody = zod.object({
+  "stars": zod.number().min(1).max(rateSetupBodyStarsMax)
+})
+
+export const RateSetupResponse = zod.object({
+  "avgRating": zod.number().nullish(),
+  "ratingCount": zod.number()
+})
+
+
+/**
+ * @summary Import a community setup into the caller's vault
+ */
+export const ImportSetupParams = zod.object({
   "id": zod.coerce.string()
 })
 
