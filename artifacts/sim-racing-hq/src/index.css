@@ -239,8 +239,16 @@ table { border-collapse: collapse; width: 100%; }
     transform: translateX(0);
   }
 
+  .app-layout {
+    overflow-x: hidden;
+  }
+
   .nav-hamburger {
     display: flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
   }
 
   .nav-close {
@@ -249,11 +257,6 @@ table { border-collapse: collapse; width: 100%; }
 
   .nav-overlay {
     display: block;
-  }
-
-  .main-content {
-    margin-left: 0;
-    padding-top: 52px;
   }
 }
 
@@ -1565,6 +1568,12 @@ table { border-collapse: collapse; width: 100%; }
    ========================================================= */
 
 @media (max-width: 767px) {
+  /* Layout: remove sidebar gap and add room for hamburger */
+  .main-content {
+    margin-left: 0;
+    padding-top: 52px;
+  }
+
   /* Page padding */
   .page {
     padding: 16px;
