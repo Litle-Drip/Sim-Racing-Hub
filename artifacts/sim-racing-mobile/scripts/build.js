@@ -31,10 +31,11 @@ function getDeploymentDomain() {
     console.log(`Derived production domain from REPL_SLUG/REPL_OWNER: ${domain}`);
     return domain;
   }
-  console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
+  console.warn(
+    "SKIP: No deployment domain found (not a Replit environment). " +
+    "Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN to build the mobile app.",
   );
-  process.exit(1);
+  return null;
 }
 
 function prepareDirectories() {
@@ -151,6 +152,9 @@ function main() {
   console.log("Building static Expo Go deployment...");
 
   const domain = getDeploymentDomain();
+  if (!domain) {
+    return;
+  }
   console.log(`Using domain: ${domain}`);
 
   prepareDirectories();
