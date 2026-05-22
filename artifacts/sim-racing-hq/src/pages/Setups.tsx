@@ -53,8 +53,17 @@ const TAG_BADGE: Record<string, string> = {
   Sprint: 'badge-hotlap',
 };
 
-function SetupViewModal({ setup, onClose }: { setup: SetupRecord; onClose: () => void }) {
+function SetupViewModal({
+  setup,
+  onClose,
+  onShare,
+}: {
+  setup: SetupRecord;
+  onClose: () => void;
+  onShare: (id: string) => void;
+}) {
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
+  const isPublic = (setup as any).isPublic as boolean | undefined;
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
@@ -84,6 +93,14 @@ function SetupViewModal({ setup, onClose }: { setup: SetupRecord; onClose: () =>
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => onShare(setup.id)}
+            title={isPublic ? 'Unshare from Community' : 'Share to Community'}
+          >
+            {isPublic ? <Lock size={11} /> : <Share2 size={11} />}
+            {isPublic ? 'Unshare' : 'Share'}
+          </button>
         </div>
       </div>
     </div>
@@ -350,7 +367,16 @@ export default function Setups() {
       )}
 
       {/* View Modal */}
-      {viewSetup && <SetupViewModal setup={viewSetup} onClose={() => setViewSetup(null)} />}
+      {viewSetup && (
+        <SetupViewModal
+          setup={viewSetup}
+          onClose={() => setViewSetup(null)}
+          onShare={(id) => {
+            shareSetup({ id });
+            setViewSetup(prev => prev ? { ...prev, isPublic: !(prev as any).isPublic } as any : null);
+          }}
+        />
+      )}
 
       {/* Add Setup Modal */}
       {showModal && (

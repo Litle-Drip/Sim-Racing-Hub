@@ -54,7 +54,6 @@ function serializeCommunitySetup(
     onThrottle: r.onThrottle,
     offThrottle: r.offThrottle,
     notes: r.notes,
-    authorId: r.userId,
     authorName,
     avgRating,
     ratingCount,

@@ -660,8 +660,6 @@ components:
           type: string
         notes:
           type: string
-        authorId:
-          type: string
         authorName:
           type: string
         avgRating:
@@ -692,7 +690,6 @@ components:
         - onThrottle
         - offThrottle
         - notes
-        - authorId
         - authorName
         - ratingCount
 

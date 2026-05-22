@@ -26,7 +26,6 @@ export interface CommunitySetupRecord {
   onThrottle: string;
   offThrottle: string;
   notes: string;
-  authorId: string;
   authorName: string;
   avgRating?: number | null;
   ratingCount: number;
