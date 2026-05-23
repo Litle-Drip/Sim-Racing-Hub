@@ -24,4 +24,5 @@ export interface CreateSessionRequest {
   assists: string;
   rating: number;
   notes: string;
+  penalty: string;
 }

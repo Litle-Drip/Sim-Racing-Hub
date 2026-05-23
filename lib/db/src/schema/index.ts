@@ -19,6 +19,9 @@ export const sessionsTable = pgTable("sessions", {
   assists: text("assists").notNull().default(""),
   rating: integer("rating").notNull().default(0),
   notes: text("notes").notNull().default(""),
+  penalty: text("penalty").notNull().default(""),
+  isPublic: boolean("is_public").notNull().default(false),
+  sharedAt: timestamp("shared_at"),
   isPB: boolean("is_pb").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

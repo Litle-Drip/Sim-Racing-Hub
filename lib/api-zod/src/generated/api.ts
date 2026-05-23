@@ -38,6 +38,9 @@ export const GetSessionsResponseItem = zod.object({
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string(),
+  "penalty": zod.string(),
+  "isPublic": zod.boolean().optional(),
+  "sharedAt": zod.string().nullish(),
   "isPB": zod.boolean()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
@@ -63,7 +66,8 @@ export const CreateSessionBody = zod.object({
   "conditions": zod.string(),
   "assists": zod.string(),
   "rating": zod.number(),
-  "notes": zod.string()
+  "notes": zod.string(),
+  "penalty": zod.string()
 })
 
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, avg, count, sql } from "drizzle-orm";
-import { db, setupsTable, setupRatingsTable } from "@workspace/db";
+import { db, setupsTable, setupRatingsTable, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { getAuth } from "@clerk/express";
 
@@ -277,6 +277,45 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to import setup");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/community/sessions", async (req, res) => {
+  const { getAuth } = await import("@clerk/express");
+  const { userId: currentUserId } = getAuth(req);
+
+  try {
+    const rows = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.isPublic, true));
+
+    const userIds = [...new Set(rows.map((r) => r.userId))];
+    const nameMap = await getDisplayNames(userIds);
+
+    res.json(
+      rows
+        .sort((a, b) => (b.sharedAt?.getTime() ?? 0) - (a.sharedAt?.getTime() ?? 0))
+        .map((r) => ({
+          id: r.id,
+          date: r.date,
+          trackId: r.trackId,
+          car: r.car,
+          type: r.type,
+          bestLap: r.bestLap,
+          avgLap: r.avgLap,
+          tires: r.tires,
+          conditions: r.conditions,
+          penalty: r.penalty,
+          notes: r.notes,
+          authorName: nameMap[r.userId] ?? "Anonymous",
+          isOwn: currentUserId ? r.userId === currentUserId : false,
+          sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
+        })),
+    );
+  } catch (err) {
+    req.log.error({ err }, "Failed to get community sessions");
     res.status(500).json({ error: "Internal server error" });
   }
 });

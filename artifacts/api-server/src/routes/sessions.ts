@@ -54,6 +54,32 @@ async function recalcPBsForUser(userId: string) {
   }
 }
 
+function serializeSession(r: typeof sessionsTable.$inferSelect) {
+  return {
+    id: r.id,
+    date: r.date,
+    trackId: r.trackId,
+    car: r.car,
+    type: r.type,
+    bestLap: r.bestLap,
+    avgLap: r.avgLap,
+    worstLap: r.worstLap,
+    s1: r.s1,
+    s2: r.s2,
+    s3: r.s3,
+    tires: r.tires,
+    fuelLoad: r.fuelLoad,
+    conditions: r.conditions,
+    assists: r.assists,
+    rating: r.rating,
+    notes: r.notes,
+    penalty: r.penalty,
+    isPublic: r.isPublic,
+    sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
+    isPB: r.isPB,
+  };
+}
+
 router.get("/sessions", requireAuth, async (req, res) => {
   const userId = (req as AuthRequest).userId as string;
   try {
@@ -62,28 +88,7 @@ router.get("/sessions", requireAuth, async (req, res) => {
       .from(sessionsTable)
       .where(eq(sessionsTable.userId, userId));
 
-    const sessions = rows.map((r) => ({
-      id: r.id,
-      date: r.date,
-      trackId: r.trackId,
-      car: r.car,
-      type: r.type,
-      bestLap: r.bestLap,
-      avgLap: r.avgLap,
-      worstLap: r.worstLap,
-      s1: r.s1,
-      s2: r.s2,
-      s3: r.s3,
-      tires: r.tires,
-      fuelLoad: r.fuelLoad,
-      conditions: r.conditions,
-      assists: r.assists,
-      rating: r.rating,
-      notes: r.notes,
-      isPB: r.isPB,
-    }));
-
-    res.json(GetSessionsResponse.parse(sessions));
+    res.json(GetSessionsResponse.parse(rows.map(serializeSession)));
   } catch (err) {
     req.log.error({ err }, "Failed to get sessions");
     res.status(500).json({ error: "Internal server error" });
@@ -119,6 +124,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
       assists: data.assists,
       rating: data.rating,
       notes: data.notes,
+      penalty: data.penalty,
       isPB: false,
     });
 
@@ -129,26 +135,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
       .from(sessionsTable)
       .where(and(eq(sessionsTable.id, data.id as string), eq(sessionsTable.userId, userId)));
 
-    res.status(201).json({
-      id: saved.id,
-      date: saved.date,
-      trackId: saved.trackId,
-      car: saved.car,
-      type: saved.type,
-      bestLap: saved.bestLap,
-      avgLap: saved.avgLap,
-      worstLap: saved.worstLap,
-      s1: saved.s1,
-      s2: saved.s2,
-      s3: saved.s3,
-      tires: saved.tires,
-      fuelLoad: saved.fuelLoad,
-      conditions: saved.conditions,
-      assists: saved.assists,
-      rating: saved.rating,
-      notes: saved.notes,
-      isPB: saved.isPB,
-    });
+    res.status(201).json(serializeSession(saved));
   } catch (err) {
     req.log.error({ err }, "Failed to create session");
     res.status(500).json({ error: "Internal server error" });
@@ -179,6 +166,39 @@ router.delete("/sessions/:id", requireAuth, async (req, res) => {
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete session");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/sessions/:id/share", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).userId as string;
+  const id = req.params.id as string;
+
+  try {
+    const [existing] = await db
+      .select()
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.id, id), eq(sessionsTable.userId, userId)));
+
+    if (!existing) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
+    const newIsPublic = !existing.isPublic;
+    const sharedAt = newIsPublic ? new Date() : null;
+
+    await db
+      .update(sessionsTable)
+      .set({ isPublic: newIsPublic, sharedAt })
+      .where(and(eq(sessionsTable.id, id), eq(sessionsTable.userId, userId)));
+
+    res.json({
+      isPublic: newIsPublic,
+      sharedAt: sharedAt ? sharedAt.toISOString() : null,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to share session");
     res.status(500).json({ error: "Internal server error" });
   }
 });

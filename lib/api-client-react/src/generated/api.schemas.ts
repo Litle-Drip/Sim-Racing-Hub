@@ -41,6 +41,9 @@ export interface SessionRecord {
   assists: string;
   rating: number;
   notes: string;
+  penalty: string;
+  isPublic?: boolean;
+  sharedAt?: string | null;
   isPB: boolean;
 }
 
@@ -62,6 +65,29 @@ export interface CreateSessionRequest {
   assists: string;
   rating: number;
   notes: string;
+  penalty: string;
+}
+
+export interface CommunitySessionRecord {
+  id: string;
+  date: string;
+  trackId: string;
+  car: string;
+  type: string;
+  bestLap: string;
+  avgLap: string;
+  tires: string;
+  conditions: string;
+  penalty: string;
+  notes: string;
+  authorName: string;
+  isOwn: boolean;
+  sharedAt?: string | null;
+}
+
+export interface ShareSessionResponse {
+  isPublic: boolean;
+  sharedAt?: string | null;
 }
 
 export interface SetupRecord {

@@ -1,8 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2 } from 'lucide-react';
-import { useGetSessions, useCreateSession, useDeleteSession } from '@workspace/api-client-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2 } from 'lucide-react';
+import {
+  useGetSessions,
+  useCreateSession,
+  useDeleteSession,
+  useShareSession,
+  getGetSessionsQueryKey,
+} from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getGetSessionsQueryKey } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, ASSISTS } from '../data/f1Tracks';
 
@@ -50,6 +55,7 @@ const defaultForm = () => ({
   assists: 'None',
   rating: 0,
   notes: '',
+  penalty: '',
 });
 
 export default function Sessions() {
@@ -64,6 +70,7 @@ export default function Sessions() {
   const [filterTrack, setFilterTrack] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterCar, setFilterCar] = useState('');
+  const [sharingId, setSharingId] = useState<string | null>(null);
 
   const { mutate: createSession, isPending: saving } = useCreateSession({
     mutation: {
@@ -80,10 +87,23 @@ export default function Sessions() {
       },
     },
   });
+
   const { mutate: deleteSession } = useDeleteSession({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
+      },
+    },
+  });
+
+  const { mutate: shareSession } = useShareSession({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
+        setSharingId(null);
+      },
+      onError: () => {
+        setSharingId(null);
       },
     },
   });
@@ -134,6 +154,7 @@ export default function Sessions() {
         assists: form.assists,
         rating: form.rating,
         notes: form.notes,
+        penalty: form.penalty,
       },
     });
   };
@@ -141,6 +162,12 @@ export default function Sessions() {
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     deleteSession({ id });
+  };
+
+  const handleShare = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSharingId(id);
+    shareSession({ id });
   };
 
   const set = (k: string, v: string | number) => setForm(f => ({ ...f, [k]: v }));
@@ -223,7 +250,10 @@ export default function Sessions() {
                     <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
                     <td style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
                     <td><RatingDots rating={s.rating} /></td>
-                    <td>
+                    <td style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {s.isPublic && (
+                        <span title="Shared to Community" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>
+                      )}
                       {s.notes && <FileText size={13} style={{ color: 'var(--gray)', verticalAlign: 'middle' }} />}
                       {expanded === s.id ? <ChevronUp size={13} style={{ color: 'var(--gray-mid)', marginLeft: 4 }} /> : <ChevronDown size={13} style={{ color: 'var(--gray-mid)', marginLeft: 4 }} />}
                     </td>
@@ -256,13 +286,34 @@ export default function Sessions() {
                             <div className="expanded-label">Assists</div>
                             <div className="expanded-value">{s.assists}</div>
                           </div>
+                          {s.penalty && (
+                            <div className="expanded-item">
+                              <div className="expanded-label">Penalty</div>
+                              <div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div>
+                            </div>
+                          )}
                           {s.notes && (
                             <div className="expanded-notes">
                               <div className="expanded-label" style={{ marginBottom: 6 }}>Notes</div>
                               {s.notes}
                             </div>
                           )}
-                          <div style={{ marginLeft: 'auto', alignSelf: 'flex-start', paddingTop: 4 }}>
+                          <div style={{ marginLeft: 'auto', alignSelf: 'flex-start', paddingTop: 4, display: 'flex', gap: 8 }}>
+                            <button
+                              className="btn btn-secondary"
+                              style={{
+                                fontSize: 11,
+                                padding: '4px 10px',
+                                color: s.isPublic ? 'var(--teal)' : 'var(--gray-mid)',
+                                borderColor: s.isPublic ? 'var(--teal)' : 'var(--gray)',
+                              }}
+                              onClick={(e) => handleShare(s.id, e)}
+                              disabled={sharingId === s.id}
+                              title={s.isPublic ? 'Remove from Community' : 'Share to Community'}
+                            >
+                              <Share2 size={11} style={{ marginRight: 4 }} />
+                              {sharingId === s.id ? '…' : s.isPublic ? 'Shared' : 'Share'}
+                            </button>
                             <button
                               className="btn btn-secondary"
                               style={{ fontSize: 11, padding: '4px 10px', color: 'var(--red)', borderColor: 'var(--red)' }}
@@ -367,6 +418,10 @@ export default function Sessions() {
                   <select value={form.assists} onChange={e => set('assists', e.target.value)}>
                     {ASSISTS.map(a => <option key={a}>{a}</option>)}
                   </select>
+                </div>
+                <div className="field">
+                  <label className="field-label">Penalty</label>
+                  <input type="text" placeholder="e.g. 5s, 10s" value={form.penalty} onChange={e => set('penalty', e.target.value)} />
                 </div>
                 <div className="field">
                   <label className="field-label">Rating</label>

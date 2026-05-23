@@ -2,14 +2,16 @@ import { useState, useMemo } from 'react';
 import { Star, Download, Users } from 'lucide-react';
 import {
   useGetCommunitySetups,
+  useGetCommunitySessions,
   useRateSetup,
   useImportSetup,
   getGetSetupsQueryKey,
   getGetCommunitySetupsQueryKey,
+  getGetCommunitySessionsQueryKey,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { CommunitySetupRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, SETUP_TAGS } from '../data/f1Tracks';
+import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
+import { F1_TRACKS, SETUP_TAGS, SESSION_TYPES } from '../data/f1Tracks';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -17,6 +19,13 @@ const TAG_BADGE: Record<string, string> = {
   Wet: 'badge-wet',
   Test: 'badge-practice',
   Sprint: 'badge-hotlap',
+};
+
+const TYPE_BADGE: Record<string, string> = {
+  Practice: 'badge-practice',
+  Qualifying: 'badge-qualifying',
+  Race: 'badge-race',
+  Hotlap: 'badge-hotlap',
 };
 
 function StarRating({
@@ -57,7 +66,12 @@ function StarRating({
   );
 }
 
-function CommunityCard({
+function trackLabel(id: string) {
+  const t = F1_TRACKS.find((t) => t.id === id);
+  return t ? `${t.flag} ${t.short}` : id;
+}
+
+function CommunitySetupCard({
   setup,
   onRate,
   onImport,
@@ -70,10 +84,6 @@ function CommunityCard({
   importing: boolean;
   localRating?: number;
 }) {
-  const trackName = (id: string) => {
-    const t = F1_TRACKS.find((t) => t.id === id);
-    return t ? `${t.flag} ${t.short}` : id;
-  };
   const isOwn = setup.isOwn ?? false;
 
   return (
@@ -82,7 +92,7 @@ function CommunityCard({
         <div className="community-card-left">
           <div className="community-card-title">{setup.label}</div>
           <div className="community-card-car">{setup.car}</div>
-          <div className="community-card-track">{trackName(setup.trackId)}</div>
+          <div className="community-card-track">{trackLabel(setup.trackId)}</div>
         </div>
         <div className="community-card-right">
           {setup.tag && (
@@ -135,21 +145,72 @@ function CommunityCard({
   );
 }
 
+function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) {
+  return (
+    <div className="community-card">
+      <div className="community-card-header">
+        <div className="community-card-left">
+          <div className="community-card-title" style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--teal)' }}>
+            {session.bestLap || '—'}
+          </div>
+          <div className="community-card-car">{session.car}</div>
+          <div className="community-card-track">{trackLabel(session.trackId)}</div>
+        </div>
+        <div className="community-card-right">
+          <span className={`badge ${TYPE_BADGE[session.type] || 'badge-practice'}`}>{session.type}</span>
+          <div className="community-card-author">
+            <Users size={10} />
+            {session.authorName}
+          </div>
+        </div>
+      </div>
+
+      <div className="community-card-params">
+        {[
+          { label: 'Avg Lap', value: session.avgLap || '—' },
+          { label: 'Tires', value: session.tires },
+          { label: 'Conditions', value: session.conditions },
+          { label: 'Penalty', value: session.penalty || '—' },
+        ].map(({ label, value }) => (
+          <div key={label} className="community-param-item">
+            <div className="community-param-label">{label}</div>
+            <div className="community-param-value" style={label === 'Penalty' && session.penalty ? { color: 'var(--red)' } : {}}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {session.notes && (
+        <div className="community-card-notes">{session.notes}</div>
+      )}
+
+      <div className="community-card-footer">
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+          {session.date}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Community() {
   const qc = useQueryClient();
+  const [tab, setTab] = useState<'setups' | 'sessions'>('setups');
   const [filterTrack, setFilterTrack] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
+  const [filterType, setFilterType] = useState('');
   const [importingId, setImportingId] = useState<string | null>(null);
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
   const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
   const [importError, setImportError] = useState('');
 
-  const { data: setups = [], isLoading } = useGetCommunitySetups({
+  const { data: setups = [], isLoading: setupsLoading } = useGetCommunitySetups({
     trackId: filterTrack || undefined,
     tag: filterTag || undefined,
     car: filterCar || undefined,
   });
+
+  const { data: sessions = [], isLoading: sessionsLoading } = useGetCommunitySessions();
 
   const { mutate: rateSetup } = useRateSetup({
     mutation: {
@@ -185,18 +246,54 @@ export default function Community() {
     importSetup({ id });
   };
 
-  const sorted = useMemo(
+  const sortedSetups = useMemo(
     () => [...setups].sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0)),
     [setups],
   );
 
+  const filteredSessions = useMemo(() => {
+    return [...sessions].filter(s => {
+      if (filterTrack && s.trackId !== filterTrack) return false;
+      if (filterType && s.type !== filterType) return false;
+      if (filterCar && !s.car.toLowerCase().includes(filterCar.toLowerCase())) return false;
+      return true;
+    });
+  }, [sessions, filterTrack, filterType, filterCar]);
+
   return (
     <div className="page">
       <div className="page-header">
-        <h1 className="page-title">Community Setups</h1>
+        <h1 className="page-title">Community</h1>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-          {setups.length} shared setup{setups.length !== 1 ? 's' : ''}
+          {tab === 'setups'
+            ? `${setups.length} shared setup${setups.length !== 1 ? 's' : ''}`
+            : `${sessions.length} shared session${sessions.length !== 1 ? 's' : ''}`}
         </div>
+      </div>
+
+      {/* Tab switcher */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
+        {(['setups', 'sessions'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              background: 'none',
+              border: 'none',
+              borderBottom: tab === t ? '2px solid var(--red)' : '2px solid transparent',
+              color: tab === t ? 'var(--white)' : 'var(--gray-mid)',
+              fontFamily: 'var(--font-display)',
+              fontSize: 13,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              marginBottom: -1,
+            }}
+          >
+            {t === 'setups' ? 'Setups' : 'Sessions'}
+          </button>
+        ))}
       </div>
 
       {importError && (
@@ -213,54 +310,105 @@ export default function Community() {
         </div>
       )}
 
-      <div className="filter-bar" style={{ marginBottom: 24 }}>
-        <select className="filter-select" value={filterTrack} onChange={(e) => setFilterTrack(e.target.value)}>
-          <option value="">All Tracks</option>
-          {F1_TRACKS.map((t) => (
-            <option key={t.id} value={t.id}>{t.flag} {t.short}</option>
-          ))}
-        </select>
-        <select className="filter-select" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
-          <option value="">All Tags</option>
-          {SETUP_TAGS.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <input
-          className="filter-select"
-          placeholder="Filter by car…"
-          value={filterCar}
-          onChange={(e) => setFilterCar(e.target.value)}
-          style={{ maxWidth: 180 }}
-        />
-      </div>
-
-      {isLoading ? (
-        <div className="card" style={{ padding: 0 }}>
-          <div className="empty-state">
-            <div className="empty-state-title">Loading Community Setups…</div>
-          </div>
-        </div>
-      ) : sorted.length === 0 ? (
-        <div className="card" style={{ padding: 0 }}>
-          <div className="empty-state">
-            <div className="empty-state-title">No Community Setups</div>
-            <div className="empty-state-desc">
-              Be the first! Share a setup from your Setup Vault using the "Share" button.
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="community-grid">
-          {sorted.map((setup) => (
-            <CommunityCard
-              key={setup.id}
-              setup={setup}
-              onRate={handleRate}
-              onImport={handleImport}
-              importing={importingId === setup.id}
-              localRating={localRatings[setup.id]}
+      {tab === 'setups' && (
+        <>
+          <div className="filter-bar" style={{ marginBottom: 24 }}>
+            <select className="filter-select" value={filterTrack} onChange={(e) => setFilterTrack(e.target.value)}>
+              <option value="">All Tracks</option>
+              {F1_TRACKS.map((t) => (
+                <option key={t.id} value={t.id}>{t.flag} {t.short}</option>
+              ))}
+            </select>
+            <select className="filter-select" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+              <option value="">All Tags</option>
+              {SETUP_TAGS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <input
+              className="filter-select"
+              placeholder="Filter by car…"
+              value={filterCar}
+              onChange={(e) => setFilterCar(e.target.value)}
+              style={{ maxWidth: 180 }}
             />
-          ))}
-        </div>
+          </div>
+
+          {setupsLoading ? (
+            <div className="card" style={{ padding: 0 }}>
+              <div className="empty-state">
+                <div className="empty-state-title">Loading Community Setups…</div>
+              </div>
+            </div>
+          ) : sortedSetups.length === 0 ? (
+            <div className="card" style={{ padding: 0 }}>
+              <div className="empty-state">
+                <div className="empty-state-title">No Community Setups</div>
+                <div className="empty-state-desc">
+                  Be the first! Share a setup from your Setup Vault using the "Share" button.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="community-grid">
+              {sortedSetups.map((setup) => (
+                <CommunitySetupCard
+                  key={setup.id}
+                  setup={setup}
+                  onRate={handleRate}
+                  onImport={handleImport}
+                  importing={importingId === setup.id}
+                  localRating={localRatings[setup.id]}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === 'sessions' && (
+        <>
+          <div className="filter-bar" style={{ marginBottom: 24 }}>
+            <select className="filter-select" value={filterTrack} onChange={(e) => setFilterTrack(e.target.value)}>
+              <option value="">All Tracks</option>
+              {F1_TRACKS.map((t) => (
+                <option key={t.id} value={t.id}>{t.flag} {t.short}</option>
+              ))}
+            </select>
+            <select className="filter-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+              <option value="">All Types</option>
+              {SESSION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <input
+              className="filter-select"
+              placeholder="Filter by car…"
+              value={filterCar}
+              onChange={(e) => setFilterCar(e.target.value)}
+              style={{ maxWidth: 180 }}
+            />
+          </div>
+
+          {sessionsLoading ? (
+            <div className="card" style={{ padding: 0 }}>
+              <div className="empty-state">
+                <div className="empty-state-title">Loading Community Sessions…</div>
+              </div>
+            </div>
+          ) : filteredSessions.length === 0 ? (
+            <div className="card" style={{ padding: 0 }}>
+              <div className="empty-state">
+                <div className="empty-state-title">No Community Sessions</div>
+                <div className="empty-state-desc">
+                  Share a session from your Session Log using the "Share" button on any session.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="community-grid">
+              {filteredSessions.map((session) => (
+                <CommunitySessionCard key={session.id} session={session} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

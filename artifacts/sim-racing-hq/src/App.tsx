@@ -132,7 +132,7 @@ function SignUpPage() {
   );
 }
 
-function LandingPage() {
+function LandingPage({ onGuest }: { onGuest?: () => void }) {
   const [, setLocation] = useLocation();
   return (
     <div style={{
@@ -177,15 +177,59 @@ function LandingPage() {
             Sign In
           </button>
         </div>
+        <div style={{ marginTop: 20 }}>
+          <button
+            style={{ background: 'none', border: 'none', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+            onClick={onGuest}
+          >
+            Browse as Guest
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function MainApp() {
+const PROTECTED_PAGES = ['sessions', 'setups', 'hardware', 'progress'];
+
+const PAGE_LABELS: Record<string, string> = {
+  sessions: 'Session Log',
+  setups: 'Setup Vault',
+  hardware: 'Hardware Vault',
+  progress: 'PB Progression',
+};
+
+function GuestWall({ page, onSignIn }: { page: string; onSignIn: () => void }) {
+  return (
+    <div style={{
+      minHeight: '60vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 20,
+      padding: 24,
+    }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
+        Sign In Required
+      </div>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', textAlign: 'center', maxWidth: 360, lineHeight: 1.6 }}>
+        Create a free account to access your personal {PAGE_LABELS[page] || page}.
+      </div>
+      <button className="btn btn-primary" style={{ minWidth: 160 }} onClick={onSignIn}>
+        Sign In / Sign Up
+      </button>
+    </div>
+  );
+}
+
+function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
   const [page, setPage] = useState('dashboard');
 
   const renderPage = () => {
+    if (isGuest && PROTECTED_PAGES.includes(page)) {
+      return <GuestWall page={page} onSignIn={onSignIn ?? (() => {})} />;
+    }
     switch (page) {
       case 'dashboard': return <Dashboard setPage={setPage} />;
       case 'sessions': return <Sessions />;
@@ -209,13 +253,24 @@ function MainApp() {
 }
 
 function HomeRoute() {
+  const [isGuest, setIsGuest] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const handleSignIn = () => {
+    setIsGuest(false);
+    setLocation('/sign-in');
+  };
+
   return (
     <>
       <Show when="signed-in">
         <MainApp />
       </Show>
       <Show when="signed-out">
-        <LandingPage />
+        {isGuest
+          ? <MainApp isGuest onSignIn={handleSignIn} />
+          : <LandingPage onGuest={() => setIsGuest(true)} />
+        }
       </Show>
     </>
   );

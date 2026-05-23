@@ -24,5 +24,8 @@ export interface SessionRecord {
   assists: string;
   rating: number;
   notes: string;
+  penalty: string;
+  isPublic?: boolean;
+  sharedAt?: string | null;
   isPB: boolean;
 }

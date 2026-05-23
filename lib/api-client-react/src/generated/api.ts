@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CommunitySessionRecord,
   CommunitySetupRecord,
   CreateHardwareRequest,
   CreateSessionRequest,
@@ -32,6 +33,7 @@ import type {
   RateSetupResponse,
   SessionRecord,
   SetupRecord,
+  ShareSessionResponse,
   ShareSetupResponse,
   TrackNotesRecord,
   UnauthorizedResponse,
@@ -76,7 +78,6 @@ export const healthCheck = async ( options?: RequestInit): Promise<HealthStatus>
 
 
 
-
 export const getHealthCheckQueryKey = () => {
     return [
     `/api/healthz`
@@ -94,8 +95,6 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof healthCheck>>> = ({ signal }) => healthCheck({ signal, ...requestOptions });
-
-
 
 
 
@@ -125,9 +124,6 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
-
-
-
 export const getGetSessionsUrl = () => {
 
 
@@ -153,7 +149,6 @@ export const getSessions = async ( options?: RequestInit): Promise<SessionRecord
 
 
 
-
 export const getGetSessionsQueryKey = () => {
     return [
     `/api/sessions`
@@ -171,7 +166,6 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessions>>> = ({ signal }) => getSessions({ signal, ...requestOptions });
-
 
 
 
@@ -198,9 +192,6 @@ export function useGetSessions<TData = Awaited<ReturnType<typeof getSessions>>, 
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
 
 
 
@@ -250,8 +241,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
           return  createSession(data,requestOptions)
         }
-
-
 
 
 
@@ -324,8 +313,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-
-
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteSessionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSession>>>
@@ -345,6 +332,101 @@ export const useDeleteSession = <TError = ErrorType<UnauthorizedResponse | NotFo
       > => {
       return useMutation(getDeleteSessionMutationOptions(options));
     }
+
+export const getShareSessionUrl = (id: string,) => {
+  return `/api/sessions/${id}/share`
+}
+
+/**
+ * @summary Toggle public sharing on a session
+ */
+export const shareSession = async (id: string, options?: RequestInit): Promise<ShareSessionResponse> => {
+  return customFetch<ShareSessionResponse>(getShareSessionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+  }
+);}
+
+export const getShareSessionMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['shareSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof shareSession>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+          return  shareSession(id,requestOptions)
+        }
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ShareSessionMutationResult = NonNullable<Awaited<ReturnType<typeof shareSession>>>
+    export type ShareSessionMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Toggle public sharing on a session
+ */
+export const useShareSession = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof shareSession>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getShareSessionMutationOptions(options));
+    }
+
+export const getGetCommunitySessionsUrl = () => {
+  return `/api/community/sessions`
+}
+
+/**
+ * @summary Get all publicly shared sessions
+ */
+export const getCommunitySessions = async (options?: RequestInit): Promise<CommunitySessionRecord[]> => {
+  return customFetch<CommunitySessionRecord[]>(getGetCommunitySessionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+  }
+);}
+
+export const getGetCommunitySessionsQueryKey = () => {
+    return [`/api/community/sessions`] as const;
+    }
+
+export const getGetCommunitySessionsQueryOptions = <TData = Awaited<ReturnType<typeof getCommunitySessions>>, TError = ErrorType<unknown>>(options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryKey =  queryOptions?.queryKey ?? getGetCommunitySessionsQueryKey();
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunitySessions>>> = ({ signal }) => getCommunitySessions({ signal, ...requestOptions });
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCommunitySessionsQueryResult = NonNullable<Awaited<ReturnType<typeof getCommunitySessions>>>
+export type GetCommunitySessionsQueryError = ErrorType<unknown>
+
+/**
+ * @summary Get all publicly shared sessions
+ */
+export function useGetCommunitySessions<TData = Awaited<ReturnType<typeof getCommunitySessions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCommunitySessionsQueryOptions(options)
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getGetSetupsUrl = () => {
 
@@ -371,7 +453,6 @@ export const getSetups = async ( options?: RequestInit): Promise<SetupRecord[]> 
 
 
 
-
 export const getGetSetupsQueryKey = () => {
     return [
     `/api/setups`
@@ -389,7 +470,6 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getSetups>>> = ({ signal }) => getSetups({ signal, ...requestOptions });
-
 
 
 
@@ -416,9 +496,6 @@ export function useGetSetups<TData = Awaited<ReturnType<typeof getSetups>>, TErr
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
 
 
 
@@ -468,8 +545,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
           return  createSetup(data,requestOptions)
         }
-
-
 
 
 
@@ -542,8 +617,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-
-
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteSetupMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSetup>>>
@@ -612,8 +685,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-
-
   return  { mutationFn, ...mutationOptions }}
 
     export type ShareSetupMutationResult = NonNullable<Awaited<ReturnType<typeof shareSetup>>>
@@ -666,7 +737,6 @@ export const getCommunitySetups = async (params?: GetCommunitySetupsParams, opti
 
 
 
-
 export const getGetCommunitySetupsQueryKey = (params?: GetCommunitySetupsParams,) => {
     return [
     `/api/community/setups`, ...(params ? [params] : [])
@@ -688,7 +758,6 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
 
-
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetups>>, TError, TData> & { queryKey: QueryKey }
 }
 
@@ -701,7 +770,7 @@ export type GetCommunitySetupsQueryError = ErrorType<unknown>
  */
 
 export function useGetCommunitySetups<TData = Awaited<ReturnType<typeof getCommunitySetups>>, TError = ErrorType<unknown>>(
- params?: GetCommunitySetupsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+params?: GetCommunitySetupsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySetups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -711,9 +780,6 @@ export function useGetCommunitySetups<TData = Awaited<ReturnType<typeof getCommu
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
 
 
 
@@ -743,7 +809,6 @@ export const getCommunitySetup = async (id: string, options?: RequestInit): Prom
 
 
 
-
 export const getGetCommunitySetupQueryKey = (id: string,) => {
     return [
     `/api/community/setups/${id}`
@@ -761,8 +826,6 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunitySetup>>> = ({ signal }) => getCommunitySetup(id, { signal, ...requestOptions });
-
-
 
 
 
@@ -788,9 +851,6 @@ export function useGetCommunitySetup<TData = Awaited<ReturnType<typeof getCommun
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
 
 
 
@@ -822,7 +882,7 @@ export const rateSetup = async (id: string,
 
 
 
-export const getRateSetupMutationOptions = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+export const getRateSetupMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rateSetup>>, TError,{id: string;data: BodyType<RateSetupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof rateSetup>>, TError,{id: string;data: BodyType<RateSetupRequest>}, TContext> => {
 
@@ -845,18 +905,16 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-
-
   return  { mutationFn, ...mutationOptions }}
 
     export type RateSetupMutationResult = NonNullable<Awaited<ReturnType<typeof rateSetup>>>
     export type RateSetupMutationBody = BodyType<RateSetupRequest>
-    export type RateSetupMutationError = ErrorType<NotFoundResponse | UnauthorizedResponse>
+    export type RateSetupMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
 
     /**
  * @summary Rate a community setup (1-5 stars)
  */
-export const useRateSetup = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+export const useRateSetup = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rateSetup>>, TError,{id: string;data: BodyType<RateSetupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof rateSetup>>,
@@ -915,8 +973,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-
-
   return  { mutationFn, ...mutationOptions }}
 
     export type ImportSetupMutationResult = NonNullable<Awaited<ReturnType<typeof importSetup>>>
@@ -962,7 +1018,6 @@ export const getHardware = async ( options?: RequestInit): Promise<HardwareRecor
 
 
 
-
 export const getGetHardwareQueryKey = () => {
     return [
     `/api/hardware`
@@ -980,7 +1035,6 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getHardware>>> = ({ signal }) => getHardware({ signal, ...requestOptions });
-
 
 
 
@@ -1007,9 +1061,6 @@ export function useGetHardware<TData = Awaited<ReturnType<typeof getHardware>>, 
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
 
 
 
@@ -1059,8 +1110,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
           return  createHardware(data,requestOptions)
         }
-
-
 
 
 
@@ -1133,8 +1182,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-
-
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteHardwareMutationResult = NonNullable<Awaited<ReturnType<typeof deleteHardware>>>
@@ -1180,7 +1227,6 @@ export const getTrackNotes = async (trackId: string, options?: RequestInit): Pro
 
 
 
-
 export const getGetTrackNotesQueryKey = (trackId: string,) => {
     return [
     `/api/track-notes/${trackId}`
@@ -1198,7 +1244,6 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getTrackNotes>>> = ({ signal }) => getTrackNotes(trackId, { signal, ...requestOptions });
-
 
 
 
@@ -1225,9 +1270,6 @@ export function useGetTrackNotes<TData = Awaited<ReturnType<typeof getTrackNotes
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
 
 
 
@@ -1282,8 +1324,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-
-
   return  { mutationFn, ...mutationOptions }}
 
     export type UpsertTrackNotesMutationResult = NonNullable<Awaited<ReturnType<typeof upsertTrackNotes>>>
@@ -1303,4 +1343,3 @@ export const useUpsertTrackNotes = <TError = ErrorType<UnauthorizedResponse>,
       > => {
       return useMutation(getUpsertTrackNotesMutationOptions(options));
     }
-
