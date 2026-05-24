@@ -182,6 +182,7 @@ export default function LogSessionScreen() {
         assists,
         rating,
         notes: notes.trim(),
+        penalty: "",
       },
     });
   };

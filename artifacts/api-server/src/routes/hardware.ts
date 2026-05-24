@@ -78,6 +78,10 @@ router.post("/hardware", requireAuth, async (req, res) => {
         ),
       );
 
+    if (!saved) {
+      res.status(500).json({ error: "Failed to retrieve created hardware profile" });
+      return;
+    }
     res.status(201).json({
       id: saved.id,
       label: saved.label,

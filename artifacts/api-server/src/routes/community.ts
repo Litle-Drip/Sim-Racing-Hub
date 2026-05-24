@@ -4,6 +4,10 @@ import { db, setupsTable, setupRatingsTable, sessionsTable } from "@workspace/db
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { getAuth } from "@clerk/express";
 
+function escapeLike(s: string): string {
+  return s.replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 const router = Router();
 
 async function getDisplayNames(userIds: string[]): Promise<Record<string, string>> {
@@ -91,7 +95,7 @@ router.get("/community/setups", async (req, res) => {
         and(
           eq(setupsTable.isPublic, true),
           trackId ? eq(setupsTable.trackId, trackId) : undefined,
-          car ? sql`lower(${setupsTable.car}) like ${"%" + car.toLowerCase() + "%"}` : undefined,
+          car ? sql`lower(${setupsTable.car}) like ${"%" + escapeLike(car.toLowerCase()) + "%"}` : undefined,
           tag ? eq(setupsTable.tag, tag) : undefined,
         ),
       )
@@ -158,7 +162,7 @@ router.post("/community/setups/:id/rate", requireAuth, async (req, res) => {
   const id = req.params.id as string;
   const { stars } = req.body as { stars?: unknown };
 
-  if (typeof stars !== "number" || stars < 1 || stars > 5) {
+  if (typeof stars !== "number" || !Number.isInteger(stars) || stars < 1 || stars > 5) {
     res.status(400).json({ error: "stars must be 1–5" });
     return;
   }
@@ -252,6 +256,10 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
       .from(setupsTable)
       .where(and(eq(setupsTable.id, newId), eq(setupsTable.userId, userId)));
 
+    if (!saved) {
+      res.status(500).json({ error: "Failed to retrieve imported setup" });
+      return;
+    }
     res.status(201).json({
       id: saved.id,
       label: saved.label,
@@ -282,7 +290,6 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
 });
 
 router.get("/community/sessions", async (req, res) => {
-  const { getAuth } = await import("@clerk/express");
   const { userId: currentUserId } = getAuth(req);
 
   try {

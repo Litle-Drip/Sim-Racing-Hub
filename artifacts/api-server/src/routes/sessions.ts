@@ -172,6 +172,10 @@ router.post("/sessions", requireAuth, async (req, res) => {
       .from(sessionsTable)
       .where(and(eq(sessionsTable.id, data.id as string), eq(sessionsTable.userId, userId)));
 
+    if (!saved) {
+      res.status(500).json({ error: "Failed to retrieve created session" });
+      return;
+    }
     res.status(201).json(serializeSession(saved));
   } catch (err) {
     req.log.error({ err }, "Failed to create session");
