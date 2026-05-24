@@ -39,6 +39,9 @@ export const GetSessionsResponseItem = zod.object({
   "rating": zod.number(),
   "notes": zod.string(),
   "penalty": zod.string(),
+  "gameVersion": zod.string(),
+  "platform": zod.string(),
+  "inputDevice": zod.string(),
   "isPublic": zod.boolean().optional(),
   "sharedAt": zod.string().nullish(),
   "publicNote": zod.string().nullish(),
@@ -78,6 +81,9 @@ export const CreateSessionBody = zod.object({
   "rating": zod.number(),
   "notes": zod.string(),
   "penalty": zod.string(),
+  "gameVersion": zod.string().optional().default(""),
+  "platform": zod.string().optional().default(""),
+  "inputDevice": zod.string().optional().default(""),
   "laps": zod.array(zod.object({
     "lap": zod.number(),
     "time": zod.string(),
@@ -121,6 +127,7 @@ export const GetSetupsResponseItem = zod.object({
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
   "notes": zod.string(),
+  "gameVersion": zod.string(),
   "isPublic": zod.boolean().optional(),
   "sharedAt": zod.string().nullish()
 })
@@ -149,7 +156,8 @@ export const CreateSetupBody = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string()
+  "notes": zod.string(),
+  "gameVersion": zod.string().optional().default("")
 })
 
 

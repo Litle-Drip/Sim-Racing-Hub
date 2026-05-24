@@ -11,7 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, SETUP_TAGS, SESSION_TYPES } from '../data/f1Tracks';
+import { F1_TRACKS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -146,6 +146,15 @@ function CommunitySetupCard({
 }
 
 function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) {
+  const params = [
+    { label: 'Avg Lap', value: session.avgLap || '—' },
+    { label: 'Tires', value: session.tires },
+    { label: 'Conditions', value: session.conditions },
+  ];
+  if (session.penalty && session.penalty.trim() !== '') {
+    params.push({ label: 'Penalty', value: session.penalty });
+  }
+
   return (
     <div className="community-card">
       <div className="community-card-header">
@@ -158,6 +167,8 @@ function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) 
         </div>
         <div className="community-card-right">
           <span className={`badge ${TYPE_BADGE[session.type] || 'badge-practice'}`}>{session.type}</span>
+          {session.platform && <span className="badge badge-practice" style={{ fontSize: 9 }}>{session.platform}</span>}
+          {session.inputDevice && <span className="badge badge-practice" style={{ fontSize: 9 }}>{session.inputDevice}</span>}
           <div className="community-card-author">
             <Users size={10} />
             {session.authorName}
@@ -166,18 +177,19 @@ function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) 
       </div>
 
       <div className="community-card-params">
-        {[
-          { label: 'Avg Lap', value: session.avgLap || '—' },
-          { label: 'Tires', value: session.tires },
-          { label: 'Conditions', value: session.conditions },
-          { label: 'Penalty', value: session.penalty || '—' },
-        ].map(({ label, value }) => (
+        {params.map(({ label, value }) => (
           <div key={label} className="community-param-item">
             <div className="community-param-label">{label}</div>
-            <div className="community-param-value" style={label === 'Penalty' && session.penalty ? { color: 'var(--red)' } : {}}>{value}</div>
+            <div className="community-param-value" style={label === 'Penalty' ? { color: 'var(--red)' } : {}}>{value}</div>
           </div>
         ))}
       </div>
+
+      {session.gameVersion && (
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 4 }}>
+          {session.gameVersion}
+        </div>
+      )}
 
       {session.publicNote && (
         <div className="community-card-notes">{session.publicNote}</div>
@@ -199,6 +211,9 @@ export default function Community() {
   const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [filterPlatform, setFilterPlatform] = useState('');
+  const [filterInput, setFilterInput] = useState('');
+  const [sessionSort, setSessionSort] = useState<'fastest' | 'recent' | 'rating'>('fastest');
   const [importingId, setImportingId] = useState<string | null>(null);
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
   const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
@@ -210,7 +225,9 @@ export default function Community() {
     car: filterCar || undefined,
   });
 
-  const { data: sessions = [], isLoading: sessionsLoading } = useGetCommunitySessions();
+  const { data: sessions = [], isLoading: sessionsLoading } = useGetCommunitySessions({
+    sort: sessionSort === 'fastest' ? undefined : sessionSort,
+  });
 
   const { mutate: rateSetup } = useRateSetup({
     mutation: {
@@ -256,9 +273,11 @@ export default function Community() {
       if (filterTrack && s.trackId !== filterTrack) return false;
       if (filterType && s.type !== filterType) return false;
       if (filterCar && !s.car.toLowerCase().includes(filterCar.toLowerCase())) return false;
+      if (filterPlatform && s.platform !== filterPlatform) return false;
+      if (filterInput && s.inputDevice !== filterInput) return false;
       return true;
     });
-  }, [sessions, filterTrack, filterType, filterCar]);
+  }, [sessions, filterTrack, filterType, filterCar, filterPlatform, filterInput]);
 
   return (
     <div className="page">
@@ -366,7 +385,7 @@ export default function Community() {
 
       {tab === 'sessions' && (
         <>
-          <div className="filter-bar" style={{ marginBottom: 24 }}>
+          <div className="filter-bar" style={{ marginBottom: 24, flexWrap: 'wrap' }}>
             <select className="filter-select" value={filterTrack} onChange={(e) => setFilterTrack(e.target.value)}>
               <option value="">All Tracks</option>
               {F1_TRACKS.map((t) => (
@@ -377,6 +396,14 @@ export default function Community() {
               <option value="">All Types</option>
               {SESSION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+            <select className="filter-select" value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}>
+              <option value="">All Platforms</option>
+              {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select className="filter-select" value={filterInput} onChange={(e) => setFilterInput(e.target.value)}>
+              <option value="">All Inputs</option>
+              {INPUT_DEVICES.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
             <input
               className="filter-select"
               placeholder="Filter by car…"
@@ -384,6 +411,11 @@ export default function Community() {
               onChange={(e) => setFilterCar(e.target.value)}
               style={{ maxWidth: 180 }}
             />
+            <select className="filter-select" value={sessionSort} onChange={(e) => setSessionSort(e.target.value as 'fastest' | 'recent' | 'rating')}>
+              <option value="fastest">Fastest First</option>
+              <option value="recent">Most Recent</option>
+              <option value="rating">Highest Rated</option>
+            </select>
           </div>
 
           {sessionsLoading ? (

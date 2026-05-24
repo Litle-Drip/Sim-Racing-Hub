@@ -24,6 +24,7 @@ const defaultForm = (): Omit<SetupRecord, 'id'> => ({
   onThrottle: '',
   offThrottle: '',
   notes: '',
+  gameVersion: '',
 });
 
 const COMPARE_FIELDS: { key: keyof SetupRecord; label: string }[] = [
@@ -232,6 +233,7 @@ export default function Setups() {
         onThrottle: String(form.onThrottle),
         offThrottle: String(form.offThrottle),
         notes: form.notes,
+        gameVersion: form.gameVersion,
       },
     });
   };
@@ -472,6 +474,12 @@ export default function Setups() {
                 <div className="field">
                   <label className="field-label">Off Throttle %</label>
                   <input type="number" value={form.offThrottle} onChange={e => setField('offThrottle', e.target.value)} />
+                </div>
+
+                <div className="form-section-title">Metadata</div>
+                <div className="field">
+                  <label className="field-label">Game Version</label>
+                  <input type="text" placeholder="e.g. F1 25 v1.2" value={form.gameVersion} onChange={e => setField('gameVersion', e.target.value)} />
                 </div>
 
                 <div className="field full">

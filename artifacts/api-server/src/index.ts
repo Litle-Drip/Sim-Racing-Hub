@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS sessions (
   rating INTEGER NOT NULL DEFAULT 0,
   notes TEXT NOT NULL DEFAULT '',
   penalty TEXT NOT NULL DEFAULT '',
+  game_version TEXT NOT NULL DEFAULT '',
+  platform TEXT NOT NULL DEFAULT '',
+  input_device TEXT NOT NULL DEFAULT '',
   is_public BOOLEAN NOT NULL DEFAULT FALSE,
   shared_at TIMESTAMP,
   laps JSONB,
@@ -51,6 +54,7 @@ CREATE TABLE IF NOT EXISTS setups (
   on_throttle TEXT NOT NULL DEFAULT '',
   off_throttle TEXT NOT NULL DEFAULT '',
   notes TEXT NOT NULL DEFAULT '',
+  game_version TEXT NOT NULL DEFAULT '',
   is_public BOOLEAN NOT NULL DEFAULT FALSE,
   shared_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -94,6 +98,13 @@ CREATE TABLE IF NOT EXISTS hardware_settings (
 );
 `;
 
+const MIGRATE_SQL = `
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS game_version TEXT NOT NULL DEFAULT '';
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT '';
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS input_device TEXT NOT NULL DEFAULT '';
+ALTER TABLE setups ADD COLUMN IF NOT EXISTS game_version TEXT NOT NULL DEFAULT '';
+`;
+
 async function ensureDatabase(): Promise<void> {
   try {
     await pool.query("SELECT 1");
@@ -112,6 +123,13 @@ async function ensureDatabase(): Promise<void> {
   } catch (err) {
     logger.error({ err }, "Failed to create database tables");
     throw err;
+  }
+
+  try {
+    await pool.query(MIGRATE_SQL);
+    logger.info("Database migration applied");
+  } catch (err) {
+    logger.error({ err }, "Failed to apply migration");
   }
 }
 

@@ -43,8 +43,13 @@ function LapTooltip({ active, payload, label }: TooltipProps) {
 
 export default function Progress() {
   const { data: allSessions = [] } = useGetSessions();
-  const [filterTrack, setFilterTrack] = useState('');
+  const [filterTrack, setFilterTrack] = useState(() => sessionStorage.getItem('progress-track') || '');
   const [filterCar, setFilterCar] = useState('');
+
+  const handleTrackChange = (v: string) => {
+    setFilterTrack(v);
+    sessionStorage.setItem('progress-track', v);
+  };
 
   const filtered = useMemo(() => {
     return allSessions
@@ -131,7 +136,7 @@ export default function Progress() {
       </div>
 
       <div className="filter-bar" style={{ marginBottom: 28 }}>
-        <select className="filter-select" value={filterTrack} onChange={e => setFilterTrack(e.target.value)}>
+        <select className="filter-select" value={filterTrack} onChange={e => handleTrackChange(e.target.value)}>
           <option value="">All Tracks</option>
           {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.flag} {t.short}</option>)}
         </select>

@@ -27,6 +27,7 @@ function serializeSetup(r: typeof setupsTable.$inferSelect) {
     onThrottle: r.onThrottle,
     offThrottle: r.offThrottle,
     notes: r.notes,
+    gameVersion: r.gameVersion,
     isPublic: r.isPublic,
     sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
   };
@@ -77,6 +78,7 @@ router.post("/setups", requireAuth, async (req, res) => {
       onThrottle: String(data.onThrottle),
       offThrottle: String(data.offThrottle),
       notes: data.notes,
+      gameVersion: data.gameVersion ?? "",
     });
 
     const [saved] = await db

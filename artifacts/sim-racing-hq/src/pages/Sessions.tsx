@@ -9,7 +9,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, ASSISTS } from '../data/f1Tracks';
+import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, ASSISTS, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -207,6 +207,9 @@ const defaultForm = () => ({
   rating: 0,
   notes: '',
   penalty: '',
+  gameVersion: '',
+  platform: '',
+  inputDevice: '',
 });
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -334,6 +337,9 @@ export default function Sessions() {
         rating: form.rating,
         notes: form.notes,
         penalty: form.penalty,
+        gameVersion: form.gameVersion,
+        platform: form.platform,
+        inputDevice: form.inputDevice,
         laps: laps.length > 0 ? laps.map((l, i) => ({
           lap: i + 1,
           time: l.time,
@@ -610,6 +616,24 @@ export default function Sessions() {
                   <label className="field-label">Assists</label>
                   <select value={form.assists} onChange={e => set('assists', e.target.value)}>
                     {ASSISTS.map(a => <option key={a}>{a}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label className="field-label">Game Version</label>
+                  <input type="text" placeholder="e.g. F1 25 v1.2" value={form.gameVersion} onChange={e => set('gameVersion', e.target.value)} />
+                </div>
+                <div className="field">
+                  <label className="field-label">Platform</label>
+                  <select value={form.platform} onChange={e => set('platform', e.target.value)}>
+                    <option value="">Select Platform</option>
+                    {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label className="field-label">Input Device</label>
+                  <select value={form.inputDevice} onChange={e => set('inputDevice', e.target.value)}>
+                    <option value="">Select Input</option>
+                    {INPUT_DEVICES.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="field">

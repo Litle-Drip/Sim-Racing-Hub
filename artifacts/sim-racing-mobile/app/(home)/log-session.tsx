@@ -183,6 +183,9 @@ export default function LogSessionScreen() {
         rating,
         notes: notes.trim(),
         penalty: "",
+        gameVersion: "",
+        platform: "",
+        inputDevice: "",
       },
     });
   };

@@ -42,6 +42,9 @@ export interface SessionRecord {
   rating: number;
   notes: string;
   penalty: string;
+  gameVersion: string;
+  platform: string;
+  inputDevice: string;
   isPublic?: boolean;
   sharedAt?: string | null;
   publicNote?: string | null;
@@ -68,6 +71,9 @@ export interface CreateSessionRequest {
   rating: number;
   notes: string;
   penalty: string;
+  gameVersion?: string;
+  platform?: string;
+  inputDevice?: string;
   laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>;
 }
 
@@ -82,10 +88,14 @@ export interface CommunitySessionRecord {
   tires: string;
   conditions: string;
   penalty: string;
+  gameVersion: string;
+  platform: string;
+  inputDevice: string;
   publicNote?: string | null;
   authorName: string;
   isOwn: boolean;
   sharedAt?: string | null;
+  rating: number;
 }
 
 export interface ShareSessionRequest {
@@ -117,6 +127,7 @@ export interface SetupRecord {
   onThrottle: string;
   offThrottle: string;
   notes: string;
+  gameVersion: string;
   isPublic?: boolean;
   sharedAt?: string | null;
 }
@@ -186,6 +197,7 @@ export interface CreateSetupRequest {
   onThrottle: string;
   offThrottle: string;
   notes: string;
+  gameVersion?: string;
 }
 
 export interface TrackNotesRecord {

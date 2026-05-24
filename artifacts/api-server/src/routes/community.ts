@@ -71,6 +71,7 @@ function serializeCommunitySetup(
     onThrottle: r.onThrottle,
     offThrottle: r.offThrottle,
     notes: r.notes,
+    gameVersion: r.gameVersion,
     authorName,
     isOwn,
     avgRating,
@@ -248,6 +249,7 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
       onThrottle: source.onThrottle,
       offThrottle: source.offThrottle,
       notes: source.notes,
+      gameVersion: source.gameVersion,
       isPublic: false,
     });
 
@@ -280,6 +282,7 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
       onThrottle: saved.onThrottle,
       offThrottle: saved.offThrottle,
       notes: saved.notes,
+      gameVersion: saved.gameVersion,
       isPublic: saved.isPublic,
       sharedAt: saved.sharedAt ? saved.sharedAt.toISOString() : null,
     });
@@ -289,8 +292,21 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
   }
 });
 
+function lapToSeconds(lap: string): number {
+  if (!lap || !lap.includes(":")) {
+    const n = parseFloat(lap);
+    return isNaN(n) ? Infinity : n;
+  }
+  const parts = lap.split(":");
+  const mins = parseFloat(parts[0]);
+  const secs = parseFloat(parts[1]);
+  if (isNaN(mins) || isNaN(secs)) return Infinity;
+  return mins * 60 + secs;
+}
+
 router.get("/community/sessions", async (req, res) => {
   const { userId: currentUserId } = getAuth(req);
+  const { sort } = req.query as Record<string, string | undefined>;
 
   try {
     const rows = await db
@@ -301,26 +317,36 @@ router.get("/community/sessions", async (req, res) => {
     const userIds = [...new Set(rows.map((r) => r.userId))];
     const nameMap = await getDisplayNames(userIds);
 
-    res.json(
-      rows
-        .sort((a, b) => (b.sharedAt?.getTime() ?? 0) - (a.sharedAt?.getTime() ?? 0))
-        .map((r) => ({
-          id: r.id,
-          date: r.date,
-          trackId: r.trackId,
-          car: r.car,
-          type: r.type,
-          bestLap: r.bestLap,
-          avgLap: r.avgLap,
-          tires: r.tires,
-          conditions: r.conditions,
-          penalty: r.penalty,
-          publicNote: r.publicNote ?? null,
-          authorName: nameMap[r.userId] ?? "Anonymous",
-          isOwn: currentUserId ? r.userId === currentUserId : false,
-          sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
-        })),
-    );
+    const mapped = rows.map((r) => ({
+      id: r.id,
+      date: r.date,
+      trackId: r.trackId,
+      car: r.car,
+      type: r.type,
+      bestLap: r.bestLap,
+      avgLap: r.avgLap,
+      tires: r.tires,
+      conditions: r.conditions,
+      penalty: r.penalty,
+      gameVersion: r.gameVersion,
+      platform: r.platform,
+      inputDevice: r.inputDevice,
+      publicNote: r.publicNote ?? null,
+      authorName: nameMap[r.userId] ?? "Anonymous",
+      isOwn: currentUserId ? r.userId === currentUserId : false,
+      sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
+      rating: r.rating,
+    }));
+
+    if (sort === "recent") {
+      mapped.sort((a, b) => (b.sharedAt ?? "").localeCompare(a.sharedAt ?? ""));
+    } else if (sort === "rating") {
+      mapped.sort((a, b) => b.rating - a.rating);
+    } else {
+      mapped.sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap));
+    }
+
+    res.json(mapped);
   } catch (err) {
     req.log.error({ err }, "Failed to get community sessions");
     res.status(500).json({ error: "Internal server error" });
