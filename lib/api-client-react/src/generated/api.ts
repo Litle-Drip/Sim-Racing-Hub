@@ -385,32 +385,43 @@ export const useShareSession = <TError = ErrorType<UnauthorizedResponse | NotFou
       return useMutation(getShareSessionMutationOptions(options));
     }
 
-export const getGetCommunitySessionsUrl = () => {
-  return `/api/community/sessions`
+export const getGetCommunitySessionsUrl = (params?: GetCommunitySessionsParams) => {
+  const normalizedParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) normalizedParams.append(key, value);
+    });
+  }
+  const qs = normalizedParams.toString();
+  return `/api/community/sessions${qs ? `?${qs}` : ''}`;
 }
+
+export type GetCommunitySessionsParams = {
+  sort?: string;
+};
 
 /**
  * @summary Get all publicly shared sessions
  */
-export const getCommunitySessions = async (options?: RequestInit): Promise<CommunitySessionRecord[]> => {
-  return customFetch<CommunitySessionRecord[]>(getGetCommunitySessionsUrl(),
+export const getCommunitySessions = async (params?: GetCommunitySessionsParams, options?: RequestInit): Promise<CommunitySessionRecord[]> => {
+  return customFetch<CommunitySessionRecord[]>(getGetCommunitySessionsUrl(params),
   {
     ...options,
     method: 'GET'
   }
 );}
 
-export const getGetCommunitySessionsQueryKey = () => {
-    return [`/api/community/sessions`] as const;
+export const getGetCommunitySessionsQueryKey = (params?: GetCommunitySessionsParams) => {
+    return [`/api/community/sessions`, ...(params ? [params] : [])] as const;
     }
 
-export const getGetCommunitySessionsQueryOptions = <TData = Awaited<ReturnType<typeof getCommunitySessions>>, TError = ErrorType<unknown>>(options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetCommunitySessionsQueryOptions = <TData = Awaited<ReturnType<typeof getCommunitySessions>>, TError = ErrorType<unknown>>(params?: GetCommunitySessionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
-  const queryKey =  queryOptions?.queryKey ?? getGetCommunitySessionsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetCommunitySessionsQueryKey(params);
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunitySessions>>> = ({ signal }) => getCommunitySessions({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunitySessions>>> = ({ signal }) => getCommunitySessions(params, { signal, ...requestOptions });
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData> & { queryKey: QueryKey }
 }
@@ -422,10 +433,11 @@ export type GetCommunitySessionsQueryError = ErrorType<unknown>
  * @summary Get all publicly shared sessions
  */
 export function useGetCommunitySessions<TData = Awaited<ReturnType<typeof getCommunitySessions>>, TError = ErrorType<unknown>>(
+  params?: GetCommunitySessionsParams,
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetCommunitySessionsQueryOptions(options)
+  const queryOptions = getGetCommunitySessionsQueryOptions(params, options)
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
   return { ...query, queryKey: queryOptions.queryKey };
 }

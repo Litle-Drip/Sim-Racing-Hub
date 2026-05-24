@@ -37,6 +37,8 @@ export const TIRE_COMPOUNDS = ["Soft", "Medium", "Hard", "Inter", "Wet"] as cons
 export const SESSION_TYPES = ["Practice", "Qualifying", "Race", "Hotlap"] as const;
 export const CONDITIONS = ["Dry", "Damp", "Wet"] as const;
 export const ASSISTS = ["None", "Partial", "Full"] as const;
+export const PLATFORMS = ["PC", "PlayStation", "Xbox"] as const;
+export const INPUT_DEVICES = ["Wheel", "Controller"] as const;
 
 export function getTrackById(id: string): F1Track | undefined {
   return F1_TRACKS.find((t) => t.id === id);

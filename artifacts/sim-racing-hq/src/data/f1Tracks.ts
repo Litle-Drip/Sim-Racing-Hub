@@ -39,3 +39,18 @@ export const SESSION_TYPES = ['Practice', 'Qualifying', 'Race', 'Hotlap'];
 export const CONDITIONS = ['Dry', 'Damp', 'Wet'];
 export const ASSISTS = ['None', 'Partial', 'Full'];
 export const SETUP_TAGS = ['Qualifying', 'Race', 'Wet', 'Test', 'Sprint'];
+export const PLATFORMS = ['PC', 'PlayStation', 'Xbox'];
+export const INPUT_DEVICES = ['Wheel', 'Controller'];
+
+export const F1_25_CARS = [
+  'Red Bull RB21',
+  'McLaren MCL39',
+  'Ferrari SF-25',
+  'Mercedes W16',
+  'Aston Martin AMR25',
+  'Alpine A525',
+  'Haas VF-25',
+  'RB VCARB 02',
+  'Williams FW47',
+  'Sauber C45',
+];
