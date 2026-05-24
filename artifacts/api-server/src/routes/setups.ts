@@ -84,6 +84,10 @@ router.post("/setups", requireAuth, async (req, res) => {
       .from(setupsTable)
       .where(and(eq(setupsTable.id, data.id as string), eq(setupsTable.userId, userId)));
 
+    if (!saved) {
+      res.status(500).json({ error: "Failed to retrieve created setup" });
+      return;
+    }
     res.status(201).json(serializeSetup(saved));
   } catch (err) {
     req.log.error({ err }, "Failed to create setup");

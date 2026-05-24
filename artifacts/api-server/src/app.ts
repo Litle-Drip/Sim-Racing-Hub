@@ -35,8 +35,17 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
-app.use(express.json());
+const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
+  : undefined;
+
+app.use(
+  cors({
+    credentials: true,
+    origin: ALLOWED_ORIGINS ?? true,
+  }),
+);
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // On Replit, publishableKeyFromHost derives a key tied to the managed Clerk
