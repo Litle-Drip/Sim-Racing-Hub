@@ -27,5 +27,6 @@ export interface SessionRecord {
   penalty: string;
   isPublic?: boolean;
   sharedAt?: string | null;
+  laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }> | null;
   isPB: boolean;
 }

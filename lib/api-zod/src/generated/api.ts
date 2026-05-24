@@ -41,6 +41,15 @@ export const GetSessionsResponseItem = zod.object({
   "penalty": zod.string(),
   "isPublic": zod.boolean().optional(),
   "sharedAt": zod.string().nullish(),
+  "laps": zod.array(zod.object({
+    "lap": zod.number(),
+    "time": zod.string(),
+    "s1": zod.string(),
+    "s2": zod.string(),
+    "s3": zod.string(),
+    "tires": zod.string(),
+    "penalty": zod.string()
+  })).nullish(),
   "isPB": zod.boolean()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
@@ -67,7 +76,16 @@ export const CreateSessionBody = zod.object({
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string(),
-  "penalty": zod.string()
+  "penalty": zod.string(),
+  "laps": zod.array(zod.object({
+    "lap": zod.number(),
+    "time": zod.string(),
+    "s1": zod.string(),
+    "s2": zod.string(),
+    "s3": zod.string(),
+    "tires": zod.string(),
+    "penalty": zod.string()
+  })).optional()
 })
 
 

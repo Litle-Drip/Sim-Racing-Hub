@@ -9,6 +9,8 @@ import {
 
 const router = Router();
 
+type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string };
+
 function lapToSeconds(lap: string): number {
   if (!lap || !lap.includes(":")) {
     const n = parseFloat(lap);
@@ -21,10 +23,30 @@ function lapToSeconds(lap: string): number {
   return mins * 60 + secs;
 }
 
+function secondsToLap(s: number): string {
+  const m = Math.floor(s / 60);
+  const rem = s - m * 60;
+  return `${m}:${rem.toFixed(3).padStart(6, "0")}`;
+}
+
 function isFasterLap(a: string, b: string): boolean {
   if (!a || a.trim() === "") return false;
   if (!b || b.trim() === "") return true;
   return lapToSeconds(a) < lapToSeconds(b);
+}
+
+function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string; worstLap: string } {
+  const valid = laps.filter(l => l.time && l.time.trim() !== "");
+  if (valid.length === 0) return { bestLap: "", avgLap: "", worstLap: "" };
+  const times = valid.map(l => lapToSeconds(l.time));
+  const best = Math.min(...times);
+  const worst = Math.max(...times);
+  const avg = times.reduce((a, b) => a + b, 0) / times.length;
+  return {
+    bestLap: secondsToLap(best),
+    avgLap: secondsToLap(avg),
+    worstLap: secondsToLap(worst),
+  };
 }
 
 async function recalcPBsForUser(userId: string) {
@@ -76,6 +98,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     penalty: r.penalty,
     isPublic: r.isPublic,
     sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
+    laps: r.laps ?? null,
     isPB: r.isPB,
   };
 }
@@ -104,6 +127,19 @@ router.post("/sessions", requireAuth, async (req, res) => {
   }
 
   const data = parsed.data;
+  const incomingLaps = (data.laps ?? []) as LapRecord[];
+
+  // Auto-compute best/avg/worst from laps if laps provided and summary fields are blank
+  let bestLap = data.bestLap;
+  let avgLap = data.avgLap;
+  let worstLap = data.worstLap;
+  if (incomingLaps.length > 0) {
+    const computed = computeLapSummary(incomingLaps);
+    if (!bestLap) bestLap = computed.bestLap;
+    if (!avgLap) avgLap = computed.avgLap;
+    if (!worstLap) worstLap = computed.worstLap;
+  }
+
   try {
     await db.insert(sessionsTable).values({
       id: data.id,
@@ -112,9 +148,9 @@ router.post("/sessions", requireAuth, async (req, res) => {
       trackId: data.trackId,
       car: data.car,
       type: data.type,
-      bestLap: data.bestLap,
-      avgLap: data.avgLap,
-      worstLap: data.worstLap,
+      bestLap,
+      avgLap,
+      worstLap,
       s1: data.s1,
       s2: data.s2,
       s3: data.s3,
@@ -125,6 +161,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
       rating: data.rating,
       notes: data.notes,
       penalty: data.penalty,
+      laps: incomingLaps.length > 0 ? incomingLaps : null,
       isPB: false,
     });
 
