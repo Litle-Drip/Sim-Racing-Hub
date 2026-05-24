@@ -10,6 +10,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, ASSISTS, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
+import { CarCombobox } from '../components/CarCombobox';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -587,7 +588,7 @@ export default function Sessions() {
                 </div>
                 <div className="field">
                   <label className="field-label">Car <span style={{ color: 'var(--red)' }}>*</span></label>
-                  <input type="text" placeholder="e.g. Ferrari SF-24" value={form.car} onChange={e => { set('car', e.target.value); setFormErrors(fe => ({ ...fe, car: '' })); }} style={formErrors.car ? { borderBottomColor: 'var(--red)' } : {}} />
+                  <CarCombobox value={form.car} onChange={v => { set('car', v); setFormErrors(fe => ({ ...fe, car: '' })); }} error={!!formErrors.car} />
                   {formErrors.car && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.car}</span>}
                 </div>
                 <div className="field">

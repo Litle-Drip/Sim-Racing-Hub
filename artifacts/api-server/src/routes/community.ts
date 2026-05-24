@@ -70,7 +70,6 @@ function serializeCommunitySetup(
     brakePressure: r.brakePressure,
     onThrottle: r.onThrottle,
     offThrottle: r.offThrottle,
-    notes: r.notes,
     gameVersion: r.gameVersion,
     authorName,
     isOwn,
