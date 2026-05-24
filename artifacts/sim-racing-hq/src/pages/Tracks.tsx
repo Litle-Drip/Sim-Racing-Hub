@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Plus, X } from 'lucide-react';
-import { F1_TRACKS, F1Track } from '../data/f1Tracks';
+import { F1_TRACKS, F1Track, CORNER_NAMES } from '../data/f1Tracks';
 import { useGetSessions, useGetTrackNotes, useUpsertTrackNotes, getGetTrackNotesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CornerNote, SessionRecord } from '@workspace/api-client-react';
@@ -146,10 +146,11 @@ function TrackDetail({
 
   const [notesId] = useState(() => crypto.randomUUID());
   const [corners, setCorners] = useState<CornerNote[]>(() => {
+    const names = CORNER_NAMES[track.id] || [];
     return Array.from({ length: track.corners }, (_, i) => ({
       id: crypto.randomUUID(),
       number: i + 1,
-      name: '',
+      name: names[i] || '',
       gear: '',
       brakingPoint: '',
       lineNotes: '',
@@ -204,11 +205,13 @@ function TrackDetail({
     });
   };
 
-  const bestLap = trackSessions.reduce((best, s) => {
+  const pbSession = trackSessions.reduce<SessionRecord | null>((best, s) => {
     if (!s.bestLap || s.bestLap.trim() === '') return best;
-    if (!best || lapToSeconds(s.bestLap) < lapToSeconds(best)) return s.bestLap;
+    if (!best || lapToSeconds(s.bestLap) < lapToSeconds(best.bestLap)) return s;
     return best;
-  }, '');
+  }, null);
+  const bestLap = pbSession?.bestLap || '';
+  const pbCar = pbSession?.car || '';
   const bestS1 = trackSessions.reduce((best, s) => (!s.s1 || s.s1.trim() === '') ? best : (!best || parseFloat(s.s1) < parseFloat(best)) ? s.s1 : best, '');
   const bestS2 = trackSessions.reduce((best, s) => (!s.s2 || s.s2.trim() === '') ? best : (!best || parseFloat(s.s2) < parseFloat(best)) ? s.s2 : best, '');
   const bestS3 = trackSessions.reduce((best, s) => (!s.s3 || s.s3.trim() === '') ? best : (!best || parseFloat(s.s3) < parseFloat(best)) ? s.s3 : best, '');
@@ -230,16 +233,17 @@ function TrackDetail({
 
       <div className="track-stats-row">
         {[
-          { label: 'PB Time', value: bestLap || '—', mono: true },
+          { label: 'PB Time', value: bestLap || '—', mono: true, sub: pbCar },
           { label: 'Best S1', value: bestS1 || '—', mono: true },
           { label: 'Best S2', value: bestS2 || '—', mono: true },
           { label: 'Best S3', value: bestS3 || '—', mono: true },
           { label: 'Sessions', value: String(trackSessions.length), mono: false },
           { label: 'Last Driven', value: lastDriven || 'Never', mono: false },
-        ].map(({ label, value, mono }) => (
+        ].map(({ label, value, mono, sub }) => (
           <div key={label} className="track-stat">
             <div className="track-stat-label">{label}</div>
             <div className={`track-stat-value${!mono || value === '—' || value === 'Never' ? ' gray' : ''}`}>{value}</div>
+            {sub && <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 2 }}>{sub}</div>}
           </div>
         ))}
       </div>

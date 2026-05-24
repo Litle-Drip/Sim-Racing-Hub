@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { Star, Download, Users } from 'lucide-react';
 import {
   useGetCommunitySetups,
@@ -64,6 +64,12 @@ function StarRating({
       <span className="star-count">({count})</span>
     </div>
   );
+}
+
+function lapToSeconds(lap: string): number {
+  const parts = lap.split(':');
+  if (parts.length === 2) return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+  return parseFloat(lap) || Infinity;
 }
 
 function trackLabel(id: string) {
@@ -141,7 +147,7 @@ function CommunitySetupCard({
   );
 }
 
-function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) {
+function CommunitySessionCard({ session, onClick }: { session: CommunitySessionRecord; onClick?: () => void }) {
   const params = [
     { label: 'Avg Lap', value: session.avgLap || '—' },
     { label: 'Tires', value: session.tires },
@@ -152,7 +158,7 @@ function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) 
   }
 
   return (
-    <div className="community-card">
+    <div className="community-card" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
       <div className="community-card-header">
         <div className="community-card-left">
           <div className="community-card-title" style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--teal)' }}>
@@ -195,6 +201,7 @@ function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) 
         <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
           {session.date}
         </span>
+        {onClick && <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>View Details →</span>}
       </div>
     </div>
   );
@@ -202,7 +209,7 @@ function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) 
 
 export default function Community() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'setups' | 'sessions'>('setups');
+  const [tab, setTab] = useState<'setups' | 'sessions' | 'leaderboard'>('setups');
   const [filterTrack, setFilterTrack] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
@@ -275,6 +282,22 @@ export default function Community() {
     });
   }, [sessions, filterTrack, filterType, filterCar, filterPlatform, filterInput]);
 
+  const leaderboard = useMemo(() => {
+    const byTrack: Record<string, CommunitySessionRecord> = {};
+    sessions.forEach(s => {
+      if (!s.bestLap || s.bestLap.trim() === '') return;
+      const existing = byTrack[s.trackId];
+      if (!existing || lapToSeconds(s.bestLap) < lapToSeconds(existing.bestLap)) {
+        byTrack[s.trackId] = s;
+      }
+    });
+    return F1_TRACKS
+      .filter(t => byTrack[t.id])
+      .map(t => ({ track: t, session: byTrack[t.id] }));
+  }, [sessions]);
+
+  const [detailSession, setDetailSession] = useState<CommunitySessionRecord | null>(null);
+
   return (
     <div className="page">
       <div className="page-header">
@@ -282,13 +305,15 @@ export default function Community() {
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
           {tab === 'setups'
             ? `${setups.length} shared setup${setups.length !== 1 ? 's' : ''}`
-            : `${sessions.length} shared session${sessions.length !== 1 ? 's' : ''}`}
+            : tab === 'sessions'
+            ? `${sessions.length} shared session${sessions.length !== 1 ? 's' : ''}`
+            : `${leaderboard.length} track${leaderboard.length !== 1 ? 's' : ''}`}
         </div>
       </div>
 
       {/* Tab switcher */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
-        {(['setups', 'sessions'] as const).map(t => (
+        {(['setups', 'sessions', 'leaderboard'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -306,7 +331,7 @@ export default function Community() {
               marginBottom: -1,
             }}
           >
-            {t === 'setups' ? 'Setups' : 'Sessions'}
+            {t === 'setups' ? 'Setups' : t === 'sessions' ? 'Sessions' : 'Leaderboard'}
           </button>
         ))}
       </div>
@@ -432,11 +457,108 @@ export default function Community() {
           ) : (
             <div className="community-grid">
               {filteredSessions.map((session) => (
-                <CommunitySessionCard key={session.id} session={session} />
+                <CommunitySessionCard key={session.id} session={session} onClick={() => setDetailSession(session)} />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {tab === 'leaderboard' && (
+        <>
+          {sessionsLoading ? (
+            <div className="card" style={{ padding: 0 }}>
+              <div className="empty-state">
+                <div className="empty-state-title">Loading Leaderboard…</div>
+              </div>
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div className="card" style={{ padding: 0 }}>
+              <div className="empty-state">
+                <div className="empty-state-title">No Leaderboard Data</div>
+                <div className="empty-state-desc">
+                  Share sessions with best lap times to populate the leaderboard.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Track</th>
+                    <th>Best Time</th>
+                    <th>Driver</th>
+                    <th>Car</th>
+                    <th>Platform</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.map(({ track, session }) => (
+                    <tr key={track.id}>
+                      <td>{track.flag} {track.short}</td>
+                      <td><span className="pb-time">{session.bestLap}</span></td>
+                      <td style={{ fontFamily: 'var(--font-body)' }}>{session.authorName}</td>
+                      <td>{session.car}</td>
+                      <td>{session.platform || '—'}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{session.date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Session detail modal */}
+      {detailSession && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setDetailSession(null); }}>
+          <div className="modal" style={{ maxWidth: 560 }}>
+            <div className="modal-header">
+              <span className="modal-title">Session Details</span>
+              <button className="modal-close" onClick={() => setDetailSession(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 28, color: 'var(--teal)' }}>
+                  {detailSession.bestLap || '—'}
+                </span>
+                <span className={`badge ${TYPE_BADGE[detailSession.type] || 'badge-practice'}`}>{detailSession.type}</span>
+              </div>
+
+              <div className="form-grid" style={{ gap: '12px 24px' }}>
+                {[
+                  { label: 'Track', value: trackLabel(detailSession.trackId) },
+                  { label: 'Car', value: detailSession.car },
+                  { label: 'Driver', value: detailSession.authorName },
+                  { label: 'Date', value: detailSession.date },
+                  { label: 'Avg Lap', value: detailSession.avgLap || '—' },
+                  { label: 'Tires', value: detailSession.tires },
+                  { label: 'Conditions', value: detailSession.conditions },
+                  { label: 'Rating', value: detailSession.rating ? `${detailSession.rating}/5` : '—' },
+                  ...(detailSession.platform ? [{ label: 'Platform', value: detailSession.platform }] : []),
+                  ...(detailSession.inputDevice ? [{ label: 'Input', value: detailSession.inputDevice }] : []),
+                  ...(detailSession.gameVersion ? [{ label: 'Game Version', value: detailSession.gameVersion }] : []),
+                  ...(detailSession.penalty && detailSession.penalty.trim() !== '' ? [{ label: 'Penalty', value: detailSession.penalty }] : []),
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {detailSession.publicNote && (
+                <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Note</div>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{detailSession.publicNote}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
