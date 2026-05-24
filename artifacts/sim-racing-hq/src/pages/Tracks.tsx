@@ -111,12 +111,13 @@ function EditableCell({
         display: 'block',
         padding: '4px 6px',
         minHeight: 24,
-        color: 'var(--white)',
+        color: val ? 'var(--white)' : 'var(--gray-mid)',
         fontFamily: 'var(--font-body)',
-        fontSize: 13,
+        fontSize: val ? 13 : 11,
+        opacity: val ? 1 : 0.4,
       }}
     >
-      {val || <span style={{ color: 'var(--gray)', fontStyle: 'italic', opacity: 0.5, fontSize: 11 }}>{placeholder || '—'}</span>}
+      {val || '—'}
     </span>
   );
 }

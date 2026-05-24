@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { useGetSessions } from '@workspace/api-client-react';
@@ -212,15 +212,20 @@ export default function Progress() {
 
       <div className="chart-section">
         <div className="section-title">Lap Time Variance</div>
-        {varianceData.length === 0 ? (
+        {!filterTrack ? (
+          <div className="empty-state">
+            <div className="empty-state-title">Select a Track</div>
+            <div className="empty-state-desc">Choose a specific track above to see lap time variance.</div>
+          </div>
+        ) : varianceData.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-title">No Data Yet</div>
             <div className="empty-state-desc">Log sessions with best, avg, and worst laps to see variance.</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={varianceData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid stroke="#1E1E1E" vertical={false} />
+            <LineChart data={varianceData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
+              <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
                 tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#A8A8A8', letterSpacing: '0.06em' }}
@@ -236,11 +241,27 @@ export default function Progress() {
                 width={56}
               />
               <Tooltip content={<LapTooltip />} />
-              <Bar dataKey="best" name="Best" fill="#00D2BE" />
-              <Bar dataKey="avg" name="Average" fill="#555555" />
-              <Bar dataKey="worst" name="Worst" fill="rgba(232,0,45,0.4)" />
-            </BarChart>
+              <Line type="monotone" dataKey="worst" name="Worst" stroke="rgba(232,0,45,0.6)" strokeWidth={1.5} dot={{ r: 3, fill: 'rgba(232,0,45,0.6)' }} />
+              <Line type="monotone" dataKey="avg" name="Average" stroke="#555555" strokeWidth={1.5} dot={{ r: 3, fill: '#555555' }} />
+              <Line type="monotone" dataKey="best" name="Best" stroke="#00D2BE" strokeWidth={2} dot={{ r: 3, fill: '#00D2BE' }} />
+            </LineChart>
           </ResponsiveContainer>
+        )}
+        {filterTrack && varianceData.length > 0 && (
+          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: '#00D2BE', display: 'inline-block' }} />
+              Best
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: '#555555', display: 'inline-block' }} />
+              Average
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: 'rgba(232,0,45,0.6)', display: 'inline-block' }} />
+              Worst
+            </div>
+          </div>
         )}
       </div>
 

@@ -4,6 +4,7 @@ import { useGetSetups, useCreateSetup, useDeleteSetup, useShareSetup, getGetSetu
 import { useQueryClient } from '@tanstack/react-query';
 import type { SetupRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, SETUP_TAGS } from '../data/f1Tracks';
+import { CarCombobox } from '../components/CarCombobox';
 
 const defaultForm = (): Omit<SetupRecord, 'id'> => ({
   label: '',
@@ -402,7 +403,7 @@ export default function Setups() {
                 </div>
                 <div className="field">
                   <label className="field-label">Car <span style={{ color: 'var(--red)' }}>*</span></label>
-                  <input type="text" placeholder="Ferrari SF-24" value={form.car} onChange={e => { setField('car', e.target.value); setFormErrors(fe => ({ ...fe, car: '' })); }} style={formErrors.car ? { borderBottomColor: 'var(--red)' } : {}} />
+                  <CarCombobox value={form.car} onChange={v => { setField('car', v); setFormErrors(fe => ({ ...fe, car: '' })); }} error={!!formErrors.car} />
                   {formErrors.car && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.car}</span>}
                 </div>
                 <div className="field">

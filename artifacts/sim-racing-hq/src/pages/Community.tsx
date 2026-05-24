@@ -119,10 +119,6 @@ function CommunitySetupCard({
         ))}
       </div>
 
-      {setup.notes && (
-        <div className="community-card-notes">{setup.notes}</div>
-      )}
-
       <div className="community-card-footer">
         <StarRating
           avg={setup.avgRating}
