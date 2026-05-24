@@ -50,7 +50,7 @@ export default function Nav({ page, setPage }: NavProps) {
         <div className="nav-logo">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div className="nav-logo-title">Sim Racing HQ</div>
+              <div className="nav-logo-title">F1 Sim Hub</div>
               <div className="nav-logo-sub">Driver Dashboard</div>
             </div>
             <button

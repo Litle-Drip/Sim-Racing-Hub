@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, ASSISTS, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
+import { LapTimeInput } from '../components/LapTimeInput';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -576,7 +577,7 @@ export default function Sessions() {
               <div className="form-grid">
                 <div className="field">
                   <label className="field-label">Date</label>
-                  <input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
+                  <input type="date" autoFocus value={form.date} onChange={e => set('date', e.target.value)} />
                 </div>
                 <div className="field">
                   <label className="field-label">Track <span style={{ color: 'var(--red)' }}>*</span></label>
@@ -659,16 +660,16 @@ export default function Sessions() {
                 <div className="form-grid">
                   <div className="field">
                     <label className="field-label">Best Lap {laps.length === 0 && <span style={{ color: 'var(--red)' }}>*</span>}</label>
-                    <input type="text" placeholder="1:23.456" value={form.bestLap} onChange={e => { set('bestLap', e.target.value); setFormErrors(fe => ({ ...fe, bestLap: '' })); }} style={formErrors.bestLap ? { borderBottomColor: 'var(--red)' } : {}} />
+                    <LapTimeInput value={form.bestLap} onChange={v => { set('bestLap', v); setFormErrors(fe => ({ ...fe, bestLap: '' })); }} error={!!formErrors.bestLap} />
                     {formErrors.bestLap && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.bestLap}</span>}
                   </div>
                   <div className="field">
                     <label className="field-label">Avg Lap</label>
-                    <input type="text" placeholder="1:24.123" value={form.avgLap} onChange={e => set('avgLap', e.target.value)} />
+                    <LapTimeInput value={form.avgLap} onChange={v => set('avgLap', v)} placeholder="1:24.123" />
                   </div>
                   <div className="field">
                     <label className="field-label">Worst Lap</label>
-                    <input type="text" placeholder="1:26.789" value={form.worstLap} onChange={e => set('worstLap', e.target.value)} />
+                    <LapTimeInput value={form.worstLap} onChange={v => set('worstLap', v)} placeholder="1:26.789" />
                   </div>
                 </div>
               </div>

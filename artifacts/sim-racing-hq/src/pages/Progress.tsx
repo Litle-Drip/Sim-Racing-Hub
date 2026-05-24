@@ -135,6 +135,16 @@ export default function Progress() {
         <h1 className="page-title">Progression</h1>
       </div>
 
+      {allSessions.length === 0 ? (
+        <div className="empty-state" style={{ marginTop: 40 }}>
+          <div className="empty-state-title">No Sessions Logged Yet</div>
+          <div className="empty-state-desc" style={{ maxWidth: 420, lineHeight: 1.7 }}>
+            Log sessions with <strong>best lap</strong>, <strong>average lap</strong>, and <strong>worst lap</strong> times to see your
+            progression charts populate here. Head to <strong>Sessions</strong> to log your first race or hotlap.
+          </div>
+        </div>
+      ) : (
+      <>
       <div className="filter-bar" style={{ marginBottom: 28 }}>
         <select className="filter-select" value={filterTrack} onChange={e => handleTrackChange(e.target.value)}>
           <option value="">All Tracks</option>
@@ -300,6 +310,8 @@ export default function Progress() {
             </tbody>
           </table>
         </div>
+      )}
+      </>
       )}
     </div>
   );

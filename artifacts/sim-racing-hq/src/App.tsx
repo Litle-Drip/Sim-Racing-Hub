@@ -152,38 +152,43 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
             <div style={{ width: 5, height: 22, background: 'var(--red)' }} />
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.12em', color: 'var(--white)', margin: 0 }}>
-            SIM RACING HQ
+            F1 SIM HUB
           </h1>
         </div>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', marginBottom: 12, lineHeight: 1.6 }}>
-          Your personal sim racing performance hub.
+          F1 sim racing tools for every driver.
         </p>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', marginBottom: 40, lineHeight: 1.6 }}>
-          Log sessions, track your PBs, store setups, and analyze your progress — all in one place, synced across every device.
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', marginBottom: 32, lineHeight: 1.6 }}>
+          Log sessions, track your PBs, build setups, and master every circuit.
+          For F1 25 on Xbox, PlayStation and PC.
         </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           <button
             className="btn btn-primary"
-            style={{ minWidth: 140, fontSize: 14 }}
-            onClick={() => setLocation('/sign-up')}
-          >
-            Get Started
-          </button>
-          <button
-            className="btn btn-secondary"
-            style={{ minWidth: 140, fontSize: 14 }}
-            onClick={() => setLocation('/sign-in')}
-          >
-            Sign In
-          </button>
-        </div>
-        <div style={{ marginTop: 20 }}>
-          <button
-            style={{ background: 'none', border: 'none', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+            style={{ minWidth: 260, fontSize: 15, padding: '14px 24px' }}
             onClick={onGuest}
           >
-            Browse as Guest
+            Continue as Guest
           </button>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-secondary"
+              style={{ minWidth: 120, fontSize: 13 }}
+              onClick={() => setLocation('/sign-up')}
+            >
+              Create Account
+            </button>
+            <button
+              className="btn btn-secondary"
+              style={{ minWidth: 120, fontSize: 13 }}
+              onClick={() => setLocation('/sign-in')}
+            >
+              Sign In
+            </button>
+          </div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>
+            No account needed to browse community setups and sessions
+          </p>
         </div>
       </div>
     </div>
@@ -321,7 +326,7 @@ function ClerkProviderWithRoutes() {
         signIn: {
           start: {
             title: 'Welcome back',
-            subtitle: 'Sign in to access your driver dashboard',
+            subtitle: 'Sign in to access your F1 Sim Hub dashboard',
           },
         },
         signUp: {
