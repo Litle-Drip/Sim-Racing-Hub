@@ -45,7 +45,7 @@ function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; ses
           const count = countByTrack[track.id] || 0;
           const pb = pbByTrack[track.id];
           return (
-            <div key={track.id} className="track-card" onClick={() => onSelect(track)}>
+            <div key={track.id} className={`track-card${pb ? ' has-pb' : ''}`} onClick={() => onSelect(track)}>
               {count > 0 && (
                 <div className="track-card-sessions">{count} session{count !== 1 ? 's' : ''}</div>
               )}
