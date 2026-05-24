@@ -111,12 +111,12 @@ function EditableCell({
         display: 'block',
         padding: '4px 6px',
         minHeight: 24,
-        color: val ? 'var(--white)' : 'var(--gray)',
+        color: 'var(--white)',
         fontFamily: 'var(--font-body)',
         fontSize: 13,
       }}
     >
-      {val || <span style={{ color: 'var(--gray)', fontStyle: 'italic' }}>{placeholder || 'Click to edit'}</span>}
+      {val || <span style={{ color: 'var(--gray)', fontStyle: 'italic', opacity: 0.5, fontSize: 11 }}>{placeholder || '—'}</span>}
     </span>
   );
 }
@@ -158,7 +158,13 @@ function TrackDetail({
 
   useEffect(() => {
     if (trackNotesData) {
-      setCorners(trackNotesData.corners as CornerNote[]);
+      // Sanitize legacy sentinel values that were previously used as initial defaults
+      const cleaned = (trackNotesData.corners as CornerNote[]).map(c => ({
+        ...c,
+        gear: c.gear === '3' ? '' : c.gear,
+        brakingPoint: c.brakingPoint === '150m board' ? '' : c.brakingPoint,
+      }));
+      setCorners(cleaned);
     }
   }, [trackNotesData]);
 
@@ -275,10 +281,10 @@ function TrackDetail({
                 <tr key={c.id}>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-mid)' }}>{c.number}</td>
                   <td><EditableCell value={c.name} onSave={v => saveCorner(c.id, 'name', v)} placeholder="Corner name" /></td>
-                  <td><EditableCell value={c.gear} onSave={v => saveCorner(c.id, 'gear', v)} placeholder="3" /></td>
-                  <td><EditableCell value={c.brakingPoint} onSave={v => saveCorner(c.id, 'brakingPoint', v)} placeholder="150m board" /></td>
-                  <td><EditableCell value={c.lineNotes} onSave={v => saveCorner(c.id, 'lineNotes', v)} placeholder="Line notes..." /></td>
-                  <td><EditableCell value={c.myNotes} onSave={v => saveCorner(c.id, 'myNotes', v)} placeholder="Personal notes..." /></td>
+                  <td><EditableCell value={c.gear} onSave={v => saveCorner(c.id, 'gear', v)} placeholder="e.g. 3" /></td>
+                  <td><EditableCell value={c.brakingPoint} onSave={v => saveCorner(c.id, 'brakingPoint', v)} placeholder="e.g. 150m" /></td>
+                  <td><EditableCell value={c.lineNotes} onSave={v => saveCorner(c.id, 'lineNotes', v)} placeholder="click to add" /></td>
+                  <td><EditableCell value={c.myNotes} onSave={v => saveCorner(c.id, 'myNotes', v)} placeholder="click to add" /></td>
                   <td>
                     <button className="btn-danger" style={{ padding: '2px 6px', fontSize: 14, lineHeight: 1 }} onClick={() => deleteCorner(c.id)}>×</button>
                   </td>
