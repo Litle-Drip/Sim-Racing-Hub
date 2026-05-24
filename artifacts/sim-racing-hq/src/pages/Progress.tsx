@@ -117,6 +117,13 @@ export default function Progress() {
     ? Math.max(...progressionData.map(d => d.lapSeconds)) + 2
     : 100;
 
+  const minVarianceY = varianceData.length > 0
+    ? Math.min(...varianceData.map(d => d.best)) - 2
+    : 0;
+  const maxVarianceY = varianceData.length > 0
+    ? Math.max(...varianceData.map(d => d.worst ?? d.best)) + 2
+    : 100;
+
   return (
     <div className="page">
       <div className="page-header">
@@ -138,10 +145,15 @@ export default function Progress() {
 
       <div className="chart-section">
         <div className="section-title">PB Progression</div>
-        {progressionData.length === 0 ? (
+        {!filterTrack ? (
           <div className="empty-state">
-            <div className="empty-state-title">Log Sessions to See Your Progress</div>
-            <div className="empty-state-desc">Your lap time progression chart will appear here once you've logged sessions.</div>
+            <div className="empty-state-title">Select a Track to See PB Progression</div>
+            <div className="empty-state-desc">Mixing lap times from different circuits produces a meaningless line. Choose a specific track above to see how your pace has improved over time.</div>
+          </div>
+        ) : progressionData.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-title">No Sessions at This Track Yet</div>
+            <div className="empty-state-desc">Log a session at this circuit to start tracking your progression.</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
@@ -211,6 +223,7 @@ export default function Progress() {
                 tickLine={false}
               />
               <YAxis
+                domain={[minVarianceY, maxVarianceY]}
                 tickFormatter={formatAxisTick}
                 tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
                 axisLine={{ stroke: '#1E1E1E' }}
