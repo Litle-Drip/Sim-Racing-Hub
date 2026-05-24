@@ -41,6 +41,7 @@ export const GetSessionsResponseItem = zod.object({
   "penalty": zod.string(),
   "isPublic": zod.boolean().optional(),
   "sharedAt": zod.string().nullish(),
+  "publicNote": zod.string().nullish(),
   "laps": zod.array(zod.object({
     "lap": zod.number(),
     "time": zod.string(),

@@ -225,6 +225,7 @@ export default function Sessions() {
   const [filterType, setFilterType] = useState('');
   const [filterCar, setFilterCar] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
+  const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
 
   const { mutate: createSession, isPending: saving } = useCreateSession({
     mutation: {
@@ -249,8 +250,8 @@ export default function Sessions() {
 
   const { mutate: shareSession } = useShareSession({
     mutation: {
-      onSuccess: () => { qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() }); setSharingId(null); },
-      onError: () => setSharingId(null),
+      onSuccess: () => { qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() }); setSharingId(null); setShareModal(null); },
+      onError: () => { setSharingId(null); setShareModal(null); },
     },
   });
 
@@ -351,10 +352,20 @@ export default function Sessions() {
     deleteSession({ id });
   };
 
-  const handleShare = (id: string, e: React.MouseEvent) => {
+  const handleShare = (session: SessionRecord, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSharingId(id);
-    shareSession({ id });
+    if (session.isPublic) {
+      setSharingId(session.id);
+      shareSession({ id: session.id });
+    } else {
+      setShareModal({ id: session.id, publicNote: '' });
+    }
+  };
+
+  const confirmShare = () => {
+    if (!shareModal) return;
+    setSharingId(shareModal.id);
+    shareSession({ id: shareModal.id, publicNote: shareModal.publicNote || undefined });
   };
 
   const closeModal = () => {
@@ -479,7 +490,7 @@ export default function Sessions() {
                             <button
                               className="btn btn-secondary"
                               style={{ fontSize: 11, padding: '4px 10px', color: s.isPublic ? 'var(--teal)' : 'var(--gray-mid)', borderColor: s.isPublic ? 'var(--teal)' : 'var(--gray)' }}
-                              onClick={(e) => handleShare(s.id, e)}
+                              onClick={(e) => handleShare(s, e)}
                               disabled={sharingId === s.id}
                               title={s.isPublic ? 'Remove from Community' : 'Share to Community'}
                             >
@@ -503,6 +514,39 @@ export default function Sessions() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Share Modal ───────────────────────────────────────────────────── */}
+      {shareModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShareModal(null); }}>
+          <div className="modal" style={{ maxWidth: 460 }}>
+            <div className="modal-header">
+              <span className="modal-title">Share to Community</span>
+              <button className="modal-close" onClick={() => setShareModal(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginBottom: 16, lineHeight: 1.6 }}>
+                Your private notes won't be shared. You can optionally add a public description visible to the community.
+              </p>
+              <div className="field">
+                <label className="field-label">Public Description <span style={{ color: 'var(--gray-mid)', fontWeight: 400 }}>(optional)</span></label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Clean hotlap, very consistent on tyres — try reducing rear wing"
+                  value={shareModal.publicNote}
+                  onChange={e => setShareModal(m => m ? { ...m, publicNote: e.target.value } : m)}
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShareModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={confirmShare} disabled={sharingId === shareModal.id}>
+                {sharingId === shareModal.id ? 'Sharing…' : 'Share to Community'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

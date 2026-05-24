@@ -340,17 +340,19 @@ export const getShareSessionUrl = (id: string,) => {
 /**
  * @summary Toggle public sharing on a session
  */
-export const shareSession = async (id: string, options?: RequestInit): Promise<ShareSessionResponse> => {
+export const shareSession = async (id: string, data?: { publicNote?: string }, options?: RequestInit): Promise<ShareSessionResponse> => {
   return customFetch<ShareSessionResponse>(getShareSessionUrl(id),
   {
     ...options,
-    method: 'POST'
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+    body: JSON.stringify(data ?? {}),
   }
 );}
 
 export const getShareSessionMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string; publicNote?: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string; publicNote?: string}, TContext> => {
 
 const mutationKey = ['shareSession'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -359,9 +361,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {...options, mutation: {...options.mutation, mutationKey}}
       : {mutation: { mutationKey, }, request: undefined};
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof shareSession>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
-          return  shareSession(id,requestOptions)
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof shareSession>>, {id: string; publicNote?: string}> = (props) => {
+          const {id, publicNote} = props ?? {};
+          return  shareSession(id, { publicNote }, requestOptions)
         }
 
   return  { mutationFn, ...mutationOptions }}
@@ -373,11 +375,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Toggle public sharing on a session
  */
 export const useShareSession = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string; publicNote?: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof shareSession>>,
         TError,
-        {id: string},
+        {id: string; publicNote?: string},
         TContext
       > => {
       return useMutation(getShareSessionMutationOptions(options));

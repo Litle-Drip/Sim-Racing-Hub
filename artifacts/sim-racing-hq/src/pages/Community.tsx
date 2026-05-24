@@ -179,8 +179,8 @@ function CommunitySessionCard({ session }: { session: CommunitySessionRecord }) 
         ))}
       </div>
 
-      {session.notes && (
-        <div className="community-card-notes">{session.notes}</div>
+      {session.publicNote && (
+        <div className="community-card-notes">{session.publicNote}</div>
       )}
 
       <div className="community-card-footer">

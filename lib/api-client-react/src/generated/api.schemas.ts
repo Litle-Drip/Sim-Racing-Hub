@@ -44,6 +44,7 @@ export interface SessionRecord {
   penalty: string;
   isPublic?: boolean;
   sharedAt?: string | null;
+  publicNote?: string | null;
   laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }> | null;
   isPB: boolean;
 }
@@ -81,10 +82,14 @@ export interface CommunitySessionRecord {
   tires: string;
   conditions: string;
   penalty: string;
-  notes: string;
+  publicNote?: string | null;
   authorName: string;
   isOwn: boolean;
   sharedAt?: string | null;
+}
+
+export interface ShareSessionRequest {
+  publicNote?: string;
 }
 
 export interface ShareSessionResponse {

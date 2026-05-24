@@ -315,7 +315,7 @@ router.get("/community/sessions", async (req, res) => {
           tires: r.tires,
           conditions: r.conditions,
           penalty: r.penalty,
-          notes: r.notes,
+          publicNote: r.publicNote ?? null,
           authorName: nameMap[r.userId] ?? "Anonymous",
           isOwn: currentUserId ? r.userId === currentUserId : false,
           sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,

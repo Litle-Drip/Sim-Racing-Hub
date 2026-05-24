@@ -98,6 +98,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     penalty: r.penalty,
     isPublic: r.isPublic,
     sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
+    publicNote: r.publicNote ?? null,
     laps: r.laps ?? null,
     isPB: r.isPB,
   };
@@ -228,10 +229,15 @@ router.post("/sessions/:id/share", requireAuth, async (req, res) => {
 
     const newIsPublic = !existing.isPublic;
     const sharedAt = newIsPublic ? new Date() : null;
+    const { publicNote } = req.body as { publicNote?: string };
 
     await db
       .update(sessionsTable)
-      .set({ isPublic: newIsPublic, sharedAt })
+      .set({
+        isPublic: newIsPublic,
+        sharedAt,
+        ...(newIsPublic && publicNote !== undefined ? { publicNote: publicNote || null } : {}),
+      })
       .where(and(eq(sessionsTable.id, id), eq(sessionsTable.userId, userId)));
 
     res.json({
