@@ -82,6 +82,26 @@ export default function Dashboard({ setPage }: DashboardProps) {
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 5), [sessions]);
 
+  const neglectedTracks = useMemo(() => {
+    const lastDriven: Record<string, string> = {};
+    sessions.forEach(s => {
+      if (!lastDriven[s.trackId] || s.date > lastDriven[s.trackId]) {
+        lastDriven[s.trackId] = s.date;
+      }
+    });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return F1_TRACKS
+      .filter(t => lastDriven[t.id])
+      .map(t => {
+        const last = new Date(lastDriven[t.id]);
+        const daysSince = Math.floor((today.getTime() - last.getTime()) / 86400000);
+        return { ...t, daysSince };
+      })
+      .filter(t => t.daysSince >= 14)
+      .sort((a, b) => b.daysSince - a.daysSince);
+  }, [sessions]);
+
   const { cells } = useMemo(() => buildHeatmap(sessions), [sessions]);
   const monthLabels = useMemo(() => buildMonthLabels(cells), [cells]);
 
@@ -121,7 +141,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 24 }}>
+        <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
           {monthLabels.map(({ label, col }, idx) => {
             const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
             const spanWidth = (nextCol - col) * 13;
@@ -207,6 +227,40 @@ export default function Dashboard({ setPage }: DashboardProps) {
         <div style={{ marginTop: 24, textAlign: 'center' }}>
           <button className="btn btn-primary" onClick={() => setPage('sessions')}>Log Your First Session</button>
         </div>
+      )}
+
+      {/* Tracks needing attention */}
+      {neglectedTracks.length > 0 && (
+        <>
+          <div className="section-title" style={{ marginTop: 32 }}>Needs Practice — 14+ Days</div>
+          <div style={{
+            display: 'flex',
+            gap: 10,
+            flexWrap: 'wrap',
+            padding: '14px 16px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+          }}>
+            {neglectedTracks.map(t => (
+              <div
+                key={t.id}
+                title={`${t.short} — ${t.daysSince} day${t.daysSince !== 1 ? 's' : ''} ago`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                  cursor: 'pointer',
+                  opacity: 0.85,
+                }}
+                onClick={() => setPage('tracks')}
+              >
+                <span style={{ fontSize: 24 }}>{t.flag}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
