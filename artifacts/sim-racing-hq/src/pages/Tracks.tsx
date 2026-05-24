@@ -158,13 +158,7 @@ function TrackDetail({
 
   useEffect(() => {
     if (trackNotesData) {
-      // Sanitize legacy sentinel values that were previously used as initial defaults
-      const cleaned = (trackNotesData.corners as CornerNote[]).map(c => ({
-        ...c,
-        gear: c.gear === '3' ? '' : c.gear,
-        brakingPoint: c.brakingPoint === '150m board' ? '' : c.brakingPoint,
-      }));
-      setCorners(cleaned);
+      setCorners(trackNotesData.corners as CornerNote[]);
     }
   }, [trackNotesData]);
 
