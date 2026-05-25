@@ -9,7 +9,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, ASSISTS, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
+import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 
@@ -205,6 +205,7 @@ const defaultForm = () => ({
   tires: 'Soft',
   fuelLoad: 50,
   conditions: 'Dry',
+  timeOfDay: '',
   assists: 'None',
   rating: 0,
   notes: '',
@@ -334,7 +335,7 @@ export default function Sessions() {
         s3: laps[0]?.s3 ?? '',
         tires: form.tires,
         fuelLoad: Number(form.fuelLoad),
-        conditions: form.conditions,
+        conditions: form.timeOfDay ? `${form.conditions} · ${form.timeOfDay}` : form.conditions,
         assists: form.assists,
         rating: form.rating,
         notes: form.notes,
@@ -424,8 +425,8 @@ export default function Sessions() {
             <div className="empty-state-title">No Sessions Found</div>
             <div className="empty-state-desc">
               {sessions.length === 0
-                ? 'Log your first session using the button above.'
-                : 'No sessions match your current filters.'}
+                ? 'Log your first session — it takes 30 seconds. Tap "Log Session" above to get started.'
+                : 'No sessions match your current filters. Try adjusting or clearing them.'}
             </div>
           </div>
         </div>
@@ -612,6 +613,13 @@ export default function Sessions() {
                   <label className="field-label">Conditions</label>
                   <select value={form.conditions} onChange={e => set('conditions', e.target.value)}>
                     {CONDITIONS.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label className="field-label">Time of Day</label>
+                  <select value={form.timeOfDay} onChange={e => set('timeOfDay', e.target.value)}>
+                    <option value="">Not Set</option>
+                    {TIME_OF_DAY.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="field">

@@ -44,6 +44,7 @@ function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; ses
         {F1_TRACKS.map(track => {
           const count = countByTrack[track.id] || 0;
           const pb = pbByTrack[track.id];
+          const diff = parseInt(localStorage.getItem(`difficulty_${track.id}`) || '0', 10);
           return (
             <div key={track.id} className={`track-card${pb ? ' has-pb' : ''}`} onClick={() => onSelect(track)}>
               {count > 0 && (
@@ -56,6 +57,13 @@ function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; ses
                 <div className="track-card-pb">{pb}</div>
               ) : (
                 <div className="track-card-pb no-time">No Time</div>
+              )}
+              {diff > 0 && (
+                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 4 }}>
+                  {[1,2,3,4,5].map(i => (
+                    <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i <= diff ? 'var(--red)' : 'var(--border)', opacity: i <= diff ? (0.4 + i * 0.15) : 0.3 }} />
+                  ))}
+                </div>
               )}
             </div>
           );
@@ -119,6 +127,53 @@ function EditableCell({
     >
       {val || '—'}
     </span>
+  );
+}
+
+function DifficultyRating({ trackId }: { trackId: string }) {
+  const key = `difficulty_${trackId}`;
+  const [rating, setRating] = useState(() => {
+    const v = localStorage.getItem(key);
+    return v ? parseInt(v, 10) : 0;
+  });
+  const [hover, setHover] = useState(0);
+
+  const handleClick = (v: number) => {
+    const next = v === rating ? 0 : v;
+    setRating(next);
+    if (next) localStorage.setItem(key, String(next));
+    else localStorage.removeItem(key);
+  };
+
+  const labels = ['', 'Easy', 'Moderate', 'Tricky', 'Hard', 'Brutal'];
+  const display = hover || rating;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Difficulty</span>
+      <div style={{ display: 'flex', gap: 3 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <span
+            key={i}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(0)}
+            onClick={() => handleClick(i)}
+            style={{
+              cursor: 'pointer',
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              background: i <= display ? 'var(--red)' : 'var(--border)',
+              opacity: i <= display ? (0.4 + (i * 0.15)) : 0.5,
+              transition: 'background 0.15s, opacity 0.15s',
+            }}
+          />
+        ))}
+      </div>
+      {display > 0 && (
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)' }}>{labels[display]}</span>
+      )}
+    </div>
   );
 }
 
@@ -228,6 +283,7 @@ function TrackDetail({
         <div className="track-detail-info">
           <h1>{track.name}</h1>
           <p>{track.country} · {trackSessions.length} session{trackSessions.length !== 1 ? 's' : ''}</p>
+          <DifficultyRating trackId={track.id} />
         </div>
       </div>
 
