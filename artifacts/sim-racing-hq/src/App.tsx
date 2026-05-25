@@ -17,6 +17,7 @@ import Community from './pages/Community';
 import PublicSetups from './pages/PublicSetups';
 import PublicTracks from './pages/PublicTracks';
 import PublicLeaderboard from './pages/PublicLeaderboard';
+import QuickLog from './pages/QuickLog';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -137,62 +138,95 @@ function SignUpPage() {
 
 function LandingPage({ onGuest }: { onGuest?: () => void }) {
   const [, setLocation] = useLocation();
+
+  const features = [
+    { icon: '🏁', title: 'Session Log', desc: 'Track every practice, qualifying, and race. Log lap times, tires, weather, and conditions in 30 seconds.' },
+    { icon: '⚙️', title: 'Setup Vault', desc: 'Save and share car setups per track. Tag by game version so nothing goes stale after a patch.' },
+    { icon: '📊', title: 'PB Progression', desc: 'See your personal bests across every circuit. Variance charts show your consistency improving over time.' },
+    { icon: '🗺️', title: 'Track Bible', desc: 'All 24 circuits with real corner names, gear suggestions, braking points, and your personal notes.' },
+    { icon: '👥', title: 'Community', desc: 'Browse shared setups and sessions. Rate setups, filter by car and track, and see how you compare.' },
+    { icon: '🏆', title: 'Leaderboard', desc: 'Fastest lap times per circuit from the community. Compete and see your name on the board.' },
+  ];
+
   return (
-    <div style={{
-      minHeight: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg)',
-      padding: '24px',
-    }}>
-      <div style={{ textAlign: 'center', maxWidth: 520 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 32 }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)' }}>
+      {/* Hero */}
+      <div style={{ padding: '80px 24px 60px', textAlign: 'center', maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 24 }}>
           <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
-            <div style={{ width: 5, height: 10, background: 'var(--red)' }} />
-            <div style={{ width: 5, height: 16, background: 'var(--red)' }} />
-            <div style={{ width: 5, height: 22, background: 'var(--red)' }} />
+            <div style={{ width: 6, height: 12, background: 'var(--red)' }} />
+            <div style={{ width: 6, height: 20, background: 'var(--red)' }} />
+            <div style={{ width: 6, height: 28, background: 'var(--red)' }} />
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.12em', color: 'var(--white)', margin: 0 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.12em', color: 'var(--white)', margin: 0 }}>
             F1 SIM HUB
           </h1>
         </div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', marginBottom: 12, lineHeight: 1.6 }}>
-          F1 sim racing tools for every driver.
+
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 16, lineHeight: 1.4 }}>
+          Your personal F1 sim racing companion
+        </h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', marginBottom: 8, lineHeight: 1.7, maxWidth: 560, margin: '0 auto 8px' }}>
+          Log sessions, track your PBs, build and share setups, and master every circuit on the F1 25 calendar.
         </p>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', marginBottom: 32, lineHeight: 1.6 }}>
-          Log sessions, track your PBs, build setups, and master every circuit.
-          For F1 25 on Xbox, PlayStation and PC.
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', marginBottom: 36, lineHeight: 1.6 }}>
+          For F1 25 on Xbox, PlayStation, and PC — wheel or controller.
         </p>
+
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <button
-            className="btn btn-primary"
-            style={{ minWidth: 260, fontSize: 15, padding: '14px 24px' }}
-            onClick={onGuest}
-          >
-            Continue as Guest
+          <button className="btn btn-primary" style={{ minWidth: 280, fontSize: 16, padding: '16px 28px' }} onClick={onGuest}>
+            Continue as Guest — No Sign Up Required
           </button>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              className="btn btn-secondary"
-              style={{ minWidth: 120, fontSize: 13 }}
-              onClick={() => setLocation('/sign-up')}
-            >
-              Create Account
+            <button className="btn btn-secondary" style={{ minWidth: 140, fontSize: 13 }} onClick={() => setLocation('/sign-up')}>
+              Create Free Account
             </button>
-            <button
-              className="btn btn-secondary"
-              style={{ minWidth: 120, fontSize: 13 }}
-              onClick={() => setLocation('/sign-in')}
-            >
+            <button className="btn btn-secondary" style={{ minWidth: 140, fontSize: 13 }} onClick={() => setLocation('/sign-in')}>
               Sign In
             </button>
           </div>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>
-            No account needed to browse community setups and sessions
-          </p>
         </div>
+      </div>
+
+      {/* What You Get */}
+      <div style={{ padding: '48px 24px', maxWidth: 840, margin: '0 auto' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gray-mid)', textAlign: 'center', marginBottom: 32 }}>
+          Everything you need to get faster
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
+          {features.map(f => (
+            <div key={f.title} className="card" style={{ padding: '20px', textAlign: 'left' }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>{f.icon}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 6 }}>{f.title}</div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', lineHeight: 1.6 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Public Links */}
+      <div style={{ padding: '32px 24px 48px', maxWidth: 840, margin: '0 auto', textAlign: 'center' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 20 }}>
+          Browse without an account
+        </h3>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/setups')}>
+            Community Setups
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/tracks')}>
+            Circuit Guide
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/leaderboard')}>
+            Leaderboard
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: '24px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
+          F1 Sim Hub — Built for the sim racing community. Not affiliated with Formula 1 or Codemasters.
+        </p>
       </div>
     </div>
   );
@@ -384,6 +418,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/setups">{() => <PublicSetups onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/tracks">{() => <PublicTracks onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/leaderboard">{() => <PublicLeaderboard onBack={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/log">{() => <QuickLog onDone={() => window.location.href = basePath || '/'} />}</Route>
           <Route component={HomeRoute} />
         </Switch>
       </QueryClientProvider>

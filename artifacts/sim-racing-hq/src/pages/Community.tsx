@@ -299,8 +299,53 @@ export default function Community() {
 
   const [detailSession, setDetailSession] = useState<CommunitySessionRecord | null>(null);
 
+  const challenge = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const week = Math.floor(((now.getTime() - start.getTime()) / 86400000 + start.getDay()) / 7);
+    const track = F1_TRACKS[week % F1_TRACKS.length];
+    const challengeSessions = sessions
+      .filter(s => s.trackId === track.id && s.bestLap && s.bestLap.trim() !== '')
+      .sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap))
+      .slice(0, 3);
+    return { track, entries: challengeSessions, week };
+  }, [sessions]);
+
   return (
     <div className="page">
+      {/* Weekly Challenge */}
+      <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden', border: '1px solid rgba(232,0,45,0.3)' }}>
+        <div style={{ background: 'rgba(232,0,45,0.08)', padding: '14px 20px', borderBottom: '1px solid rgba(232,0,45,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--red)' }}>Weekly Challenge</span>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
+              {challenge.track.flag} Fastest Lap at {challenge.track.name}
+            </div>
+          </div>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+            Share a session at {challenge.track.short} to compete
+          </span>
+        </div>
+        {challenge.entries.length > 0 ? (
+          <div style={{ padding: '12px 20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {challenge.entries.map((s, i) => (
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
+                  <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
+                  <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
+                  <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: '16px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+            No times submitted yet — be the first to set the pace!
+          </div>
+        )}
+      </div>
+
       <div className="page-header">
         <h1 className="page-title">Community</h1>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
