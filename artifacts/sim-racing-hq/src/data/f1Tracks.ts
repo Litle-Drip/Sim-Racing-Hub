@@ -35,7 +35,7 @@ export const F1_TRACKS: F1Track[] = [
 ];
 
 export const TIRE_COMPOUNDS = ['Soft', 'Medium', 'Hard', 'Inter', 'Wet'];
-export const SESSION_TYPES = ['Practice', 'Qualifying', 'Race', 'Hotlap'];
+export const SESSION_TYPES = ['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'];
 export const CONDITIONS = ['Dry', 'Damp', 'Wet', 'Light Rain', 'Heavy Rain', 'Storm'];
 export const TIME_OF_DAY = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
 export const ASSISTS = ['None', 'Partial', 'Full'];

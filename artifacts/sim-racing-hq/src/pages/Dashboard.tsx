@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useGetSessions, useGetSetups } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -8,6 +8,7 @@ const TYPE_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
   Race: 'badge-race',
   Hotlap: 'badge-hotlap',
+  'Time Trial': 'badge-hotlap',
 };
 
 function RatingDots({ rating }: { rating: number }) {
@@ -105,6 +106,11 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const { cells } = useMemo(() => buildHeatmap(sessions), [sessions]);
   const monthLabels = useMemo(() => buildMonthLabels(cells), [cells]);
 
+  const heatmapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (heatmapRef.current) heatmapRef.current.scrollLeft = 0;
+  }, [cells]);
+
   const trackName = (id: string) => {
     const t = F1_TRACKS.find(t => t.id === id);
     return t ? t.short : id;
@@ -128,7 +134,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
       </div>
 
       {/* Activity Heatmap */}
-      <div className="heatmap-section">
+      <div className="heatmap-section" ref={heatmapRef}>
         <div className="heatmap-header">
           <div className="section-title" style={{ marginBottom: 0 }}>Activity — Last 365 Days</div>
           <div className="heatmap-legend">
