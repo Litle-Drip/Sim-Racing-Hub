@@ -5,6 +5,8 @@ interface LapTimeInputProps {
   onChange: (v: string) => void;
   placeholder?: string;
   error?: boolean;
+  style?: React.CSSProperties;
+  className?: string;
 }
 
 /**
@@ -17,6 +19,8 @@ export function LapTimeInput({
   onChange,
   placeholder = '1:23.456',
   error,
+  style: styleProp,
+  className,
 }: LapTimeInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,7 +67,8 @@ export function LapTimeInput({
       value={value}
       onChange={e => handleChange(e.target.value)}
       placeholder={placeholder}
-      style={error ? { borderBottomColor: 'var(--red)' } : {}}
+      className={className}
+      style={{ ...(error ? { borderBottomColor: 'var(--red)' } : {}), ...styleProp }}
     />
   );
 }
