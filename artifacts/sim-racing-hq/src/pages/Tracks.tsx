@@ -11,6 +11,7 @@ const TYPE_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
   Race: 'badge-race',
   Hotlap: 'badge-hotlap',
+  'Time Trial': 'badge-hotlap',
 };
 
 function RatingDots({ rating }: { rating: number }) {

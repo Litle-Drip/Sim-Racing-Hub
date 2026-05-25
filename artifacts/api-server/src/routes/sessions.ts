@@ -59,7 +59,7 @@ async function recalcPBsForUser(userId: string) {
   const pbMap: Record<string, string> = {};
 
   const updates: { id: string; isPB: boolean }[] = sorted.map((s) => {
-    const key = `${s.trackId}__${s.car.toLowerCase().trim()}`;
+    const key = s.trackId;
     const currentPB = pbMap[key];
     const isNewPB = isFasterLap(s.bestLap, currentPB);
     if (isNewPB && s.bestLap && s.bestLap.trim() !== "") {
