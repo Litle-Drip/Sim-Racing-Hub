@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser, useAuth } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { setAuthTokenGetter } from '@workspace/api-client-react';
@@ -14,6 +14,9 @@ import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
 import Community from './pages/Community';
+import PublicSetups from './pages/PublicSetups';
+import PublicTracks from './pages/PublicTracks';
+import PublicLeaderboard from './pages/PublicLeaderboard';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -228,29 +231,61 @@ function GuestWall({ page, onSignIn }: { page: string; onSignIn: () => void }) {
   );
 }
 
+function GuestNudge({ onSignIn }: { onSignIn: () => void }) {
+  return (
+    <div style={{
+      background: 'rgba(0,210,190,0.08)',
+      border: '1px solid rgba(0,210,190,0.25)',
+      padding: '12px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 16,
+      flexWrap: 'wrap',
+    }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
+        You're browsing as a guest — <strong>create a free account</strong> to log sessions, save setups, and track your PBs across every device.
+      </span>
+      <button className="btn btn-primary" style={{ fontSize: 12, padding: '8px 18px', whiteSpace: 'nowrap' }} onClick={onSignIn}>
+        Create Account
+      </button>
+    </div>
+  );
+}
+
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
   const [page, setPage] = useState('dashboard');
+  const [pageViews, setPageViews] = useState(0);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+
+  const handleSetPage = useCallback((p: string) => {
+    setPage(p);
+    setPageViews(v => v + 1);
+  }, []);
+
+  const showNudge = isGuest && pageViews >= 3 && !nudgeDismissed;
 
   const renderPage = () => {
     if (isGuest && PROTECTED_PAGES.includes(page)) {
       return <GuestWall page={page} onSignIn={onSignIn ?? (() => {})} />;
     }
     switch (page) {
-      case 'dashboard': return <Dashboard setPage={setPage} />;
+      case 'dashboard': return <Dashboard setPage={handleSetPage} />;
       case 'sessions': return <Sessions />;
       case 'tracks': return <Tracks />;
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress />;
       case 'community': return <Community />;
-      default: return <Dashboard setPage={setPage} />;
+      default: return <Dashboard setPage={handleSetPage} />;
     }
   };
 
   return (
     <div className="app-layout">
-      <Nav page={page} setPage={setPage} />
+      <Nav page={page} setPage={handleSetPage} />
       <main className="main-content">
+        {showNudge && <GuestNudge onSignIn={onSignIn ?? (() => {})} />}
         {renderPage()}
       </main>
     </div>
@@ -346,6 +381,9 @@ function ClerkProviderWithRoutes() {
           <Route path="/" component={HomeRoute} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/setups">{() => <PublicSetups onBack={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/tracks">{() => <PublicTracks onBack={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/leaderboard">{() => <PublicLeaderboard onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route component={HomeRoute} />
         </Switch>
       </QueryClientProvider>

@@ -304,7 +304,7 @@ export default function Setups() {
           <div className="empty-state">
             <div className="empty-state-title">No Setups Found</div>
             <div className="empty-state-desc">
-              {setups.length === 0 ? 'Save your first setup using the button above.' : 'No setups match your current filters.'}
+              {setups.length === 0 ? 'Save your first setup — or browse community setups for inspiration. Tap "New Setup" above to start.' : 'No setups match your current filters. Try adjusting or clearing them.'}
             </div>
           </div>
         </div>
