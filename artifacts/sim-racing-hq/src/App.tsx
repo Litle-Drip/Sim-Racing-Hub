@@ -288,15 +288,32 @@ function GuestNudge({ onSignIn }: { onSignIn: () => void }) {
   );
 }
 
+const SHORTCUTS: Record<string, string> = {
+  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', c: 'community',
+};
+
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
   const [page, setPage] = useState('dashboard');
   const [pageViews, setPageViews] = useState(0);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const handleSetPage = useCallback((p: string) => {
     setPage(p);
     setPageViews(v => v + 1);
   }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === '?') { setShowShortcuts(v => !v); return; }
+      const dest = SHORTCUTS[e.key.toLowerCase()];
+      if (dest) handleSetPage(dest);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleSetPage]);
 
   const showNudge = isGuest && pageViews >= 3 && !nudgeDismissed;
 
@@ -323,6 +340,25 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
         {showNudge && <GuestNudge onSignIn={onSignIn ?? (() => {})} />}
         {renderPage()}
       </main>
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowShortcuts(false)}>
+          <div className="card" style={{ padding: '24px 32px', maxWidth: 360, width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.1em', color: 'var(--white)', marginBottom: 16, textTransform: 'uppercase' }}>Keyboard Shortcuts</div>
+            {Object.entries(SHORTCUTS).map(([key, dest]) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                <span style={{ color: 'var(--gray-light)', textTransform: 'capitalize' }}>{dest}</span>
+                <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 3, color: 'var(--teal)' }}>{key.toUpperCase()}</kbd>
+              </div>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontFamily: 'var(--font-body)', fontSize: 13, borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+              <span style={{ color: 'var(--gray-light)' }}>Toggle this panel</span>
+              <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 3, color: 'var(--teal)' }}>?</kbd>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
