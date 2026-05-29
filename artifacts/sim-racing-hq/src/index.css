@@ -4,7 +4,7 @@
    SIM RACING HQ — F1 TELEMETRY DESIGN SYSTEM
    ========================================================= */
 
-:root {
+:root, [data-theme="dark"] {
   --bg: #080808;
   --bg-card: #111111;
   --bg-elevated: #1A1A1A;
@@ -23,6 +23,24 @@
   --font-display: 'Orbitron', monospace;
   --font-body: 'Rajdhani', sans-serif;
   --font-mono: 'Space Mono', monospace;
+}
+
+[data-theme="light"] {
+  --bg: #F5F5F5;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #EBEBEB;
+  --border: #D8D8D8;
+  --border-accent: #C0C0C0;
+  --red: #D50023;
+  --red-dim: rgba(213, 0, 35, 0.08);
+  --red-glow: rgba(213, 0, 35, 0.2);
+  --white: #1A1A1A;
+  --gray: #888888;
+  --gray-mid: #666666;
+  --gray-light: #444444;
+  --teal: #009E92;
+  --yellow: #C4A600;
+  --green: #2D8F3B;
 }
 
 /* =========================================================

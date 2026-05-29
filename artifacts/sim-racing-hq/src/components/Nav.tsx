@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 
 interface NavProps {
@@ -23,6 +23,14 @@ export default function Nav({ page, setPage }: NavProps) {
   const { signOut } = useClerk();
   const { user } = useUser();
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   function navigate(id: string) {
     setPage(id);
@@ -93,6 +101,28 @@ export default function Nav({ page, setPage }: NavProps) {
               {user.primaryEmailAddress?.emailAddress ?? user.firstName ?? 'Driver'}
             </div>
           )}
+          <button
+            onClick={toggleTheme}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'none',
+              border: 'none',
+              color: 'var(--gray)',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontFamily: 'var(--font-body)',
+              padding: 0,
+              width: '100%',
+              marginBottom: 10,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--teal)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--gray)')}
+          >
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          </button>
           <button
             onClick={() => signOut({ redirectUrl: basePath || '/' })}
             style={{

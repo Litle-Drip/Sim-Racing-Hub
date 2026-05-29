@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Plus, X } from 'lucide-react';
+import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp } from 'lucide-react';
 import { F1_TRACKS, F1Track, CORNER_NAMES } from '../data/f1Tracks';
 import { useGetSessions, useGetTrackNotes, useUpsertTrackNotes, getGetTrackNotesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CornerNote, SessionRecord } from '@workspace/api-client-react';
 import { lapToSeconds } from '../lib/storage';
 import { trackConsistency, TYRE_GUIDES } from '../lib/engagement';
+import { CIRCUIT_SCHOOL } from '../data/circuitSchool';
 
 const TYPE_BADGE: Record<string, string> = {
   Practice: 'badge-practice',
@@ -327,6 +328,12 @@ function TrackDetail({
         </div>
       )}
 
+      {/* Circuit School */}
+      <CircuitSchoolSection trackId={track.id} />
+
+      {/* Video Clip Library */}
+      <VideoClipLibrary trackId={track.id} />
+
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div className="section-title" style={{ marginBottom: 0 }}>Corner Breakdown</div>
@@ -408,6 +415,172 @@ function TrackDetail({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Circuit School ────────────────────────────────────────────────────────────
+
+function CircuitSchoolSection({ trackId }: { trackId: string }) {
+  const guide = CIRCUIT_SCHOOL[trackId];
+  const [expanded, setExpanded] = useState(false);
+  if (!guide) return null;
+
+  const sectionStyle = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-light)', lineHeight: 1.7 };
+  const labelStyle = { fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'var(--teal)', marginBottom: 6, marginTop: 16 };
+
+  return (
+    <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.2)' }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{ background: 'rgba(0,210,190,0.04)', padding: '12px 20px', borderBottom: expanded ? '1px solid rgba(0,210,190,0.15)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14 }}>📚</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)' }}>Circuit School</span>
+        </div>
+        {expanded ? <ChevronUp size={14} style={{ color: 'var(--gray-mid)' }} /> : <ChevronDown size={14} style={{ color: 'var(--gray-mid)' }} />}
+      </div>
+      {expanded && (
+        <div style={{ padding: '8px 20px 20px' }}>
+          <div style={sectionStyle}>{guide.characteristics}</div>
+
+          <div style={labelStyle}>DRS Zones</div>
+          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+            {guide.drsZones.map((z, i) => <li key={i}>{z}</li>)}
+          </ul>
+
+          <div style={labelStyle}>Tyre Behaviour</div>
+          <div style={sectionStyle}>{guide.tyreBehaviour}</div>
+
+          <div style={labelStyle}>Common Mistakes</div>
+          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+            {guide.commonMistakes.map((m, i) => <li key={i}>{m}</li>)}
+          </ul>
+
+          <div style={labelStyle}>ERS Deployment</div>
+          <div style={sectionStyle}>{guide.ersTips}</div>
+
+          <div style={labelStyle}>Key Corners</div>
+          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+            {guide.keyCorners.map((c, i) => <li key={i}>{c}</li>)}
+          </ul>
+
+          <div style={labelStyle}>Setup Tips</div>
+          <div style={sectionStyle}>{guide.setupTips}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Video Clip Library ────────────────────────────────────────────────────────
+
+interface VideoClip {
+  id: string;
+  url: string;
+  label: string;
+  votes: number;
+}
+
+function extractYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\s]+)/);
+  return m ? m[1] : null;
+}
+
+function VideoClipLibrary({ trackId }: { trackId: string }) {
+  const storageKey = `video-clips-${trackId}`;
+  const [clips, setClips] = useState<VideoClip[]>(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
+  });
+  const [showAdd, setShowAdd] = useState(false);
+  const [newUrl, setNewUrl] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+
+  const save = (updated: VideoClip[]) => {
+    setClips(updated);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+  };
+
+  const addClip = () => {
+    const ytId = extractYouTubeId(newUrl);
+    if (!ytId) return;
+    save([...clips, { id: crypto.randomUUID(), url: newUrl, label: newLabel || 'Untitled', votes: 0 }]);
+    setNewUrl('');
+    setNewLabel('');
+    setShowAdd(false);
+  };
+
+  const upvote = (id: string) => {
+    save(clips.map(c => c.id === id ? { ...c, votes: c.votes + 1 } : c).sort((a, b) => b.votes - a.votes));
+  };
+
+  const remove = (id: string) => {
+    save(clips.filter(c => c.id !== id));
+  };
+
+  const sorted = [...clips].sort((a, b) => b.votes - a.votes);
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Play size={14} style={{ color: 'var(--red)' }} />
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>Video Clips</span>
+        </div>
+        <button className="btn btn-secondary btn-sm" onClick={() => setShowAdd(!showAdd)}>
+          {showAdd ? 'Cancel' : <><Plus size={11} /> Add Clip</>}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="card" style={{ padding: 14, marginBottom: 12, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 200px' }}>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>YouTube URL</label>
+            <input className="form-control" value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." style={{ fontSize: 12 }} />
+          </div>
+          <div style={{ flex: '1 1 150px' }}>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Label</label>
+            <input className="form-control" value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="e.g. Turn 4 reference lap" style={{ fontSize: 12 }} />
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={addClip} disabled={!extractYouTubeId(newUrl)}>Add</button>
+        </div>
+      )}
+
+      {sorted.length === 0 ? (
+        <div className="card" style={{ padding: '16px 20px', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>No video clips yet — add a YouTube link to build your reference library for this track.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+          {sorted.map(clip => {
+            const ytId = extractYouTubeId(clip.url);
+            return (
+              <div key={clip.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                {ytId && (
+                  <a href={clip.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative' }}>
+                    <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt="" style={{ width: '100%', display: 'block', aspectRatio: '16/9', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)' }}>
+                      <Play size={32} style={{ color: 'white', opacity: 0.9 }} />
+                    </div>
+                  </a>
+                )}
+                <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--white)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{clip.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => upvote(clip.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, color: 'var(--gray-mid)', fontSize: 11 }}>
+                      <ThumbsUp size={12} /> {clip.votes}
+                    </button>
+                    <button onClick={() => remove(clip.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray)', fontSize: 10 }}>
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
