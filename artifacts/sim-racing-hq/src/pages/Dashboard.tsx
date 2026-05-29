@@ -1,7 +1,9 @@
 import { useMemo, useRef, useEffect } from 'react';
-import { useGetSessions, useGetSetups } from '@workspace/api-client-react';
+import { useGetSessions, useGetSetups, useGetCommunitySessions } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
+import { lapToSeconds } from '../lib/storage';
+import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements } from '../lib/engagement';
 
 const TYPE_BADGE: Record<string, string> = {
   Practice: 'badge-practice',
@@ -73,11 +75,26 @@ interface DashboardProps {
 export default function Dashboard({ setPage }: DashboardProps) {
   const { data: sessions = [] } = useGetSessions();
   const { data: setups = [] } = useGetSetups();
+  const { data: communitySessions = [] } = useGetCommunitySessions();
 
   const totalSessions = sessions.length;
   const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
   const pbsSet = sessions.filter(s => s.isPB).length;
   const setupsSaved = setups.length;
+
+  const streak = useMemo(() => calculateStreak(sessions), [sessions]);
+  const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
+  const achievements = useMemo(() => calculateAchievements(sessions, setups.length), [sessions, setups]);
+  const earnedCount = achievements.filter(a => a.earned).length;
+
+  const daily = useMemo(() => {
+    const challenge = getDailyChallenge();
+    const entries = communitySessions
+      .filter(s => s.trackId === challenge.track.id && s.car === challenge.car && s.bestLap && s.bestLap.trim() !== '' && s.date === challenge.date)
+      .sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap))
+      .slice(0, 5);
+    return { ...challenge, entries };
+  }, [communitySessions]);
 
   const recentSessions = useMemo(() => [...sessions]
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -118,6 +135,35 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
   return (
     <div className="page">
+      {/* Rank + Streak Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.08em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
+            {rankInfo.rank}
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>
+            {rankInfo.points} pts
+          </span>
+          {rankInfo.nextRank && (
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>
+              {rankInfo.pointsToNext} to {rankInfo.nextRank}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {streak > 0 && (
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: '#FF9800' }}>
+              🔥 {streak} day streak
+            </span>
+          )}
+          {earnedCount > 0 && (
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              {earnedCount}/{achievements.length} badges
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Stat Cards */}
       <div className="stat-grid">
         {[
@@ -132,6 +178,67 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         ))}
       </div>
+
+      {/* Daily Lap Challenge */}
+      <div className="card" style={{ padding: 0, marginTop: 20, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
+        <div style={{ background: 'rgba(0,210,190,0.06)', padding: '12px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
+              {daily.track.flag} {daily.track.short} — {daily.car}
+            </div>
+          </div>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+            Resets daily
+          </span>
+        </div>
+        {daily.entries.length > 0 ? (
+          <div style={{ padding: '10px 20px' }}>
+            {daily.entries.map((s, i) => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12, padding: '3px 0' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
+                <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
+                <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: '14px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+            No submissions yet today — be the first!
+          </div>
+        )}
+      </div>
+
+      {/* Achievement Badges */}
+      {earnedCount > 0 && (
+        <>
+          <div className="section-title" style={{ marginTop: 24 }}>Achievements</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {achievements.filter(a => a.earned).map(a => (
+              <div key={a.id} title={a.desc} style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4,
+              }}>
+                <span style={{ fontSize: 16 }}>{a.icon}</span>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.06em', color: 'var(--white)' }}>{a.name}</span>
+              </div>
+            ))}
+          </div>
+          {achievements.some(a => !a.earned) && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+              {achievements.filter(a => !a.earned).map(a => (
+                <div key={a.id} title={`${a.name}: ${a.desc}`} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, opacity: 0.35,
+                }}>
+                  <span style={{ fontSize: 16, filter: 'grayscale(100%)' }}>{a.icon}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.06em', color: 'var(--gray-mid)' }}>{a.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Activity Heatmap */}
       <div className="heatmap-section" ref={heatmapRef}>

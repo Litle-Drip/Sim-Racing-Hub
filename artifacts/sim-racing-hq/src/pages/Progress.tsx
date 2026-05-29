@@ -6,6 +6,8 @@ import {
 import { useGetSessions } from '@workspace/api-client-react';
 import { lapToSeconds } from '../lib/storage';
 import { F1_TRACKS } from '../data/f1Tracks';
+import { lapTimeDelta, sessionConsistency } from '../lib/engagement';
+import { LapTimeInput } from '../components/LapTimeInput';
 
 function formatLapTime(seconds: number): string {
   if (!isFinite(seconds) || seconds === 0) return '—';
@@ -311,8 +313,102 @@ export default function Progress() {
           </table>
         </div>
       )}
+      {/* Consistency Trend */}
+      <div className="section-title" style={{ marginTop: 40 }}>Consistency Score Trend</div>
+      {!filterTrack ? (
+        <div className="table-wrap">
+          <div className="empty-state">
+            <div className="empty-state-title">Select a Track</div>
+            <div className="empty-state-desc">Pick a specific track above to see your consistency trend.</div>
+          </div>
+        </div>
+      ) : (() => {
+        const consistencyData = filtered
+          .filter(s => s.bestLap && s.bestLap.trim() !== '' && s.avgLap && s.avgLap.trim() !== '')
+          .map(s => ({ date: s.date, consistency: sessionConsistency(s) }))
+          .filter((d): d is { date: string; consistency: number } => d.consistency !== null);
+        return consistencyData.length < 2 ? (
+          <div className="table-wrap">
+            <div className="empty-state">
+              <div className="empty-state-desc">Log more sessions with best and average lap times to see your consistency trend.</div>
+            </div>
+          </div>
+        ) : (
+          <div className="chart-wrap">
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={consistencyData} margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="date" tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} />
+                <YAxis domain={[90, 100]} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} tickFormatter={v => `${v}%`} />
+                <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
+                  <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>{(payload[0].value as number).toFixed(1)}%</div>
+                  </div>
+                ) : null} />
+                <Line type="monotone" dataKey="consistency" stroke="var(--teal)" strokeWidth={2} dot={{ fill: 'var(--teal)', r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
+
+      {/* Lap Time Delta Tool */}
+      <LapTimeDeltaTool />
       </>
       )}
+    </div>
+  );
+}
+
+function LapTimeDeltaTool() {
+  const [time1, setTime1] = useState('');
+  const [time2, setTime2] = useState('');
+  const result = lapTimeDelta(time1, time2);
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Lap Time Delta Tool</div>
+      <div className="card" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+          <div>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 1</label>
+            <LapTimeInput value={time1} onChange={setTime1} style={{ width: 140 }} />
+          </div>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--gray)', marginTop: 16 }}>vs</span>
+          <div>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 2</label>
+            <LapTimeInput value={time2} onChange={setTime2} style={{ width: 140 }} />
+          </div>
+        </div>
+        {result && (
+          <div style={{ display: 'flex', gap: 24, alignItems: 'baseline' }}>
+            <div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Gap</span>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--teal)', marginTop: 4 }}>
+                {result.diffMs >= 1000 ? `${(result.diffMs / 1000).toFixed(3)}s` : `${result.diffMs}ms`}
+              </div>
+            </div>
+            <div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Percentage</span>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--white)', marginTop: 4 }}>
+                {result.diffPercent.toFixed(2)}%
+              </div>
+            </div>
+            <div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Faster</span>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)', marginTop: 4 }}>
+                Time {result.faster}
+              </div>
+            </div>
+          </div>
+        )}
+        {!result && (time1 || time2) && (
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+            Enter both lap times in M:SS.SSS format to compare
+          </div>
+        )}
+      </div>
     </div>
   );
 }
