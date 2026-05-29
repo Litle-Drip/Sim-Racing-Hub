@@ -18,6 +18,7 @@ import PublicSetups from './pages/PublicSetups';
 import PublicTracks from './pages/PublicTracks';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import QuickLog from './pages/QuickLog';
+import DriverProfile from './pages/DriverProfile';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -419,6 +420,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/tracks">{() => <PublicTracks onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/leaderboard">{() => <PublicLeaderboard onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/log">{() => <QuickLog onDone={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/driver/:username">{(params) => <DriverProfile username={params.username} />}</Route>
           <Route component={HomeRoute} />
         </Switch>
       </QueryClientProvider>

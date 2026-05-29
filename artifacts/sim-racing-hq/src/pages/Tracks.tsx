@@ -5,6 +5,7 @@ import { useGetSessions, useGetTrackNotes, useUpsertTrackNotes, getGetTrackNotes
 import { useQueryClient } from '@tanstack/react-query';
 import type { CornerNote, SessionRecord } from '@workspace/api-client-react';
 import { lapToSeconds } from '../lib/storage';
+import { trackConsistency, TYRE_GUIDES } from '../lib/engagement';
 
 const TYPE_BADGE: Record<string, string> = {
   Practice: 'badge-practice',
@@ -272,6 +273,8 @@ function TrackDetail({
   const bestS2 = trackSessions.reduce((best, s) => (!s.s2 || s.s2.trim() === '') ? best : (!best || parseFloat(s.s2) < parseFloat(best)) ? s.s2 : best, '');
   const bestS3 = trackSessions.reduce((best, s) => (!s.s3 || s.s3.trim() === '') ? best : (!best || parseFloat(s.s3) < parseFloat(best)) ? s.s3 : best, '');
   const lastDriven = trackSessions.length > 0 ? [...trackSessions].sort((a,b) => b.date.localeCompare(a.date))[0].date : '';
+  const consistency = trackConsistency(sessions, track.id);
+  const tyreGuide = TYRE_GUIDES[track.id];
 
   return (
     <div className="page">
@@ -294,6 +297,7 @@ function TrackDetail({
           { label: 'Best S1', value: bestS1 || '—', mono: true },
           { label: 'Best S2', value: bestS2 || '—', mono: true },
           { label: 'Best S3', value: bestS3 || '—', mono: true },
+          { label: 'Consistency', value: consistency !== null ? `${consistency.toFixed(1)}%` : '—', mono: true },
           { label: 'Sessions', value: String(trackSessions.length), mono: false },
           { label: 'Last Driven', value: lastDriven || 'Never', mono: false },
         ].map(({ label, value, mono, sub }) => (
@@ -304,6 +308,24 @@ function TrackDetail({
           </div>
         ))}
       </div>
+
+      {/* Tyre Compound Guide */}
+      {tyreGuide && (
+        <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <div style={{ background: 'var(--bg-elevated)', padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14 }}>🏎️</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>Tyre Strategy Guide</span>
+          </div>
+          <div style={{ padding: '14px 20px', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontFamily: 'var(--font-body)', fontSize: 12 }}>
+            <span style={{ color: 'var(--gray-mid)' }}>Compounds</span>
+            <span style={{ color: 'var(--white)' }}>{tyreGuide.compounds}</span>
+            <span style={{ color: 'var(--gray-mid)' }}>Strategy</span>
+            <span style={{ color: 'var(--white)' }}>{tyreGuide.strategy}</span>
+            <span style={{ color: 'var(--gray-mid)' }}>Notes</span>
+            <span style={{ color: 'var(--gray-light)' }}>{tyreGuide.notes}</span>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>

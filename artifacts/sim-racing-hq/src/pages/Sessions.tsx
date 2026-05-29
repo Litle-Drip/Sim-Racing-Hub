@@ -12,6 +12,7 @@ import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
+import { sessionConsistency } from '../lib/engagement';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -442,6 +443,7 @@ export default function Sessions() {
                 <th>Best Lap</th>
                 <th>Avg Lap</th>
                 <th>Worst Lap</th>
+                <th>Consistency</th>
                 <th>Type</th>
                 <th>Tires</th>
                 <th>Rating</th>
@@ -461,6 +463,7 @@ export default function Sessions() {
                     </td>
                     <td><span className="lap-time" style={{ color: 'var(--gray-light)', fontSize: 12 }}>{s.avgLap || '—'}</span></td>
                     <td><span className="lap-time" style={{ color: 'var(--gray-mid)', fontSize: 12 }}>{s.worstLap || '—'}</span></td>
+                    <td>{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
                     <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
                     <td style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
                     <td><RatingDots rating={s.rating} /></td>
