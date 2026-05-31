@@ -234,7 +234,7 @@ export default function Setups() {
         onThrottle: String(form.onThrottle),
         offThrottle: String(form.offThrottle),
         notes: form.notes,
-        gameVersion: form.gameVersion,
+        gameVersion: form.gameVersion ?? undefined,
       },
     });
   };
@@ -480,7 +480,7 @@ export default function Setups() {
                 <div className="form-section-title">Metadata</div>
                 <div className="field">
                   <label className="field-label">Game Version</label>
-                  <input type="text" placeholder="e.g. F1 25 v1.2" value={form.gameVersion} onChange={e => setField('gameVersion', e.target.value)} />
+                  <input type="text" placeholder="e.g. F1 25 v1.2" value={form.gameVersion ?? ''} onChange={e => setField('gameVersion', e.target.value)} />
                 </div>
 
                 <div className="field full">

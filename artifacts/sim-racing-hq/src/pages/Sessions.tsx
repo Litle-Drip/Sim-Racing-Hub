@@ -408,7 +408,7 @@ export default function Sessions() {
         gameVersion: form.gameVersion,
         platform: form.platform,
         inputDevice: form.inputDevice,
-        position: form.type === 'Race' && form.position ? form.position : undefined,
+        position: form.type === 'Race' && form.position ? parseInt(form.position, 10) : undefined,
         laps: laps.length > 0 ? laps.map((l, i) => ({
           lap: i + 1,
           time: l.time,
@@ -440,7 +440,7 @@ export default function Sessions() {
   const confirmShare = () => {
     if (!shareModal) return;
     setSharingId(shareModal.id);
-    shareSession({ id: shareModal.id, publicNote: shareModal.publicNote || undefined });
+    shareSession({ id: shareModal.id, data: { publicNote: shareModal.publicNote || undefined } });
   };
 
   const closeModal = () => {

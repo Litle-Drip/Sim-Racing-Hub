@@ -28,4 +28,5 @@ export interface SetupRecord {
   notes: string;
   isPublic?: boolean;
   sharedAt?: string | null;
+  gameVersion?: string | null;
 }

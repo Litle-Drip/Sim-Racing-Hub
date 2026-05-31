@@ -23,6 +23,16 @@ export interface CornerNote {
   myNotes: string;
 }
 
+export interface LapRecord {
+  lap: number;
+  time: string;
+  s1: string;
+  s2: string;
+  s3: string;
+  tires: string;
+  penalty: string;
+}
+
 export interface SessionRecord {
   id: string;
   date: string;
@@ -41,16 +51,15 @@ export interface SessionRecord {
   assists: string;
   rating: number;
   notes: string;
-  penalty: string;
-  gameVersion: string;
-  platform: string;
-  inputDevice: string;
-  isPublic?: boolean;
+  isPB: boolean;
+  penalty?: string | null;
+  gameVersion?: string | null;
+  platform?: string | null;
+  inputDevice?: string | null;
+  isPublic: boolean;
   sharedAt?: string | null;
   publicNote?: string | null;
-  laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }> | null;
-  isPB: boolean;
-  position?: string;
+  laps?: LapRecord[] | null;
 }
 
 export interface CreateSessionRequest {
@@ -71,12 +80,21 @@ export interface CreateSessionRequest {
   assists: string;
   rating: number;
   notes: string;
-  penalty: string;
+  penalty?: string;
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
-  position?: string;
-  laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>;
+  laps?: LapRecord[];
+  position?: number;
+}
+
+export interface ShareSessionRequest {
+  publicNote?: string;
+}
+
+export interface ShareSessionResponse {
+  isPublic: boolean;
+  sharedAt?: string | null;
 }
 
 export interface CommunitySessionRecord {
@@ -89,24 +107,15 @@ export interface CommunitySessionRecord {
   avgLap: string;
   tires: string;
   conditions: string;
-  penalty: string;
-  gameVersion: string;
-  platform: string;
-  inputDevice: string;
+  penalty?: string | null;
+  gameVersion?: string | null;
+  platform?: string | null;
+  inputDevice?: string | null;
   publicNote?: string | null;
   authorName: string;
   isOwn: boolean;
   sharedAt?: string | null;
   rating: number;
-}
-
-export interface ShareSessionRequest {
-  publicNote?: string;
-}
-
-export interface ShareSessionResponse {
-  isPublic: boolean;
-  sharedAt?: string | null;
 }
 
 export interface SetupRecord {
@@ -129,9 +138,9 @@ export interface SetupRecord {
   onThrottle: string;
   offThrottle: string;
   notes: string;
-  gameVersion: string;
   isPublic?: boolean;
   sharedAt?: string | null;
+  gameVersion?: string | null;
 }
 
 export interface CommunitySetupRecord {
@@ -258,6 +267,10 @@ export type UnauthorizedResponse = ErrorResponse;
  * Not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+export type GetCommunitySessionsParams = {
+sort?: string;
+};
 
 export type GetCommunitySetupsParams = {
 trackId?: string;

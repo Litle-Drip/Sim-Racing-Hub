@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LapRecord } from './lapRecord';
 
 export interface CreateSessionRequest {
   id: string;
@@ -24,7 +25,10 @@ export interface CreateSessionRequest {
   assists: string;
   rating: number;
   notes: string;
-  penalty: string;
-  position?: string;
-  laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>;
+  penalty?: string;
+  gameVersion?: string;
+  platform?: string;
+  inputDevice?: string;
+  laps?: LapRecord[];
+  position?: number;
 }

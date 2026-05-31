@@ -38,24 +38,23 @@ export const GetSessionsResponseItem = zod.object({
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string(),
-  "penalty": zod.string(),
-  "gameVersion": zod.string(),
-  "platform": zod.string(),
-  "inputDevice": zod.string(),
-  "isPublic": zod.boolean().optional(),
+  "isPB": zod.boolean(),
+  "penalty": zod.string().nullish(),
+  "gameVersion": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "inputDevice": zod.string().nullish(),
+  "isPublic": zod.boolean(),
   "sharedAt": zod.string().nullish(),
   "publicNote": zod.string().nullish(),
   "laps": zod.array(zod.object({
-    "lap": zod.number(),
-    "time": zod.string(),
-    "s1": zod.string(),
-    "s2": zod.string(),
-    "s3": zod.string(),
-    "tires": zod.string(),
-    "penalty": zod.string()
-  })).nullish(),
-  "isPB": zod.boolean(),
-  "position": zod.string().optional().default("")
+  "lap": zod.number(),
+  "time": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "tires": zod.string(),
+  "penalty": zod.string()
+})).nullish()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
 
@@ -81,20 +80,20 @@ export const CreateSessionBody = zod.object({
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string(),
-  "penalty": zod.string(),
-  "gameVersion": zod.string().optional().default(""),
-  "platform": zod.string().optional().default(""),
-  "inputDevice": zod.string().optional().default(""),
-  "position": zod.string().optional().default(""),
+  "penalty": zod.string().optional(),
+  "gameVersion": zod.string().optional(),
+  "platform": zod.string().optional(),
+  "inputDevice": zod.string().optional(),
   "laps": zod.array(zod.object({
-    "lap": zod.number(),
-    "time": zod.string(),
-    "s1": zod.string(),
-    "s2": zod.string(),
-    "s3": zod.string(),
-    "tires": zod.string(),
-    "penalty": zod.string()
-  })).optional()
+  "lap": zod.number(),
+  "time": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "tires": zod.string(),
+  "penalty": zod.string()
+})).optional(),
+  "position": zod.number().optional()
 })
 
 
@@ -103,6 +102,23 @@ export const CreateSessionBody = zod.object({
  */
 export const DeleteSessionParams = zod.object({
   "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Toggle public sharing on a session
+ */
+export const ShareSessionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ShareSessionBody = zod.object({
+  "publicNote": zod.string().optional()
+})
+
+export const ShareSessionResponse = zod.object({
+  "isPublic": zod.boolean(),
+  "sharedAt": zod.string().nullish()
 })
 
 
@@ -129,9 +145,9 @@ export const GetSetupsResponseItem = zod.object({
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
   "notes": zod.string(),
-  "gameVersion": zod.string(),
   "isPublic": zod.boolean().optional(),
-  "sharedAt": zod.string().nullish()
+  "sharedAt": zod.string().nullish(),
+  "gameVersion": zod.string().nullish()
 })
 export const GetSetupsResponse = zod.array(GetSetupsResponseItem)
 
@@ -159,7 +175,7 @@ export const CreateSetupBody = zod.object({
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
   "notes": zod.string(),
-  "gameVersion": zod.string().optional().default("")
+  "gameVersion": zod.string().optional()
 })
 
 
@@ -182,6 +198,36 @@ export const ShareSetupResponse = zod.object({
   "isPublic": zod.boolean(),
   "sharedAt": zod.string().nullish()
 })
+
+
+/**
+ * @summary Get all publicly shared sessions
+ */
+export const GetCommunitySessionsQueryParams = zod.object({
+  "sort": zod.coerce.string().optional()
+})
+
+export const GetCommunitySessionsResponseItem = zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "tires": zod.string(),
+  "conditions": zod.string(),
+  "penalty": zod.string().nullish(),
+  "gameVersion": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "inputDevice": zod.string().nullish(),
+  "publicNote": zod.string().nullish(),
+  "authorName": zod.string(),
+  "isOwn": zod.boolean(),
+  "sharedAt": zod.string().nullish(),
+  "rating": zod.number()
+})
+export const GetCommunitySessionsResponse = zod.array(GetCommunitySessionsResponseItem)
 
 
 /**

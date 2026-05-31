@@ -5,9 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { LapRecord } from './lapRecord';
 
-export interface SessionRecord {
+export interface CommunitySessionRecord {
   id: string;
   date: string;
   trackId: string;
@@ -15,23 +14,15 @@ export interface SessionRecord {
   type: string;
   bestLap: string;
   avgLap: string;
-  worstLap: string;
-  s1: string;
-  s2: string;
-  s3: string;
   tires: string;
-  fuelLoad: number;
   conditions: string;
-  assists: string;
-  rating: number;
-  notes: string;
-  isPB: boolean;
   penalty?: string | null;
   gameVersion?: string | null;
   platform?: string | null;
   inputDevice?: string | null;
-  isPublic: boolean;
-  sharedAt?: string | null;
   publicNote?: string | null;
-  laps?: LapRecord[] | null;
+  authorName: string;
+  isOwn: boolean;
+  sharedAt?: string | null;
+  rating: number;
 }

@@ -26,4 +26,5 @@ export interface CreateSetupRequest {
   onThrottle: string;
   offThrottle: string;
   notes: string;
+  gameVersion?: string;
 }
