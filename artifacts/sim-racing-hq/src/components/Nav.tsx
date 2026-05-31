@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { calculateStreak, calculateRank, getRankColor } from '../lib/engagement';
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { id: 'hardware', label: 'Hardware', Icon: Cpu },
   { id: 'progress', label: 'Progress', Icon: TrendingUp },
   { id: 'community', label: 'Community', Icon: Users },
+  { id: 'account', label: 'Account', Icon: User },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -93,7 +94,7 @@ export default function Nav({ page, setPage }: NavProps) {
         </ul>
 
         {/* Profile Card */}
-        <div className="nav-profile-card">
+        <div className="nav-profile-card" onClick={() => navigate('account')} style={{ cursor: 'pointer' }}>
           <div className="nav-profile-avatar">
             {displayName.charAt(0).toUpperCase()}
           </div>
