@@ -34,4 +34,5 @@ export interface SessionRecord {
   sharedAt?: string | null;
   publicNote?: string | null;
   laps?: LapRecord[] | null;
+  position?: string;
 }
