@@ -9,7 +9,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency } from '../lib/engagement';
@@ -473,12 +473,10 @@ export default function Sessions() {
           <option value="">All Types</option>
           {SESSION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <input
-          className="filter-input"
-          placeholder="Search car..."
-          value={filterCar}
-          onChange={e => setFilterCar(e.target.value)}
-        />
+        <select className="filter-select" value={filterCar} onChange={e => setFilterCar(e.target.value)}>
+          <option value="">All Cars</option>
+          {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
 
       {/* Table */}
@@ -772,16 +770,16 @@ export default function Sessions() {
                 <div className="form-grid">
                   <div className="field">
                     <label className="field-label">Best Lap {laps.length === 0 && <span style={{ color: 'var(--red)' }}>*</span>}</label>
-                    <LapTimeInput value={form.bestLap} onChange={v => { set('bestLap', v); setFormErrors(fe => ({ ...fe, bestLap: '' })); }} error={!!formErrors.bestLap} />
+                    <LapTimeInput value={form.bestLap} onChange={v => { set('bestLap', v); setFormErrors(fe => ({ ...fe, bestLap: '' })); }} error={!!formErrors.bestLap} readOnly={laps.length > 0} />
                     {formErrors.bestLap && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.bestLap}</span>}
                   </div>
                   <div className="field">
                     <label className="field-label">Avg Lap</label>
-                    <LapTimeInput value={form.avgLap} onChange={v => set('avgLap', v)} placeholder="1:24.123" />
+                    <LapTimeInput value={form.avgLap} onChange={v => set('avgLap', v)} placeholder="1:24.123" readOnly={laps.length > 0} />
                   </div>
                   <div className="field">
                     <label className="field-label">Worst Lap</label>
-                    <LapTimeInput value={form.worstLap} onChange={v => set('worstLap', v)} placeholder="1:26.789" />
+                    <LapTimeInput value={form.worstLap} onChange={v => set('worstLap', v)} placeholder="1:26.789" readOnly={laps.length > 0} />
                   </div>
                 </div>
               </div>

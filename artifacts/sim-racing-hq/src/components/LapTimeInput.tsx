@@ -5,6 +5,7 @@ interface LapTimeInputProps {
   onChange: (v: string) => void;
   placeholder?: string;
   error?: boolean;
+  readOnly?: boolean;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -19,6 +20,7 @@ export function LapTimeInput({
   onChange,
   placeholder = '1:23.456',
   error,
+  readOnly,
   style: styleProp,
   className,
 }: LapTimeInputProps) {
@@ -75,10 +77,15 @@ export function LapTimeInput({
       type="text"
       inputMode="text"
       value={value}
-      onChange={e => handleChange(e.target.value)}
+      onChange={readOnly ? undefined : e => handleChange(e.target.value)}
+      readOnly={readOnly}
       placeholder={placeholder}
       className={className}
-      style={{ ...(error ? { borderBottomColor: 'var(--red)' } : {}), ...styleProp }}
+      style={{
+        ...(error ? { borderBottomColor: 'var(--red)' } : {}),
+        ...(readOnly ? { opacity: 0.55, cursor: 'default' } : {}),
+        ...styleProp,
+      }}
     />
   );
 }

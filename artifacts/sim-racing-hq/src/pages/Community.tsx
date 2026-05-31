@@ -11,7 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -409,13 +409,10 @@ export default function Community() {
               <option value="">All Tags</option>
               {SETUP_TAGS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
-            <input
-              className="filter-select"
-              placeholder="Filter by car…"
-              value={filterCar}
-              onChange={(e) => setFilterCar(e.target.value)}
-              style={{ maxWidth: 180 }}
-            />
+            <select className="filter-select" value={filterCar} onChange={(e) => setFilterCar(e.target.value)}>
+              <option value="">All Cars</option>
+              {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
           {setupsLoading ? (
@@ -471,13 +468,10 @@ export default function Community() {
               <option value="">All Inputs</option>
               {INPUT_DEVICES.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
-            <input
-              className="filter-select"
-              placeholder="Filter by car…"
-              value={filterCar}
-              onChange={(e) => setFilterCar(e.target.value)}
-              style={{ maxWidth: 180 }}
-            />
+            <select className="filter-select" value={filterCar} onChange={(e) => setFilterCar(e.target.value)}>
+              <option value="">All Cars</option>
+              {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
             <select className="filter-select" value={sessionSort} onChange={(e) => setSessionSort(e.target.value as 'fastest' | 'recent' | 'rating')}>
               <option value="fastest">Fastest First</option>
               <option value="recent">Most Recent</option>
