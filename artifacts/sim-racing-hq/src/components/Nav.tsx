@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
+import { F1_TRACKS } from '../data/f1Tracks';
 import { calculateStreak, calculateRank, getRankColor } from '../lib/engagement';
 
 interface NavProps {
@@ -32,6 +33,15 @@ export default function Nav({ page, setPage }: NavProps) {
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
 
+  const seatTimeHours = useMemo(() => Math.floor((sessions.length * 10) / 60), [sessions]);
+  const favTrack = useMemo(() => {
+    if (sessions.length === 0) return null;
+    const counts: Record<string, number> = {};
+    sessions.forEach(s => { counts[s.trackId] = (counts[s.trackId] || 0) + 1; });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return F1_TRACKS.find(t => t.id === top[0])?.short ?? top[0];
+  }, [sessions]);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
@@ -44,7 +54,8 @@ export default function Nav({ page, setPage }: NavProps) {
     setOpen(false);
   }
 
-  const displayName = user?.firstName ?? user?.username ?? 'Driver';
+  const rawName = user?.firstName ?? user?.username ?? 'Driver';
+  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
 
   return (
     <>
@@ -106,6 +117,10 @@ export default function Nav({ page, setPage }: NavProps) {
             {streak > 0 && (
               <div className="nav-profile-streak">🔥 {streak} day streak</div>
             )}
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--gray)', marginTop: 2, lineHeight: 1.4 }}>
+              {seatTimeHours > 0 && <span>{seatTimeHours}h seat time</span>}
+              {favTrack && <span style={{ display: 'block' }}>Fav: {favTrack}</span>}
+            </div>
           </div>
         </div>
 
