@@ -5,15 +5,7 @@ import { useUser } from '@clerk/react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
 import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency } from '../lib/engagement';
-import type { DriverRank } from '../lib/engagement';
-
-const TYPE_BADGE: Record<string, string> = {
-  Practice: 'badge-practice',
-  Qualifying: 'badge-qualifying',
-  Race: 'badge-race',
-  Hotlap: 'badge-hotlap',
-  'Time Trial': 'badge-hotlap',
-};
+import type { DriverRank, Achievement } from '../lib/engagement';
 
 const DIFF_COLORS: Record<string, string> = {
   Easy: '#4CAF50',
@@ -21,15 +13,12 @@ const DIFF_COLORS: Record<string, string> = {
   Hard: '#E8002D',
 };
 
-function RatingDots({ rating }: { rating: number }) {
-  return (
-    <span className="rating-dots">
-      {[1, 2, 3, 4, 5].map(i => (
-        <span key={i} className={`rating-dot${i <= rating ? ' filled' : ''}`} />
-      ))}
-    </span>
-  );
-}
+const BADGE_CATEGORIES: { label: string; ids: string[] }[] = [
+  { label: 'Skill', ids: ['podium', 'the_senna', 'consistent'] },
+  { label: 'Consistency', ids: ['flat_out', 'century', 'weekend_warrior'] },
+  { label: 'Exploration', ids: ['circuit_master', 'globe_trotter'] },
+  { label: 'Community', ids: ['setup_wizard', 'first_share'] },
+];
 
 function AnimatedCounter({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
@@ -66,10 +55,35 @@ function CountdownTimer() {
   return <span>{remaining}</span>;
 }
 
+function MiniBar({ value, label }: { value: number; label: string }) {
+  const pct = Math.max(0, Math.min(100, value * 20));
+  const color = pct >= 80 ? 'var(--teal)' : pct >= 60 ? 'var(--white)' : 'var(--red)';
+  return (
+    <div className="mini-bar-row" title={`${label}: ${value}/5`}>
+      <span className="mini-bar-label">{label}</span>
+      <div className="mini-bar-bg">
+        <div className="mini-bar-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
+
 function buildHeatmap(sessions: SessionRecord[]) {
   const countMap: Record<string, number> = {};
+  const pbMap: Record<string, number> = {};
+  const bestLapMap: Record<string, { lap: string; trackId: string }> = {};
   sessions.forEach(s => {
-    if (s.date) countMap[s.date] = (countMap[s.date] || 0) + 1;
+    if (s.date) {
+      countMap[s.date] = (countMap[s.date] || 0) + 1;
+      if (s.isPB) pbMap[s.date] = (pbMap[s.date] || 0) + 1;
+      if (s.bestLap && s.bestLap.trim()) {
+        const secs = lapToSeconds(s.bestLap);
+        const existing = bestLapMap[s.date];
+        if (!existing || (isFinite(secs) && secs > 0 && secs < lapToSeconds(existing.lap))) {
+          bestLapMap[s.date] = { lap: s.bestLap, trackId: s.trackId };
+        }
+      }
+    }
   });
 
   const today = new Date();
@@ -80,16 +94,18 @@ function buildHeatmap(sessions: SessionRecord[]) {
   const dayOfWeek = startDate.getDay();
   startDate.setDate(startDate.getDate() - dayOfWeek);
 
-  const cells: { date: string; count: number; level: number }[][] = [];
+  const cells: { date: string; count: number; level: number; pbs: number; bestLap: string | null; bestTrack: string | null }[][] = [];
   let cur = new Date(startDate);
 
   while (cur <= today) {
-    const col: { date: string; count: number; level: number }[] = [];
+    const col: typeof cells[0] = [];
     for (let d = 0; d < 7; d++) {
       const dateStr = cur.toISOString().slice(0, 10);
       const count = countMap[dateStr] || 0;
       const level = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : 3;
-      col.push({ date: dateStr, count, level });
+      const pbs = pbMap[dateStr] || 0;
+      const best = bestLapMap[dateStr];
+      col.push({ date: dateStr, count, level, pbs, bestLap: best?.lap ?? null, bestTrack: best?.trackId ?? null });
       cur = new Date(cur);
       cur.setDate(cur.getDate() + 1);
     }
@@ -118,6 +134,23 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function buildHeatmapTooltip(cell: { date: string; count: number; pbs: number; bestLap: string | null; bestTrack: string | null }): string {
+  const d = new Date(cell.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  let tip = `${d}\n${cell.count} session${cell.count !== 1 ? 's' : ''}`;
+  if (cell.pbs > 0) tip += `\n${cell.pbs} PB${cell.pbs !== 1 ? 's' : ''}`;
+  if (cell.count > 0) tip += `\n~${cell.count * 10} mins`;
+  if (cell.bestLap && cell.bestTrack) {
+    const t = F1_TRACKS.find(tr => tr.id === cell.bestTrack);
+    tip += `\nBest: ${t?.short ?? cell.bestTrack} ${cell.bestLap}`;
+  }
+  return tip;
+}
+
 interface DashboardProps {
   setPage: (p: string) => void;
 }
@@ -127,6 +160,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const { data: setups = [] } = useGetSetups();
   const { data: communitySessions = [] } = useGetCommunitySessions();
   const { user } = useUser();
+  const [badgeTab, setBadgeTab] = useState('Skill');
 
   const totalSessions = sessions.length;
   const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
@@ -138,7 +172,6 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const achievements = useMemo(() => calculateAchievements(sessions, setups.length), [sessions, setups]);
   const earnedCount = achievements.filter(a => a.earned).length;
 
-  // Stat card micro-context
   const sessionsThisWeek = useMemo(() => {
     const today = new Date();
     const weekAgo = new Date(today);
@@ -178,7 +211,6 @@ export default function Dashboard({ setPage }: DashboardProps) {
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 8), [sessions]);
 
-  // Compute delta vs PB for each recent session
   const recentWithDelta = useMemo(() => {
     const pbByTrack: Record<string, number> = {};
     sessions.forEach(s => {
@@ -218,10 +250,9 @@ export default function Dashboard({ setPage }: DashboardProps) {
       .sort((a, b) => b.daysSince - a.daysSince);
   }, [sessions]);
 
-  // Performance snapshot
+  // Performance snapshot — enhanced with 4 metrics
   const perfSnapshot = useMemo(() => {
     if (sessions.length < 3) return null;
-    // Strongest track: track with best avg consistency
     const trackScores: Record<string, { total: number; count: number }> = {};
     sessions.forEach(s => {
       const c = sessionConsistency(s);
@@ -234,23 +265,66 @@ export default function Dashboard({ setPage }: DashboardProps) {
     const trackAvgs = Object.entries(trackScores)
       .filter(([, v]) => v.count >= 2)
       .map(([id, v]) => ({ id, avg: v.total / v.count }));
-    const strongest = trackAvgs.sort((a, b) => b.avg - a.avg)[0];
-    const weakest = trackAvgs.sort((a, b) => a.avg - b.avg)[0];
+    const strongest = [...trackAvgs].sort((a, b) => b.avg - a.avg)[0];
+    const weakest = [...trackAvgs].sort((a, b) => a.avg - b.avg)[0];
 
-    // Coaching insight: find closest track to PB improvement
+    // Best sector analysis
+    let bestSector = '';
+    let worstSector = '';
+    const s1Totals: number[] = [];
+    const s2Totals: number[] = [];
+    const s3Totals: number[] = [];
+    sessions.forEach(s => {
+      if (s.s1) { const v = lapToSeconds(s.s1); if (isFinite(v) && v > 0) s1Totals.push(v); }
+      if (s.s2) { const v = lapToSeconds(s.s2); if (isFinite(v) && v > 0) s2Totals.push(v); }
+      if (s.s3) { const v = lapToSeconds(s.s3); if (isFinite(v) && v > 0) s3Totals.push(v); }
+    });
+    if (s1Totals.length > 0 && s2Totals.length > 0 && s3Totals.length > 0) {
+      const variance = (arr: number[]) => {
+        const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+        return arr.reduce((s, v) => s + (v - mean) ** 2, 0) / arr.length;
+      };
+      const vars = [
+        { name: 'Sector 1', v: variance(s1Totals) },
+        { name: 'Sector 2', v: variance(s2Totals) },
+        { name: 'Sector 3', v: variance(s3Totals) },
+      ].sort((a, b) => a.v - b.v);
+      bestSector = vars[0].name;
+      worstSector = vars[vars.length - 1].name;
+    }
+
+    // Coaching insights — multi-variant
     const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
     let coachingInsight = '';
     if (sorted.length >= 2) {
       const recent = sorted[0];
       const recentSecs = lapToSeconds(recent.bestLap);
-      // Find PB for that track
       const trackSessions = sessions.filter(s => s.trackId === recent.trackId && s.bestLap);
       const pbSecs = Math.min(...trackSessions.map(s => lapToSeconds(s.bestLap)).filter(s => isFinite(s) && s > 0));
       if (isFinite(recentSecs) && isFinite(pbSecs) && recentSecs > pbSecs) {
         const gap = (recentSecs - pbSecs).toFixed(3);
         const name = F1_TRACKS.find(t => t.id === recent.trackId)?.short ?? recent.trackId;
-        coachingInsight = `You're ${gap}s off your ${name} PB. Focus on consistency to close the gap.`;
+        coachingInsight = `You're ${gap}s off your ${name} PB`;
       }
+    }
+    // Fallback coaching lines
+    if (!coachingInsight) {
+      if (rankInfo.nextRank) {
+        coachingInsight = `${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
+      } else if (weakest) {
+        const name = F1_TRACKS.find(t => t.id === weakest.id)?.short ?? weakest.id;
+        coachingInsight = `Focus today: consistency at ${name}`;
+      }
+    }
+
+    // Build sub-line with streak + rank distance
+    let subInsight = '';
+    if (streak > 0 && rankInfo.nextRank) {
+      subInsight = `PB streak: ${streak} day${streak !== 1 ? 's' : ''} \u2022 ${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
+    } else if (streak > 0) {
+      subInsight = `PB streak: ${streak} day${streak !== 1 ? 's' : ''}`;
+    } else if (rankInfo.nextRank) {
+      subInsight = `${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
     }
 
     return {
@@ -258,9 +332,12 @@ export default function Dashboard({ setPage }: DashboardProps) {
       strongestScore: strongest?.avg ?? null,
       weakestTrack: weakest && weakest.id !== strongest?.id ? F1_TRACKS.find(t => t.id === weakest.id)?.short ?? weakest.id : null,
       weakestScore: weakest && weakest.id !== strongest?.id ? weakest.avg : null,
+      bestSector,
+      worstSector,
       coachingInsight,
+      subInsight,
     };
-  }, [sessions]);
+  }, [sessions, streak, rankInfo]);
 
   // Weekly summary for heatmap
   const weeklySummary = useMemo(() => {
@@ -270,7 +347,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
     const weekStr = weekAgo.toISOString().slice(0, 10);
     const weekSessions = sessions.filter(s => s.date >= weekStr);
     const pbs = weekSessions.filter(s => s.isPB).length;
-    const totalMinutes = weekSessions.length * 10; // estimate ~10 min per session
+    const totalMinutes = weekSessions.length * 10;
     return { sessions: weekSessions.length, pbs, seatTime: totalMinutes };
   }, [sessions]);
 
@@ -287,7 +364,9 @@ export default function Dashboard({ setPage }: DashboardProps) {
     return t ? t.short : id;
   };
 
-  const userName = user?.firstName ?? user?.username ?? 'Driver';
+  // #polish: capitalize name properly
+  const rawName = user?.firstName ?? user?.username ?? 'Driver';
+  const userName = capitalize(rawName);
 
   // Rank progress bar
   const rankTiers: DriverRank[] = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'];
@@ -297,9 +376,101 @@ export default function Dashboard({ setPage }: DashboardProps) {
     ? Math.max(0, Math.min(100, ((rankInfo.points - (currentTierIdx > 0 ? [0, 30, 100, 200, 350, 500][currentTierIdx] : 0)) / (rankInfo.pointsToNext + rankInfo.points - (currentTierIdx > 0 ? [0, 30, 100, 200, 350, 500][currentTierIdx] : 0))) * 100))
     : 100;
 
+  // #6 Next Goal
+  const nextGoal = useMemo(() => {
+    if (sessions.length === 0) return null;
+    // Find the track with closest PB gap
+    const pbByTrack: Record<string, { pb: number; name: string }> = {};
+    sessions.forEach(s => {
+      if (!s.bestLap || s.bestLap.trim() === '') return;
+      const secs = lapToSeconds(s.bestLap);
+      if (!isFinite(secs) || secs <= 0) return;
+      const name = F1_TRACKS.find(t => t.id === s.trackId)?.short ?? s.trackId;
+      if (!pbByTrack[s.trackId] || secs < pbByTrack[s.trackId].pb) {
+        pbByTrack[s.trackId] = { pb: secs, name };
+      }
+    });
+    // Find a recent session where we were close to PB
+    const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
+    for (const s of sorted.slice(0, 10)) {
+      const secs = lapToSeconds(s.bestLap);
+      const entry = pbByTrack[s.trackId];
+      if (!entry || !isFinite(secs) || secs <= 0) continue;
+      const gap = secs - entry.pb;
+      if (gap > 0 && gap < 1.0) {
+        const target = Math.min(gap, 0.15);
+        // Check for achievable achievement unlock
+        let rewardBadge: string | null = null;
+        const nearBadge = achievements.find(a => !a.earned && a.target > 1 && a.progress / a.target >= 0.6);
+        if (nearBadge) rewardBadge = nearBadge.name;
+        return {
+          trackName: entry.name,
+          gap: target.toFixed(3),
+          xpReward: 25,
+          badge: rewardBadge,
+        };
+      }
+    }
+    // Fallback: suggest least-practiced track
+    const trackCounts: Record<string, number> = {};
+    sessions.forEach(s => { trackCounts[s.trackId] = (trackCounts[s.trackId] || 0) + 1; });
+    const practiced = Object.entries(trackCounts).sort((a, b) => a[1] - b[1]);
+    if (practiced.length > 0) {
+      const name = F1_TRACKS.find(t => t.id === practiced[0][0])?.short ?? practiced[0][0];
+      return { trackName: name, gap: null, xpReward: 15, badge: null };
+    }
+    return null;
+  }, [sessions, achievements]);
+
+  // #10 Session Recommendation Engine
+  const recommendation = useMemo(() => {
+    if (sessions.length < 3) return null;
+    // Find track with best consistency + most sessions (good track to improve on)
+    const trackData: Record<string, { count: number; consistency: number[]; pb: number }> = {};
+    sessions.forEach(s => {
+      if (!trackData[s.trackId]) trackData[s.trackId] = { count: 0, consistency: [], pb: Infinity };
+      trackData[s.trackId].count++;
+      const c = sessionConsistency(s);
+      if (c !== null) trackData[s.trackId].consistency.push(c);
+      const secs = lapToSeconds(s.bestLap);
+      if (isFinite(secs) && secs > 0 && secs < trackData[s.trackId].pb) trackData[s.trackId].pb = secs;
+    });
+    // Score each track: high consistency + enough sessions = PB opportunity
+    let best: { trackId: string; score: number; avgCons: number; count: number } | null = null;
+    for (const [trackId, data] of Object.entries(trackData)) {
+      if (data.consistency.length < 2) continue;
+      const avgCons = data.consistency.reduce((a, b) => a + b, 0) / data.consistency.length;
+      const score = avgCons * 0.6 + Math.min(data.count, 10) * 4;
+      if (!best || score > best.score) {
+        best = { trackId, score, avgCons, count: data.count };
+      }
+    }
+    if (!best) return null;
+    const track = F1_TRACKS.find(t => t.id === best!.trackId);
+    // Pick a recent car used on that track
+    const trackSessions = sessions.filter(s => s.trackId === best!.trackId).sort((a, b) => b.date.localeCompare(a.date));
+    const car = trackSessions[0]?.car ?? 'Any car';
+    // Estimated gain: if high consistency, more likely to PB
+    const gain = best.avgCons >= 96 ? '0.05–0.15' : best.avgCons >= 92 ? '0.15–0.30' : '0.30+';
+    return {
+      trackName: track?.short ?? best.trackId,
+      trackFlag: track?.flag ?? '',
+      car,
+      reason: best.avgCons >= 96 ? 'Strong consistency, PB opportunity detected' : 'Good consistency, room to improve',
+      gain: `+${gain}s`,
+    };
+  }, [sessions]);
+
+  // Badge tab filter
+  const filteredBadges: Achievement[] = useMemo(() => {
+    const cat = BADGE_CATEGORIES.find(c => c.label === badgeTab);
+    if (!cat) return achievements;
+    return achievements.filter(a => cat.ids.includes(a.id));
+  }, [achievements, badgeTab]);
+
   return (
     <div className="page" style={{ gap: 0 }}>
-      {/* ── 12. Personalization Greeting ────────────────────────────────── */}
+      {/* ── Personalization Greeting (smarter coaching copy) ────────────── */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.04em', color: 'var(--white)' }}>
           {getGreeting()}, {userName}
@@ -309,9 +480,14 @@ export default function Dashboard({ setPage }: DashboardProps) {
             {perfSnapshot.coachingInsight}
           </div>
         )}
+        {perfSnapshot?.subInsight && (
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray)', marginTop: 2 }}>
+            {perfSnapshot.subInsight}
+          </div>
+        )}
       </div>
 
-      {/* ── 9. Quick Action Buttons ────────────────────────────────────── */}
+      {/* ── Quick Action Buttons ────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         <button className="btn btn-primary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('sessions')}>+ Session</button>
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('setups')}>Load Setup</button>
@@ -319,7 +495,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('community')}>Community</button>
       </div>
 
-      {/* ── 1. Rank + XP Progress Bar ──────────────────────────────────── */}
+      {/* ── Rank + XP Progress Bar ──────────────────────────────────────── */}
       <div className="card dash-rank-card" style={{ padding: '14px 20px', marginBottom: 12, border: `1px solid ${getRankColor(rankInfo.rank)}33` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -359,31 +535,50 @@ export default function Dashboard({ setPage }: DashboardProps) {
         )}
       </div>
 
-      {/* ── 2. Stat Cards with micro-context ───────────────────────────── */}
+      {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
+      {nextGoal && (
+        <div className="card dash-next-goal" style={{ padding: '14px 20px', marginBottom: 12, border: '1px solid rgba(0,210,190,0.25)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
+            {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
+            {nextGoal.badge && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
+            )}
+            <button className="btn btn-primary dash-cta-pulse" style={{ fontSize: 10, padding: '4px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+              Start Attempt
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Stat Cards with micro-context ───────────────────────────────── */}
       <div className="stat-grid">
-        <div className="stat-card dash-stat-hover">
+        <div className="stat-card dash-stat-hover dash-fade-in">
           <div className="stat-label">Total Sessions</div>
           <div className="stat-value"><AnimatedCounter value={totalSessions} /></div>
           {sessionsThisWeek > 0 && <div className="stat-micro" style={{ color: 'var(--teal)' }}>+{sessionsThisWeek} this week</div>}
         </div>
-        <div className="stat-card dash-stat-hover">
+        <div className="stat-card dash-stat-hover dash-fade-in">
           <div className="stat-label">Tracks Practiced</div>
           <div className="stat-value"><AnimatedCounter value={tracksPracticed} /></div>
           {mostDrivenTrack && <div className="stat-micro">Most driven: {mostDrivenTrack}</div>}
         </div>
-        <div className="stat-card dash-stat-hover">
+        <div className="stat-card dash-stat-hover dash-fade-in">
           <div className="stat-label">Personal Bests</div>
           <div className="stat-value"><AnimatedCounter value={pbsSet} /></div>
           {lastPBDaysAgo && <div className="stat-micro">Last PB: {lastPBDaysAgo}</div>}
         </div>
-        <div className="stat-card dash-stat-hover" onClick={() => setPage('setups')} style={{ cursor: 'pointer' }}>
+        <div className="stat-card dash-stat-hover dash-fade-in" onClick={() => setPage('setups')} style={{ cursor: 'pointer' }}>
           <div className="stat-label">Setups Saved</div>
           <div className="stat-value"><AnimatedCounter value={setupsSaved} /></div>
           <div className="stat-micro stat-cta" onClick={e => { e.stopPropagation(); setPage('setups'); }}>Create Setup →</div>
         </div>
       </div>
 
-      {/* ── 3. Daily Challenge (enhanced) ──────────────────────────────── */}
+      {/* ── Daily Challenge ─────────────────────────────────────────────── */}
       <div className="card dash-challenge" style={{ padding: 0, marginBottom: 12, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
         <div style={{ background: 'rgba(0,210,190,0.06)', padding: '12px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
@@ -417,40 +612,87 @@ export default function Dashboard({ setPage }: DashboardProps) {
             Be first on the board today.
           </div>
         )}
-        <div style={{ padding: '6px 20px 10px', borderTop: '1px solid rgba(0,210,190,0.1)' }}>
-          <button className="btn btn-primary" style={{ fontSize: 11, padding: '5px 14px', width: '100%' }} onClick={() => setPage('sessions')}>
+        {/* #polish: centered CTA instead of full-width */}
+        <div style={{ padding: '8px 20px 12px', borderTop: '1px solid rgba(0,210,190,0.1)', textAlign: 'center' }}>
+          <button className="btn btn-primary dash-cta-pulse" style={{ fontSize: 11, padding: '6px 28px' }} onClick={() => setPage('sessions')}>
             Start Challenge
           </button>
         </div>
       </div>
 
-      {/* ── 7. Performance Snapshot ─────────────────────────────────────── */}
+      {/* ── #10 Session Recommendation Engine ──────────────────────────── */}
+      {recommendation && (
+        <div className="card dash-stat-hover" style={{ padding: '14px 20px', marginBottom: 12, border: '1px solid rgba(232,0,45,0.2)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>Recommended Session</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
+            {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
+          </div>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginBottom: 6 }}>
+            {recommendation.reason}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--teal)' }}>Estimated gain: {recommendation.gain}</span>
+            <button className="btn btn-primary" style={{ fontSize: 10, padding: '4px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+              Run Session
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
       {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
-        <div className="card" style={{ padding: '14px 20px', marginBottom: 12 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 10 }}>Performance Snapshot</div>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
+          <div className="perf-snap-grid">
             {perfSnapshot.strongestTrack && (
-              <div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>Strongest Track</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, color: 'var(--teal)', letterSpacing: '0.04em' }}>{perfSnapshot.strongestTrack}</div>
-                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>{perfSnapshot.strongestScore.toFixed(1)}% consistency</div>}
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Strongest Track</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.strongestTrack}</div>
+                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
               </div>
             )}
             {perfSnapshot.weakestTrack && (
-              <div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>Needs Work</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, color: 'var(--red)', letterSpacing: '0.04em' }}>{perfSnapshot.weakestTrack}</div>
-                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>{perfSnapshot.weakestScore.toFixed(1)}% consistency</div>}
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Needs Work</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.weakestTrack}</div>
+                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
+              </div>
+            )}
+            {perfSnapshot.bestSector && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Best Sector</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
+              </div>
+            )}
+            {perfSnapshot.worstSector && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Biggest Time Loss</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: '#FF9800', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ── 4. Achievements (enhanced UX) ──────────────────────────────── */}
-      <div className="section-title" style={{ marginTop: 8, marginBottom: 8 }}>Achievements</div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-        {achievements.map(a => {
+      {/* ── Achievements (tabbed by category) ──────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
+        <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {BADGE_CATEGORIES.map(cat => (
+            <button
+              key={cat.label}
+              onClick={() => setBadgeTab(cat.label)}
+              className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+        {filteredBadges.map(a => {
           const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
           return (
             <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
@@ -472,7 +714,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
         })}
       </div>
 
-      {/* ── 5. Activity Heatmap (with weekly summary + tooltips) ────────── */}
+      {/* ── Activity Heatmap (with rich tooltips + weekly summary) ──────── */}
+      {/* #polish: tightened spacing before heatmap */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
         <div className="section-title" style={{ marginBottom: 0 }}>Activity — Last 365 Days</div>
         <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>
@@ -525,7 +768,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
                   <div
                     key={di}
                     className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}`}
-                    title={`${cell.date}: ${cell.count} session${cell.count !== 1 ? 's' : ''}`}
+                    title={buildHeatmapTooltip(cell)}
                   />
                 ))}
               </div>
@@ -534,13 +777,14 @@ export default function Dashboard({ setPage }: DashboardProps) {
         </div>
       </div>
 
-      {/* ── 6. Recent Sessions (enhanced table) ────────────────────────── */}
-      <div className="section-title" style={{ marginTop: 12 }}>Recent Sessions</div>
+      {/* ── Recent Sessions (enhanced table with mini bars) ─────────────── */}
+      {/* #polish: tightened spacing between heatmap and sessions */}
+      <div className="section-title" style={{ marginTop: 8 }}>Recent Sessions</div>
       {recentSessions.length === 0 ? (
         <div className="table-wrap">
           <div className="empty-state">
             <div className="empty-state-title">No Sessions Yet</div>
-            <div className="empty-state-desc">Head to the Sessions page to log your first sim racing session.</div>
+            <div className="empty-state-desc">Head to the Sessions page to log your first session.</div>
           </div>
           <div style={{ textAlign: 'center', paddingBottom: 16 }}>
             <button className="btn btn-primary" onClick={() => setPage('sessions')}>Log Your First Session</button>
@@ -597,8 +841,14 @@ export default function Dashboard({ setPage }: DashboardProps) {
                       <span style={{ color: 'var(--gray)' }}>—</span>
                     )}
                   </td>
-                  <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
-                  <td><RatingDots rating={s.rating} /></td>
+                  <td><span className={`badge ${(['badge-practice', 'badge-qualifying', 'badge-race', 'badge-hotlap', 'badge-hotlap'] as const)[['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'].indexOf(s.type)] || 'badge-practice'}`}>{s.type}</span></td>
+                  <td>
+                    <div className="mini-bars-cell">
+                      <MiniBar value={Math.min(5, Math.round(s.rating * 1))} label="Pace" />
+                      <MiniBar value={s.consistency !== null ? Math.min(5, Math.round(s.consistency / 20)) : 0} label="Clean" />
+                      <MiniBar value={s.consistency !== null ? Math.min(5, Math.round((s.consistency - 80) / 4)) : 0} label="Consist" />
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -609,7 +859,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
       {/* Tracks needing attention */}
       {neglectedTracks.length > 0 && (
         <>
-          <div className="section-title" style={{ marginTop: 16 }}>Needs Practice — 14+ Days</div>
+          <div className="section-title" style={{ marginTop: 12 }}>Needs Practice — 14+ Days</div>
           <div style={{
             display: 'flex',
             gap: 10,

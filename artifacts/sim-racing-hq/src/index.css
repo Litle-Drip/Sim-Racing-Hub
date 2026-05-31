@@ -959,9 +959,9 @@ table { border-collapse: collapse; width: 100%; }
   background: var(--border);
 }
 
-.heatmap-cell.l1 { background: rgba(232,0,45,0.35); }
-.heatmap-cell.l2 { background: rgba(232,0,45,0.6); }
-.heatmap-cell.l3 { background: var(--red); }
+.heatmap-cell.l1 { background: rgba(232,0,45,0.4); }
+.heatmap-cell.l2 { background: rgba(232,0,45,0.65); }
+.heatmap-cell.l3 { background: var(--red); box-shadow: 0 0 3px rgba(232,0,45,0.3); }
 
 /* =========================================================
    DASHBOARD OVERHAUL — XP BAR, BADGES, ANIMATIONS
@@ -1106,6 +1106,128 @@ table { border-collapse: collapse; width: 100%; }
   0% { left: -50%; }
   100% { left: 150%; }
 }
+
+/* Performance Snapshot 4-card grid */
+.perf-snap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.perf-snap-card {
+  padding: 12px 16px !important;
+  text-align: center;
+}
+
+/* Mini rating bars (replacing dots) */
+.mini-bars-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 60px;
+}
+
+.mini-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mini-bar-label {
+  font-family: var(--font-body);
+  font-size: 8px;
+  color: var(--gray);
+  width: 30px;
+  text-align: right;
+}
+
+.mini-bar-bg {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mini-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Badge category tabs */
+.badge-tab {
+  font-family: var(--font-display);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+  color: var(--gray);
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.badge-tab:hover {
+  color: var(--gray-light);
+  border-color: var(--border-accent);
+}
+
+.badge-tab-active {
+  color: var(--teal);
+  border-color: var(--teal);
+  background: rgba(0, 210, 190, 0.06);
+}
+
+/* Fade-in animation for stat cards */
+.dash-fade-in {
+  animation: dashFadeIn 0.5s ease-out both;
+}
+
+@keyframes dashFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dash-fade-in:nth-child(1) { animation-delay: 0s; }
+.dash-fade-in:nth-child(2) { animation-delay: 0.08s; }
+.dash-fade-in:nth-child(3) { animation-delay: 0.16s; }
+.dash-fade-in:nth-child(4) { animation-delay: 0.24s; }
+
+/* Next Goal card glow */
+.dash-next-goal {
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-next-goal::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,210,190,0.04), transparent);
+  animation: scanline 5s linear infinite;
+  pointer-events: none;
+}
+
+/* CTA pulse animation */
+.dash-cta-pulse {
+  animation: ctaPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes ctaPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(232,0,45,0); }
+  50% { box-shadow: 0 0 10px rgba(232,0,45,0.25); }
+}
+
+/* Heatmap cell higher contrast for active days */
+.heatmap-cell.l1 { background: rgba(232,0,45,0.4); }
+.heatmap-cell.l2 { background: rgba(232,0,45,0.65); }
+.heatmap-cell.l3 { background: var(--red); box-shadow: 0 0 3px rgba(232,0,45,0.3); }
 
 /* =========================================================
    TRACK GRID
