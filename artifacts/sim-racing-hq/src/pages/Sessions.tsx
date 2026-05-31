@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X } from 'lucide-react';
 import {
   useGetSessions,
@@ -9,7 +9,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
+import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency } from '../lib/engagement';
@@ -215,7 +215,10 @@ const defaultForm = () => ({
   gameVersion: '',
   platform: '',
   inputDevice: '',
+  position: '',
 });
+
+const DRAFT_KEY = 'session-draft';
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -235,10 +238,43 @@ export default function Sessions() {
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
 
+  // ── Draft auto-save ────────────────────────────────────────────────────
+
+  const saveDraft = useCallback(() => {
+    if (!showModal) return;
+    const hasData = form.trackId || form.car || form.bestLap || laps.length > 0 || form.notes;
+    if (hasData) {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ form, laps, savedAt: Date.now() })); } catch {}
+    }
+  }, [showModal, form, laps]);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const t = setInterval(saveDraft, 3000);
+    return () => clearInterval(t);
+  }, [showModal, saveDraft]);
+
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return false;
+      const draft = JSON.parse(raw) as { form: ReturnType<typeof defaultForm>; laps: FormLap[]; savedAt: number };
+      if (Date.now() - draft.savedAt > 24 * 60 * 60 * 1000) { localStorage.removeItem(DRAFT_KEY); return false; }
+      setForm(draft.form);
+      setLaps(draft.laps ?? []);
+      return true;
+    } catch { return false; }
+  }, []);
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  }, []);
+
   const { mutate: createSession, isPending: saving } = useCreateSession({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
+        clearDraft();
         setShowModal(false);
         setForm(defaultForm());
         setLaps([]);
@@ -292,11 +328,28 @@ export default function Sessions() {
     }
   };
 
+  // ── Auto-recalculate avg when best/worst change manually (no laps) ────
+  const recalcAvg = (best: string, worst: string) => {
+    const b = secsFromLap(best);
+    const w = secsFromLap(worst);
+    if (isFinite(b) && isFinite(w) && b > 0 && w > 0) {
+      return secsToLapStr((b + w) / 2);
+    }
+    return '';
+  };
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short ?? id;
 
-  const set = (k: string, v: string | number) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k: string, v: string | number) => setForm(f => {
+    const next = { ...f, [k]: v };
+    // Auto-recalculate avgLap when best/worst change manually (no laps entered)
+    if ((k === 'bestLap' || k === 'worstLap') && laps.length === 0) {
+      next.avgLap = recalcAvg(next.bestLap, next.worstLap);
+    }
+    return next;
+  });
 
   const filtered = useMemo(() => {
     return [...sessions]
@@ -322,6 +375,16 @@ export default function Sessions() {
 
     const computed = laps.length > 0 ? computeFromLaps(laps) : null;
 
+    // Find fastest lap's sectors (not first lap)
+    let bestS1 = '', bestS2 = '', bestS3 = '';
+    if (laps.length > 0) {
+      const validLaps = laps.filter(l => l.time.trim() !== '');
+      if (validLaps.length > 0) {
+        const fastest = validLaps.reduce((a, b) => secsFromLap(a.time) < secsFromLap(b.time) ? a : b);
+        bestS1 = fastest.s1; bestS2 = fastest.s2; bestS3 = fastest.s3;
+      }
+    }
+
     createSession({
       data: {
         id: crypto.randomUUID(),
@@ -332,9 +395,9 @@ export default function Sessions() {
         bestLap: computed?.bestLap || form.bestLap,
         avgLap: computed?.avgLap || form.avgLap,
         worstLap: computed?.worstLap || form.worstLap,
-        s1: laps[0]?.s1 ?? '',
-        s2: laps[0]?.s2 ?? '',
-        s3: laps[0]?.s3 ?? '',
+        s1: bestS1,
+        s2: bestS2,
+        s3: bestS3,
         tires: form.tires,
         fuelLoad: Number(form.fuelLoad),
         conditions: form.timeOfDay ? `${form.conditions} · ${form.timeOfDay}` : form.conditions,
@@ -345,6 +408,7 @@ export default function Sessions() {
         gameVersion: form.gameVersion,
         platform: form.platform,
         inputDevice: form.inputDevice,
+        position: form.type === 'Race' && form.position ? form.position : undefined,
         laps: laps.length > 0 ? laps.map((l, i) => ({
           lap: i + 1,
           time: l.time,
@@ -380,6 +444,7 @@ export default function Sessions() {
   };
 
   const closeModal = () => {
+    saveDraft();
     setShowModal(false);
     setForm(defaultForm());
     setLaps([]);
@@ -393,7 +458,7 @@ export default function Sessions() {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Session Log</h1>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}>
           <Plus size={12} /> Log Session
         </button>
       </div>
@@ -478,14 +543,32 @@ export default function Sessions() {
                     <tr key={`${s.id}-exp`} className="expanded-row">
                       <td colSpan={10}>
                         <div className="expanded-content">
-                          {/* Summary stats — only shown if no laps data */}
-                          {(!s.laps || s.laps.length === 0) && (
+                          {/* Sector times — from fastest lap or manual entry */}
+                          {(s.s1 || s.s2 || s.s3) && (
                             <>
-                              {s.s1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s1}</div></div>}
-                              {s.s2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s2}</div></div>}
-                              {s.s3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s3}</div></div>}
+                              {s.s1 && <div className="expanded-item"><div className="expanded-label">Best S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s1}</div></div>}
+                              {s.s2 && <div className="expanded-item"><div className="expanded-label">Best S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s2}</div></div>}
+                              {s.s3 && <div className="expanded-item"><div className="expanded-label">Best S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s3}</div></div>}
                             </>
                           )}
+                          {/* Best sectors from laps data */}
+                          {s.laps && s.laps.length > 0 && (() => {
+                            const validS1 = s.laps!.filter(l => l.s1 && l.s1.trim()).map(l => ({ val: l.s1, secs: parseFloat(l.s1) })).filter(x => !isNaN(x.secs));
+                            const validS2 = s.laps!.filter(l => l.s2 && l.s2.trim()).map(l => ({ val: l.s2, secs: parseFloat(l.s2) })).filter(x => !isNaN(x.secs));
+                            const validS3 = s.laps!.filter(l => l.s3 && l.s3.trim()).map(l => ({ val: l.s3, secs: parseFloat(l.s3) })).filter(x => !isNaN(x.secs));
+                            if (validS1.length === 0 && validS2.length === 0 && validS3.length === 0) return null;
+                            const bestS1 = validS1.length > 0 ? validS1.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
+                            const bestS2 = validS2.length > 0 ? validS2.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
+                            const bestS3 = validS3.length > 0 ? validS3.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
+                            return (
+                              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)', width: '100%' }}>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', width: '100%' }}>Best Sectors (from laps)</div>
+                                {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS1}</div></div>}
+                                {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS2}</div></div>}
+                                {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS3}</div></div>}
+                              </div>
+                            );
+                          })()}
                           <div className="expanded-item"><div className="expanded-label">Fuel Load</div><div className="expanded-value">{s.fuelLoad}%</div></div>
                           <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions}</div></div>
                           <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>
@@ -569,6 +652,7 @@ export default function Sessions() {
           <div className="modal" style={{ maxWidth: 780 }}>
             <div className="modal-header">
               <span className="modal-title">Log Session</span>
+              {localStorage.getItem(DRAFT_KEY) && <span style={{ fontSize: 10, color: 'var(--teal)', fontFamily: 'var(--font-body)', marginLeft: 8, fontWeight: 400 }}>Draft restored</span>}
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
@@ -634,7 +718,10 @@ export default function Sessions() {
                 </div>
                 <div className="field">
                   <label className="field-label">Game Version</label>
-                  <input type="text" placeholder="e.g. F1 25 v1.2" value={form.gameVersion} onChange={e => set('gameVersion', e.target.value)} />
+                  <select value={form.gameVersion} onChange={e => set('gameVersion', e.target.value)}>
+                    <option value="">Select Version</option>
+                    {GAME_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
                 </div>
                 <div className="field">
                   <label className="field-label">Platform</label>
@@ -654,6 +741,19 @@ export default function Sessions() {
                   <label className="field-label">Overall Penalty</label>
                   <input type="text" placeholder="e.g. 5s, 10s" value={form.penalty} onChange={e => set('penalty', e.target.value)} />
                 </div>
+                {form.type === 'Race' && (
+                  <div className="field">
+                    <label className="field-label">Finishing Position</label>
+                    <select value={form.position} onChange={e => set('position', e.target.value)}>
+                      <option value="">Not Set</option>
+                      {Array.from({ length: 20 }, (_, i) => i + 1).map(p => (
+                        <option key={p} value={String(p)}>P{p}</option>
+                      ))}
+                      <option value="DNF">DNF</option>
+                      <option value="DSQ">DSQ</option>
+                    </select>
+                  </div>
+                )}
                 <div className="field">
                   <label className="field-label">Rating</label>
                   <StarRating value={form.rating} onChange={v => set('rating', v)} />

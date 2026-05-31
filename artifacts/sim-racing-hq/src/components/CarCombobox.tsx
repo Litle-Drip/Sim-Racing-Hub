@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { F1_25_CARS } from '../data/f1Tracks';
+import { useGetSessions } from '@workspace/api-client-react';
 
 interface CarComboboxProps {
   value: string;
@@ -11,10 +12,22 @@ interface CarComboboxProps {
 export function CarCombobox({ value, onChange, error, placeholder = 'e.g. Ferrari SF-25' }: CarComboboxProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { data: sessions } = useGetSessions();
+
+  const allCars = useMemo(() => {
+    const userCars = new Set<string>();
+    (sessions ?? []).forEach(s => {
+      if (s.car && s.car.trim() && !F1_25_CARS.some(c => c.toLowerCase() === s.car.toLowerCase())) {
+        userCars.add(s.car);
+      }
+    });
+    const myCars = [...userCars].sort();
+    return myCars.length > 0 ? [...myCars, '───', ...F1_25_CARS] : F1_25_CARS;
+  }, [sessions]);
 
   const filtered = value.trim()
-    ? F1_25_CARS.filter(c => c.toLowerCase().includes(value.toLowerCase()))
-    : F1_25_CARS;
+    ? allCars.filter(c => c !== '───' && c.toLowerCase().includes(value.toLowerCase()))
+    : allCars;
 
   useEffect(() => {
     function handlePointerDown(e: MouseEvent) {
@@ -51,11 +64,16 @@ export function CarCombobox({ value, onChange, error, placeholder = 'e.g. Ferrar
           overflowY: 'auto',
           boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
         }}>
-          {filtered.map(car => {
+          {filtered.map((car, idx) => {
+            if (car === '───') {
+              return <div key="sep" style={{ borderTop: '1px solid var(--border)', margin: '4px 0', padding: 0 }}>
+                <div style={{ padding: '4px 12px', fontSize: 9, fontFamily: 'var(--font-display)', letterSpacing: '0.12em', color: 'var(--gray)', textTransform: 'uppercase' }}>F1 25 Grid</div>
+              </div>;
+            }
             const isSelected = car === value;
             return (
               <div
-                key={car}
+                key={`${car}-${idx}`}
                 onMouseDown={e => { e.preventDefault(); onChange(car); setOpen(false); }}
                 style={{
                   padding: '8px 12px',

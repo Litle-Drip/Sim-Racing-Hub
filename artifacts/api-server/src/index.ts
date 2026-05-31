@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   shared_at TIMESTAMP,
   public_note TEXT,
   laps JSONB,
+  position TEXT NOT NULL DEFAULT '',
   is_pb BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -105,6 +106,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT '';
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS input_device TEXT NOT NULL DEFAULT '';
 ALTER TABLE setups ADD COLUMN IF NOT EXISTS game_version TEXT NOT NULL DEFAULT '';
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS public_note TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS position TEXT NOT NULL DEFAULT '';
 `;
 
 async function ensureDatabase(): Promise<void> {

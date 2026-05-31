@@ -54,7 +54,8 @@ export const GetSessionsResponseItem = zod.object({
     "tires": zod.string(),
     "penalty": zod.string()
   })).nullish(),
-  "isPB": zod.boolean()
+  "isPB": zod.boolean(),
+  "position": zod.string().optional().default("")
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
 
@@ -84,6 +85,7 @@ export const CreateSessionBody = zod.object({
   "gameVersion": zod.string().optional().default(""),
   "platform": zod.string().optional().default(""),
   "inputDevice": zod.string().optional().default(""),
+  "position": zod.string().optional().default(""),
   "laps": zod.array(zod.object({
     "lap": zod.number(),
     "time": zod.string(),

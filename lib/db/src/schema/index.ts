@@ -27,6 +27,7 @@ export const sessionsTable = pgTable("sessions", {
   sharedAt: timestamp("shared_at"),
   publicNote: text("public_note"),
   laps: jsonb("laps").$type<Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>>(),
+  position: text("position").notNull().default(""),
   isPB: boolean("is_pb").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
