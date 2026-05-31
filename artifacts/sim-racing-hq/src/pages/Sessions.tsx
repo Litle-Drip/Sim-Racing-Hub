@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X } from 'lucide-react';
 import {
   useGetSessions,
@@ -237,6 +237,7 @@ export default function Sessions() {
   const [filterCar, setFilterCar] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
+  const manualLapTimes = useRef({ best: false, worst: false });
 
   // ── Draft auto-save ────────────────────────────────────────────────────
 
@@ -280,6 +281,7 @@ export default function Sessions() {
         setLaps([]);
         setFormErrors({});
         setSaveError('');
+        manualLapTimes.current = { best: false, worst: false };
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save session. Please try again.';
@@ -323,10 +325,15 @@ export default function Sessions() {
 
   const syncSummary = (lapList: FormLap[]) => {
     const validLaps = lapList.filter(l => l.time.trim() !== '');
-    if (validLaps.length === 0) return; // preserve manually entered values
+    if (validLaps.length === 0) return;
     const computed = computeFromLaps(lapList);
     if (computed.bestLap) {
-      setForm(f => ({ ...f, bestLap: computed.bestLap, avgLap: computed.avgLap, worstLap: computed.worstLap }));
+      setForm(f => ({
+        ...f,
+        bestLap: manualLapTimes.current.best ? f.bestLap : computed.bestLap,
+        avgLap: computed.avgLap,
+        worstLap: manualLapTimes.current.worst ? f.worstLap : computed.worstLap,
+      }));
     }
   };
 
@@ -346,8 +353,9 @@ export default function Sessions() {
 
   const set = (k: string, v: string | number) => setForm(f => {
     const next = { ...f, [k]: v };
-    // Auto-recalculate avgLap when best/worst change manually (no laps entered)
-    if ((k === 'bestLap' || k === 'worstLap') && laps.length === 0) {
+    if (k === 'bestLap') manualLapTimes.current.best = (v as string).trim() !== '';
+    if (k === 'worstLap') manualLapTimes.current.worst = (v as string).trim() !== '';
+    if (k === 'bestLap' || k === 'worstLap') {
       next.avgLap = recalcAvg(next.bestLap, next.worstLap);
     }
     return next;
@@ -451,6 +459,7 @@ export default function Sessions() {
     setForm(defaultForm());
     setLaps([]);
     setFormErrors({});
+    manualLapTimes.current = { best: false, worst: false };
     setSaveError('');
   };
 
@@ -460,7 +469,7 @@ export default function Sessions() {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Session Log</h1>
-        <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}>
+        <button className="btn btn-primary" onClick={() => { manualLapTimes.current = { best: false, worst: false }; const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}>
           <Plus size={12} /> Log Session
         </button>
       </div>
