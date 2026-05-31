@@ -210,7 +210,7 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
 
 export default function Community() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'setups' | 'sessions' | 'leaderboard'>('setups');
+  const [tab, setTab] = useState<'setups' | 'sessions' | 'leaderboard'>('leaderboard');
   const [filterTrack, setFilterTrack] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
@@ -359,7 +359,7 @@ export default function Community() {
 
       {/* Tab switcher */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
-        {(['setups', 'sessions', 'leaderboard'] as const).map(t => (
+        {(['leaderboard', 'sessions', 'setups'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -481,7 +481,7 @@ export default function Community() {
             <select className="filter-select" value={sessionSort} onChange={(e) => setSessionSort(e.target.value as 'fastest' | 'recent' | 'rating')}>
               <option value="fastest">Fastest First</option>
               <option value="recent">Most Recent</option>
-              <option value="rating">Highest Rated</option>
+              <option value="rating">Best Session Rating</option>
             </select>
           </div>
 

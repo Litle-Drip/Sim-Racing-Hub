@@ -125,7 +125,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
   const heatmapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (heatmapRef.current) heatmapRef.current.scrollLeft = 0;
+    if (heatmapRef.current) heatmapRef.current.scrollLeft = heatmapRef.current.scrollWidth;
   }, [cells]);
 
   const trackName = (id: string) => {

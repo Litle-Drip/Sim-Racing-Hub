@@ -235,7 +235,8 @@ router.post("/sessions/:id/share", requireAuth, async (req, res) => {
 
     const newIsPublic = !existing.isPublic;
     const sharedAt = newIsPublic ? new Date() : null;
-    const { publicNote } = req.body as { publicNote?: string };
+    const { publicNote: rawNote } = req.body as { publicNote?: string };
+    const publicNote = typeof rawNote === "string" ? rawNote.slice(0, 500) : undefined;
 
     await db
       .update(sessionsTable)
