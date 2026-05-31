@@ -104,6 +104,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     publicNote: r.publicNote ?? null,
     laps: r.laps ?? null,
     isPB: r.isPB,
+    position: r.position ?? '',
   };
 }
 
@@ -169,6 +170,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
       platform: data.platform ?? "",
       inputDevice: data.inputDevice ?? "",
       laps: incomingLaps.length > 0 ? incomingLaps : null,
+      position: data.position ?? '',
       isPB: false,
     });
 

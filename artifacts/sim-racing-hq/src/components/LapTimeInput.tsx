@@ -28,8 +28,18 @@ export function LapTimeInput({
     // Strip everything except digits, colon, and dot
     const cleaned = raw.replace(/[^\d:.]/g, '');
 
-    // If user typed/pasted something with colons or dots, accept as-is
+    // If user typed/pasted something with colons or dots
     if (cleaned.includes(':') || cleaned.includes('.')) {
+      // Handle mobile: user types "1.38.234" meaning "1:38.234"
+      // If there are 2+ dots and no colon, convert the first dot to colon
+      if (!cleaned.includes(':')) {
+        const dotCount = (cleaned.match(/\./g) || []).length;
+        if (dotCount >= 2) {
+          const firstDotIdx = cleaned.indexOf('.');
+          onChange(cleaned.slice(0, firstDotIdx) + ':' + cleaned.slice(firstDotIdx + 1));
+          return;
+        }
+      }
       onChange(cleaned);
       return;
     }
@@ -63,7 +73,7 @@ export function LapTimeInput({
     <input
       ref={inputRef}
       type="text"
-      inputMode="decimal"
+      inputMode="text"
       value={value}
       onChange={e => handleChange(e.target.value)}
       placeholder={placeholder}

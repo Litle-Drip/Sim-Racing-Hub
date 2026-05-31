@@ -25,5 +25,6 @@ export interface CreateSessionRequest {
   rating: number;
   notes: string;
   penalty: string;
+  position?: string;
   laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>;
 }

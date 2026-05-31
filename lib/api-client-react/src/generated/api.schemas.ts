@@ -50,6 +50,7 @@ export interface SessionRecord {
   publicNote?: string | null;
   laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }> | null;
   isPB: boolean;
+  position?: string;
 }
 
 export interface CreateSessionRequest {
@@ -74,6 +75,7 @@ export interface CreateSessionRequest {
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  position?: string;
   laps?: Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>;
 }
 

@@ -313,6 +313,50 @@ export default function Progress() {
           </table>
         </div>
       )}
+      {/* Best Sectors per Track */}
+      {filterTrack && (() => {
+        type SectorEntry = { val: string; secs: number; date: string; car: string };
+        const bestSectors: { s1: SectorEntry | null; s2: SectorEntry | null; s3: SectorEntry | null } = { s1: null, s2: null, s3: null };
+        filtered.forEach(s => {
+          const laps = (s.laps ?? []) as Array<{ s1: string; s2: string; s3: string }>;
+          const checkSector = (key: 's1' | 's2' | 's3', val: string) => {
+            if (!val || !val.trim()) return;
+            const secs = parseFloat(val);
+            if (isNaN(secs) || secs <= 0) return;
+            if (!bestSectors[key] || secs < bestSectors[key]!.secs) {
+              bestSectors[key] = { val, secs, date: s.date, car: s.car };
+            }
+          };
+          if (laps.length > 0) {
+            laps.forEach(l => { checkSector('s1', l.s1); checkSector('s2', l.s2); checkSector('s3', l.s3); });
+          } else {
+            checkSector('s1', s.s1); checkSector('s2', s.s2); checkSector('s3', s.s3);
+          }
+        });
+        const hasSectors = bestSectors.s1 || bestSectors.s2 || bestSectors.s3;
+        if (!hasSectors) return null;
+        return (
+          <>
+            <div className="section-title" style={{ marginTop: 40 }}>Best Sectors — {trackName(filterTrack)}</div>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {(['s1', 's2', 's3'] as const).map(key => {
+                const s = bestSectors[key];
+                if (!s) return null;
+                return (
+                  <div key={key} className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
+                      Sector {key.slice(1)}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{s.val}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 6 }}>{s.car} · {s.date}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
+
       {/* Consistency Trend */}
       <div className="section-title" style={{ marginTop: 40 }}>Consistency Score Trend</div>
       {!filterTrack ? (
