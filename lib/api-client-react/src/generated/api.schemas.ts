@@ -60,6 +60,7 @@ export interface SessionRecord {
   sharedAt?: string | null;
   publicNote?: string | null;
   laps?: LapRecord[] | null;
+  position?: string;
 }
 
 export interface CreateSessionRequest {
@@ -85,7 +86,7 @@ export interface CreateSessionRequest {
   platform?: string;
   inputDevice?: string;
   laps?: LapRecord[];
-  position?: number;
+  position?: string;
 }
 
 export interface ShareSessionRequest {

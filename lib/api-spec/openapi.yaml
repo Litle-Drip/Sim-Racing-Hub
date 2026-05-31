@@ -577,6 +577,8 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/LapRecord"
+        position:
+          type: string
       required:
         - id
         - date
@@ -648,7 +650,7 @@ components:
           items:
             $ref: "#/components/schemas/LapRecord"
         position:
-          type: integer
+          type: string
       required:
         - id
         - date

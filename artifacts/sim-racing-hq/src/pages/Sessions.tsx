@@ -322,6 +322,8 @@ export default function Sessions() {
   };
 
   const syncSummary = (lapList: FormLap[]) => {
+    const validLaps = lapList.filter(l => l.time.trim() !== '');
+    if (validLaps.length === 0) return; // preserve manually entered values
     const computed = computeFromLaps(lapList);
     if (computed.bestLap) {
       setForm(f => ({ ...f, bestLap: computed.bestLap, avgLap: computed.avgLap, worstLap: computed.worstLap }));
@@ -408,7 +410,7 @@ export default function Sessions() {
         gameVersion: form.gameVersion,
         platform: form.platform,
         inputDevice: form.inputDevice,
-        position: form.type === 'Race' && form.position ? parseInt(form.position, 10) : undefined,
+        position: form.type === 'Race' && form.position ? form.position : undefined,
         laps: laps.length > 0 ? laps.map((l, i) => ({
           lap: i + 1,
           time: l.time,

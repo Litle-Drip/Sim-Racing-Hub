@@ -30,5 +30,5 @@ export interface CreateSessionRequest {
   platform?: string;
   inputDevice?: string;
   laps?: LapRecord[];
-  position?: number;
+  position?: string;
 }

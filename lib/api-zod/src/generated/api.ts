@@ -54,7 +54,8 @@ export const GetSessionsResponseItem = zod.object({
   "s3": zod.string(),
   "tires": zod.string(),
   "penalty": zod.string()
-})).nullish()
+})).nullish(),
+  "position": zod.string().optional()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
 
@@ -93,7 +94,7 @@ export const CreateSessionBody = zod.object({
   "tires": zod.string(),
   "penalty": zod.string()
 })).optional(),
-  "position": zod.number().optional()
+  "position": zod.string().optional()
 })
 
 
