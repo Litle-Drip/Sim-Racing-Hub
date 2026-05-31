@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
+import { useGetSessions } from '@workspace/api-client-react';
+import { calculateStreak, calculateRank, getRankColor } from '../lib/engagement';
 
 interface NavProps {
   page: string;
@@ -22,8 +24,12 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 export default function Nav({ page, setPage }: NavProps) {
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { data: sessions = [] } = useGetSessions();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
+
+  const streak = useMemo(() => calculateStreak(sessions), [sessions]);
+  const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -36,6 +42,8 @@ export default function Nav({ page, setPage }: NavProps) {
     setPage(id);
     setOpen(false);
   }
+
+  const displayName = user?.firstName ?? user?.username ?? 'Driver';
 
   return (
     <>
@@ -83,63 +91,37 @@ export default function Nav({ page, setPage }: NavProps) {
             </li>
           ))}
         </ul>
+
+        {/* Profile Card */}
+        <div className="nav-profile-card">
+          <div className="nav-profile-avatar">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          <div className="nav-profile-info">
+            <div className="nav-profile-name">{displayName}</div>
+            <div className="nav-profile-rank" style={{ color: getRankColor(rankInfo.rank) }}>
+              {rankInfo.rank}
+            </div>
+            {streak > 0 && (
+              <div className="nav-profile-streak">🔥 {streak} day streak</div>
+            )}
+          </div>
+        </div>
+
         <div style={{
-          marginTop: 'auto',
-          padding: '16px 20px',
+          padding: '10px 20px 16px',
           borderTop: '1px solid var(--border)',
         }}>
-          {user && (
-            <div style={{
-              fontSize: 11,
-              fontFamily: 'var(--font-body)',
-              color: 'var(--gray-mid)',
-              marginBottom: 10,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {user.primaryEmailAddress?.emailAddress ?? user.firstName ?? 'Driver'}
-            </div>
-          )}
           <button
             onClick={toggleTheme}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'none',
-              border: 'none',
-              color: 'var(--gray)',
-              cursor: 'pointer',
-              fontSize: 12,
-              fontFamily: 'var(--font-body)',
-              padding: 0,
-              width: '100%',
-              marginBottom: 10,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--teal)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--gray)')}
+            className="nav-footer-btn"
           >
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
             {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
           </button>
           <button
             onClick={() => signOut({ redirectUrl: basePath || '/' })}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'none',
-              border: 'none',
-              color: 'var(--gray)',
-              cursor: 'pointer',
-              fontSize: 12,
-              fontFamily: 'var(--font-body)',
-              padding: 0,
-              width: '100%',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--red)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--gray)')}
+            className="nav-footer-btn nav-footer-btn--danger"
           >
             <LogOut size={14} />
             Sign Out

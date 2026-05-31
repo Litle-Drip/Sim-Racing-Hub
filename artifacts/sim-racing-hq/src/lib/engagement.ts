@@ -4,12 +4,19 @@ import { lapToSeconds } from './storage';
 
 // ─── Daily Challenge ─────────────────────────────────────────────────────────
 
+export type ChallengeDifficulty = 'Easy' | 'Medium' | 'Hard';
+
 export function getDailyChallenge() {
   const today = new Date();
   const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
   const trackIdx = dayOfYear % F1_TRACKS.length;
   const carIdx = Math.floor(dayOfYear / F1_TRACKS.length) % F1_25_CARS.length;
-  return { track: F1_TRACKS[trackIdx], car: F1_25_CARS[carIdx], date: today.toISOString().slice(0, 10) };
+  const track = F1_TRACKS[trackIdx];
+  const hardTracks = ['monaco', 'jeddah', 'marina_bay', 'baku', 'suzuka', 'spa'];
+  const easyTracks = ['monza', 'red_bull_ring', 'albert_park', 'bahrain'];
+  const difficulty: ChallengeDifficulty = hardTracks.includes(track.id) ? 'Hard' : easyTracks.includes(track.id) ? 'Easy' : 'Medium';
+  const xpReward = difficulty === 'Hard' ? 30 : difficulty === 'Medium' ? 20 : 10;
+  return { track, car: F1_25_CARS[carIdx], date: today.toISOString().slice(0, 10), difficulty, xpReward };
 }
 
 // ─── Streak ──────────────────────────────────────────────────────────────────
@@ -118,33 +125,36 @@ export interface Achievement {
   desc: string;
   icon: string;
   earned: boolean;
+  progress: number;
+  target: number;
 }
 
 export function calculateAchievements(sessions: SessionRecord[], setupCount: number): Achievement[] {
   const tracks = new Set(sessions.map(s => s.trackId));
-  const hasPB = sessions.some(s => s.isPB);
+  const pbCount = sessions.filter(s => s.isPB).length;
   const hasMonacoPB = sessions.some(s => s.isPB && s.trackId === 'monaco');
   const consistentSession = sessions.some(s => {
     const best = lapToSeconds(s.bestLap);
     const worst = lapToSeconds(s.worstLap);
     return isFinite(best) && isFinite(worst) && best > 0 && worst > 0 && (worst - best) < 0.5;
   });
+  const maxSessionsPerDay = (() => {
+    const byDate: Record<string, number> = {};
+    sessions.forEach(s => { byDate[s.date] = (byDate[s.date] || 0) + 1; });
+    return Math.max(0, ...Object.values(byDate));
+  })();
 
   return [
-    { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: '🏆', earned: hasPB },
-    { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: '💨', earned: sessions.length >= 10 },
-    { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: '🔧', earned: setupCount >= 10 },
-    { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: '🌍', earned: tracks.size >= 24 },
-    { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: '🎯', earned: consistentSession },
-    { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: '👑', earned: hasMonacoPB },
-    { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: '💯', earned: sessions.length >= 100 },
-    { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: '✈️', earned: tracks.size >= 12 },
-    { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: '⚡', earned: (() => {
-      const byDate: Record<string, number> = {};
-      sessions.forEach(s => { byDate[s.date] = (byDate[s.date] || 0) + 1; });
-      return Object.values(byDate).some(c => c >= 5);
-    })() },
-    { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: '📡', earned: sessions.some(s => s.isPublic) },
+    { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: '🏆', earned: pbCount > 0, progress: Math.min(pbCount, 1), target: 1 },
+    { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: '💨', earned: sessions.length >= 10, progress: Math.min(sessions.length, 10), target: 10 },
+    { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: '🔧', earned: setupCount >= 10, progress: Math.min(setupCount, 10), target: 10 },
+    { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: '🌍', earned: tracks.size >= 24, progress: Math.min(tracks.size, 24), target: 24 },
+    { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: '🎯', earned: consistentSession, progress: consistentSession ? 1 : 0, target: 1 },
+    { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: '👑', earned: hasMonacoPB, progress: hasMonacoPB ? 1 : 0, target: 1 },
+    { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: '💯', earned: sessions.length >= 100, progress: Math.min(sessions.length, 100), target: 100 },
+    { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: '✈️', earned: tracks.size >= 12, progress: Math.min(tracks.size, 12), target: 12 },
+    { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: '⚡', earned: maxSessionsPerDay >= 5, progress: Math.min(maxSessionsPerDay, 5), target: 5 },
+    { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: '📡', earned: sessions.some(s => s.isPublic), progress: sessions.some(s => s.isPublic) ? 1 : 0, target: 1 },
   ];
 }
 
