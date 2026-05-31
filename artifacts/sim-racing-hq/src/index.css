@@ -181,25 +181,108 @@ table { border-collapse: collapse; width: 100%; }
   text-transform: uppercase;
   color: var(--gray-mid);
   border-left: 3px solid transparent;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
   user-select: none;
 }
 
 .nav-link:hover {
   color: var(--gray-light);
-  background: rgba(255,255,255,0.02);
+  background: rgba(255,255,255,0.04);
 }
 
 .nav-link.active {
   color: var(--red);
   border-left-color: var(--red);
   background: var(--red-dim);
+  box-shadow: inset 3px 0 12px rgba(232,0,45,0.15);
 }
 
 .nav-link .nav-icon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.nav-link:hover .nav-icon {
+  transform: scale(1.1);
+}
+
+/* Sidebar Profile Card */
+.nav-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.nav-profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--red-dim);
+  border: 1px solid var(--red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red);
+  flex-shrink: 0;
+}
+
+.nav-profile-info {
+  overflow: hidden;
+}
+
+.nav-profile-name {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-profile-rank {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nav-profile-streak {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: #FF9800;
+}
+
+.nav-footer-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--gray);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-body);
+  padding: 4px 0;
+  width: 100%;
+  transition: color 0.15s;
+}
+
+.nav-footer-btn:hover {
+  color: var(--teal);
+}
+
+.nav-footer-btn--danger:hover {
+  color: var(--red);
 }
 
 /* Hamburger — hidden on desktop */
@@ -324,7 +407,31 @@ table { border-collapse: collapse; width: 100%; }
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-bottom: 2px solid var(--red);
-  padding: 20px 24px;
+  padding: 16px 20px;
+  transition: box-shadow 0.25s, border-color 0.25s;
+  position: relative;
+}
+
+.dash-stat-hover:hover {
+  box-shadow: 0 0 16px rgba(232,0,45,0.12);
+  border-color: rgba(232,0,45,0.3);
+}
+
+.stat-micro {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--gray-mid);
+  margin-top: 6px;
+}
+
+.stat-cta {
+  color: var(--teal);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.stat-cta:hover {
+  color: var(--white);
 }
 
 .stat-label {
@@ -348,8 +455,8 @@ table { border-collapse: collapse; width: 100%; }
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 /* =========================================================
@@ -852,9 +959,153 @@ table { border-collapse: collapse; width: 100%; }
   background: var(--border);
 }
 
-.heatmap-cell.l1 { background: rgba(232,0,45,0.3); }
-.heatmap-cell.l2 { background: rgba(232,0,45,0.55); }
+.heatmap-cell.l1 { background: rgba(232,0,45,0.35); }
+.heatmap-cell.l2 { background: rgba(232,0,45,0.6); }
 .heatmap-cell.l3 { background: var(--red); }
+
+/* =========================================================
+   DASHBOARD OVERHAUL — XP BAR, BADGES, ANIMATIONS
+   ========================================================= */
+
+/* XP progress bar */
+.xp-bar-bg {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: xpFillIn 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes xpFillIn {
+  from { width: 0 !important; }
+}
+
+/* Rank card subtle pulse border */
+.dash-rank-card {
+  animation: rankPulse 3s ease-in-out infinite;
+}
+
+@keyframes rankPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(232,0,45,0); }
+  50% { box-shadow: 0 0 12px rgba(232,0,45,0.08); }
+}
+
+/* Achievement badges */
+.dash-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  opacity: 0.4;
+  filter: grayscale(100%);
+  transition: opacity 0.2s, filter 0.2s, box-shadow 0.2s;
+  cursor: default;
+  position: relative;
+}
+
+.dash-badge.earned {
+  opacity: 1;
+  filter: none;
+  border-color: rgba(232,0,45,0.3);
+}
+
+.dash-badge.earned:hover {
+  box-shadow: 0 0 10px rgba(232,0,45,0.15);
+}
+
+.dash-badge.near {
+  opacity: 0.7;
+  filter: none;
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { border-color: var(--border); }
+  50% { border-color: rgba(0,210,190,0.4); }
+}
+
+.dash-badge-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.dash-badge-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-badge-name {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--gray-mid);
+  white-space: nowrap;
+}
+
+.dash-badge.earned .dash-badge-name {
+  color: var(--white);
+}
+
+.dash-badge-progress {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dash-badge-bar {
+  width: 36px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dash-badge-bar-fill {
+  height: 100%;
+  background: var(--teal);
+  border-radius: 2px;
+  transition: width 0.5s;
+}
+
+.dash-badge-count {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--gray);
+}
+
+/* Scanline overlay effect for challenge card */
+.dash-challenge {
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-challenge::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,210,190,0.03), transparent);
+  animation: scanline 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes scanline {
+  0% { left: -50%; }
+  100% { left: 150%; }
+}
 
 /* =========================================================
    TRACK GRID
