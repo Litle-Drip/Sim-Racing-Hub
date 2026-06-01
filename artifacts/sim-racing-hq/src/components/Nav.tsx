@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Headphones } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { id: 'hardware', label: 'Hardware', Icon: Cpu },
   { id: 'progress', label: 'Progress', Icon: TrendingUp },
   { id: 'community', label: 'Community', Icon: Users },
+  { id: 'engineer', label: 'Race Engineer', Icon: Headphones },
   { id: 'account', label: 'Account', Icon: User },
 ];
 

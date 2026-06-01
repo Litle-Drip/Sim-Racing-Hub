@@ -2,5 +2,5 @@
   "outputDirectory": "artifacts/sim-racing-hq/dist/public",
   "buildCommand": "pnpm --filter @workspace/sim-racing-hq run build",
   "installCommand": "pnpm install --frozen-lockfile",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }
