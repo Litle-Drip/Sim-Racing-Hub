@@ -1,3 +1,5 @@
+declare const process: { env: Record<string, string | undefined> };
+
 export const config = { runtime: "edge" };
 
 function lapToSec(str: string | null | undefined): number | null {
