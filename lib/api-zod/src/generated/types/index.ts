@@ -6,20 +6,25 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './communitySessionRecord';
 export * from './communitySetupRecord';
 export * from './cornerNote';
 export * from './createHardwareRequest';
 export * from './createSessionRequest';
 export * from './createSetupRequest';
 export * from './errorResponse';
+export * from './getCommunitySessionsParams';
 export * from './getCommunitySetupsParams';
 export * from './hardwareRecord';
 export * from './healthStatus';
+export * from './lapRecord';
 export * from './notFoundResponse';
 export * from './rateSetupRequest';
 export * from './rateSetupResponse';
 export * from './sessionRecord';
 export * from './setupRecord';
+export * from './shareSessionRequest';
+export * from './shareSessionResponse';
 export * from './shareSetupResponse';
 export * from './trackNotesRecord';
 export * from './unauthorizedResponse';

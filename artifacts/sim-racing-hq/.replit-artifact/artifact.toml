@@ -19,7 +19,7 @@ run = "pnpm --filter @workspace/sim-racing-hq run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/sim-racing-hq", "run", "build" ]
-publicDir = "artifacts/sim-racing-hq/dist/public"
+publicDir = "public"
 serve = "static"
 
 [[services.production.rewrites]]

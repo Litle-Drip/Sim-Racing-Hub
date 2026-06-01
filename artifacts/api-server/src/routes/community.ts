@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { eq, and, avg, count, sql } from "drizzle-orm";
-import { db, setupsTable, setupRatingsTable } from "@workspace/db";
+import { db, setupsTable, setupRatingsTable, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { getAuth } from "@clerk/express";
+
+function escapeLike(s: string): string {
+  return s.replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
 
 const router = Router();
 
@@ -18,10 +22,21 @@ async function getDisplayNames(userIds: string[]): Promise<Record<string, string
       headers: { Authorization: `Bearer ${secretKey}` },
     });
     if (!resp.ok) return {};
-    const data = (await resp.json()) as Array<{ id: string; first_name?: string; username?: string }>;
+    const data = (await resp.json()) as Array<{
+      id: string;
+      first_name?: string | null;
+      last_name?: string | null;
+      username?: string | null;
+    }>;
     const map: Record<string, string> = {};
     for (const u of data) {
-      map[u.id] = u.first_name || u.username || "Anonymous";
+      if (u.username) {
+        map[u.id] = u.username;
+      } else if (u.first_name && !u.first_name.includes("@")) {
+        map[u.id] = u.last_name ? `${u.first_name} ${u.last_name}` : u.first_name;
+      } else {
+        map[u.id] = "Anonymous";
+      }
     }
     return map;
   } catch {
@@ -55,7 +70,7 @@ function serializeCommunitySetup(
     brakePressure: r.brakePressure,
     onThrottle: r.onThrottle,
     offThrottle: r.offThrottle,
-    notes: r.notes,
+    gameVersion: r.gameVersion,
     authorName,
     isOwn,
     avgRating,
@@ -80,7 +95,7 @@ router.get("/community/setups", async (req, res) => {
         and(
           eq(setupsTable.isPublic, true),
           trackId ? eq(setupsTable.trackId, trackId) : undefined,
-          car ? sql`lower(${setupsTable.car}) like ${"%" + car.toLowerCase() + "%"}` : undefined,
+          car ? sql`lower(${setupsTable.car}) like ${"%" + escapeLike(car.toLowerCase()) + "%"}` : undefined,
           tag ? eq(setupsTable.tag, tag) : undefined,
         ),
       )
@@ -147,7 +162,7 @@ router.post("/community/setups/:id/rate", requireAuth, async (req, res) => {
   const id = req.params.id as string;
   const { stars } = req.body as { stars?: unknown };
 
-  if (typeof stars !== "number" || stars < 1 || stars > 5) {
+  if (typeof stars !== "number" || !Number.isInteger(stars) || stars < 1 || stars > 5) {
     res.status(400).json({ error: "stars must be 1–5" });
     return;
   }
@@ -233,6 +248,7 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
       onThrottle: source.onThrottle,
       offThrottle: source.offThrottle,
       notes: source.notes,
+      gameVersion: source.gameVersion,
       isPublic: false,
     });
 
@@ -241,6 +257,10 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
       .from(setupsTable)
       .where(and(eq(setupsTable.id, newId), eq(setupsTable.userId, userId)));
 
+    if (!saved) {
+      res.status(500).json({ error: "Failed to retrieve imported setup" });
+      return;
+    }
     res.status(201).json({
       id: saved.id,
       label: saved.label,
@@ -261,11 +281,167 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
       onThrottle: saved.onThrottle,
       offThrottle: saved.offThrottle,
       notes: saved.notes,
+      gameVersion: saved.gameVersion,
       isPublic: saved.isPublic,
       sharedAt: saved.sharedAt ? saved.sharedAt.toISOString() : null,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to import setup");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+function lapToSeconds(lap: string): number {
+  if (!lap || !lap.includes(":")) {
+    const n = parseFloat(lap);
+    return isNaN(n) ? Infinity : n;
+  }
+  const parts = lap.split(":");
+  const mins = parseFloat(parts[0]);
+  const secs = parseFloat(parts[1]);
+  if (isNaN(mins) || isNaN(secs)) return Infinity;
+  return mins * 60 + secs;
+}
+
+router.get("/community/sessions", async (req, res) => {
+  const { userId: currentUserId } = getAuth(req);
+  const { sort } = req.query as Record<string, string | undefined>;
+
+  try {
+    const rows = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.isPublic, true));
+
+    const userIds = [...new Set(rows.map((r) => r.userId))];
+    const nameMap = await getDisplayNames(userIds);
+
+    const mapped = rows.map((r) => ({
+      id: r.id,
+      date: r.date,
+      trackId: r.trackId,
+      car: r.car,
+      type: r.type,
+      bestLap: r.bestLap,
+      avgLap: r.avgLap,
+      tires: r.tires,
+      conditions: r.conditions,
+      penalty: r.penalty,
+      gameVersion: r.gameVersion,
+      platform: r.platform,
+      inputDevice: r.inputDevice,
+      publicNote: r.publicNote ?? null,
+      authorName: nameMap[r.userId] ?? "Anonymous",
+      isOwn: currentUserId ? r.userId === currentUserId : false,
+      sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
+      rating: r.rating,
+    }));
+
+    if (sort === "recent") {
+      mapped.sort((a, b) => (b.sharedAt ?? "").localeCompare(a.sharedAt ?? ""));
+    } else if (sort === "rating") {
+      mapped.sort((a, b) => b.rating - a.rating);
+    } else {
+      mapped.sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap));
+    }
+
+    res.json(mapped);
+  } catch (err) {
+    req.log.error({ err }, "Failed to get community sessions");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Public Driver Profile ────────────────────────────────────────────────────
+
+router.get("/community/driver/:username", async (req, res) => {
+  const { username } = req.params;
+  if (!username || username.length > 100) {
+    res.status(400).json({ error: "Invalid username" });
+    return;
+  }
+
+  try {
+    const secretKey = process.env.CLERK_SECRET_KEY;
+    if (!secretKey) {
+      res.status(404).json({ error: "Driver not found" });
+      return;
+    }
+
+    // Look up user by username via Clerk
+    const userResp = await fetch(
+      `https://api.clerk.com/v1/users?username[]=${encodeURIComponent(username)}&limit=1`,
+      { headers: { Authorization: `Bearer ${secretKey}` } }
+    );
+    if (!userResp.ok) {
+      res.status(404).json({ error: "Driver not found" });
+      return;
+    }
+    const users = (await userResp.json()) as Array<{
+      id: string;
+      username?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      created_at?: number;
+      image_url?: string | null;
+    }>;
+
+    if (users.length === 0) {
+      res.status(404).json({ error: "Driver not found" });
+      return;
+    }
+
+    const user = users[0];
+    const userId = user.id;
+    const displayName = user.username ?? (user.first_name ? `${user.first_name} ${user.last_name ?? ""}`.trim() : "Anonymous");
+
+    // Get public sessions
+    const publicSessions = await db
+      .select()
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.userId, userId), eq(sessionsTable.isPublic, true)));
+
+    // Get public setups
+    const publicSetups = await db
+      .select()
+      .from(setupsTable)
+      .where(and(eq(setupsTable.userId, userId), eq(setupsTable.isPublic, true)));
+
+    // Compute PBs per track from public sessions
+    const pbMap: Record<string, { trackId: string; car: string; bestLap: string; date: string }> = {};
+    publicSessions.forEach((s) => {
+      if (!s.bestLap || s.bestLap.trim() === "") return;
+      const existing = pbMap[s.trackId];
+      if (!existing || lapToSeconds(s.bestLap) < lapToSeconds(existing.bestLap)) {
+        pbMap[s.trackId] = { trackId: s.trackId, car: s.car, bestLap: s.bestLap, date: s.date };
+      }
+    });
+
+    res.json({
+      username: displayName,
+      memberSince: user.created_at ? new Date(user.created_at).toISOString().slice(0, 10) : null,
+      avatarUrl: user.image_url ?? null,
+      sessions: publicSessions.length,
+      setups: publicSetups.length,
+      tracks: new Set(publicSessions.map(s => s.trackId)).size,
+      pbs: Object.values(pbMap),
+      recentSessions: publicSessions
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 10)
+        .map(s => ({
+          id: s.id,
+          date: s.date,
+          trackId: s.trackId,
+          car: s.car,
+          type: s.type,
+          bestLap: s.bestLap,
+          conditions: s.conditions,
+          platform: s.platform,
+          inputDevice: s.inputDevice,
+        })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get driver profile");
     res.status(500).json({ error: "Internal server error" });
   }
 });

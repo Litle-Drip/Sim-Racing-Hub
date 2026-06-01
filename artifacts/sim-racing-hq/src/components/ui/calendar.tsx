@@ -129,6 +129,7 @@ function Calendar({
           return (
             <div
               data-slot="calendar"
+              // @ts-ignore -- @types/react version conflict in monorepo
               ref={rootRef}
               className={cn(className)}
               {...props}

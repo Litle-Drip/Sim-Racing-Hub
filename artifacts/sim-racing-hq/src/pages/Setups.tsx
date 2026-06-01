@@ -4,6 +4,7 @@ import { useGetSetups, useCreateSetup, useDeleteSetup, useShareSetup, getGetSetu
 import { useQueryClient } from '@tanstack/react-query';
 import type { SetupRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, SETUP_TAGS } from '../data/f1Tracks';
+import { CarCombobox } from '../components/CarCombobox';
 
 const defaultForm = (): Omit<SetupRecord, 'id'> => ({
   label: '',
@@ -24,6 +25,7 @@ const defaultForm = (): Omit<SetupRecord, 'id'> => ({
   onThrottle: '',
   offThrottle: '',
   notes: '',
+  gameVersion: '',
 });
 
 const COMPARE_FIELDS: { key: keyof SetupRecord; label: string }[] = [
@@ -232,6 +234,7 @@ export default function Setups() {
         onThrottle: String(form.onThrottle),
         offThrottle: String(form.offThrottle),
         notes: form.notes,
+        gameVersion: form.gameVersion ?? undefined,
       },
     });
   };
@@ -301,7 +304,7 @@ export default function Setups() {
           <div className="empty-state">
             <div className="empty-state-title">No Setups Found</div>
             <div className="empty-state-desc">
-              {setups.length === 0 ? 'Save your first setup using the button above.' : 'No setups match your current filters.'}
+              {setups.length === 0 ? 'Save your first setup — or browse community setups for inspiration. Tap "New Setup" above to start.' : 'No setups match your current filters. Try adjusting or clearing them.'}
             </div>
           </div>
         </div>
@@ -400,7 +403,7 @@ export default function Setups() {
                 </div>
                 <div className="field">
                   <label className="field-label">Car <span style={{ color: 'var(--red)' }}>*</span></label>
-                  <input type="text" placeholder="Ferrari SF-24" value={form.car} onChange={e => { setField('car', e.target.value); setFormErrors(fe => ({ ...fe, car: '' })); }} style={formErrors.car ? { borderBottomColor: 'var(--red)' } : {}} />
+                  <CarCombobox value={form.car} onChange={v => { setField('car', v); setFormErrors(fe => ({ ...fe, car: '' })); }} error={!!formErrors.car} />
                   {formErrors.car && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.car}</span>}
                 </div>
                 <div className="field">
@@ -472,6 +475,12 @@ export default function Setups() {
                 <div className="field">
                   <label className="field-label">Off Throttle %</label>
                   <input type="number" value={form.offThrottle} onChange={e => setField('offThrottle', e.target.value)} />
+                </div>
+
+                <div className="form-section-title">Metadata</div>
+                <div className="field">
+                  <label className="field-label">Game Version</label>
+                  <input type="text" placeholder="e.g. F1 25 v1.2" value={form.gameVersion ?? ''} onChange={e => setField('gameVersion', e.target.value)} />
                 </div>
 
                 <div className="field full">

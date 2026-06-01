@@ -20,10 +20,12 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CommunitySessionRecord,
   CommunitySetupRecord,
   CreateHardwareRequest,
   CreateSessionRequest,
   CreateSetupRequest,
+  GetCommunitySessionsParams,
   GetCommunitySetupsParams,
   HardwareRecord,
   HealthStatus,
@@ -32,6 +34,8 @@ import type {
   RateSetupResponse,
   SessionRecord,
   SetupRecord,
+  ShareSessionRequest,
+  ShareSessionResponse,
   ShareSetupResponse,
   TrackNotesRecord,
   UnauthorizedResponse,
@@ -346,6 +350,78 @@ export const useDeleteSession = <TError = ErrorType<UnauthorizedResponse | NotFo
       return useMutation(getDeleteSessionMutationOptions(options));
     }
 
+export const getShareSessionUrl = (id: string,) => {
+
+
+
+
+  return `/api/sessions/${id}/share`
+}
+
+/**
+ * @summary Toggle public sharing on a session
+ */
+export const shareSession = async (id: string,
+    shareSessionRequest?: ShareSessionRequest, options?: RequestInit): Promise<ShareSessionResponse> => {
+
+  return customFetch<ShareSessionResponse>(getShareSessionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      shareSessionRequest,)
+  }
+);}
+
+
+
+
+export const getShareSessionMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string;data?: BodyType<ShareSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string;data?: BodyType<ShareSessionRequest>}, TContext> => {
+
+const mutationKey = ['shareSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof shareSession>>, {id: string;data?: BodyType<ShareSessionRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  shareSession(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ShareSessionMutationResult = NonNullable<Awaited<ReturnType<typeof shareSession>>>
+    export type ShareSessionMutationBody = BodyType<ShareSessionRequest> | undefined
+    export type ShareSessionMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Toggle public sharing on a session
+ */
+export const useShareSession = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shareSession>>, TError,{id: string;data?: BodyType<ShareSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof shareSession>>,
+        TError,
+        {id: string;data?: BodyType<ShareSessionRequest>},
+        TContext
+      > => {
+      return useMutation(getShareSessionMutationOptions(options));
+    }
+
 export const getGetSetupsUrl = () => {
 
 
@@ -633,6 +709,90 @@ export const useShareSetup = <TError = ErrorType<UnauthorizedResponse | NotFound
       > => {
       return useMutation(getShareSetupMutationOptions(options));
     }
+
+export const getGetCommunitySessionsUrl = (params?: GetCommunitySessionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/community/sessions?${stringifiedParams}` : `/api/community/sessions`
+}
+
+/**
+ * @summary Get all publicly shared sessions
+ */
+export const getCommunitySessions = async (params?: GetCommunitySessionsParams, options?: RequestInit): Promise<CommunitySessionRecord[]> => {
+
+  return customFetch<CommunitySessionRecord[]>(getGetCommunitySessionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCommunitySessionsQueryKey = (params?: GetCommunitySessionsParams,) => {
+    return [
+    `/api/community/sessions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCommunitySessionsQueryOptions = <TData = Awaited<ReturnType<typeof getCommunitySessions>>, TError = ErrorType<unknown>>(params?: GetCommunitySessionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCommunitySessionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunitySessions>>> = ({ signal }) => getCommunitySessions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCommunitySessionsQueryResult = NonNullable<Awaited<ReturnType<typeof getCommunitySessions>>>
+export type GetCommunitySessionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all publicly shared sessions
+ */
+
+export function useGetCommunitySessions<TData = Awaited<ReturnType<typeof getCommunitySessions>>, TError = ErrorType<unknown>>(
+ params?: GetCommunitySessionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunitySessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCommunitySessionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetCommunitySetupsUrl = (params?: GetCommunitySetupsParams,) => {
   const normalizedParams = new URLSearchParams();

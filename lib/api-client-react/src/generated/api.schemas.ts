@@ -23,6 +23,16 @@ export interface CornerNote {
   myNotes: string;
 }
 
+export interface LapRecord {
+  lap: number;
+  time: string;
+  s1: string;
+  s2: string;
+  s3: string;
+  tires: string;
+  penalty: string;
+}
+
 export interface SessionRecord {
   id: string;
   date: string;
@@ -42,6 +52,15 @@ export interface SessionRecord {
   rating: number;
   notes: string;
   isPB: boolean;
+  penalty?: string | null;
+  gameVersion?: string | null;
+  platform?: string | null;
+  inputDevice?: string | null;
+  isPublic: boolean;
+  sharedAt?: string | null;
+  publicNote?: string | null;
+  laps?: LapRecord[] | null;
+  position?: string;
 }
 
 export interface CreateSessionRequest {
@@ -62,6 +81,42 @@ export interface CreateSessionRequest {
   assists: string;
   rating: number;
   notes: string;
+  penalty?: string;
+  gameVersion?: string;
+  platform?: string;
+  inputDevice?: string;
+  laps?: LapRecord[];
+  position?: string;
+}
+
+export interface ShareSessionRequest {
+  publicNote?: string;
+}
+
+export interface ShareSessionResponse {
+  isPublic: boolean;
+  sharedAt?: string | null;
+}
+
+export interface CommunitySessionRecord {
+  id: string;
+  date: string;
+  trackId: string;
+  car: string;
+  type: string;
+  bestLap: string;
+  avgLap: string;
+  tires: string;
+  conditions: string;
+  penalty?: string | null;
+  gameVersion?: string | null;
+  platform?: string | null;
+  inputDevice?: string | null;
+  publicNote?: string | null;
+  authorName: string;
+  isOwn: boolean;
+  sharedAt?: string | null;
+  rating: number;
 }
 
 export interface SetupRecord {
@@ -86,6 +141,7 @@ export interface SetupRecord {
   notes: string;
   isPublic?: boolean;
   sharedAt?: string | null;
+  gameVersion?: string | null;
 }
 
 export interface CommunitySetupRecord {
@@ -153,6 +209,7 @@ export interface CreateSetupRequest {
   onThrottle: string;
   offThrottle: string;
   notes: string;
+  gameVersion?: string;
 }
 
 export interface TrackNotesRecord {
@@ -211,6 +268,10 @@ export type UnauthorizedResponse = ErrorResponse;
  * Not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+export type GetCommunitySessionsParams = {
+sort?: string;
+};
 
 export type GetCommunitySetupsParams = {
 trackId?: string;

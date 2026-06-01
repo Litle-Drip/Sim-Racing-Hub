@@ -1,0 +1,12 @@
+
+Specific Issues to Fix Now
+Corner Breakdown placeholder problem — Screenshot 2
+Every single corner row shows 3 in Gear and 150m board in Braking Point. These are the placeholder values rendering as if they're real data. A new user sees this and thinks the app has pre-filled wrong information. The fix is making sure placeholder text only shows as greyed-out hint text inside the input, not as actual visible cell content when the field is empty. This is a data integrity issue that will confuse everyone.
+Progress chart showing wrong data — Screenshot 4
+The PB Progression line goes up to 1:35 then back down to 1:12. That's happening because All Tracks is selected — it's plotting sessions from Monza, Austria, Zandvoort all on the same line. A lap at Austria is shorter than Monza so the line bounces around meaninglessly. The fix: when All Tracks is selected either show a message saying "Select a specific track to see PB progression" or show separate lines per track. A single line across multiple tracks tells you nothing.
+Lap Time Variance bars starting at zero — Screenshot 4
+The variance bars all start at 0:00 which makes a 0.8 second difference between best and worst look invisible. The Y axis needs to start near the minimum lap time, not zero. The whole point of this chart is showing consistency — right now it's unreadable.
+Community notes are too exposed — Screenshot 3
+Personal notes like "Bad" and "Early Morning" are showing publicly on community cards. These were probably logged as personal context, not intended as public descriptions. You need either a separate "public note" field for what gets shown in community, or a clear checkbox saying "Include my notes in community sharing" when submitting.
+"Egans Car" across every session — Screenshots 1 & 3
+Not a bug but a UX signal — the car field has no guidance or suggestions. Add a dropdown of common cars (Ferrari SF-25, Red Bull RB21, McLaren MCL39, Mercedes W16, etc.) with an "other" option. This also makes community filtering by car actually useful.

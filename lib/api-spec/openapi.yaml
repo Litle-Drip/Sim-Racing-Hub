@@ -90,6 +90,35 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /sessions/{id}/share:
+    post:
+      operationId: shareSession
+      tags: [sessions]
+      summary: Toggle public sharing on a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareSessionRequest"
+      responses:
+        "200":
+          description: Share state updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareSessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /setups:
     get:
       operationId: getSetups
@@ -167,6 +196,27 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /community/sessions:
+    get:
+      operationId: getCommunitySessions
+      tags: [community]
+      summary: Get all publicly shared sessions
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of community sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommunitySessionRecord"
 
   /community/setups:
     get:
@@ -437,6 +487,32 @@ components:
         - lineNotes
         - myNotes
 
+    LapRecord:
+      type: object
+      properties:
+        lap:
+          type: integer
+        time:
+          type: string
+        s1:
+          type: string
+        s2:
+          type: string
+        s3:
+          type: string
+        tires:
+          type: string
+        penalty:
+          type: string
+      required:
+        - lap
+        - time
+        - s1
+        - s2
+        - s3
+        - tires
+        - penalty
+
     SessionRecord:
       type: object
       properties:
@@ -476,6 +552,33 @@ components:
           type: string
         isPB:
           type: boolean
+        penalty:
+          type: string
+          nullable: true
+        gameVersion:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          nullable: true
+        inputDevice:
+          type: string
+          nullable: true
+        isPublic:
+          type: boolean
+        sharedAt:
+          type: string
+          nullable: true
+        publicNote:
+          type: string
+          nullable: true
+        laps:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapRecord"
+        position:
+          type: string
       required:
         - id
         - date
@@ -495,6 +598,7 @@ components:
         - rating
         - notes
         - isPB
+        - isPublic
 
     CreateSessionRequest:
       type: object
@@ -533,6 +637,20 @@ components:
           type: integer
         notes:
           type: string
+        penalty:
+          type: string
+        gameVersion:
+          type: string
+        platform:
+          type: string
+        inputDevice:
+          type: string
+        laps:
+          type: array
+          items:
+            $ref: "#/components/schemas/LapRecord"
+        position:
+          type: string
       required:
         - id
         - date
@@ -551,6 +669,82 @@ components:
         - assists
         - rating
         - notes
+
+    ShareSessionRequest:
+      type: object
+      properties:
+        publicNote:
+          type: string
+
+    ShareSessionResponse:
+      type: object
+      properties:
+        isPublic:
+          type: boolean
+        sharedAt:
+          type: string
+          nullable: true
+      required:
+        - isPublic
+
+    CommunitySessionRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        trackId:
+          type: string
+        car:
+          type: string
+        type:
+          type: string
+        bestLap:
+          type: string
+        avgLap:
+          type: string
+        tires:
+          type: string
+        conditions:
+          type: string
+        penalty:
+          type: string
+          nullable: true
+        gameVersion:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          nullable: true
+        inputDevice:
+          type: string
+          nullable: true
+        publicNote:
+          type: string
+          nullable: true
+        authorName:
+          type: string
+        isOwn:
+          type: boolean
+        sharedAt:
+          type: string
+          nullable: true
+        rating:
+          type: integer
+      required:
+        - id
+        - date
+        - trackId
+        - car
+        - type
+        - bestLap
+        - avgLap
+        - tires
+        - conditions
+        - authorName
+        - isOwn
+        - rating
 
     SetupRecord:
       type: object
@@ -596,6 +790,9 @@ components:
         isPublic:
           type: boolean
         sharedAt:
+          type: string
+          nullable: true
+        gameVersion:
           type: string
           nullable: true
       required:
@@ -768,6 +965,8 @@ components:
         offThrottle:
           type: string
         notes:
+          type: string
+        gameVersion:
           type: string
       required:
         - id

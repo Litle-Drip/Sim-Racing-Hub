@@ -89,6 +89,10 @@ router.put("/track-notes/:trackId", requireAuth, async (req, res) => {
         )
       );
 
+    if (!saved) {
+      res.status(500).json({ error: "Failed to retrieve track notes" });
+      return;
+    }
     res.json({
       id: saved.id,
       trackId: saved.trackId,

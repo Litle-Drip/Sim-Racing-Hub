@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LapRecord } from './lapRecord';
 
 export interface SessionRecord {
   id: string;
@@ -25,4 +26,13 @@ export interface SessionRecord {
   rating: number;
   notes: string;
   isPB: boolean;
+  penalty?: string | null;
+  gameVersion?: string | null;
+  platform?: string | null;
+  inputDevice?: string | null;
+  isPublic: boolean;
+  sharedAt?: string | null;
+  publicNote?: string | null;
+  laps?: LapRecord[] | null;
+  position?: string;
 }

@@ -24,10 +24,16 @@ function getDeploymentDomain() {
   if (process.env.EXPO_PUBLIC_DOMAIN) {
     return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
   }
-  console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
-  );
-  process.exit(1);
+  const replSlug = process.env.REPL_SLUG;
+  const replOwner = process.env.REPL_OWNER;
+  if (replSlug && replOwner) {
+    const domain = `${replSlug}-${replOwner}.replit.app`;
+    console.log(`Derived production domain from REPL_SLUG/REPL_OWNER: ${domain}`);
+    return domain;
+  }
+  const hardcodedDomain = "sim-racing-hub-Guzzy.replit.app";
+  console.log(`Using hardcoded production domain: ${hardcodedDomain}`);
+  return hardcodedDomain;
 }
 
 function prepareDirectories() {

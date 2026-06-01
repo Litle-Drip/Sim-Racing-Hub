@@ -216,8 +216,8 @@ export default function HardwareVault() {
             <div className="empty-state-title">No Hardware Profiles</div>
             <div className="empty-state-desc">
               {profiles.length === 0
-                ? 'Save your first FFB profile using the button above.'
-                : 'No profiles match your current filters.'}
+                ? 'Track your wheel, pedals, and FFB settings. Tap "New Profile" above to save your first hardware config.'
+                : 'No profiles match your current filters. Try adjusting or clearing them.'}
             </div>
           </div>
         </div>

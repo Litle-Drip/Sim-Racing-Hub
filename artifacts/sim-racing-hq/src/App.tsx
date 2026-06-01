@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser, useAuth } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
+import { setAuthTokenGetter } from '@workspace/api-client-react';
 import { dark } from '@clerk/themes';
 import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
@@ -13,6 +14,12 @@ import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
 import Community from './pages/Community';
+import PublicSetups from './pages/PublicSetups';
+import PublicTracks from './pages/PublicTracks';
+import PublicLeaderboard from './pages/PublicLeaderboard';
+import QuickLog from './pages/QuickLog';
+import DriverProfile from './pages/DriverProfile';
+import Account from './pages/Account';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -131,93 +138,264 @@ function SignUpPage() {
   );
 }
 
-function LandingPage() {
+function LandingPage({ onGuest }: { onGuest?: () => void }) {
   const [, setLocation] = useLocation();
+
+  const features = [
+    { icon: '🏁', title: 'Session Log', desc: 'Track every practice, qualifying, and race. Log lap times, tires, weather, and conditions in 30 seconds.' },
+    { icon: '⚙️', title: 'Setup Vault', desc: 'Save and share car setups per track. Tag by game version so nothing goes stale after a patch.' },
+    { icon: '📊', title: 'PB Progression', desc: 'See your personal bests across every circuit. Variance charts show your consistency improving over time.' },
+    { icon: '🗺️', title: 'Track Bible', desc: 'All 24 circuits with real corner names, gear suggestions, braking points, and your personal notes.' },
+    { icon: '👥', title: 'Community', desc: 'Browse shared setups and sessions. Rate setups, filter by car and track, and see how you compare.' },
+    { icon: '🏆', title: 'Leaderboard', desc: 'Fastest lap times per circuit from the community. Compete and see your name on the board.' },
+  ];
+
   return (
-    <div style={{
-      minHeight: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg)',
-      padding: '24px',
-    }}>
-      <div style={{ textAlign: 'center', maxWidth: 520 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 32 }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)' }}>
+      {/* Hero */}
+      <div style={{ padding: '80px 24px 60px', textAlign: 'center', maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 24 }}>
           <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
-            <div style={{ width: 5, height: 10, background: 'var(--red)' }} />
-            <div style={{ width: 5, height: 16, background: 'var(--red)' }} />
-            <div style={{ width: 5, height: 22, background: 'var(--red)' }} />
+            <div style={{ width: 6, height: 12, background: 'var(--red)' }} />
+            <div style={{ width: 6, height: 20, background: 'var(--red)' }} />
+            <div style={{ width: 6, height: 28, background: 'var(--red)' }} />
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.12em', color: 'var(--white)', margin: 0 }}>
-            SIM RACING HQ
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.12em', color: 'var(--white)', margin: 0 }}>
+            F1 SIM HUB
           </h1>
         </div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', marginBottom: 12, lineHeight: 1.6 }}>
-          Your personal sim racing performance hub.
+
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 16, lineHeight: 1.4 }}>
+          Your personal F1 sim racing companion
+        </h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', marginBottom: 8, lineHeight: 1.7, maxWidth: 560, margin: '0 auto 8px' }}>
+          Log sessions, track your PBs, build and share setups, and master every circuit on the F1 25 calendar.
         </p>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', marginBottom: 40, lineHeight: 1.6 }}>
-          Log sessions, track your PBs, store setups, and analyze your progress — all in one place, synced across every device.
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', marginBottom: 36, lineHeight: 1.6 }}>
+          For F1 25 on Xbox, PlayStation, and PC — wheel or controller.
         </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button
-            className="btn btn-primary"
-            style={{ minWidth: 140, fontSize: 14 }}
-            onClick={() => setLocation('/sign-up')}
-          >
-            Get Started
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <button className="btn btn-primary" style={{ minWidth: 280, fontSize: 16, padding: '16px 28px' }} onClick={onGuest}>
+            Continue as Guest — No Sign Up Required
           </button>
-          <button
-            className="btn btn-secondary"
-            style={{ minWidth: 140, fontSize: 14 }}
-            onClick={() => setLocation('/sign-in')}
-          >
-            Sign In
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary" style={{ minWidth: 140, fontSize: 13 }} onClick={() => setLocation('/sign-up')}>
+              Create Free Account
+            </button>
+            <button className="btn btn-secondary" style={{ minWidth: 140, fontSize: 13 }} onClick={() => setLocation('/sign-in')}>
+              Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* What You Get */}
+      <div style={{ padding: '48px 24px', maxWidth: 840, margin: '0 auto' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gray-mid)', textAlign: 'center', marginBottom: 32 }}>
+          Everything you need to get faster
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
+          {features.map(f => (
+            <div key={f.title} className="card" style={{ padding: '20px', textAlign: 'left' }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>{f.icon}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 6 }}>{f.title}</div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', lineHeight: 1.6 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Public Links */}
+      <div style={{ padding: '32px 24px 48px', maxWidth: 840, margin: '0 auto', textAlign: 'center' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 20 }}>
+          Browse without an account
+        </h3>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/setups')}>
+            Community Setups
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/tracks')}>
+            Circuit Guide
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/leaderboard')}>
+            Leaderboard
           </button>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: '24px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
+          F1 Sim Hub — Built for the sim racing community. Not affiliated with Formula 1 or Codemasters.
+        </p>
       </div>
     </div>
   );
 }
 
-function MainApp() {
+const PROTECTED_PAGES = ['sessions', 'setups', 'hardware', 'progress'];
+
+const PAGE_LABELS: Record<string, string> = {
+  sessions: 'Session Log',
+  setups: 'Setup Vault',
+  hardware: 'Hardware Vault',
+  progress: 'PB Progression',
+};
+
+function GuestWall({ page, onSignIn }: { page: string; onSignIn: () => void }) {
+  return (
+    <div style={{
+      minHeight: '60vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 20,
+      padding: 24,
+    }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
+        Sign In Required
+      </div>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', textAlign: 'center', maxWidth: 360, lineHeight: 1.6 }}>
+        Create a free account to access your personal {PAGE_LABELS[page] || page}.
+      </div>
+      <button className="btn btn-primary" style={{ minWidth: 160 }} onClick={onSignIn}>
+        Sign In / Sign Up
+      </button>
+    </div>
+  );
+}
+
+function GuestNudge({ onSignIn }: { onSignIn: () => void }) {
+  return (
+    <div style={{
+      background: 'rgba(0,210,190,0.08)',
+      border: '1px solid rgba(0,210,190,0.25)',
+      padding: '12px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 16,
+      flexWrap: 'wrap',
+    }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
+        You're browsing as a guest — <strong>create a free account</strong> to log sessions, save setups, and track your PBs across every device.
+      </span>
+      <button className="btn btn-primary" style={{ fontSize: 12, padding: '8px 18px', whiteSpace: 'nowrap' }} onClick={onSignIn}>
+        Create Account
+      </button>
+    </div>
+  );
+}
+
+const SHORTCUTS: Record<string, string> = {
+  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', c: 'community', a: 'account',
+};
+
+function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
   const [page, setPage] = useState('dashboard');
+  const [pageViews, setPageViews] = useState(0);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  const handleSetPage = useCallback((p: string) => {
+    setPage(p);
+    setPageViews(v => v + 1);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === '?') { setShowShortcuts(v => !v); return; }
+      const dest = SHORTCUTS[e.key.toLowerCase()];
+      if (dest) handleSetPage(dest);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleSetPage]);
+
+  const showNudge = isGuest && pageViews >= 3 && !nudgeDismissed;
 
   const renderPage = () => {
+    if (isGuest && PROTECTED_PAGES.includes(page)) {
+      return <GuestWall page={page} onSignIn={onSignIn ?? (() => {})} />;
+    }
     switch (page) {
-      case 'dashboard': return <Dashboard setPage={setPage} />;
+      case 'dashboard': return <Dashboard setPage={handleSetPage} />;
       case 'sessions': return <Sessions />;
       case 'tracks': return <Tracks />;
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress />;
       case 'community': return <Community />;
-      default: return <Dashboard setPage={setPage} />;
+      case 'account': return <Account />;
+      default: return <Dashboard setPage={handleSetPage} />;
     }
   };
 
   return (
     <div className="app-layout">
-      <Nav page={page} setPage={setPage} />
+      <Nav page={page} setPage={handleSetPage} />
       <main className="main-content">
+        {showNudge && <GuestNudge onSignIn={onSignIn ?? (() => {})} />}
         {renderPage()}
       </main>
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowShortcuts(false)}>
+          <div className="card" style={{ padding: '24px 32px', maxWidth: 360, width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.1em', color: 'var(--white)', marginBottom: 16, textTransform: 'uppercase' }}>Keyboard Shortcuts</div>
+            {Object.entries(SHORTCUTS).map(([key, dest]) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                <span style={{ color: 'var(--gray-light)', textTransform: 'capitalize' }}>{dest}</span>
+                <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 3, color: 'var(--teal)' }}>{key.toUpperCase()}</kbd>
+              </div>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontFamily: 'var(--font-body)', fontSize: 13, borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+              <span style={{ color: 'var(--gray-light)' }}>Toggle this panel</span>
+              <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 3, color: 'var(--teal)' }}>?</kbd>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function HomeRoute() {
+  const [isGuest, setIsGuest] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const handleSignIn = () => {
+    setIsGuest(false);
+    setLocation('/sign-in');
+  };
+
   return (
     <>
       <Show when="signed-in">
         <MainApp />
       </Show>
       <Show when="signed-out">
-        <LandingPage />
+        {isGuest
+          ? <MainApp isGuest onSignIn={handleSignIn} />
+          : <LandingPage onGuest={() => setIsGuest(true)} />
+        }
       </Show>
     </>
   );
+}
+
+function ClerkAuthTokenRegistrar() {
+  const { getToken } = useAuth();
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+    return () => setAuthTokenGetter(null);
+  }, [getToken]);
+  return null;
 }
 
 function ClerkQueryClientCacheInvalidator() {
@@ -256,7 +434,7 @@ function ClerkProviderWithRoutes() {
         signIn: {
           start: {
             title: 'Welcome back',
-            subtitle: 'Sign in to access your driver dashboard',
+            subtitle: 'Sign in to access your F1 Sim Hub dashboard',
           },
         },
         signUp: {
@@ -270,11 +448,17 @@ function ClerkProviderWithRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
+        <ClerkAuthTokenRegistrar />
         <ClerkQueryClientCacheInvalidator />
         <Switch>
           <Route path="/" component={HomeRoute} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/setups">{() => <PublicSetups onBack={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/tracks">{() => <PublicTracks onBack={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/leaderboard">{() => <PublicLeaderboard onBack={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/log">{() => <QuickLog onDone={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/driver/:username">{(params) => <DriverProfile username={params.username} />}</Route>
           <Route component={HomeRoute} />
         </Switch>
       </QueryClientProvider>

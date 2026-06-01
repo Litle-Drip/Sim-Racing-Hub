@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { useGetSessions } from '@workspace/api-client-react';
 import { lapToSeconds } from '../lib/storage';
 import { F1_TRACKS } from '../data/f1Tracks';
+import { lapTimeDelta, sessionConsistency } from '../lib/engagement';
+import { LapTimeInput } from '../components/LapTimeInput';
 
 function formatLapTime(seconds: number): string {
   if (!isFinite(seconds) || seconds === 0) return '—';
@@ -43,8 +45,13 @@ function LapTooltip({ active, payload, label }: TooltipProps) {
 
 export default function Progress() {
   const { data: allSessions = [] } = useGetSessions();
-  const [filterTrack, setFilterTrack] = useState('');
+  const [filterTrack, setFilterTrack] = useState(() => sessionStorage.getItem('progress-track') || '');
   const [filterCar, setFilterCar] = useState('');
+
+  const handleTrackChange = (v: string) => {
+    setFilterTrack(v);
+    sessionStorage.setItem('progress-track', v);
+  };
 
   const filtered = useMemo(() => {
     return allSessions
@@ -117,14 +124,31 @@ export default function Progress() {
     ? Math.max(...progressionData.map(d => d.lapSeconds)) + 2
     : 100;
 
+  const minVarianceY = varianceData.length > 0
+    ? Math.min(...varianceData.map(d => d.best)) - 2
+    : 0;
+  const maxVarianceY = varianceData.length > 0
+    ? Math.max(...varianceData.map(d => d.worst ?? d.best)) + 2
+    : 100;
+
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Progression</h1>
       </div>
 
+      {allSessions.length === 0 ? (
+        <div className="empty-state" style={{ marginTop: 40 }}>
+          <div className="empty-state-title">No Sessions Logged Yet</div>
+          <div className="empty-state-desc" style={{ maxWidth: 420, lineHeight: 1.7 }}>
+            Log sessions with <strong>best lap</strong>, <strong>average lap</strong>, and <strong>worst lap</strong> times to see your
+            progression charts populate here. Head to <strong>Sessions</strong> to log your first race or hotlap.
+          </div>
+        </div>
+      ) : (
+      <>
       <div className="filter-bar" style={{ marginBottom: 28 }}>
-        <select className="filter-select" value={filterTrack} onChange={e => setFilterTrack(e.target.value)}>
+        <select className="filter-select" value={filterTrack} onChange={e => handleTrackChange(e.target.value)}>
           <option value="">All Tracks</option>
           {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.flag} {t.short}</option>)}
         </select>
@@ -138,10 +162,15 @@ export default function Progress() {
 
       <div className="chart-section">
         <div className="section-title">PB Progression</div>
-        {progressionData.length === 0 ? (
+        {!filterTrack ? (
           <div className="empty-state">
-            <div className="empty-state-title">Log Sessions to See Your Progress</div>
-            <div className="empty-state-desc">Your lap time progression chart will appear here once you've logged sessions.</div>
+            <div className="empty-state-title">Select a Track to See PB Progression</div>
+            <div className="empty-state-desc">Mixing lap times from different circuits produces a meaningless line. Choose a specific track above to see how your pace has improved over time.</div>
+          </div>
+        ) : progressionData.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-title">No Sessions at This Track Yet</div>
+            <div className="empty-state-desc">Log a session at this circuit to start tracking your progression.</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
@@ -195,15 +224,20 @@ export default function Progress() {
 
       <div className="chart-section">
         <div className="section-title">Lap Time Variance</div>
-        {varianceData.length === 0 ? (
+        {!filterTrack ? (
+          <div className="empty-state">
+            <div className="empty-state-title">Select a Track</div>
+            <div className="empty-state-desc">Choose a specific track above to see lap time variance.</div>
+          </div>
+        ) : varianceData.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-title">No Data Yet</div>
             <div className="empty-state-desc">Log sessions with best, avg, and worst laps to see variance.</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={varianceData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid stroke="#1E1E1E" vertical={false} />
+            <LineChart data={varianceData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
+              <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
                 tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#A8A8A8', letterSpacing: '0.06em' }}
@@ -211,6 +245,7 @@ export default function Progress() {
                 tickLine={false}
               />
               <YAxis
+                domain={[minVarianceY, maxVarianceY]}
                 tickFormatter={formatAxisTick}
                 tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
                 axisLine={{ stroke: '#1E1E1E' }}
@@ -218,11 +253,27 @@ export default function Progress() {
                 width={56}
               />
               <Tooltip content={<LapTooltip />} />
-              <Bar dataKey="best" name="Best" fill="#00D2BE" />
-              <Bar dataKey="avg" name="Average" fill="#555555" />
-              <Bar dataKey="worst" name="Worst" fill="rgba(232,0,45,0.4)" />
-            </BarChart>
+              <Line type="monotone" dataKey="worst" name="Worst" stroke="rgba(232,0,45,0.6)" strokeWidth={1.5} dot={{ r: 3, fill: 'rgba(232,0,45,0.6)' }} />
+              <Line type="monotone" dataKey="avg" name="Average" stroke="#555555" strokeWidth={1.5} dot={{ r: 3, fill: '#555555' }} />
+              <Line type="monotone" dataKey="best" name="Best" stroke="#00D2BE" strokeWidth={2} dot={{ r: 3, fill: '#00D2BE' }} />
+            </LineChart>
           </ResponsiveContainer>
+        )}
+        {filterTrack && varianceData.length > 0 && (
+          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: '#00D2BE', display: 'inline-block' }} />
+              Best
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: '#555555', display: 'inline-block' }} />
+              Average
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: 'rgba(232,0,45,0.6)', display: 'inline-block' }} />
+              Worst
+            </div>
+          </div>
         )}
       </div>
 
@@ -262,6 +313,146 @@ export default function Progress() {
           </table>
         </div>
       )}
+      {/* Best Sectors per Track */}
+      {filterTrack && (() => {
+        type SectorEntry = { val: string; secs: number; date: string; car: string };
+        const bestSectors: { s1: SectorEntry | null; s2: SectorEntry | null; s3: SectorEntry | null } = { s1: null, s2: null, s3: null };
+        filtered.forEach(s => {
+          const laps = (s.laps ?? []) as Array<{ s1: string; s2: string; s3: string }>;
+          const checkSector = (key: 's1' | 's2' | 's3', val: string) => {
+            if (!val || !val.trim()) return;
+            const secs = parseFloat(val);
+            if (isNaN(secs) || secs <= 0) return;
+            if (!bestSectors[key] || secs < bestSectors[key]!.secs) {
+              bestSectors[key] = { val, secs, date: s.date, car: s.car };
+            }
+          };
+          if (laps.length > 0) {
+            laps.forEach(l => { checkSector('s1', l.s1); checkSector('s2', l.s2); checkSector('s3', l.s3); });
+          } else {
+            checkSector('s1', s.s1); checkSector('s2', s.s2); checkSector('s3', s.s3);
+          }
+        });
+        const hasSectors = bestSectors.s1 || bestSectors.s2 || bestSectors.s3;
+        if (!hasSectors) return null;
+        return (
+          <>
+            <div className="section-title" style={{ marginTop: 40 }}>Best Sectors — {trackName(filterTrack)}</div>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {(['s1', 's2', 's3'] as const).map(key => {
+                const s = bestSectors[key];
+                if (!s) return null;
+                return (
+                  <div key={key} className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
+                      Sector {key.slice(1)}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{s.val}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 6 }}>{s.car} · {s.date}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Consistency Trend */}
+      <div className="section-title" style={{ marginTop: 40 }}>Consistency Score Trend</div>
+      {!filterTrack ? (
+        <div className="table-wrap">
+          <div className="empty-state">
+            <div className="empty-state-title">Select a Track</div>
+            <div className="empty-state-desc">Pick a specific track above to see your consistency trend.</div>
+          </div>
+        </div>
+      ) : (() => {
+        const consistencyData = filtered
+          .filter(s => s.bestLap && s.bestLap.trim() !== '' && s.avgLap && s.avgLap.trim() !== '')
+          .map(s => ({ date: s.date, consistency: sessionConsistency(s) }))
+          .filter((d): d is { date: string; consistency: number } => d.consistency !== null);
+        return consistencyData.length < 2 ? (
+          <div className="table-wrap">
+            <div className="empty-state">
+              <div className="empty-state-desc">Log more sessions with best and average lap times to see your consistency trend.</div>
+            </div>
+          </div>
+        ) : (
+          <div className="chart-wrap">
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={consistencyData} margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="date" tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} />
+                <YAxis domain={[90, 100]} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} tickFormatter={v => `${v}%`} />
+                <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
+                  <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>{(payload[0].value as number).toFixed(1)}%</div>
+                  </div>
+                ) : null} />
+                <Line type="monotone" dataKey="consistency" stroke="var(--teal)" strokeWidth={2} dot={{ fill: 'var(--teal)', r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
+
+      {/* Lap Time Delta Tool */}
+      <LapTimeDeltaTool />
+      </>
+      )}
+    </div>
+  );
+}
+
+function LapTimeDeltaTool() {
+  const [time1, setTime1] = useState('');
+  const [time2, setTime2] = useState('');
+  const result = lapTimeDelta(time1, time2);
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      <div className="section-title">Lap Time Delta Tool</div>
+      <div className="card" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+          <div>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 1</label>
+            <LapTimeInput value={time1} onChange={setTime1} style={{ width: 140 }} />
+          </div>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--gray)', marginTop: 16 }}>vs</span>
+          <div>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 2</label>
+            <LapTimeInput value={time2} onChange={setTime2} style={{ width: 140 }} />
+          </div>
+        </div>
+        {result && (
+          <div style={{ display: 'flex', gap: 24, alignItems: 'baseline' }}>
+            <div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Gap</span>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--teal)', marginTop: 4 }}>
+                {result.diffMs >= 1000 ? `${(result.diffMs / 1000).toFixed(3)}s` : `${result.diffMs}ms`}
+              </div>
+            </div>
+            <div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Percentage</span>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--white)', marginTop: 4 }}>
+                {result.diffPercent.toFixed(2)}%
+              </div>
+            </div>
+            <div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Faster</span>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)', marginTop: 4 }}>
+                Time {result.faster}
+              </div>
+            </div>
+          </div>
+        )}
+        {!result && (time1 || time2) && (
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+            Enter both lap times in M:SS.SSS format to compare
+          </div>
+        )}
+      </div>
     </div>
   );
 }
