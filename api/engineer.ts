@@ -1,5 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
-
 export const config = { runtime: "edge" };
 
 function lapToSec(str: string | null | undefined): number | null {
@@ -200,40 +198,62 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-    const stream = await client.messages.stream({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 700,
-      system: [
-        {
-          type: "text",
-          text: buildSystemPrompt(userData ?? { sessions: [] }),
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: messages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
+    const apiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 700,
+        stream: true,
+        system: [
+          {
+            type: "text",
+            text: buildSystemPrompt(userData ?? { sessions: [] }),
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+        messages: messages.map((m: { role: string; content: string }) => ({
+          role: m.role,
+          content: m.content,
+        })),
+      }),
     });
 
+    if (!apiRes.ok) {
+      const errBody = await apiRes.text();
+      console.error("Anthropic API error:", apiRes.status, errBody);
+      return new Response(
+        JSON.stringify({ error: "Engineer comms down. Try again." }),
+        { status: 502, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+
     const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const reader = apiRes.body!.getReader();
+    let buffer = "";
+
     const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            if (
-              chunk.type === "content_block_delta" &&
-              chunk.delta.type === "text_delta"
-            ) {
-              controller.enqueue(encoder.encode(chunk.delta.text));
+      async pull(controller) {
+        const { done, value } = await reader.read();
+        if (done) { controller.close(); return; }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6);
+          if (payload === "[DONE]") { controller.close(); return; }
+          try {
+            const evt = JSON.parse(payload);
+            if (evt.type === "content_block_delta" && evt.delta?.text) {
+              controller.enqueue(encoder.encode(evt.delta.text));
             }
-          }
-        } catch (err) {
-          controller.error(err);
-        } finally {
-          controller.close();
+          } catch { /* skip non-JSON lines */ }
         }
       },
     });
