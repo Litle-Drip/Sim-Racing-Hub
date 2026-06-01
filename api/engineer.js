@@ -1,8 +1,6 @@
-declare const process: { env: Record<string, string | undefined> };
-
 export const config = { runtime: "edge" };
 
-function lapToSec(str: string | null | undefined): number | null {
+function lapToSec(str) {
   if (!str?.trim()) return null;
   const p = str.split(":");
   if (p.length === 2) {
@@ -13,49 +11,25 @@ function lapToSec(str: string | null | undefined): number | null {
   return isNaN(secs) ? null : secs;
 }
 
-interface Session {
-  date: string;
-  trackId: string;
-  car: string;
-  bestLap?: string;
-  avgLap?: string;
-  worstLap?: string;
-  s1?: string;
-  s2?: string;
-  s3?: string;
-  type: string;
-  tires?: string;
-  notes?: string;
-  isPB?: boolean;
-}
-
-interface UserData {
-  name?: string;
-  platform?: string;
-  hardware?: string;
-  goals?: string;
-  sessions: Session[];
-}
-
-function buildSystemPrompt(userData: UserData): string {
+function buildSystemPrompt(userData) {
   const { name, hardware, platform, sessions = [], goals } = userData;
 
-  const pbMap: Record<string, Session> = {};
+  const pbMap = {};
   sessions.forEach((s) => {
     if (!s.bestLap) return;
     const key = `${s.trackId}||${s.car}`;
     const t = lapToSec(s.bestLap);
-    if (t && (!pbMap[key] || t < lapToSec(pbMap[key].bestLap)!)) {
+    if (t && (!pbMap[key] || t < lapToSec(pbMap[key].bestLap))) {
       pbMap[key] = s;
     }
   });
 
-  const trackCounts: Record<string, number> = {};
+  const trackCounts = {};
   sessions.forEach((s) => {
     trackCounts[s.trackId] = (trackCounts[s.trackId] || 0) + 1;
   });
 
-  const trackVariance: Record<string, number[]> = {};
+  const trackVariance = {};
   sessions.forEach((s) => {
     if (!s.bestLap || !s.avgLap) return;
     const best = lapToSec(s.bestLap);
@@ -68,7 +42,7 @@ function buildSystemPrompt(userData: UserData): string {
     }
   });
 
-  const sectorBests: Record<string, { s1: number | null; s2: number | null; s3: number | null }> = {};
+  const sectorBests = {};
   sessions.forEach((s) => {
     if (!sectorBests[s.trackId]) sectorBests[s.trackId] = { s1: null, s2: null, s3: null };
     const sb = sectorBests[s.trackId];
@@ -129,7 +103,7 @@ function buildSystemPrompt(userData: UserData): string {
     Object.entries(sectorBests)
       .filter(([, sb]) => sb.s1 || sb.s2 || sb.s3)
       .map(([track, sb]) => {
-        const parts: string[] = [];
+        const parts = [];
         if (sb.s1) parts.push(`S1: ${sb.s1.toFixed(3)}`);
         if (sb.s2) parts.push(`S2: ${sb.s2.toFixed(3)}`);
         if (sb.s3) parts.push(`S3: ${sb.s3.toFixed(3)}`);
@@ -176,7 +150,7 @@ When starting a conversation, immediately identify the single most impactful are
 If the driver has no sessions or very few, encourage them to log more and explain what data you need to give better coaching.`;
 }
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req) {
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -188,10 +162,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response("Method not allowed", { status: 405, headers: cors });
 
   try {
-    const { messages, userData } = (await req.json()) as {
-      messages: Array<{ role: string; content: string }>;
-      userData: UserData;
-    };
+    const { messages, userData } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -218,7 +189,7 @@ export default async function handler(req: Request): Promise<Response> {
             cache_control: { type: "ephemeral" },
           },
         ],
-        messages: messages.map((m: { role: string; content: string }) => ({
+        messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
         })),
@@ -236,7 +207,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
-    const reader = apiRes.body!.getReader();
+    const reader = apiRes.body.getReader();
     let buffer = "";
 
     const readable = new ReadableStream({
