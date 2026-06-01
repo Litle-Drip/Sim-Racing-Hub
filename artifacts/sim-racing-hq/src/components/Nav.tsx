@@ -57,6 +57,17 @@ export default function Nav({ page, setPage }: NavProps) {
   const rawName = user?.firstName ?? user?.username ?? 'Driver';
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
 
+  // Rank progress for ring
+  const rankTiers = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'] as const;
+  const currentTierIdx = rankTiers.indexOf(rankInfo.rank as typeof rankTiers[number]);
+  const thresholds = [0, 30, 100, 200, 350, 500];
+  const nextTier = currentTierIdx < rankTiers.length - 1 ? rankTiers[currentTierIdx + 1] : null;
+  const progressToNext = nextTier
+    ? Math.max(0, Math.min(100, ((rankInfo.points - thresholds[currentTierIdx]) / (thresholds[currentTierIdx + 1] - thresholds[currentTierIdx])) * 100))
+    : 100;
+  const ringCircum = 2 * Math.PI * 15;
+  const ringOffset = ringCircum - (progressToNext / 100) * ringCircum;
+
   return (
     <>
       <button
@@ -106,8 +117,16 @@ export default function Nav({ page, setPage }: NavProps) {
 
         {/* Profile Card */}
         <div className="nav-profile-card" onClick={() => navigate('account')} style={{ cursor: 'pointer' }}>
-          <div className="nav-profile-avatar">
-            {displayName.charAt(0).toUpperCase()}
+          <div className="nav-profile-avatar-ring">
+            <svg viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15" fill="none" stroke="var(--border)" strokeWidth="2" />
+              <circle cx="18" cy="18" r="15" fill="none" stroke={getRankColor(rankInfo.rank)} strokeWidth="2"
+                strokeDasharray={ringCircum} strokeDashoffset={ringOffset} strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
+            </svg>
+            <div className="nav-profile-avatar">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
           </div>
           <div className="nav-profile-info">
             <div className="nav-profile-name">{displayName}</div>
@@ -117,7 +136,7 @@ export default function Nav({ page, setPage }: NavProps) {
             {streak > 0 && (
               <div className="nav-profile-streak">🔥 {streak} day streak</div>
             )}
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--gray)', marginTop: 2, lineHeight: 1.4 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--gray)', marginTop: 1, lineHeight: 1.3 }}>
               {seatTimeHours > 0 && <span>{seatTimeHours}h seat time</span>}
               {favTrack && <span style={{ display: 'block' }}>Fav: {favTrack}</span>}
             </div>
@@ -125,8 +144,7 @@ export default function Nav({ page, setPage }: NavProps) {
         </div>
 
         <div style={{
-          padding: '10px 20px 16px',
-          borderTop: '1px solid var(--border)',
+          padding: '6px 20px 14px',
         }}>
           <button
             onClick={toggleTheme}

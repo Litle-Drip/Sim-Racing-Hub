@@ -13,6 +13,19 @@ const DIFF_COLORS: Record<string, string> = {
   Hard: '#E8002D',
 };
 
+function Sparkline({ data, color = 'var(--red)', width = 48, height = 18 }: { data: number[]; color?: string; width?: number; height?: number }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - ((v - min) / range) * (height - 2) - 1}`).join(' ');
+  return (
+    <svg className="stat-sparkline" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 const BADGE_CATEGORIES: { label: string; ids: string[] }[] = [
   { label: 'Skill', ids: ['podium', 'the_senna', 'consistent'] },
   { label: 'Consistency', ids: ['flat_out', 'century', 'weekend_warrior'] },
@@ -178,6 +191,59 @@ export default function Dashboard({ setPage }: DashboardProps) {
     weekAgo.setDate(today.getDate() - 7);
     const weekStr = weekAgo.toISOString().slice(0, 10);
     return sessions.filter(s => s.date >= weekStr).length;
+  }, [sessions]);
+
+  const sessionsLastWeek = useMemo(() => {
+    const today = new Date();
+    const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
+    const twoWeeksAgo = new Date(today); twoWeeksAgo.setDate(today.getDate() - 14);
+    const weekStr = weekAgo.toISOString().slice(0, 10);
+    const twoWeekStr = twoWeeksAgo.toISOString().slice(0, 10);
+    return sessions.filter(s => s.date >= twoWeekStr && s.date < weekStr).length;
+  }, [sessions]);
+
+  const tracksThisMonth = useMemo(() => {
+    const today = new Date();
+    const monthAgo = new Date(today); monthAgo.setDate(today.getDate() - 30);
+    const monthStr = monthAgo.toISOString().slice(0, 10);
+    const prevMonthAgo = new Date(today); prevMonthAgo.setDate(today.getDate() - 60);
+    const prevStr = prevMonthAgo.toISOString().slice(0, 10);
+    const curr = new Set(sessions.filter(s => s.date >= monthStr).map(s => s.trackId)).size;
+    const prev = new Set(sessions.filter(s => s.date >= prevStr && s.date < monthStr).map(s => s.trackId)).size;
+    return { current: curr, delta: curr - prev };
+  }, [sessions]);
+
+  // Sparkline data: sessions per day for last 14 days
+  const sessionSparkline = useMemo(() => {
+    const data: number[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      data.push(sessions.filter(s => s.date === ds).length);
+    }
+    return data;
+  }, [sessions]);
+
+  // Sparkline: tracks practiced cumulative last 14 days
+  const trackSparkline = useMemo(() => {
+    const data: number[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      data.push(new Set(sessions.filter(s => s.date <= ds).map(s => s.trackId)).size);
+    }
+    return data;
+  }, [sessions]);
+
+  // Sparkline: PBs cumulative last 14 days
+  const pbSparkline = useMemo(() => {
+    const data: number[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      data.push(sessions.filter(s => s.isPB && s.date <= ds).length);
+    }
+    return data;
   }, [sessions]);
 
   const mostDrivenTrack = useMemo(() => {
@@ -452,14 +518,31 @@ export default function Dashboard({ setPage }: DashboardProps) {
     const car = trackSessions[0]?.car ?? 'Any car';
     // Estimated gain: if high consistency, more likely to PB
     const gain = best.avgCons >= 96 ? '0.05–0.15' : best.avgCons >= 92 ? '0.15–0.30' : '0.30+';
+    const confidence = Math.min(99, Math.round(best.avgCons * 0.85 + Math.min(best.count, 10) * 1.5));
+    const lastAttempt = trackSessions[0]?.date ?? '';
+    const lastDaysAgo = lastAttempt ? Math.floor((Date.now() - new Date(lastAttempt).getTime()) / 86400000) : null;
     return {
       trackName: track?.short ?? best.trackId,
       trackFlag: track?.flag ?? '',
       car,
       reason: best.avgCons >= 96 ? 'Strong consistency, PB opportunity detected' : 'Good consistency, room to improve',
       gain: `+${gain}s`,
+      confidence,
+      avgConsistency: best.avgCons,
+      lastDaysAgo,
     };
   }, [sessions]);
+
+  // Determine primary CTA priority
+  const primaryCTA = useMemo(() => {
+    // If daily challenge has no entries, push that
+    if (daily.entries.length === 0) return 'challenge';
+    // If a next goal with close gap exists, push that
+    if (nextGoal?.gap) return 'goal';
+    // Otherwise recommendation
+    if (recommendation) return 'recommendation';
+    return 'challenge';
+  }, [daily.entries.length, nextGoal, recommendation]);
 
   // Badge tab filter
   const filteredBadges: Achievement[] = useMemo(() => {
@@ -547,7 +630,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
             {nextGoal.badge && (
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
             )}
-            <button className="btn btn-primary dash-cta-pulse" style={{ fontSize: 10, padding: '4px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 10, padding: '4px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
               Start Attempt
             </button>
           </div>
@@ -557,21 +640,42 @@ export default function Dashboard({ setPage }: DashboardProps) {
       {/* ── Stat Cards with micro-context ───────────────────────────────── */}
       <div className="stat-grid">
         <div className="stat-card dash-stat-hover dash-fade-in">
+          <svg className="stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
           <div className="stat-label">Total Sessions</div>
-          <div className="stat-value"><AnimatedCounter value={totalSessions} /></div>
+          <div className="stat-value">
+            <AnimatedCounter value={totalSessions} />
+            {sessionsThisWeek > 0 && (
+              <span className={`stat-trend ${sessionsThisWeek > sessionsLastWeek ? 'stat-trend--up' : sessionsThisWeek === sessionsLastWeek ? 'stat-trend--flat' : 'stat-trend--down'}`}>
+                {sessionsThisWeek > sessionsLastWeek ? '↗' : sessionsThisWeek === sessionsLastWeek ? '→' : '↘'}
+              </span>
+            )}
+          </div>
           {sessionsThisWeek > 0 && <div className="stat-micro" style={{ color: 'var(--teal)' }}>+{sessionsThisWeek} this week</div>}
+          <Sparkline data={sessionSparkline} color="var(--red)" />
         </div>
         <div className="stat-card dash-stat-hover dash-fade-in">
+          <svg className="stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
           <div className="stat-label">Tracks Practiced</div>
-          <div className="stat-value"><AnimatedCounter value={tracksPracticed} /></div>
+          <div className="stat-value">
+            <AnimatedCounter value={tracksPracticed} />
+            {tracksThisMonth.delta !== 0 && (
+              <span className={`stat-trend ${tracksThisMonth.delta > 0 ? 'stat-trend--up' : 'stat-trend--down'}`}>
+                {tracksThisMonth.delta > 0 ? `+${tracksThisMonth.delta}` : tracksThisMonth.delta}
+              </span>
+            )}
+          </div>
           {mostDrivenTrack && <div className="stat-micro">Most driven: {mostDrivenTrack}</div>}
+          <Sparkline data={trackSparkline} color="var(--teal)" />
         </div>
         <div className="stat-card dash-stat-hover dash-fade-in">
+          <svg className="stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
           <div className="stat-label">Personal Bests</div>
           <div className="stat-value"><AnimatedCounter value={pbsSet} /></div>
           {lastPBDaysAgo && <div className="stat-micro">Last PB: {lastPBDaysAgo}</div>}
+          <Sparkline data={pbSparkline} color="#FF9800" />
         </div>
         <div className="stat-card dash-stat-hover dash-fade-in" onClick={() => setPage('setups')} style={{ cursor: 'pointer' }}>
+          <svg className="stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
           <div className="stat-label">Setups Saved</div>
           <div className="stat-value"><AnimatedCounter value={setupsSaved} /></div>
           <div className="stat-micro stat-cta" onClick={e => { e.stopPropagation(); setPage('setups'); }}>Create Setup →</div>
@@ -612,9 +716,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
             Be first on the board today.
           </div>
         )}
-        {/* #polish: centered CTA instead of full-width */}
         <div style={{ padding: '8px 20px 12px', borderTop: '1px solid rgba(0,210,190,0.1)', textAlign: 'center' }}>
-          <button className="btn btn-primary dash-cta-pulse" style={{ fontSize: 11, padding: '6px 28px' }} onClick={() => setPage('sessions')}>
+          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={() => setPage('sessions')}>
             Start Challenge
           </button>
         </div>
@@ -630,9 +733,18 @@ export default function Dashboard({ setPage }: DashboardProps) {
           <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginBottom: 6 }}>
             {recommendation.reason}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--teal)' }}>Estimated gain: {recommendation.gain}</span>
-            <button className="btn btn-primary" style={{ fontSize: 10, padding: '4px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 4 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--teal)' }}>Est. gain: {recommendation.gain}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>Confidence: {recommendation.confidence}%</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>Consistency: {recommendation.avgConsistency.toFixed(1)}%</span>
+            {recommendation.lastDaysAgo !== null && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray)' }}>
+                Last: {recommendation.lastDaysAgo === 0 ? 'Today' : recommendation.lastDaysAgo === 1 ? 'Yesterday' : `${recommendation.lastDaysAgo}d ago`}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+            <button className={`btn ${primaryCTA === 'recommendation' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 10, padding: '4px 14px' }} onClick={() => setPage('sessions')}>
               Run Session
             </button>
           </div>
