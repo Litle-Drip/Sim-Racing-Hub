@@ -80,7 +80,7 @@ function serializeCommunitySetup(
 }
 
 router.get("/community/setups", async (req, res) => {
-  const { trackId, car, tag } = req.query as Record<string, string | undefined>;
+  const { trackId, car, tag, gameVersion } = req.query as Record<string, string | undefined>;
   const { userId: currentUserId } = getAuth(req);
   try {
     const rows = await db
@@ -97,6 +97,7 @@ router.get("/community/setups", async (req, res) => {
           trackId ? eq(setupsTable.trackId, trackId) : undefined,
           car ? sql`lower(${setupsTable.car}) like ${"%" + escapeLike(car.toLowerCase()) + "%"}` : undefined,
           tag ? eq(setupsTable.tag, tag) : undefined,
+          gameVersion ? eq(setupsTable.gameVersion, gameVersion) : undefined,
         ),
       )
       .groupBy(setupsTable.id);

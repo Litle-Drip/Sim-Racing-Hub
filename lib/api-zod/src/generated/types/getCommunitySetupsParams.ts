@@ -10,4 +10,5 @@ export type GetCommunitySetupsParams = {
 trackId?: string;
 car?: string;
 tag?: string;
+gameVersion?: string;
 };

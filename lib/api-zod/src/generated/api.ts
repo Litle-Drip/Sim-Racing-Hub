@@ -239,7 +239,8 @@ export const GetCommunitySessionsResponse = zod.array(GetCommunitySessionsRespon
 export const GetCommunitySetupsQueryParams = zod.object({
   "trackId": zod.coerce.string().optional(),
   "car": zod.coerce.string().optional(),
-  "tag": zod.coerce.string().optional()
+  "tag": zod.coerce.string().optional(),
+  "gameVersion": zod.coerce.string().optional()
 })
 
 export const GetCommunitySetupsResponseItem = zod.object({
@@ -262,6 +263,7 @@ export const GetCommunitySetupsResponseItem = zod.object({
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
   "notes": zod.string(),
+  "gameVersion": zod.string().nullish(),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
@@ -298,6 +300,7 @@ export const GetCommunitySetupResponse = zod.object({
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
   "notes": zod.string(),
+  "gameVersion": zod.string().nullish(),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),

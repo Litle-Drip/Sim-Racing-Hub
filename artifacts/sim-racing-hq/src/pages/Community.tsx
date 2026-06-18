@@ -11,7 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS } from '../data/f1Tracks';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -126,6 +126,12 @@ function CommunitySetupCard({
         ))}
       </div>
 
+      {setup.gameVersion && (
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 4 }}>
+          {setup.gameVersion}
+        </div>
+      )}
+
       <div className="community-card-footer">
         <StarRating
           avg={setup.avgRating}
@@ -214,6 +220,7 @@ export default function Community() {
   const [filterTrack, setFilterTrack] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
+  const [filterGameVersion, setFilterGameVersion] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterPlatform, setFilterPlatform] = useState('');
   const [filterInput, setFilterInput] = useState('');
@@ -227,6 +234,7 @@ export default function Community() {
     trackId: filterTrack || undefined,
     tag: filterTag || undefined,
     car: filterCar || undefined,
+    gameVersion: filterGameVersion || undefined,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading } = useGetCommunitySessions({
@@ -415,6 +423,10 @@ export default function Community() {
             <select className="filter-select" value={filterCar} onChange={(e) => setFilterCar(e.target.value)}>
               <option value="">All Cars</option>
               {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select className="filter-select" value={filterGameVersion} onChange={(e) => setFilterGameVersion(e.target.value)}>
+              <option value="">All Versions</option>
+              {GAME_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
 

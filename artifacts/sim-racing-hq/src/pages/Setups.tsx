@@ -85,6 +85,12 @@ function SetupViewModal({
                   </td>
                 </tr>
               ))}
+              {setup.gameVersion && (
+                <tr>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Game Version</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>{setup.gameVersion}</td>
+                </tr>
+              )}
               {setup.notes && (
                 <tr>
                   <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray-mid)', letterSpacing: '0.1em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
@@ -341,6 +347,7 @@ export default function Setups() {
               <div className="setup-card-body">
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray-mid)', letterSpacing: '0.12em', marginBottom: 10 }}>
                   {trackName(setup.trackId)}
+                  {setup.gameVersion ? <span style={{ marginLeft: 8, color: 'var(--gray)' }}>{setup.gameVersion}</span> : null}
                 </div>
                 <div className="setup-preview-row">
                   {[
