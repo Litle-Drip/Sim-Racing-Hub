@@ -65,7 +65,7 @@ function SetupViewModal({
   onShare: (id: string) => void;
 }) {
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
-  const isPublic = (setup as any).isPublic as boolean | undefined;
+  const isPublic = setup.isPublic;
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
@@ -345,7 +345,7 @@ export default function Setups() {
                 </div>
               </div>
               <div className="setup-card-actions">
-                {(setup as any).isPublic && (
+                {setup.isPublic && (
                   <span className="badge badge-community">Public</span>
                 )}
                 <button className="btn btn-ghost btn-sm" onClick={() => setViewSetup(setup)}>
@@ -354,10 +354,10 @@ export default function Setups() {
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => shareSetup({ id: setup.id })}
-                  title={(setup as any).isPublic ? 'Unshare from Community' : 'Share to Community'}
+                  title={setup.isPublic ? 'Unshare from Community' : 'Share to Community'}
                 >
-                  {(setup as any).isPublic ? <Lock size={11} /> : <Share2 size={11} />}
-                  {(setup as any).isPublic ? 'Unshare' : 'Share'}
+                  {setup.isPublic ? <Lock size={11} /> : <Share2 size={11} />}
+                  {setup.isPublic ? 'Unshare' : 'Share'}
                 </button>
                 <button className="btn btn-danger" onClick={() => handleDelete(setup.id)}>
                   <Trash2 size={11} /> Delete
@@ -376,7 +376,7 @@ export default function Setups() {
           onClose={() => setViewSetup(null)}
           onShare={(id) => {
             shareSetup({ id });
-            setViewSetup(prev => prev ? { ...prev, isPublic: !(prev as any).isPublic } as any : null);
+            setViewSetup(prev => prev ? { ...prev, isPublic: !prev.isPublic } : null);
           }}
         />
       )}
