@@ -254,6 +254,7 @@ function GuestSessionMigrator() {
     if (!sessions.length) { localStorage.removeItem(GUEST_SESSIONS_KEY); return; }
 
     (async () => {
+      const failed: SessionRecord[] = [];
       for (const s of sessions) {
         try {
           await apiCreateSessionRaw({
@@ -282,9 +283,17 @@ function GuestSessionMigrator() {
             laps: (s.laps ?? undefined) as import('@workspace/api-client-react').LapRecord[] | undefined,
             position: s.position,
           });
-        } catch {}
+        } catch {
+          failed.push(s);
+        }
       }
-      localStorage.removeItem(GUEST_SESSIONS_KEY);
+      if (failed.length === 0) {
+        localStorage.removeItem(GUEST_SESSIONS_KEY);
+      } else {
+        // Keep the sessions that failed to upload — they will be retried on
+        // the next sign-in so the user never loses data.
+        try { localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(failed)); } catch {}
+      }
       qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
     })();
   }, [qc]);
