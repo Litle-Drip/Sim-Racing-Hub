@@ -65,7 +65,7 @@ function DifficultyRating({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Difficulty</span>
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Difficulty</span>
       <div style={{ display: 'flex', gap: 3 }}>
         {[1, 2, 3, 4, 5].map(i => (
           <span
@@ -228,7 +228,7 @@ function TrackGrid({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: allSessions.length > 0 ? 28 : 0 }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>Track Bible</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Sort</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Sort</span>
           {SORT_OPTIONS.map(({ key, label }) => (
             <button
               key={key}
@@ -240,9 +240,9 @@ function TrackGrid({
                 color: sort === key ? 'var(--white)' : 'var(--gray-mid)',
                 cursor: 'pointer',
                 fontFamily: 'var(--font-display)',
-                fontSize: 9,
-                letterSpacing: '0.08em',
-                padding: '4px 8px',
+                fontSize: 11,
+                letterSpacing: '0.06em',
+                padding: '5px 10px',
                 textTransform: 'uppercase',
                 transition: 'all 0.15s',
               }}
@@ -491,7 +491,7 @@ function TrackDetail({
           <div key={label} className="track-stat">
             <div className="track-stat-label">{label}</div>
             <div className={`track-stat-value${!mono || value === '—' || value === 'Never' ? ' gray' : ''}`}>{value}</div>
-            {sub && <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 2 }}>{sub}</div>}
+            {sub && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{sub}</div>}
           </div>
         ))}
       </div>

@@ -126,7 +126,7 @@ function CommunitySetupCard({
         ))}
       </div>
 
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 4 }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4 }}>
         {setup.gameVersion?.trim() || '—'}
       </div>
 
@@ -174,8 +174,8 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
         </div>
         <div className="community-card-right">
           <span className={`badge ${TYPE_BADGE[session.type] || 'badge-practice'}`}>{session.type}</span>
-          {session.platform && <span className="badge badge-practice" style={{ fontSize: 9 }}>{session.platform}</span>}
-          {session.inputDevice && <span className="badge badge-practice" style={{ fontSize: 9 }}>{session.inputDevice}</span>}
+          {session.platform && <span className="badge badge-practice">{session.platform}</span>}
+          {session.inputDevice && <span className="badge badge-practice">{session.inputDevice}</span>}
           <div className="community-card-author">
             <Users size={10} />
             {session.authorName}
@@ -193,7 +193,7 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
       </div>
 
       {session.gameVersion && (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 4 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4 }}>
           {session.gameVersion}
         </div>
       )}
@@ -206,7 +206,7 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
         <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
           {session.date}
         </span>
-        {onClick && <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>View Details →</span>}
+        {onClick && <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>View Details →</span>}
       </div>
     </div>
   );
@@ -326,7 +326,7 @@ export default function Community() {
       <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden', border: '1px solid rgba(232,0,45,0.3)' }}>
         <div style={{ background: 'rgba(232,0,45,0.08)', padding: '14px 20px', borderBottom: '1px solid rgba(232,0,45,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--red)' }}>Weekly Challenge</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)' }}>Weekly Challenge</span>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
               {challenge.track.flag} Fastest Lap at {challenge.track.name}
             </div>

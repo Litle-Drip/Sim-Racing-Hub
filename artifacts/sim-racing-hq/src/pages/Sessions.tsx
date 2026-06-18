@@ -102,14 +102,14 @@ function LapTable({ laps }: { laps: SessionRecord['laps'] }) {
 
   return (
     <div style={{ width: '100%', overflowX: 'auto', marginTop: 12 }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
         Lap Data
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
             {['Lap', 'Time', 'S1', 'S2', 'S3', 'Tires', 'Penalty'].map(h => (
-              <th key={h} style={{ padding: '4px 8px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase' }}>{h}</th>
+              <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase' }}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -831,7 +831,7 @@ export default function Sessions() {
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--border)' }}>
                           {['#', 'Lap Time', 'S1', 'S2', 'S3', 'Tires', 'Pen', ''].map(h => (
-                            <th key={h} style={{ padding: '4px 6px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                            <th key={h} style={{ padding: '5px 6px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>

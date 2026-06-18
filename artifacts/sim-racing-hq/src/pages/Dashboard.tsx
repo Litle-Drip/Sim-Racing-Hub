@@ -564,7 +564,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         )}
         {perfSnapshot?.subInsight && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray)', marginTop: 2 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2 }}>
             {perfSnapshot.subInsight}
           </div>
         )}
@@ -596,7 +596,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
               {rankInfo.points} XP
             </span>
             {earnedCount > 0 && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
                 {earnedCount}/{achievements.length} badges
               </span>
             )}
@@ -605,13 +605,13 @@ export default function Dashboard({ setPage }: DashboardProps) {
         {nextTier && (
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray-mid)' }}>{rankInfo.rank}</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: getRankColor(nextTier as DriverRank) }}>{nextTier}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{rankInfo.rank}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: getRankColor(nextTier as DriverRank) }}>{nextTier}</span>
             </div>
             <div className="xp-bar-bg">
               <div className="xp-bar-fill" style={{ width: `${progressToNext}%`, background: getRankColor(rankInfo.rank) }} />
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--gray)', marginTop: 2, textAlign: 'right' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2, textAlign: 'right' }}>
               {rankInfo.pointsToNext} XP to {nextTier}
             </div>
           </div>
@@ -621,16 +621,16 @@ export default function Dashboard({ setPage }: DashboardProps) {
       {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
       {nextGoal && (
         <div className="card dash-next-goal" style={{ padding: '14px 20px', marginBottom: 12, border: '1px solid rgba(0,210,190,0.25)' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
             {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
             {nextGoal.badge && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
             )}
-            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 10, padding: '4px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
               Start Attempt
             </button>
           </div>
@@ -687,8 +687,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
         <div style={{ background: 'rgba(0,210,190,0.06)', padding: '12px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.08em', padding: '1px 6px', borderRadius: 2, color: DIFF_COLORS[daily.difficulty], border: `1px solid ${DIFF_COLORS[daily.difficulty]}44`, textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 2, color: DIFF_COLORS[daily.difficulty], border: `1px solid ${DIFF_COLORS[daily.difficulty]}44`, textTransform: 'uppercase' }}>
                 {daily.difficulty}
               </span>
             </div>
@@ -697,8 +697,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)' }}>Resets in <CountdownTimer /></div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.06em', color: 'var(--teal)', marginTop: 2 }}>+{daily.xpReward} XP</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Resets in <CountdownTimer /></div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.05em', color: 'var(--teal)', marginTop: 2 }}>+{daily.xpReward} XP</div>
           </div>
         </div>
         {daily.entries.length > 0 ? (
@@ -726,7 +726,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
       {/* ── #10 Session Recommendation Engine ──────────────────────────── */}
       {recommendation && (
         <div className="card dash-stat-hover" style={{ padding: '14px 20px', marginBottom: 12, border: '1px solid rgba(232,0,45,0.2)' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>Recommended Session</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>Recommended Session</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
             {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
           </div>
@@ -734,17 +734,17 @@ export default function Dashboard({ setPage }: DashboardProps) {
             {recommendation.reason}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 4 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--teal)' }}>Est. gain: {recommendation.gain}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>Confidence: {recommendation.confidence}%</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>Consistency: {recommendation.avgConsistency.toFixed(1)}%</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>Est. gain: {recommendation.gain}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Confidence: {recommendation.confidence}%</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Consistency: {recommendation.avgConsistency.toFixed(1)}%</span>
             {recommendation.lastDaysAgo !== null && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)' }}>
                 Last: {recommendation.lastDaysAgo === 0 ? 'Today' : recommendation.lastDaysAgo === 1 ? 'Yesterday' : `${recommendation.lastDaysAgo}d ago`}
               </span>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <button className={`btn ${primaryCTA === 'recommendation' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 10, padding: '4px 14px' }} onClick={() => setPage('sessions')}>
+            <button className={`btn ${primaryCTA === 'recommendation' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px' }} onClick={() => setPage('sessions')}>
               Run Session
             </button>
           </div>
@@ -754,34 +754,34 @@ export default function Dashboard({ setPage }: DashboardProps) {
       {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
       {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
           <div className="perf-snap-grid">
             {perfSnapshot.strongestTrack && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Strongest Track</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Strongest Track</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.strongestTrack}</div>
                 {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
               </div>
             )}
             {perfSnapshot.weakestTrack && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Needs Work</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Needs Work</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.weakestTrack}</div>
                 {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
               </div>
             )}
             {perfSnapshot.bestSector && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Best Sector</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Sector</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
               </div>
             )}
             {perfSnapshot.worstSector && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Biggest Time Loss</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: '#FF9800', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
               </div>
             )}
           </div>

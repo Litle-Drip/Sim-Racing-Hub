@@ -79,19 +79,19 @@ function SetupViewModal({
             <tbody>
               {COMPARE_FIELDS.map(({ key, label }) => (
                 <tr key={key}>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>{label}</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>{label}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>
                     {key === 'trackId' ? trackName(String(setup[key])) : String(setup[key] ?? '—')}
                   </td>
                 </tr>
               ))}
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Game Version</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Game Version</td>
                 <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>{setup.gameVersion?.trim() || '—'}</td>
               </tr>
               {setup.notes && (
                 <tr>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray-mid)', letterSpacing: '0.1em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
                   <td style={{ fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{setup.notes}</td>
                 </tr>
               )}
@@ -141,7 +141,7 @@ function CompareView({ setups, onBack }: { setups: [SetupRecord, SetupRecord]; o
               const diff = av !== bv;
               return (
                 <tr key={key}>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>{label}</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>{label}</td>
                   <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 13, color: diff ? 'var(--red)' : 'var(--teal)' }}>{av || '—'}</td>
                   <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 13, color: diff ? 'var(--red)' : 'var(--teal)' }}>{bv || '—'}</td>
                 </tr>
@@ -343,7 +343,7 @@ export default function Setups() {
                 <span className={`badge ${TAG_BADGE[setup.tag] || 'badge-practice'}`}>{setup.tag}</span>
               </div>
               <div className="setup-card-body">
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray-mid)', letterSpacing: '0.12em', marginBottom: 10 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', marginBottom: 10 }}>
                   {trackName(setup.trackId)}
                   <span style={{ marginLeft: 8, color: 'var(--gray)' }}>{setup.gameVersion?.trim() || '—'}</span>
                 </div>
