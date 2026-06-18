@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
 import {
   useGetSessions,
   useCreateSession,
@@ -496,14 +497,20 @@ export default function Sessions() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="table-wrap">
-          <div className="empty-state">
-            <div className="empty-state-title">No Sessions Found</div>
-            <div className="empty-state-desc">
-              {sessions.length === 0
-                ? 'Log your first session — it takes 30 seconds. Tap "Log Session" above to get started.'
-                : 'No sessions match your current filters. Try adjusting or clearing them.'}
+          {sessions.length === 0 ? (
+            <EmptyState
+              icon={<Flag size={40} />}
+              headline="No sessions yet"
+              subtext="Log your first session — it takes 30 seconds. Track, car, best lap and you're done."
+              ctaLabel="Log Session"
+              onCta={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}
+            />
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-title">No Sessions Found</div>
+              <div className="empty-state-desc">No sessions match your current filters. Try adjusting or clearing them.</div>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div className="table-wrap">

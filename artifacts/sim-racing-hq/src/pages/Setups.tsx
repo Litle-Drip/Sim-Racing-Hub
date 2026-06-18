@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Eye, Trash2, Share2, Lock } from 'lucide-react';
+import { Plus, Eye, Trash2, Share2, Lock, Wrench } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
 import { useGetSetups, useCreateSetup, useDeleteSetup, useShareSetup, getGetSetupsQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SetupRecord } from '@workspace/api-client-react';
@@ -301,12 +302,22 @@ export default function Setups() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="card" style={{ padding: 0 }}>
-          <div className="empty-state">
-            <div className="empty-state-title">No Setups Found</div>
-            <div className="empty-state-desc">
-              {setups.length === 0 ? 'Save your first setup — or browse community setups for inspiration. Tap "New Setup" above to start.' : 'No setups match your current filters. Try adjusting or clearing them.'}
+          {setups.length === 0 ? (
+            <EmptyState
+              icon={<Wrench size={40} />}
+              headline="No setups saved yet"
+              subtext="Save your car settings here — front wing, rear wing, suspension, brakes. One setup per track per car, so you always know what worked."
+              ctaLabel="Add Setup"
+              onCta={() => setShowModal(true)}
+              secondaryLabel="Browse Community Setups"
+              onSecondary={() => window.dispatchEvent(new CustomEvent('nav', { detail: 'community' }))}
+            />
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-title">No Setups Found</div>
+              <div className="empty-state-desc">No setups match your current filters. Try adjusting or clearing them.</div>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div className="setup-grid">

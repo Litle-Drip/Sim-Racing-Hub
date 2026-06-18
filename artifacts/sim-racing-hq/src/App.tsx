@@ -423,6 +423,16 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
 
   const showNudge = isGuest && (pageViews >= 3 || timeReached) && !nudgeDismissed;
 
+  // Allow child pages to trigger top-level navigation via custom event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const dest = (e as CustomEvent<string>).detail;
+      if (dest) handleSetPage(dest);
+    };
+    window.addEventListener('nav', handler);
+    return () => window.removeEventListener('nav', handler);
+  }, [handleSetPage]);
+
   const renderPage = () => {
     if (isGuest && PROTECTED_PAGES.includes(page)) {
       return <GuestWall page={page} onSignIn={onSignIn ?? (() => {})} />;
@@ -433,7 +443,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'tracks': return <Tracks />;
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
-      case 'progress': return <Progress />;
+      case 'progress': return <Progress setPage={handleSetPage} />;
       case 'community': return <Community />;
       case 'account': return <Account />;
       default: return <Dashboard setPage={handleSetPage} />;

@@ -8,6 +8,8 @@ import { lapToSeconds } from '../lib/storage';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapTimeDelta, sessionConsistency } from '../lib/engagement';
 import { LapTimeInput } from '../components/LapTimeInput';
+import { EmptyState } from '../components/EmptyState';
+import { TrendingUp } from 'lucide-react';
 
 function formatLapTime(seconds: number): string {
   if (!isFinite(seconds) || seconds === 0) return '—';
@@ -43,7 +45,7 @@ function LapTooltip({ active, payload, label }: TooltipProps) {
   );
 }
 
-export default function Progress() {
+export default function Progress({ setPage }: { setPage?: (p: string) => void }) {
   const { data: allSessions = [] } = useGetSessions();
   const [filterTrack, setFilterTrack] = useState(() => sessionStorage.getItem('progress-track') || '');
   const [filterCar, setFilterCar] = useState('');
@@ -154,12 +156,14 @@ export default function Progress() {
       </div>
 
       {allSessions.length === 0 ? (
-        <div className="empty-state" style={{ marginTop: 40 }}>
-          <div className="empty-state-title">No Sessions Logged Yet</div>
-          <div className="empty-state-desc" style={{ maxWidth: 420, lineHeight: 1.7 }}>
-            Log sessions with <strong>best lap</strong>, <strong>average lap</strong>, and <strong>worst lap</strong> times to see your
-            progression charts populate here. Head to <strong>Sessions</strong> to log your first race or hotlap.
-          </div>
+        <div style={{ marginTop: 40 }}>
+          <EmptyState
+            icon={<TrendingUp size={40} />}
+            headline="No sessions logged yet"
+            subtext="Personal bests are tracked automatically from your session data — best lap, average lap, and worst lap. Log your first session to see your progression charts come to life."
+            ctaLabel="Log a Session"
+            onCta={() => setPage?.('sessions')}
+          />
         </div>
       ) : (
       <>

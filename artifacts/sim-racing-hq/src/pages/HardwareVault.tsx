@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Plus, Cpu, Trash2, Eye } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
 import { useGetHardware, useCreateHardware, useDeleteHardware, getGetHardwareQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HardwareRecord } from '@workspace/api-client-react';
@@ -185,7 +186,7 @@ export default function HardwareVault() {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Hardware Vault</h1>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button id="hw-add-btn" className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={12} /> Add Profile
         </button>
       </div>
@@ -211,15 +212,20 @@ export default function HardwareVault() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="card" style={{ padding: 0 }}>
-          <div className="empty-state">
-            <Cpu size={36} style={{ color: 'var(--border-accent)', marginBottom: 16 }} />
-            <div className="empty-state-title">No Hardware Profiles</div>
-            <div className="empty-state-desc">
-              {profiles.length === 0
-                ? 'Track your wheel, pedals, and FFB settings. Tap "New Profile" above to save your first hardware config.'
-                : 'No profiles match your current filters. Try adjusting or clearing them.'}
+          {profiles.length === 0 ? (
+            <EmptyState
+              icon={<Cpu size={40} />}
+              headline="No hardware profiles yet"
+              subtext="Document every piece of your rig — wheel base, pedals, FFB settings, and button mappings. Compare configs across sessions and never lose a setting that felt perfect."
+              ctaLabel="Add Hardware Profile"
+              onCta={() => document.getElementById('hw-add-btn')?.click()}
+            />
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-title">No Profiles Found</div>
+              <div className="empty-state-desc">No profiles match your current filters. Try adjusting or clearing them.</div>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div className="hw-grid">

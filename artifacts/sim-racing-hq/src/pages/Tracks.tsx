@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp } from 'lucide-react';
+import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, MapPin } from 'lucide-react';
 import { F1_TRACKS, F1Track, CORNER_NAMES } from '../data/f1Tracks';
 import { useGetSessions, useGetTrackNotes, useUpsertTrackNotes, getGetTrackNotesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -40,9 +40,30 @@ function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; ses
     }
   });
 
+  const hasAnySessions = allSessions.length > 0;
+
   return (
     <div className="page">
-      <h1 className="page-title" style={{ marginBottom: 28 }}>Track Bible</h1>
+      <h1 className="page-title" style={{ marginBottom: hasAnySessions ? 28 : 16 }}>Track Bible</h1>
+      {!hasAnySessions && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          background: 'rgba(0,210,190,0.06)',
+          border: '1px solid rgba(0,210,190,0.18)',
+          padding: '14px 18px',
+          marginBottom: 24,
+          maxWidth: 580,
+        }}>
+          <MapPin size={16} style={{ color: 'var(--teal)', flexShrink: 0, marginTop: 1 }} />
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--teal)', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Pick a circuit to get started</strong>
+            <br />
+            Each track has a corner-by-corner notes editor. Annotate braking points, throttle zones, and tyre info — then review them before your next session.
+          </div>
+        </div>
+      )}
       <div className="track-grid">
         {F1_TRACKS.map(track => {
           const count = countByTrack[track.id] || 0;
