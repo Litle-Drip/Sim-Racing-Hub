@@ -268,6 +268,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm());
   const [laps, setLaps] = useState<FormLap[]>([]);
+  const [lockedSummary, setLockedSummary] = useState<Set<string>>(new Set());
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState('');
   const [filterTrack, setFilterTrack] = useState('');
@@ -301,6 +302,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       if (Date.now() - draft.savedAt > 24 * 60 * 60 * 1000) { localStorage.removeItem(DRAFT_KEY); return false; }
       setForm(draft.form);
       setLaps(draft.laps ?? []);
+      setLockedSummary(new Set());
       return true;
     } catch { return false; }
   }, []);
@@ -317,6 +319,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         setShowModal(false);
         setForm(defaultForm());
         setLaps([]);
+        setLockedSummary(new Set());
         setFormErrors({});
         setSaveError('');
       },
@@ -361,21 +364,19 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     });
   };
 
-  const syncSummary = (lapList: FormLap[]) => {
+  const syncSummary = (lapList: FormLap[], locked: Set<string> = lockedSummary) => {
     const validLaps = lapList.filter(l => l.time.trim() !== '');
     if (validLaps.length === 0) return;
     const computed = computeFromLaps(lapList);
     if (!computed.bestLap) return;
-    // With ≥2 valid laps all three summary fields can be fully derived from the
-    // lap table, so overwrite any prior value (manual or auto-filled).
-    // With only 1 lap, fall back to the preservation pattern so a single lap
-    // time cannot collapse the summary fields set by manual entry.
-    const canFullyDerive = validLaps.length >= 2;
+    // Lap-driven mode: recalculate any field the user hasn't manually edited,
+    // regardless of how many valid laps there are. Manually-edited (locked)
+    // fields are left untouched so user overrides are respected.
     setForm(f => ({
       ...f,
-      bestLap: canFullyDerive ? computed.bestLap : (f.bestLap.trim() || computed.bestLap),
-      avgLap:  canFullyDerive ? computed.avgLap  : (f.avgLap.trim()  || computed.avgLap),
-      worstLap: canFullyDerive ? computed.worstLap : (f.worstLap.trim() || computed.worstLap),
+      bestLap:  locked.has('bestLap')  ? f.bestLap  : computed.bestLap,
+      avgLap:   locked.has('avgLap')   ? f.avgLap   : computed.avgLap,
+      worstLap: locked.has('worstLap') ? f.worstLap : computed.worstLap,
     }));
   };
 
@@ -393,13 +394,19 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short ?? id;
 
-  const set = (k: string, v: string | number) => setForm(f => {
-    const next = { ...f, [k]: v };
-    if (k === 'bestLap' || k === 'worstLap') {
-      next.avgLap = recalcAvg(next.bestLap, next.worstLap);
+  const set = (k: string, v: string | number) => {
+    if (k === 'bestLap' || k === 'avgLap' || k === 'worstLap') {
+      setLockedSummary(s => new Set([...s, k]));
     }
-    return next;
-  });
+    setForm(f => {
+      const next = { ...f, [k]: v };
+      if (k === 'bestLap' || k === 'worstLap') {
+        next.avgLap = recalcAvg(next.bestLap, next.worstLap);
+        setLockedSummary(s => new Set([...s, 'avgLap']));
+      }
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     return [...sessions]
@@ -486,6 +493,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       setShowModal(false);
       setForm(defaultForm());
       setLaps([]);
+      setLockedSummary(new Set());
       setFormErrors({});
       setSaveError('');
       return;
@@ -551,6 +559,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     setShowModal(false);
     setForm(defaultForm());
     setLaps([]);
+    setLockedSummary(new Set());
     setFormErrors({});
     setSaveError('');
   };
