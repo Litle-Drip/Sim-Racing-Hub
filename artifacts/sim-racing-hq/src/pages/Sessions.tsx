@@ -365,14 +365,18 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     const validLaps = lapList.filter(l => l.time.trim() !== '');
     if (validLaps.length === 0) return;
     const computed = computeFromLaps(lapList);
-    if (computed.bestLap) {
-      setForm(f => ({
-        ...f,
-        bestLap: f.bestLap.trim() || computed.bestLap,
-        avgLap: f.avgLap.trim() || computed.avgLap,
-        worstLap: f.worstLap.trim() || computed.worstLap,
-      }));
-    }
+    if (!computed.bestLap) return;
+    // With ≥2 valid laps all three summary fields can be fully derived from the
+    // lap table, so overwrite any prior value (manual or auto-filled).
+    // With only 1 lap, fall back to the preservation pattern so a single lap
+    // time cannot collapse the summary fields set by manual entry.
+    const canFullyDerive = validLaps.length >= 2;
+    setForm(f => ({
+      ...f,
+      bestLap: canFullyDerive ? computed.bestLap : (f.bestLap.trim() || computed.bestLap),
+      avgLap:  canFullyDerive ? computed.avgLap  : (f.avgLap.trim()  || computed.avgLap),
+      worstLap: canFullyDerive ? computed.worstLap : (f.worstLap.trim() || computed.worstLap),
+    }));
   };
 
   // ── Auto-recalculate avg when best/worst change manually (no laps) ────
