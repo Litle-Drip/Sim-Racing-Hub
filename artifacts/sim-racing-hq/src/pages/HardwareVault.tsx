@@ -186,7 +186,7 @@ export default function HardwareVault() {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Hardware Vault</h1>
-        <button id="hw-add-btn" className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <Plus size={12} /> Add Profile
         </button>
       </div>
@@ -218,7 +218,7 @@ export default function HardwareVault() {
               headline="No hardware profiles yet"
               subtext="Document every piece of your rig — wheel base, pedals, FFB settings, and button mappings. Compare configs across sessions and never lose a setting that felt perfect."
               ctaLabel="Add Hardware Profile"
-              onCta={() => document.getElementById('hw-add-btn')?.click()}
+              onCta={() => setShowModal(true)}
             />
           ) : (
             <div className="empty-state">
