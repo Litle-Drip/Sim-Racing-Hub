@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag } from 'lucide-react';
+import { Toast } from '../components/Toast';
 import { EmptyState } from '../components/EmptyState';
 import {
   useGetSessions,
@@ -277,6 +278,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [filterConditions, setFilterConditions] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
+  const [toast, setToast] = useState('');
 
   // ── Draft auto-save ────────────────────────────────────────────────────
 
@@ -322,6 +324,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         setLockedSummary(new Set());
         setFormErrors({});
         setSaveError('');
+        setToast('Session saved ✓');
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save session. Please try again.';
@@ -488,7 +491,14 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         laps: lapRows ?? null,
         position: form.type === 'Race' && form.position ? form.position : undefined,
       };
-      setGuestSessions(prev => computeGuestPBs([...prev, newSession]));
+      const updatedSessions = computeGuestPBs([...guestSessions, newSession]);
+      try {
+        localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(updatedSessions));
+      } catch {
+        setSaveError('Your browser storage is full. Delete some sessions to free space, then try again.');
+        return;
+      }
+      setGuestSessions(updatedSessions);
       clearDraft();
       setShowModal(false);
       setForm(defaultForm());
@@ -496,6 +506,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       setLockedSummary(new Set());
       setFormErrors({});
       setSaveError('');
+      setToast('Session saved ✓');
       return;
     }
 
@@ -795,12 +806,6 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
-              {saveError && (
-                <div style={{ background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)', color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '10px 14px', marginBottom: 16 }}>
-                  {saveError}
-                </div>
-              )}
-
               {/* ── Core fields ── */}
               <div className="form-grid">
                 <div className="field">
@@ -964,7 +969,19 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               </div>
             </div>
 
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ flexWrap: 'wrap', gap: 10 }}>
+              {saveError && (
+                <div style={{ width: '100%', background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.45)', borderRadius: 3, color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 12, padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <span>{saveError}</span>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    style={{ background: 'none', border: '1px solid rgba(232,0,45,0.5)', color: 'var(--red)', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', padding: '4px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: 2, flexShrink: 0 }}
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
               <button className="btn btn-secondary" onClick={closeModal}>Cancel</button>
               <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving…' : 'Save Session'}
@@ -973,6 +990,8 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
           </div>
         </div>
       )}
+
+      {toast && <Toast message={toast} onDone={() => setToast('')} />}
     </div>
   );
 }
