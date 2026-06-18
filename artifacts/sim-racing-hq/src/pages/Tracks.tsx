@@ -195,13 +195,14 @@ function TrackDetail({
 
   const { data: trackNotesData } = useGetTrackNotes(track.id);
   const [savedFlash, setSavedFlash] = useState(false);
-  const { mutate: upsertTrackNotes } = useUpsertTrackNotes({
+  const { mutate: upsertTrackNotes, isPending: isSaving, isError: hasSaveError, reset: resetSave } = useUpsertTrackNotes({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetTrackNotesQueryKey(track.id) });
         setSavedFlash(true);
         setTimeout(() => setSavedFlash(false), 1800);
       },
+      onError: () => { setSavedFlash(false); },
     },
   });
 
@@ -341,8 +342,23 @@ function TrackDetail({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div className="section-title" style={{ marginBottom: 0 }}>Corner Breakdown</div>
-            {savedFlash && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--teal)', opacity: 0.9 }}>✓ Saved</span>
+            {isSaving && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Saving…</span>
+            )}
+            {!isSaving && savedFlash && !hasSaveError && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--teal)' }}>✓ Saved</span>
+            )}
+            {!isSaving && hasSaveError && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                Save failed —{' '}
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '2px 8px', fontSize: 10 }}
+                  onClick={() => { resetSave(); saveCorners(corners); }}
+                >
+                  Retry
+                </button>
+              </span>
             )}
           </div>
           <button className="btn btn-secondary btn-sm" onClick={addCorner}><Plus size={11} /> Add Corner</button>

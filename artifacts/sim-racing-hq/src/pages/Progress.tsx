@@ -60,7 +60,14 @@ export default function Progress() {
     if (trackSessions.length === 0) { setFilterCar(''); return; }
     const latestCar = [...trackSessions].sort((a, b) => b.date.localeCompare(a.date))[0].car;
     setFilterCar(latestCar);
-  }, [filterTrack]);
+  }, [filterTrack, allSessions]);
+
+  // Unique cars for the selected track (for dropdown)
+  const carsForTrack = useMemo(() => {
+    if (!filterTrack) return [];
+    const cars = [...new Set(allSessions.filter(s => s.trackId === filterTrack).map(s => s.car).filter(Boolean))];
+    return cars.sort();
+  }, [allSessions, filterTrack]);
 
   const filtered = useMemo(() => {
     return allSessions
@@ -161,12 +168,15 @@ export default function Progress() {
           <option value="">All Tracks</option>
           {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.flag} {t.short}</option>)}
         </select>
-        <input
-          className="filter-input"
-          placeholder="Filter by car..."
+        <select
+          className="filter-select"
           value={filterCar}
           onChange={e => setFilterCar(e.target.value)}
-        />
+          disabled={carsForTrack.length === 0}
+        >
+          <option value="">All Cars</option>
+          {carsForTrack.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
 
       <div className="chart-section">

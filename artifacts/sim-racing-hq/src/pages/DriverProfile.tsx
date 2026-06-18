@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { calculateRank, calculateAchievements, getRankColor } from '../lib/engagement';
-import type { SessionRecord } from '@workspace/api-client-react';
+import { getRankColor } from '../lib/engagement';
+import type { RankInfo, Achievement } from '../lib/engagement';
 
 interface DriverPB {
   trackId: string;
@@ -62,50 +62,46 @@ export default function DriverProfile({ username }: { username: string }) {
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
   const trackFlag = (id: string) => F1_TRACKS.find(t => t.id === id)?.flag || '';
 
-  // Build a sessions array from public data that accurately reflects the driver's history.
-  // We use PB records (real trackId + bestLap + isPB) and pad up to the total session count.
-  const sessionsForCalc = useMemo((): SessionRecord[] => {
-    if (!driver) return [];
-    const base: SessionRecord[] = driver.pbs.map(pb => ({
-      id: `pb-${pb.trackId}`,
-      date: pb.date,
-      trackId: pb.trackId,
-      car: pb.car,
-      type: 'Race',
-      bestLap: pb.bestLap,
-      avgLap: '', worstLap: '', s1: '', s2: '', s3: '', tires: '', fuelLoad: 0,
-      conditions: '', assists: '', rating: 0, notes: '', penalty: '', gameVersion: '',
-      isPublic: true, sharedAt: null, publicNote: null, laps: null, isPB: true,
-    }));
-    const pbTrackIds = new Set(driver.pbs.map(p => p.trackId));
-    const extra: SessionRecord[] = driver.recentSessions
-      .filter(s => !pbTrackIds.has(s.trackId))
-      .map(s => ({
-        ...s,
-        avgLap: '', worstLap: '', s1: '', s2: '', s3: '', tires: '', fuelLoad: 0,
-        assists: '', rating: 0, notes: '', penalty: '', gameVersion: '',
-        isPublic: true, sharedAt: null, publicNote: null, laps: null, isPB: false,
-      }));
-    const combined = [...base, ...extra];
-    const padCount = Math.max(0, driver.sessions - combined.length);
-    const pad: SessionRecord[] = Array.from({ length: padCount }, (_, i) => ({
-      id: `pad-${i}`, date: '2024-01-01', trackId: '', car: '', type: 'Practice',
-      bestLap: '', avgLap: '', worstLap: '', s1: '', s2: '', s3: '', tires: '',
-      fuelLoad: 0, conditions: '', assists: '', rating: 0, notes: '', penalty: '', gameVersion: '',
-      isPublic: false, sharedAt: null, publicNote: null, laps: null, isPB: false,
-    }));
-    return [...combined, ...pad];
+  // Rank computed directly from aggregate public data — no synthetic session padding.
+  const RANK_TIERS = [
+    { rank: 'Pro' as const, min: 500 },
+    { rank: 'Elite' as const, min: 350 },
+    { rank: 'Expert' as const, min: 200 },
+    { rank: 'Intermediate' as const, min: 100 },
+    { rank: 'Amateur' as const, min: 30 },
+    { rank: 'Rookie' as const, min: 0 },
+  ];
+
+  const rankInfo = useMemo((): RankInfo | null => {
+    if (!driver) return null;
+    let points = Math.min(driver.sessions, 100);
+    points += driver.tracks * 5;
+    points += driver.pbs.length * 3;
+    if (driver.tracks >= 24) points += 50;
+    const tier = RANK_TIERS.find(t => points >= t.min) ?? RANK_TIERS[RANK_TIERS.length - 1];
+    const nextIdx = RANK_TIERS.indexOf(tier) - 1;
+    const next = nextIdx >= 0 ? RANK_TIERS[nextIdx] : null;
+    return { rank: tier.rank, points, nextRank: next?.rank ?? null, pointsToNext: next ? next.min - points : 0 };
   }, [driver]);
 
-  const rankInfo = useMemo(() => {
-    if (!driver) return null;
-    return calculateRank(sessionsForCalc);
-  }, [driver, sessionsForCalc]);
-
-  const achievements = useMemo(() => {
+  // Achievements computed from known public aggregate data only (no fabricated sessions).
+  const achievements = useMemo((): Achievement[] => {
     if (!driver) return [];
-    return calculateAchievements(sessionsForCalc, driver.setups);
-  }, [driver, sessionsForCalc]);
+    const pbTrackIds = new Set(driver.pbs.map(p => p.trackId));
+    const n = driver.sessions;
+    return [
+      { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: '🏆', earned: driver.pbs.length > 0, progress: Math.min(driver.pbs.length, 1), target: 1 },
+      { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: '💨', earned: n >= 10, progress: Math.min(n, 10), target: 10 },
+      { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: '🔧', earned: driver.setups >= 10, progress: Math.min(driver.setups, 10), target: 10 },
+      { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: '🌍', earned: driver.tracks >= 24, progress: Math.min(driver.tracks, 24), target: 24 },
+      { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: '🎯', earned: false, progress: 0, target: 1 },
+      { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: '👑', earned: pbTrackIds.has('monaco'), progress: pbTrackIds.has('monaco') ? 1 : 0, target: 1 },
+      { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: '💯', earned: n >= 100, progress: Math.min(n, 100), target: 100 },
+      { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: '✈️', earned: driver.tracks >= 12, progress: Math.min(driver.tracks, 12), target: 12 },
+      { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: '⚡', earned: false, progress: 0, target: 5 },
+      { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: '📡', earned: true, progress: 1, target: 1 },
+    ];
+  }, [driver]);
 
   if (loading) return <div className="page" style={{ textAlign: 'center', padding: 60 }}><div style={{ color: 'var(--gray-mid)' }}>Loading...</div></div>;
   if (error || !driver) return (

@@ -9,7 +9,7 @@ function lapToSeconds(lap: string): number {
   return parseFloat(lap) || Infinity;
 }
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 
 export default function PublicLeaderboard({ onBack }: { onBack?: () => void }) {
   const { data: sessions = [], isLoading } = useGetCommunitySessions();
