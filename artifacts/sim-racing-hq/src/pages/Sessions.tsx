@@ -220,12 +220,49 @@ const defaultForm = () => ({
 });
 
 const DRAFT_KEY = 'session-draft';
+const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
+
+// ─── Guest PB helper ──────────────────────────────────────────────────────────
+
+function computeGuestPBs(sessions: SessionRecord[]): SessionRecord[] {
+  const bestByTrackCar: Record<string, number> = {};
+  for (const s of sessions) {
+    const key = `${s.trackId}:${s.car}`;
+    const t = secsFromLap(s.bestLap);
+    if (isFinite(t) && (bestByTrackCar[key] === undefined || t < bestByTrackCar[key])) {
+      bestByTrackCar[key] = t;
+    }
+  }
+  return sessions.map(s => {
+    const key = `${s.trackId}:${s.car}`;
+    const t = secsFromLap(s.bestLap);
+    return { ...s, isPB: isFinite(t) && t === bestByTrackCar[key] };
+  });
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function Sessions() {
+export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const qc = useQueryClient();
-  const { data: sessions = [], isLoading } = useGetSessions();
+  const { data: apiSessions = [], isLoading: apiLoading } = useGetSessions(
+    isGuest ? { query: { enabled: false } as never } : undefined
+  );
+
+  const [guestSessions, setGuestSessions] = useState<SessionRecord[]>(() => {
+    if (!isGuest) return [];
+    try {
+      const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
+      return raw ? (JSON.parse(raw) as SessionRecord[]) : [];
+    } catch { return []; }
+  });
+
+  useEffect(() => {
+    if (!isGuest) return;
+    try { localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(guestSessions)); } catch {}
+  }, [isGuest, guestSessions]);
+
+  const sessions: SessionRecord[] = isGuest ? guestSessions : (apiSessions as SessionRecord[]);
+  const isLoading = isGuest ? false : apiLoading;
 
   const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -272,7 +309,7 @@ export default function Sessions() {
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
   }, []);
 
-  const { mutate: createSession, isPending: saving } = useCreateSession({
+  const { mutate: apiCreateSession, isPending: apiSaving } = useCreateSession({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
@@ -289,8 +326,9 @@ export default function Sessions() {
       },
     },
   });
+  const saving = isGuest ? false : apiSaving;
 
-  const { mutate: deleteSession } = useDeleteSession({
+  const { mutate: apiDeleteSession } = useDeleteSession({
     mutation: { onSuccess: () => qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() }) },
   });
 
@@ -398,7 +436,58 @@ export default function Sessions() {
       }
     }
 
-    createSession({
+    const lapRows = laps.length > 0 ? laps.map((l, i) => ({
+      lap: i + 1,
+      time: l.time,
+      s1: l.s1,
+      s2: l.s2,
+      s3: l.s3,
+      tires: l.tires || form.tires,
+      penalty: l.penalty,
+    })) : undefined;
+
+    if (isGuest) {
+      const newSession: SessionRecord = {
+        id: crypto.randomUUID(),
+        date: form.date,
+        trackId: form.trackId,
+        car: form.car,
+        type: form.type,
+        bestLap: computed?.bestLap || form.bestLap,
+        avgLap: computed?.avgLap || form.avgLap,
+        worstLap: computed?.worstLap || form.worstLap,
+        s1: bestS1,
+        s2: bestS2,
+        s3: bestS3,
+        tires: form.tires,
+        fuelLoad: Number(form.fuelLoad),
+        conditions: form.conditions,
+        timeOfDay: form.timeOfDay || null,
+        assists: form.assists,
+        rating: form.rating,
+        notes: form.notes,
+        penalty: form.penalty || null,
+        gameVersion: form.gameVersion || null,
+        platform: form.platform || null,
+        inputDevice: form.inputDevice || null,
+        isPublic: false,
+        sharedAt: null,
+        publicNote: null,
+        isPB: false,
+        laps: lapRows ?? null,
+        position: form.type === 'Race' && form.position ? form.position : undefined,
+      };
+      setGuestSessions(prev => computeGuestPBs([...prev, newSession]));
+      clearDraft();
+      setShowModal(false);
+      setForm(defaultForm());
+      setLaps([]);
+      setFormErrors({});
+      setSaveError('');
+      return;
+    }
+
+    apiCreateSession({
       data: {
         id: crypto.randomUUID(),
         date: form.date,
@@ -423,22 +512,18 @@ export default function Sessions() {
         platform: form.platform,
         inputDevice: form.inputDevice,
         position: form.type === 'Race' && form.position ? form.position : undefined,
-        laps: laps.length > 0 ? laps.map((l, i) => ({
-          lap: i + 1,
-          time: l.time,
-          s1: l.s1,
-          s2: l.s2,
-          s3: l.s3,
-          tires: l.tires || form.tires,
-          penalty: l.penalty,
-        })) : undefined,
+        laps: lapRows,
       },
     });
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    deleteSession({ id });
+    if (isGuest) {
+      setGuestSessions(prev => computeGuestPBs(prev.filter(s => s.id !== id)));
+      return;
+    }
+    apiDeleteSession({ id });
   };
 
   const handleShare = (session: SessionRecord, e: React.MouseEvent) => {
@@ -476,6 +561,17 @@ export default function Sessions() {
           <Plus size={12} /> Log Session
         </button>
       </div>
+
+      {isGuest && (
+        <div style={{ background: 'rgba(0,210,190,0.07)', border: '1px solid rgba(0,210,190,0.22)', borderRadius: 4, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
+            <span style={{ color: 'var(--teal)', fontWeight: 600 }}>Saved in this browser only.</span> Sessions will persist across refreshes on this device. Create a free account to sync across all your devices.
+          </div>
+          <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px', whiteSpace: 'nowrap', flexShrink: 0 }} onClick={() => window.dispatchEvent(new CustomEvent('guestSignIn'))}>
+            Create Account
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="filter-bar">
@@ -611,16 +707,18 @@ export default function Sessions() {
                           )}
 
                           <div style={{ marginLeft: 'auto', alignSelf: 'flex-start', paddingTop: 4, display: 'flex', gap: 8 }}>
-                            <button
-                              className="btn btn-secondary"
-                              style={{ fontSize: 11, padding: '4px 10px', color: s.isPublic ? 'var(--teal)' : 'var(--gray-mid)', borderColor: s.isPublic ? 'var(--teal)' : 'var(--gray)' }}
-                              onClick={(e) => handleShare(s, e)}
-                              disabled={sharingId === s.id}
-                              title={s.isPublic ? 'Remove from Community' : 'Share to Community'}
-                            >
-                              <Share2 size={11} style={{ marginRight: 4 }} />
-                              {sharingId === s.id ? '…' : s.isPublic ? 'Shared' : 'Share'}
-                            </button>
+                            {!isGuest && (
+                              <button
+                                className="btn btn-secondary"
+                                style={{ fontSize: 11, padding: '4px 10px', color: s.isPublic ? 'var(--teal)' : 'var(--gray-mid)', borderColor: s.isPublic ? 'var(--teal)' : 'var(--gray)' }}
+                                onClick={(e) => handleShare(s, e)}
+                                disabled={sharingId === s.id}
+                                title={s.isPublic ? 'Remove from Community' : 'Share to Community'}
+                              >
+                                <Share2 size={11} style={{ marginRight: 4 }} />
+                                {sharingId === s.id ? '…' : s.isPublic ? 'Shared' : 'Share'}
+                              </button>
+                            )}
                             <button
                               className="btn btn-secondary"
                               style={{ fontSize: 11, padding: '4px 10px', color: 'var(--red)', borderColor: 'var(--red)' }}

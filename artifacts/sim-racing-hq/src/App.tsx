@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser, useAuth } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
-import { setAuthTokenGetter } from '@workspace/api-client-react';
+import { setAuthTokenGetter, createSession as apiCreateSessionRaw, getGetSessionsQueryKey } from '@workspace/api-client-react';
+import type { SessionRecord } from '@workspace/api-client-react';
 import { dark } from '@clerk/themes';
 import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
@@ -234,7 +235,62 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
   );
 }
 
-const PROTECTED_PAGES = ['sessions', 'setups', 'hardware', 'progress'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress'];
+
+const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
+
+function GuestSessionMigrator() {
+  const qc = useQueryClient();
+  const hasRun = useRef(false);
+
+  useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+
+    const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
+    if (!raw) return;
+    let sessions: SessionRecord[];
+    try { sessions = JSON.parse(raw); } catch { localStorage.removeItem(GUEST_SESSIONS_KEY); return; }
+    if (!sessions.length) { localStorage.removeItem(GUEST_SESSIONS_KEY); return; }
+
+    (async () => {
+      for (const s of sessions) {
+        try {
+          await apiCreateSessionRaw({
+            id: s.id,
+            date: s.date,
+            trackId: s.trackId,
+            car: s.car,
+            type: s.type,
+            bestLap: s.bestLap,
+            avgLap: s.avgLap,
+            worstLap: s.worstLap,
+            s1: s.s1,
+            s2: s.s2,
+            s3: s.s3,
+            tires: s.tires,
+            fuelLoad: s.fuelLoad,
+            conditions: s.conditions,
+            timeOfDay: s.timeOfDay ?? undefined,
+            assists: s.assists,
+            rating: s.rating,
+            notes: s.notes,
+            penalty: s.penalty ?? undefined,
+            gameVersion: s.gameVersion ?? undefined,
+            platform: s.platform ?? undefined,
+            inputDevice: s.inputDevice ?? undefined,
+            laps: (s.laps ?? undefined) as import('@workspace/api-client-react').LapRecord[] | undefined,
+            position: s.position,
+          });
+        } catch {}
+      }
+      localStorage.removeItem(GUEST_SESSIONS_KEY);
+      qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
+    })();
+  }, [qc]);
+
+  return null;
+}
 
 const PAGE_LABELS: Record<string, string> = {
   sessions: 'Session Log',
@@ -433,13 +489,21 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
     return () => window.removeEventListener('nav', handler);
   }, [handleSetPage]);
 
+  // Allow guest pages to trigger sign-in via custom event
+  useEffect(() => {
+    if (!isGuest) return;
+    const handler = () => { if (onSignIn) onSignIn(); };
+    window.addEventListener('guestSignIn', handler);
+    return () => window.removeEventListener('guestSignIn', handler);
+  }, [isGuest, onSignIn]);
+
   const renderPage = () => {
     if (isGuest && PROTECTED_PAGES.includes(page)) {
       return <GuestWall page={page} onSignIn={onSignIn ?? (() => {})} />;
     }
     switch (page) {
       case 'dashboard': return <Dashboard setPage={handleSetPage} />;
-      case 'sessions': return <Sessions />;
+      case 'sessions': return <Sessions isGuest={isGuest} />;
       case 'tracks': return <Tracks isGuest={isGuest} />;
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
@@ -497,6 +561,7 @@ function HomeRoute() {
   return (
     <>
       <Show when="signed-in">
+        <GuestSessionMigrator />
         <MainApp />
       </Show>
       <Show when="signed-out">
