@@ -147,10 +147,10 @@ function CardDifficultyDots({
         ))}
       </div>
       {guestFlash && (
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--teal)', whiteSpace: 'nowrap' }}>Sign in to save</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--teal)', whiteSpace: 'nowrap' }}>Sign in to save</span>
       )}
       {!guestFlash && display > 0 && (
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray-mid)' }}>{DIFFICULTY_LABELS[display]}</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{DIFFICULTY_LABELS[display]}</span>
       )}
     </div>
   );
@@ -635,7 +635,7 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
   if (!guide) return null;
 
   const sectionStyle = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-light)', lineHeight: 1.7 };
-  const labelStyle = { fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'var(--teal)', marginBottom: 6, marginTop: 16 };
+  const labelStyle = { fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--teal)', marginBottom: 6, marginTop: 16 };
 
   return (
     <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.2)' }}>

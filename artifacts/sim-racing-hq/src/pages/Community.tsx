@@ -600,7 +600,7 @@ export default function Community() {
                   ...(detailSession.penalty && detailSession.penalty.trim() !== '' ? [{ label: 'Penalty', value: detailSession.penalty }] : []),
                 ].map(({ label, value }) => (
                   <div key={label}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>{label}</div>
                     <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)' }}>{value}</div>
                   </div>
                 ))}
@@ -608,7 +608,7 @@ export default function Community() {
 
               {detailSession.publicNote && (
                 <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Note</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Note</div>
                   <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{detailSession.publicNote}</div>
                 </div>
               )}

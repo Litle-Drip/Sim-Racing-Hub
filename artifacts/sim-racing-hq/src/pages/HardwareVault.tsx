@@ -66,30 +66,30 @@ function HardwareDetailModal({ profile, onClose }: { profile: HardwareRecord; on
           <table className="data-table">
             <tbody>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Type</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Type</td>
                 <td>
                   <span className={`badge ${PERIPHERAL_BADGE[profile.peripheralType] || 'badge-practice'}`}>{profile.peripheralType}</span>
                 </td>
               </tr>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Hardware</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Hardware</td>
                 <td style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)' }}>{[profile.brand, profile.model].filter(Boolean).join(' ') || '—'}</td>
               </tr>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Track</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Track</td>
                 <td style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)' }}>{trackName(profile.trackId)}</td>
               </tr>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Game</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Game</td>
                 <td style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)' }}>{profile.game || '—'}</td>
               </tr>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Date</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Date</td>
                 <td style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)' }}>{profile.date}</td>
               </tr>
               {FFB_FIELDS.map(({ key, label, unit }) => (
                 <tr key={key}>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>{label}</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>{label}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>
                     {profile[key] ? `${profile[key]}${unit || ''}` : '—'}
                   </td>
@@ -97,7 +97,7 @@ function HardwareDetailModal({ profile, onClose }: { profile: HardwareRecord; on
               ))}
               {profile.notes && (
                 <tr>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray-mid)', letterSpacing: '0.1em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
                   <td style={{ fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{profile.notes}</td>
                 </tr>
               )}

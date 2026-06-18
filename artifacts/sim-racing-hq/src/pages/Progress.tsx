@@ -35,7 +35,7 @@ function LapTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
       {payload.map((p, i) => (
         <div key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: p.color, marginBottom: 2 }}>
           {p.name}: {formatLapTime(p.value)}
@@ -201,7 +201,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
               <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#A8A8A8', letterSpacing: '0.06em' }}
+                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
                 axisLine={{ stroke: '#1E1E1E' }}
                 tickLine={false}
               />
@@ -263,7 +263,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
               <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#A8A8A8', letterSpacing: '0.06em' }}
+                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
                 axisLine={{ stroke: '#1E1E1E' }}
                 tickLine={false}
               />
@@ -409,7 +409,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
                 <YAxis domain={[90, 100]} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} tickFormatter={v => `${v}%`} />
                 <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
                   <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>{(payload[0].value as number).toFixed(1)}%</div>
                   </div>
                 ) : null} />
@@ -439,31 +439,31 @@ function LapTimeDeltaTool() {
       <div className="card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
           <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 1</label>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 1</label>
             <LapTimeInput value={time1} onChange={setTime1} style={{ width: 140 }} />
           </div>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--gray)', marginTop: 16 }}>vs</span>
           <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 2</label>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 2</label>
             <LapTimeInput value={time2} onChange={setTime2} style={{ width: 140 }} />
           </div>
         </div>
         {result && (
           <div style={{ display: 'flex', gap: 24, alignItems: 'baseline' }}>
             <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Gap</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Gap</span>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--teal)', marginTop: 4 }}>
                 {result.diffMs >= 1000 ? `${(result.diffMs / 1000).toFixed(3)}s` : `${result.diffMs}ms`}
               </div>
             </div>
             <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Percentage</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Percentage</span>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--white)', marginTop: 4 }}>
                 {result.diffPercent.toFixed(2)}%
               </div>
             </div>
             <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Faster</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Faster</span>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)', marginTop: 4 }}>
                 Time {result.faster}
               </div>

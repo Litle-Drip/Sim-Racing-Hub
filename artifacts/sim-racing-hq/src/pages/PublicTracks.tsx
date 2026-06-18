@@ -60,17 +60,17 @@ export default function PublicTracks({ onBack }: { onBack?: () => void }) {
 
               <div style={{ padding: '14px 20px', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Corners</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Corners</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: 'var(--teal)', marginTop: 2 }}>{track.corners}</div>
                 </div>
                 {info && (
                   <>
                     <div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Length</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Length</div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--white)', marginTop: 2 }}>{info.length}</div>
                     </div>
                     <div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>DRS Zones</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>DRS Zones</div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--white)', marginTop: 2 }}>{info.drs}</div>
                     </div>
                   </>
@@ -85,7 +85,7 @@ export default function PublicTracks({ onBack }: { onBack?: () => void }) {
 
               {named.length > 0 && (
                 <div style={{ padding: '0 20px 16px' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 6 }}>Key Corners</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 6 }}>Key Corners</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {named.map(n => (
                       <span key={n} className="badge badge-practice" style={{ fontSize: 10 }}>{n}</span>

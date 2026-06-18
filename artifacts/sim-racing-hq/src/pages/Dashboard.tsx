@@ -856,9 +856,9 @@ export default function Dashboard({ setPage }: DashboardProps) {
               <div key={`${label}-${col}`} style={{ width: spanWidth, flexShrink: 0, overflow: 'hidden' }}>
                 <span style={{
                   fontFamily: 'var(--font-display)',
-                  fontSize: 8,
+                  fontSize: 11,
                   color: 'var(--gray)',
-                  letterSpacing: '0.08em',
+                  letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   whiteSpace: 'nowrap',
                 }}>{label}</span>
@@ -995,7 +995,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
                 onClick={() => setPage('tracks')}
               >
                 <span style={{ fontSize: 24 }}>{t.flag}</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
               </div>
             ))}
           </div>
