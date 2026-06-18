@@ -243,7 +243,39 @@ const PAGE_LABELS: Record<string, string> = {
   progress: 'PB Progression',
 };
 
+const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
+  sessions: {
+    bullets: [
+      'Log every practice, qualifying, and race session',
+      'Track your personal bests per circuit — auto-detected',
+      'See your consistency and lap variance improve over time',
+    ],
+  },
+  setups: {
+    bullets: [
+      'Save car setups per track, tagged by game version',
+      'Share to the community or keep them private',
+      'Never lose a setup that works — yours forever',
+    ],
+  },
+  hardware: {
+    bullets: [
+      'Build a profile of your wheel, pedals, and rig',
+      'Share your hardware setup with the community',
+      'Track which gear you had when you set your PBs',
+    ],
+  },
+  progress: {
+    bullets: [
+      'Chart your personal bests across every circuit',
+      'Lap variance chart shows how consistent you are',
+      'Filter by car and session type to spot trends',
+    ],
+  },
+};
+
 function GuestWall({ page, onSignIn }: { page: string; onSignIn: () => void }) {
+  const unlocks = PAGE_UNLOCKS[page];
   return (
     <div style={{
       minHeight: '60vh',
@@ -251,40 +283,80 @@ function GuestWall({ page, onSignIn }: { page: string; onSignIn: () => void }) {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 20,
-      padding: 24,
+      gap: 0,
+      padding: '40px 24px',
     }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
-        Sign In Required
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 12 }}>
+        Free Account Required
       </div>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', textAlign: 'center', maxWidth: 360, lineHeight: 1.6 }}>
-        Create a free account to access your personal {PAGE_LABELS[page] || page}.
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 8 }}>
+        Unlock your {PAGE_LABELS[page] || page}
       </div>
-      <button className="btn btn-primary" style={{ minWidth: 160 }} onClick={onSignIn}>
-        Sign In / Sign Up
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', textAlign: 'center', maxWidth: 380, lineHeight: 1.6, marginBottom: 24 }}>
+        Create a free account — no credit card, no waiting. Everything syncs across your devices automatically.
+      </div>
+      {unlocks && (
+        <div style={{ marginBottom: 28, textAlign: 'left', maxWidth: 340 }}>
+          {unlocks.bullets.map(b => (
+            <div key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+              <span style={{ color: 'var(--teal)', fontSize: 14, marginTop: 1, flexShrink: 0 }}>✓</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>{b}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <button className="btn btn-primary" style={{ minWidth: 200, fontSize: 15, padding: '14px 28px' }} onClick={onSignIn}>
+        Create Free Account
+      </button>
+      <button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 12, color: 'var(--gray-mid)' }} onClick={onSignIn}>
+        Already have an account? Sign in →
       </button>
     </div>
   );
 }
 
-function GuestNudge({ onSignIn }: { onSignIn: () => void }) {
+function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: () => void }) {
   return (
     <div style={{
-      background: 'rgba(0,210,190,0.08)',
-      border: '1px solid rgba(0,210,190,0.25)',
-      padding: '12px 20px',
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'rgba(10,10,10,0.97)',
+      borderTop: '1px solid rgba(0,210,190,0.30)',
+      padding: '14px 24px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 16,
       flexWrap: 'wrap',
+      zIndex: 800,
+      backdropFilter: 'blur(8px)',
     }}>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
-        You're browsing as a guest — <strong>create a free account</strong> to log sessions, save setups, and track your PBs across every device.
-      </span>
-      <button className="btn btn-primary" style={{ fontSize: 12, padding: '8px 18px', whiteSpace: 'nowrap' }} onClick={onSignIn}>
-        Create Account
-      </button>
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--teal)', marginBottom: 3, textTransform: 'uppercase' }}>
+          You've been exploring F1 Sim Hub
+        </div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
+          Create a free account to <strong style={{ color: 'var(--white)' }}>log sessions, save setups, and track your PBs</strong> across every device.
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+        <button
+          className="btn btn-ghost"
+          onClick={onDismiss}
+          style={{ fontSize: 12, color: 'var(--gray-mid)', padding: '8px 14px' }}
+        >
+          Maybe Later
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={onSignIn}
+          style={{ fontSize: 13, padding: '9px 20px', whiteSpace: 'nowrap' }}
+        >
+          Create Free Account
+        </button>
+      </div>
     </div>
   );
 }
@@ -295,13 +367,46 @@ const SHORTCUTS: Record<string, string> = {
 
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
   const [page, setPage] = useState('dashboard');
-  const [pageViews, setPageViews] = useState(0);
-  const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Persist guest activity across same-session refreshes
+  const [pageViews, setPageViews] = useState<number>(() => {
+    if (!isGuest) return 0;
+    return parseInt(sessionStorage.getItem('guestPageViews') ?? '0', 10);
+  });
+  const [nudgeDismissed, setNudgeDismissed] = useState<boolean>(() => {
+    if (!isGuest) return false;
+    return sessionStorage.getItem('guestNudgeDismissed') === '1';
+  });
+  const [timeReached, setTimeReached] = useState<boolean>(() => {
+    if (!isGuest) return false;
+    return sessionStorage.getItem('guestTimeReached') === '1';
+  });
 
   const handleSetPage = useCallback((p: string) => {
     setPage(p);
-    setPageViews(v => v + 1);
+    if (isGuest) {
+      setPageViews(v => {
+        const next = v + 1;
+        sessionStorage.setItem('guestPageViews', String(next));
+        return next;
+      });
+    }
+  }, [isGuest]);
+
+  // 60-second timer — fires once per session
+  useEffect(() => {
+    if (!isGuest || timeReached || nudgeDismissed) return;
+    const timer = setTimeout(() => {
+      setTimeReached(true);
+      sessionStorage.setItem('guestTimeReached', '1');
+    }, 60_000);
+    return () => clearTimeout(timer);
+  }, [isGuest, timeReached, nudgeDismissed]);
+
+  const handleDismiss = useCallback(() => {
+    setNudgeDismissed(true);
+    sessionStorage.setItem('guestNudgeDismissed', '1');
   }, []);
 
   useEffect(() => {
@@ -316,7 +421,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
     return () => window.removeEventListener('keydown', handler);
   }, [handleSetPage]);
 
-  const showNudge = isGuest && pageViews >= 3 && !nudgeDismissed;
+  const showNudge = isGuest && (pageViews >= 3 || timeReached) && !nudgeDismissed;
 
   const renderPage = () => {
     if (isGuest && PROTECTED_PAGES.includes(page)) {
@@ -339,9 +444,14 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
     <div className="app-layout">
       <Nav page={page} setPage={handleSetPage} />
       <main className="main-content">
-        {showNudge && <GuestNudge onSignIn={onSignIn ?? (() => {})} />}
         {renderPage()}
       </main>
+      {showNudge && (
+        <GuestNudge
+          onSignIn={onSignIn ?? (() => {})}
+          onDismiss={handleDismiss}
+        />
+      )}
 
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && (
