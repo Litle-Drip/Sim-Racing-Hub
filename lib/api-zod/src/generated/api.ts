@@ -389,6 +389,35 @@ export const DeleteHardwareParams = zod.object({
 
 
 /**
+ * @summary Get all track difficulty ratings for current user
+ */
+export const GetTrackDifficultyResponseItem = zod.object({
+  "trackId": zod.string(),
+  "rating": zod.number()
+})
+export const GetTrackDifficultyResponse = zod.array(GetTrackDifficultyResponseItem)
+
+
+/**
+ * @summary Upsert a personal difficulty rating for a track
+ */
+export const PutTrackDifficultyParams = zod.object({
+  "trackId": zod.coerce.string()
+})
+
+export const putTrackDifficultyBodyRatingMax = 5;
+
+export const PutTrackDifficultyBody = zod.object({
+  "rating": zod.coerce.number().min(0).max(putTrackDifficultyBodyRatingMax)
+})
+
+export const PutTrackDifficultyResponse = zod.object({
+  "trackId": zod.string(),
+  "rating": zod.number()
+})
+
+
+/**
  * @summary Get track notes for a specific track
  */
 export const GetTrackNotesParams = zod.object({

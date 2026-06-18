@@ -1,10 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { F1_TRACKS, F1Track, CORNER_NAMES } from '../data/f1Tracks';
-import { useGetSessions, useGetTrackNotes, useUpsertTrackNotes, getGetTrackNotesQueryKey } from '@workspace/api-client-react';
+import {
+  useGetSessions,
+  useGetTrackNotes,
+  useUpsertTrackNotes,
+  getGetTrackNotesQueryKey,
+  useGetTrackDifficulty,
+  useUpsertTrackDifficulty,
+  getGetTrackDifficultyQueryKey,
+} from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { CornerNote, SessionRecord } from '@workspace/api-client-react';
+import type { CornerNote, SessionRecord, TrackDifficultyRecord } from '@workspace/api-client-react';
 import { lapToSeconds } from '../lib/storage';
 import { trackConsistency, TYRE_GUIDES } from '../lib/engagement';
 import { CIRCUIT_SCHOOL } from '../data/circuitSchool';
@@ -17,6 +25,8 @@ const TYPE_BADGE: Record<string, string> = {
   'Time Trial': 'badge-hotlap',
 };
 
+const DIFFICULTY_LABELS = ['', 'Easy', 'Moderate', 'Tricky', 'Hard', 'Brutal'];
+
 function RatingDots({ rating }: { rating: number }) {
   return (
     <span className="rating-dots">
@@ -27,7 +37,79 @@ function RatingDots({ rating }: { rating: number }) {
   );
 }
 
-function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; sessions: SessionRecord[] }) {
+function DifficultyRating({
+  trackId,
+  rating,
+  onRate,
+  isGuest,
+}: {
+  trackId: string;
+  rating: number;
+  onRate: (trackId: string, rating: number) => void;
+  isGuest?: boolean;
+}) {
+  const [hover, setHover] = useState(0);
+  const [guestFlash, setGuestFlash] = useState(false);
+
+  const handleClick = (v: number) => {
+    if (isGuest) {
+      setGuestFlash(true);
+      setTimeout(() => setGuestFlash(false), 2500);
+      return;
+    }
+    const next = v === rating ? 0 : v;
+    onRate(trackId, next);
+  };
+
+  const display = hover || rating;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Difficulty</span>
+      <div style={{ display: 'flex', gap: 3 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <span
+            key={i}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(0)}
+            onClick={() => handleClick(i)}
+            style={{
+              cursor: 'pointer',
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              background: i <= display ? 'var(--red)' : 'var(--border)',
+              opacity: i <= display ? (0.4 + (i * 0.15)) : 0.5,
+              transition: 'background 0.15s, opacity 0.15s',
+            }}
+          />
+        ))}
+      </div>
+      {guestFlash && (
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--teal)' }}>Sign in to save ratings</span>
+      )}
+      {!guestFlash && display > 0 && (
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)' }}>{DIFFICULTY_LABELS[display]}</span>
+      )}
+    </div>
+  );
+}
+
+type SortMode = 'name' | 'sessions' | 'pb' | 'difficulty';
+
+function TrackGrid({
+  onSelect,
+  sessions,
+  ratingsMap,
+  onRate,
+  isGuest,
+}: {
+  onSelect: (t: F1Track) => void;
+  sessions: SessionRecord[];
+  ratingsMap: Record<string, number>;
+  onRate: (trackId: string, rating: number) => void;
+  isGuest?: boolean;
+}) {
   const allSessions = sessions;
   const countByTrack: Record<string, number> = {};
   allSessions.forEach(s => { countByTrack[s.trackId] = (countByTrack[s.trackId] || 0) + 1; });
@@ -41,11 +123,59 @@ function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; ses
     }
   });
 
+  const [sort, setSort] = useState<SortMode>('name');
   const gridRef = useRef<HTMLDivElement>(null);
+
+  const sortedTracks = useMemo(() => {
+    const tracks = [...F1_TRACKS];
+    switch (sort) {
+      case 'sessions':
+        return tracks.sort((a, b) => (countByTrack[b.id] || 0) - (countByTrack[a.id] || 0));
+      case 'pb':
+        return tracks.sort((a, b) => {
+          const aPb = pbByTrack[a.id];
+          const bPb = pbByTrack[b.id];
+          if (!aPb && !bPb) return 0;
+          if (!aPb) return 1;
+          if (!bPb) return -1;
+          return lapToSeconds(aPb) - lapToSeconds(bPb);
+        });
+      case 'difficulty':
+        return tracks.sort((a, b) => (ratingsMap[b.id] || 0) - (ratingsMap[a.id] || 0));
+      default:
+        return tracks;
+    }
+  }, [sort, countByTrack, pbByTrack, ratingsMap]);
 
   return (
     <div className="page">
-      <h1 className="page-title" style={{ marginBottom: allSessions.length > 0 ? 28 : 0 }}>Track Bible</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: allSessions.length > 0 ? 28 : 0 }}>
+        <h1 className="page-title" style={{ marginBottom: 0 }}>Track Bible</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Sort</span>
+          {(['name', 'sessions', 'pb', 'difficulty'] as SortMode[]).map(s => (
+            <button
+              key={s}
+              onClick={() => setSort(s)}
+              style={{
+                background: sort === s ? 'var(--red)' : 'var(--bg-elevated)',
+                border: `1px solid ${sort === s ? 'var(--red)' : 'var(--border)'}`,
+                borderRadius: 4,
+                color: sort === s ? 'var(--white)' : 'var(--gray-mid)',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-display)',
+                fontSize: 9,
+                letterSpacing: '0.08em',
+                padding: '4px 8px',
+                textTransform: 'uppercase',
+                transition: 'all 0.15s',
+              }}
+            >
+              {s === 'pb' ? 'PB' : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
       {allSessions.length === 0 && (
         <EmptyState
           icon={<BookOpen size={40} />}
@@ -56,10 +186,10 @@ function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; ses
         />
       )}
       <div ref={gridRef} className="track-grid">
-        {F1_TRACKS.map(track => {
+        {sortedTracks.map(track => {
           const count = countByTrack[track.id] || 0;
           const pb = pbByTrack[track.id];
-          const diff = parseInt(localStorage.getItem(`difficulty_${track.id}`) || '0', 10);
+          const diff = ratingsMap[track.id] || 0;
           return (
             <div key={track.id} className={`track-card${pb ? ' has-pb' : ''}`} onClick={() => onSelect(track)}>
               {count > 0 && (
@@ -74,7 +204,7 @@ function TrackGrid({ onSelect, sessions }: { onSelect: (t: F1Track) => void; ses
                 <div className="track-card-pb no-time">No Time</div>
               )}
               {diff > 0 && (
-                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 4 }}>
+                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 4 }} onClick={e => e.stopPropagation()}>
                   {[1,2,3,4,5].map(i => (
                     <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i <= diff ? 'var(--red)' : 'var(--border)', opacity: i <= diff ? (0.4 + i * 0.15) : 0.3 }} />
                   ))}
@@ -145,61 +275,20 @@ function EditableCell({
   );
 }
 
-function DifficultyRating({ trackId }: { trackId: string }) {
-  const key = `difficulty_${trackId}`;
-  const [rating, setRating] = useState(() => {
-    const v = localStorage.getItem(key);
-    return v ? parseInt(v, 10) : 0;
-  });
-  const [hover, setHover] = useState(0);
-
-  const handleClick = (v: number) => {
-    const next = v === rating ? 0 : v;
-    setRating(next);
-    if (next) localStorage.setItem(key, String(next));
-    else localStorage.removeItem(key);
-  };
-
-  const labels = ['', 'Easy', 'Moderate', 'Tricky', 'Hard', 'Brutal'];
-  const display = hover || rating;
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Difficulty</span>
-      <div style={{ display: 'flex', gap: 3 }}>
-        {[1, 2, 3, 4, 5].map(i => (
-          <span
-            key={i}
-            onMouseEnter={() => setHover(i)}
-            onMouseLeave={() => setHover(0)}
-            onClick={() => handleClick(i)}
-            style={{
-              cursor: 'pointer',
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              background: i <= display ? 'var(--red)' : 'var(--border)',
-              opacity: i <= display ? (0.4 + (i * 0.15)) : 0.5,
-              transition: 'background 0.15s, opacity 0.15s',
-            }}
-          />
-        ))}
-      </div>
-      {display > 0 && (
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)' }}>{labels[display]}</span>
-      )}
-    </div>
-  );
-}
-
 function TrackDetail({
   track,
   onBack,
   sessions,
+  ratingsMap,
+  onRate,
+  isGuest,
 }: {
   track: F1Track;
   onBack: () => void;
   sessions: SessionRecord[];
+  ratingsMap: Record<string, number>;
+  onRate: (trackId: string, rating: number) => void;
+  isGuest?: boolean;
 }) {
   const qc = useQueryClient();
   const allSessions = sessions;
@@ -250,7 +339,6 @@ function TrackDetail({
   const saveCorner = useCallback((id: string, field: keyof CornerNote, value: string) => {
     setCorners(prev => {
       const updated = prev.map(c => c.id === id ? { ...c, [field]: value } : c);
-      // Debounce: coalesce rapid successive field blurs into a single network request
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
       saveDebounceRef.current = setTimeout(() => saveCorners(updated), 600);
       return updated;
@@ -307,7 +395,12 @@ function TrackDetail({
         <div className="track-detail-info">
           <h1>{track.name}</h1>
           <p>{track.country} · {trackSessions.length} session{trackSessions.length !== 1 ? 's' : ''}</p>
-          <DifficultyRating trackId={track.id} />
+          <DifficultyRating
+            trackId={track.id}
+            rating={ratingsMap[track.id] || 0}
+            onRate={onRate}
+            isGuest={isGuest}
+          />
         </div>
       </div>
 
@@ -567,24 +660,32 @@ function VideoClipLibrary({ trackId }: { trackId: string }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Play size={14} style={{ color: 'var(--red)' }} />
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>Video Clips</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>Video Clip Library</span>
         </div>
         <button className="btn btn-secondary btn-sm" onClick={() => setShowAdd(!showAdd)}>
-          {showAdd ? 'Cancel' : <><Plus size={11} /> Add Clip</>}
+          {showAdd ? <><X size={11} /> Cancel</> : <><Plus size={11} /> Add Clip</>}
         </button>
       </div>
 
       {showAdd && (
-        <div className="card" style={{ padding: 14, marginBottom: 12, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 200px' }}>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>YouTube URL</label>
-            <input className="form-control" value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." style={{ fontSize: 12 }} />
-          </div>
-          <div style={{ flex: '1 1 150px' }}>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Label</label>
-            <input className="form-control" value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="e.g. Turn 4 reference lap" style={{ fontSize: 12 }} />
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={addClip} disabled={!extractYouTubeId(newUrl)}>Add</button>
+        <div className="card" style={{ padding: '14px 16px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            className="input"
+            placeholder="YouTube URL"
+            value={newUrl}
+            onChange={e => setNewUrl(e.target.value)}
+            style={{ fontSize: 12 }}
+          />
+          <input
+            className="input"
+            placeholder="Label (optional)"
+            value={newLabel}
+            onChange={e => setNewLabel(e.target.value)}
+            style={{ fontSize: 12 }}
+          />
+          <button className="btn btn-primary btn-sm" onClick={addClip} disabled={!extractYouTubeId(newUrl)}>
+            Add
+          </button>
         </div>
       )}
 
@@ -626,12 +727,65 @@ function VideoClipLibrary({ trackId }: { trackId: string }) {
   );
 }
 
-export default function Tracks() {
+export default function Tracks({ isGuest }: { isGuest?: boolean }) {
   const { data: sessions = [] } = useGetSessions();
   const [selectedTrack, setSelectedTrack] = useState<F1Track | null>(null);
+  const qc = useQueryClient();
+
+  const { data: difficultyData = [] } = useGetTrackDifficulty();
+
+  const ratingsMap = useMemo<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    (difficultyData as TrackDifficultyRecord[]).forEach(d => { map[d.trackId] = d.rating; });
+    return map;
+  }, [difficultyData]);
+
+  const { mutate: upsertDifficulty } = useUpsertTrackDifficulty({
+    mutation: {
+      onMutate: async ({ trackId, data }) => {
+        await qc.cancelQueries({ queryKey: getGetTrackDifficultyQueryKey() });
+        const prev = qc.getQueryData<TrackDifficultyRecord[]>(getGetTrackDifficultyQueryKey());
+        qc.setQueryData<TrackDifficultyRecord[]>(getGetTrackDifficultyQueryKey(), (old = []) => {
+          if (data.rating === 0) return old.filter(r => r.trackId !== trackId);
+          const exists = old.find(r => r.trackId === trackId);
+          if (exists) return old.map(r => r.trackId === trackId ? { ...r, rating: data.rating } : r);
+          return [...old, { trackId, rating: data.rating }];
+        });
+        return { prev };
+      },
+      onError: (_err, _vars, ctx) => {
+        const context = ctx as { prev?: TrackDifficultyRecord[] } | undefined;
+        if (context?.prev) qc.setQueryData(getGetTrackDifficultyQueryKey(), context.prev);
+      },
+      onSettled: () => {
+        qc.invalidateQueries({ queryKey: getGetTrackDifficultyQueryKey() });
+      },
+    },
+  });
+
+  const handleRate = useCallback((trackId: string, rating: number) => {
+    upsertDifficulty({ trackId, data: { rating } });
+  }, [upsertDifficulty]);
 
   if (selectedTrack) {
-    return <TrackDetail track={selectedTrack} onBack={() => setSelectedTrack(null)} sessions={sessions} />;
+    return (
+      <TrackDetail
+        track={selectedTrack}
+        onBack={() => setSelectedTrack(null)}
+        sessions={sessions}
+        ratingsMap={ratingsMap}
+        onRate={handleRate}
+        isGuest={isGuest}
+      />
+    );
   }
-  return <TrackGrid onSelect={setSelectedTrack} sessions={sessions} />;
+  return (
+    <TrackGrid
+      onSelect={setSelectedTrack}
+      sessions={sessions}
+      ratingsMap={ratingsMap}
+      onRate={handleRate}
+      isGuest={isGuest}
+    />
+  );
 }

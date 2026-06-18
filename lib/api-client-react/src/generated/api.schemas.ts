@@ -214,6 +214,15 @@ export interface CreateSetupRequest {
   gameVersion?: string;
 }
 
+export interface TrackDifficultyRecord {
+  trackId: string;
+  rating: number;
+}
+
+export interface UpsertTrackDifficultyRequest {
+  rating: number;
+}
+
 export interface TrackNotesRecord {
   id: string;
   trackId: string;

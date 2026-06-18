@@ -440,7 +440,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
     switch (page) {
       case 'dashboard': return <Dashboard setPage={handleSetPage} />;
       case 'sessions': return <Sessions />;
-      case 'tracks': return <Tracks />;
+      case 'tracks': return <Tracks isGuest={isGuest} />;
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
