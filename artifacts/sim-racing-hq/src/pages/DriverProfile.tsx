@@ -99,7 +99,7 @@ export default function DriverProfile({ username }: { username: string }) {
       { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: '💯', earned: n >= 100, progress: Math.min(n, 100), target: 100 },
       { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: '✈️', earned: driver.tracks >= 12, progress: Math.min(driver.tracks, 12), target: 12 },
       { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: '⚡', earned: false, progress: 0, target: 5 },
-      { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: '📡', earned: true, progress: 1, target: 1 },
+      { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: '📡', earned: driver.recentSessions.length > 0, progress: driver.recentSessions.length > 0 ? 1 : 0, target: 1 },
     ];
   }, [driver]);
 

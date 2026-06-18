@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp } from 'lucide-react';
 import { F1_TRACKS, F1Track, CORNER_NAMES } from '../data/f1Tracks';
 import { useGetSessions, useGetTrackNotes, useUpsertTrackNotes, getGetTrackNotesQueryKey } from '@workspace/api-client-react';
@@ -206,6 +206,7 @@ function TrackDetail({
     },
   });
 
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notesId] = useState(() => crypto.randomUUID());
   const [corners, setCorners] = useState<CornerNote[]>(() => {
     const names = CORNER_NAMES[track.id] || [];
@@ -237,7 +238,9 @@ function TrackDetail({
   const saveCorner = useCallback((id: string, field: keyof CornerNote, value: string) => {
     setCorners(prev => {
       const updated = prev.map(c => c.id === id ? { ...c, [field]: value } : c);
-      saveCorners(updated);
+      // Debounce: coalesce rapid successive field blurs into a single network request
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+      saveDebounceRef.current = setTimeout(() => saveCorners(updated), 600);
       return updated;
     });
   }, [saveCorners]);
