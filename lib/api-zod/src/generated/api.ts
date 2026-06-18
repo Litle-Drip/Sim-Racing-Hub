@@ -76,17 +76,17 @@ export const CreateSessionBody = zod.object({
   "s2": zod.string(),
   "s3": zod.string(),
   "tires": zod.string(),
-  "fuelLoad": zod.number(),
+  "fuelLoad": zod.coerce.number(),
   "conditions": zod.string(),
   "assists": zod.string(),
-  "rating": zod.number(),
+  "rating": zod.coerce.number(),
   "notes": zod.string(),
   "penalty": zod.string().optional(),
   "gameVersion": zod.string().optional(),
   "platform": zod.string().optional(),
   "inputDevice": zod.string().optional(),
   "laps": zod.array(zod.object({
-  "lap": zod.number(),
+  "lap": zod.coerce.number(),
   "time": zod.string(),
   "s1": zod.string(),
   "s2": zod.string(),
@@ -316,7 +316,7 @@ export const rateSetupBodyStarsMax = 5;
 
 
 export const RateSetupBody = zod.object({
-  "stars": zod.number().min(1).max(rateSetupBodyStarsMax)
+  "stars": zod.coerce.number().min(1).max(rateSetupBodyStarsMax)
 })
 
 export const RateSetupResponse = zod.object({
@@ -419,7 +419,7 @@ export const UpsertTrackNotesBody = zod.object({
   "id": zod.string(),
   "corners": zod.array(zod.object({
   "id": zod.string(),
-  "number": zod.number(),
+  "number": zod.coerce.number(),
   "name": zod.string(),
   "gear": zod.string(),
   "brakingPoint": zod.string(),
