@@ -11,7 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -126,11 +126,9 @@ function CommunitySetupCard({
         ))}
       </div>
 
-      {setup.gameVersion && (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 4 }}>
-          {setup.gameVersion}
-        </div>
-      )}
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 4 }}>
+        {setup.gameVersion?.trim() || '—'}
+      </div>
 
       <div className="community-card-footer">
         <StarRating
@@ -424,10 +422,13 @@ export default function Community() {
               <option value="">All Cars</option>
               {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select className="filter-select" value={filterGameVersion} onChange={(e) => setFilterGameVersion(e.target.value)}>
-              <option value="">All Versions</option>
-              {GAME_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+            <input
+              className="filter-select"
+              type="text"
+              placeholder="Filter by version…"
+              value={filterGameVersion}
+              onChange={(e) => setFilterGameVersion(e.target.value)}
+            />
           </div>
 
           {setupsLoading ? (
