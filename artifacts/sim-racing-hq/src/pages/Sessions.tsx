@@ -369,7 +369,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       setForm(f => ({
         ...f,
         bestLap: f.bestLap.trim() || computed.bestLap,
-        avgLap: computed.avgLap,
+        avgLap: f.avgLap.trim() || computed.avgLap,
         worstLap: f.worstLap.trim() || computed.worstLap,
       }));
     }
