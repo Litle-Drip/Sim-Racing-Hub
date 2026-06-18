@@ -533,6 +533,7 @@ export default function Sessions() {
                 <th>Consistency</th>
                 <th>Type</th>
                 <th>Tires</th>
+                <th>Conditions</th>
                 <th>Rating</th>
                 <th></th>
               </tr>
@@ -553,6 +554,10 @@ export default function Sessions() {
                     <td>{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
                     <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
                     <td style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
+                    <td style={{ color: 'var(--gray-light)', fontSize: 12 }}>
+                      {s.conditions || '—'}
+                      {s.timeOfDay ? <span style={{ color: 'var(--gray-mid)', marginLeft: 4 }}>· {s.timeOfDay}</span> : null}
+                    </td>
                     <td><RatingDots rating={s.rating} /></td>
                     <td style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
@@ -563,7 +568,7 @@ export default function Sessions() {
                   </tr>
                   {expanded === s.id && (
                     <tr key={`${s.id}-exp`} className="expanded-row">
-                      <td colSpan={10}>
+                      <td colSpan={12}>
                         <div className="expanded-content">
                           {/* Sector times — from fastest lap or manual entry */}
                           {(s.s1 || s.s2 || s.s3) && (
@@ -593,7 +598,7 @@ export default function Sessions() {
                           })()}
                           <div className="expanded-item"><div className="expanded-label">Fuel Load</div><div className="expanded-value">{s.fuelLoad}%</div></div>
                           <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions || '—'}</div></div>
-                          {s.timeOfDay && <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay}</div></div>}
+                          <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay || '—'}</div></div>
                           <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>
                           {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
                           {s.notes && <div className="expanded-notes"><div className="expanded-label" style={{ marginBottom: 6 }}>Notes</div>{s.notes}</div>}
