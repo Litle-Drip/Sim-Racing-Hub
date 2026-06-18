@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
+import { Toast } from '../components/Toast';
 import { F1_TRACKS, F1Track, CORNER_NAMES } from '../data/f1Tracks';
 import {
   useGetSessions,
@@ -369,15 +370,16 @@ function TrackDetail({
   const trackSessions = allSessions.filter(s => s.trackId === track.id);
 
   const { data: trackNotesData } = useGetTrackNotes(track.id);
-  const [savedFlash, setSavedFlash] = useState(false);
+  const [notesToast, setNotesToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
   const { mutate: upsertTrackNotes, isPending: isSaving, isError: hasSaveError, reset: resetSave } = useUpsertTrackNotes({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetTrackNotesQueryKey(track.id) });
-        setSavedFlash(true);
-        setTimeout(() => setSavedFlash(false), 1800);
+        setNotesToast({ message: 'Notes saved ✓' });
       },
-      onError: () => { setSavedFlash(false); },
+      onError: () => {
+        setNotesToast({ message: 'Failed to save notes — tap Retry below.', variant: 'error' });
+      },
     },
   });
 
@@ -460,6 +462,13 @@ function TrackDetail({
 
   return (
     <div className="page">
+      {notesToast && (
+        <Toast
+          message={notesToast.message}
+          variant={notesToast.variant}
+          onDone={() => setNotesToast(null)}
+        />
+      )}
       <button className="back-btn" onClick={onBack}>
         <ArrowLeft size={12} /> Back to Tracks
       </button>
@@ -526,9 +535,6 @@ function TrackDetail({
             <div className="section-title" style={{ marginBottom: 0 }}>Corner Breakdown</div>
             {isSaving && (
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Saving…</span>
-            )}
-            {!isSaving && savedFlash && !hasSaveError && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--teal)' }}>✓ Saved</span>
             )}
             {!isSaving && hasSaveError && (
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 6 }}>

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Cpu, Trash2, Eye } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
+import { Toast } from '../components/Toast';
 import { useGetHardware, useCreateHardware, useDeleteHardware, getGetHardwareQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HardwareRecord } from '@workspace/api-client-react';
@@ -123,6 +124,7 @@ export default function HardwareVault() {
   const [filterType, setFilterType] = useState('');
   const [filterTrack, setFilterTrack] = useState('');
   const [viewProfile, setViewProfile] = useState<HardwareRecord | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
 
   const { mutate: createHardware, isPending: saving } = useCreateHardware({
     mutation: {
@@ -132,6 +134,7 @@ export default function HardwareVault() {
         setForm(defaultForm());
         setFormErrors({});
         setSaveError('');
+        setToast({ message: 'Hardware saved ✓' });
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save profile. Please try again.';
@@ -184,6 +187,13 @@ export default function HardwareVault() {
 
   return (
     <div className="page">
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDone={() => setToast(null)}
+        />
+      )}
       <div className="page-header">
         <h1 className="page-title">Hardware Vault</h1>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>

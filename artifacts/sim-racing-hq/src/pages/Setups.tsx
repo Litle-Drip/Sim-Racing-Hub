@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Eye, Trash2, Share2, Lock, Wrench } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
+import { Toast } from '../components/Toast';
 import { useGetSetups, useCreateSetup, useDeleteSetup, useShareSetup, getGetSetupsQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SetupRecord } from '@workspace/api-client-react';
@@ -167,6 +168,7 @@ export default function Setups() {
   const [selected, setSelected] = useState<string[]>([]);
   const [viewSetup, setViewSetup] = useState<SetupRecord | null>(null);
   const [comparing, setComparing] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
 
   const { mutate: createSetup, isPending: saving } = useCreateSetup({
     mutation: {
@@ -176,6 +178,7 @@ export default function Setups() {
         setForm(defaultForm());
         setFormErrors({});
         setSaveError('');
+        setToast({ message: 'Setup saved ✓' });
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save setup. Please try again.';
@@ -193,8 +196,14 @@ export default function Setups() {
 
   const { mutate: shareSetup } = useShareSetup({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
         qc.invalidateQueries({ queryKey: getGetSetupsQueryKey() });
+        const setup = setups.find(s => s.id === variables.id);
+        const wasPublic = setup?.isPublic;
+        setToast({ message: wasPublic ? 'Removed from Community ✓' : 'Shared to Community ✓' });
+      },
+      onError: () => {
+        setToast({ message: 'Failed to update sharing — please try again.', variant: 'error' });
       },
     },
   });
@@ -266,6 +275,13 @@ export default function Setups() {
 
   return (
     <div className="page">
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDone={() => setToast(null)}
+        />
+      )}
       <div className="page-header">
         <h1 className="page-title">Setup Vault</h1>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
