@@ -194,10 +194,13 @@ function TrackDetail({
   const trackSessions = allSessions.filter(s => s.trackId === track.id);
 
   const { data: trackNotesData } = useGetTrackNotes(track.id);
+  const [savedFlash, setSavedFlash] = useState(false);
   const { mutate: upsertTrackNotes } = useUpsertTrackNotes({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetTrackNotesQueryKey(track.id) });
+        setSavedFlash(true);
+        setTimeout(() => setSavedFlash(false), 1800);
       },
     },
   });
@@ -336,7 +339,12 @@ function TrackDetail({
 
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div className="section-title" style={{ marginBottom: 0 }}>Corner Breakdown</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="section-title" style={{ marginBottom: 0 }}>Corner Breakdown</div>
+            {savedFlash && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--teal)', opacity: 0.9 }}>✓ Saved</span>
+            )}
+          </div>
           <button className="btn btn-secondary btn-sm" onClick={addCorner}><Plus size={11} /> Add Corner</button>
         </div>
         <div className="table-wrap">

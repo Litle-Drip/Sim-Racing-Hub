@@ -301,8 +301,11 @@ export default function Community() {
 
   const challenge = useMemo(() => {
     const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    const week = Math.floor(((now.getTime() - start.getTime()) / 86400000 + start.getDay()) / 7);
+    // ISO week number (Monday-based, UTC-stable)
+    const day = now.getUTCDay(); // 0=Sun, 1=Mon
+    const mondayOffset = day === 0 ? 6 : day - 1;
+    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - mondayOffset));
+    const week = Math.floor(monday.getTime() / (7 * 24 * 3600 * 1000));
     const track = F1_TRACKS[week % F1_TRACKS.length];
     const challengeSessions = sessions
       .filter(s => s.trackId === track.id && s.bestLap && s.bestLap.trim() !== '')

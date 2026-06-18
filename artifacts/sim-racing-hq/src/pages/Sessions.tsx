@@ -381,13 +381,17 @@ export default function Sessions() {
 
     const computed = laps.length > 0 ? computeFromLaps(laps) : null;
 
-    // Find fastest lap's sectors (not first lap)
+    // Best sector times independently (not from the same fastest lap)
     let bestS1 = '', bestS2 = '', bestS3 = '';
     if (laps.length > 0) {
       const validLaps = laps.filter(l => l.time.trim() !== '');
       if (validLaps.length > 0) {
-        const fastest = validLaps.reduce((a, b) => secsFromLap(a.time) < secsFromLap(b.time) ? a : b);
-        bestS1 = fastest.s1; bestS2 = fastest.s2; bestS3 = fastest.s3;
+        const s1Laps = validLaps.filter(l => l.s1.trim() !== '');
+        const s2Laps = validLaps.filter(l => l.s2.trim() !== '');
+        const s3Laps = validLaps.filter(l => l.s3.trim() !== '');
+        bestS1 = s1Laps.length > 0 ? s1Laps.reduce((a, b) => secsFromLap(a.s1) < secsFromLap(b.s1) ? a : b).s1 : '';
+        bestS2 = s2Laps.length > 0 ? s2Laps.reduce((a, b) => secsFromLap(a.s2) < secsFromLap(b.s2) ? a : b).s2 : '';
+        bestS3 = s3Laps.length > 0 ? s3Laps.reduce((a, b) => secsFromLap(a.s3) < secsFromLap(b.s3) ? a : b).s3 : '';
       }
     }
 

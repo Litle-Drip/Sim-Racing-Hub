@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -52,6 +52,15 @@ export default function Progress() {
     setFilterTrack(v);
     sessionStorage.setItem('progress-track', v);
   };
+
+  // Auto-select the most recently used car when track filter changes
+  useEffect(() => {
+    if (!filterTrack) { setFilterCar(''); return; }
+    const trackSessions = allSessions.filter(s => s.trackId === filterTrack);
+    if (trackSessions.length === 0) { setFilterCar(''); return; }
+    const latestCar = [...trackSessions].sort((a, b) => b.date.localeCompare(a.date))[0].car;
+    setFilterCar(latestCar);
+  }, [filterTrack]);
 
   const filtered = useMemo(() => {
     return allSessions

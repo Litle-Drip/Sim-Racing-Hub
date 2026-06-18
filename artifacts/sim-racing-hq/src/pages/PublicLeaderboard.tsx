@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useGetCommunitySessions } from '@workspace/api-client-react';
 import type { CommunitySessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -9,8 +9,11 @@ function lapToSeconds(lap: string): number {
   return parseFloat(lap) || Infinity;
 }
 
+const PAGE_SIZE = 8;
+
 export default function PublicLeaderboard({ onBack }: { onBack?: () => void }) {
   const { data: sessions = [], isLoading } = useGetCommunitySessions();
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const leaderboard = useMemo(() => {
     const byTrack: Record<string, CommunitySessionRecord[]> = {};
@@ -52,7 +55,7 @@ export default function PublicLeaderboard({ onBack }: { onBack?: () => void }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {leaderboard.map(({ track, entries }) => (
+          {leaderboard.slice(0, visibleCount).map(({ track, entries }) => (
             <div key={track.id}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 8 }}>
                 {track.flag} {track.name}
@@ -85,6 +88,17 @@ export default function PublicLeaderboard({ onBack }: { onBack?: () => void }) {
               </div>
             </div>
           ))}
+          {leaderboard.length > visibleCount && (
+            <div style={{ textAlign: 'center', paddingTop: 8 }}>
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 13, padding: '10px 24px' }}
+                onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+              >
+                Show More Circuits ({leaderboard.length - visibleCount} remaining)
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

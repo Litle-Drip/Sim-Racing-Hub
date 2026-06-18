@@ -11,14 +11,14 @@ interface NavProps {
 }
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-  { id: 'sessions', label: 'Sessions', Icon: ClipboardList },
-  { id: 'tracks', label: 'Tracks', Icon: Map },
-  { id: 'setups', label: 'Setups', Icon: Settings2 },
-  { id: 'hardware', label: 'Hardware', Icon: Cpu },
-  { id: 'progress', label: 'Progress', Icon: TrendingUp },
-  { id: 'community', label: 'Community', Icon: Users },
-  { id: 'account', label: 'Account', Icon: User },
+  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, authRequired: false },
+  { id: 'sessions', label: 'Sessions', Icon: ClipboardList, authRequired: true },
+  { id: 'tracks', label: 'Tracks', Icon: Map, authRequired: false },
+  { id: 'setups', label: 'Setups', Icon: Settings2, authRequired: true },
+  { id: 'hardware', label: 'Hardware', Icon: Cpu, authRequired: true },
+  { id: 'progress', label: 'Progress', Icon: TrendingUp, authRequired: true },
+  { id: 'community', label: 'Community', Icon: Users, authRequired: false },
+  { id: 'account', label: 'Account', Icon: User, authRequired: true },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -33,7 +33,10 @@ export default function Nav({ page, setPage }: NavProps) {
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
 
-  const seatTimeHours = useMemo(() => Math.floor((sessions.length * 10) / 60), [sessions]);
+  const seatTimeHours = useMemo(() => {
+    const mins: Record<string, number> = { Practice: 30, Qualifying: 20, Race: 60, Hotlap: 15, 'Time Trial': 20 };
+    return Math.floor(sessions.reduce((a, s) => a + (mins[s.type] ?? 25), 0) / 60);
+  }, [sessions]);
   const favTrack = useMemo(() => {
     if (sessions.length === 0) return null;
     const counts: Record<string, number> = {};
@@ -102,17 +105,25 @@ export default function Nav({ page, setPage }: NavProps) {
           </div>
         </div>
         <ul className="nav-links">
-          {NAV_ITEMS.map(({ id, label, Icon }) => (
-            <li key={id}>
-              <div
-                className={`nav-link${page === id ? ' active' : ''}`}
-                onClick={() => navigate(id)}
-              >
-                <Icon className="nav-icon" size={16} />
-                {label}
-              </div>
-            </li>
-          ))}
+          {NAV_ITEMS.map(({ id, label, Icon, authRequired }) => {
+            const isLocked = !user && authRequired;
+            return (
+              <li key={id}>
+                <div
+                  className={`nav-link${page === id ? ' active' : ''}${isLocked ? ' nav-link--locked' : ''}`}
+                  onClick={() => navigate(id)}
+                  title={isLocked ? 'Sign in required' : undefined}
+                  style={isLocked ? { opacity: 0.45 } : undefined}
+                >
+                  <Icon className="nav-icon" size={16} />
+                  {label}
+                  {isLocked && (
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--gray)' }}>🔒</span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
 
         {/* Profile Card */}

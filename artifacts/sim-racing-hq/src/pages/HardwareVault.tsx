@@ -13,7 +13,7 @@ const PERIPHERAL_COLORS: Record<string, string> = {
   'Pedals': 'var(--teal)',
   'Handbrake': 'var(--yellow)',
   'Shifter': 'var(--green)',
-  'Button Box': '#8888FF',
+  'Button Box': '#8b5cf6',
 };
 
 const PERIPHERAL_BADGE: Record<string, string> = {

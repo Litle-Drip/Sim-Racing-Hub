@@ -62,28 +62,50 @@ export default function DriverProfile({ username }: { username: string }) {
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
   const trackFlag = (id: string) => F1_TRACKS.find(t => t.id === id)?.flag || '';
 
-  // Compute rank from public data (approximate — uses session count as proxy)
+  // Build a sessions array from public data that accurately reflects the driver's history.
+  // We use PB records (real trackId + bestLap + isPB) and pad up to the total session count.
+  const sessionsForCalc = useMemo((): SessionRecord[] => {
+    if (!driver) return [];
+    const base: SessionRecord[] = driver.pbs.map(pb => ({
+      id: `pb-${pb.trackId}`,
+      date: pb.date,
+      trackId: pb.trackId,
+      car: pb.car,
+      type: 'Race',
+      bestLap: pb.bestLap,
+      avgLap: '', worstLap: '', s1: '', s2: '', s3: '', tires: '', fuelLoad: 0,
+      conditions: '', assists: '', rating: 0, notes: '', penalty: '', gameVersion: '',
+      isPublic: true, sharedAt: null, publicNote: null, laps: null, isPB: true,
+    }));
+    const pbTrackIds = new Set(driver.pbs.map(p => p.trackId));
+    const extra: SessionRecord[] = driver.recentSessions
+      .filter(s => !pbTrackIds.has(s.trackId))
+      .map(s => ({
+        ...s,
+        avgLap: '', worstLap: '', s1: '', s2: '', s3: '', tires: '', fuelLoad: 0,
+        assists: '', rating: 0, notes: '', penalty: '', gameVersion: '',
+        isPublic: true, sharedAt: null, publicNote: null, laps: null, isPB: false,
+      }));
+    const combined = [...base, ...extra];
+    const padCount = Math.max(0, driver.sessions - combined.length);
+    const pad: SessionRecord[] = Array.from({ length: padCount }, (_, i) => ({
+      id: `pad-${i}`, date: '2024-01-01', trackId: '', car: '', type: 'Practice',
+      bestLap: '', avgLap: '', worstLap: '', s1: '', s2: '', s3: '', tires: '',
+      fuelLoad: 0, conditions: '', assists: '', rating: 0, notes: '', penalty: '', gameVersion: '',
+      isPublic: false, sharedAt: null, publicNote: null, laps: null, isPB: false,
+    }));
+    return [...combined, ...pad];
+  }, [driver]);
+
   const rankInfo = useMemo(() => {
     if (!driver) return null;
-    const fakeSessions: SessionRecord[] = driver.recentSessions.map(s => ({
-      ...s,
-      avgLap: '', worstLap: '', s1: '', s2: '', s3: '', tires: '', fuelLoad: 0,
-      assists: '', rating: 0, notes: '', penalty: '', gameVersion: '', isPublic: true,
-      sharedAt: null, publicNote: null, laps: null, isPB: false,
-    }));
-    return calculateRank(fakeSessions);
-  }, [driver]);
+    return calculateRank(sessionsForCalc);
+  }, [driver, sessionsForCalc]);
 
   const achievements = useMemo(() => {
     if (!driver) return [];
-    const fakeSessions: SessionRecord[] = driver.recentSessions.map(s => ({
-      ...s,
-      avgLap: '', worstLap: '', s1: '', s2: '', s3: '', tires: '', fuelLoad: 0,
-      assists: '', rating: 0, notes: '', penalty: '', gameVersion: '', isPublic: true,
-      sharedAt: null, publicNote: null, laps: null, isPB: false,
-    }));
-    return calculateAchievements(fakeSessions, driver.setups);
-  }, [driver]);
+    return calculateAchievements(sessionsForCalc, driver.setups);
+  }, [driver, sessionsForCalc]);
 
   if (loading) return <div className="page" style={{ textAlign: 'center', padding: 60 }}><div style={{ color: 'var(--gray-mid)' }}>Loading...</div></div>;
   if (error || !driver) return (
