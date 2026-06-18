@@ -116,6 +116,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS input_device TEXT NOT NULL DEFAULT
 ALTER TABLE setups ADD COLUMN IF NOT EXISTS game_version TEXT NOT NULL DEFAULT '';
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS public_note TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS position TEXT NOT NULL DEFAULT '';
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS time_of_day TEXT;
 `;
 
 async function ensureDatabase(): Promise<void> {
