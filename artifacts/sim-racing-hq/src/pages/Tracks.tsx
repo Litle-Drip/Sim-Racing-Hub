@@ -95,7 +95,66 @@ function DifficultyRating({
   );
 }
 
-type SortMode = 'name' | 'sessions' | 'pb' | 'difficulty';
+type SortMode = 'name' | 'sessions' | 'pb' | 'hardest' | 'easiest';
+
+function CardDifficultyDots({
+  trackId,
+  rating,
+  onRate,
+  isGuest,
+}: {
+  trackId: string;
+  rating: number;
+  onRate: (trackId: string, rating: number) => void;
+  isGuest?: boolean;
+}) {
+  const [hover, setHover] = useState(0);
+  const [guestFlash, setGuestFlash] = useState(false);
+  const display = hover || rating;
+
+  const handleDotClick = (e: React.MouseEvent, v: number) => {
+    e.stopPropagation();
+    if (isGuest) {
+      setGuestFlash(true);
+      setTimeout(() => setGuestFlash(false), 2000);
+      return;
+    }
+    onRate(trackId, v === rating ? 0 : v);
+  };
+
+  return (
+    <div
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, marginTop: 6 }}
+      onClick={e => e.stopPropagation()}
+    >
+      <div style={{ display: 'flex', gap: 3 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <span
+            key={i}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(0)}
+            onClick={e => handleDotClick(e, i)}
+            style={{
+              cursor: 'pointer',
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: i <= display ? 'var(--red)' : 'var(--border)',
+              opacity: i <= display ? (0.45 + i * 0.11) : 0.35,
+              transition: 'background 0.12s, opacity 0.12s',
+            }}
+          />
+        ))}
+      </div>
+      {guestFlash && (
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--teal)', whiteSpace: 'nowrap' }}>Sign in to save</span>
+      )}
+      {!guestFlash && display > 0 && (
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--gray-mid)' }}>{DIFFICULTY_LABELS[display]}</span>
+      )}
+    </div>
+  );
+}
 
 function TrackGrid({
   onSelect,
@@ -140,28 +199,45 @@ function TrackGrid({
           if (!bPb) return -1;
           return lapToSeconds(aPb) - lapToSeconds(bPb);
         });
-      case 'difficulty':
+      case 'hardest':
         return tracks.sort((a, b) => (ratingsMap[b.id] || 0) - (ratingsMap[a.id] || 0));
+      case 'easiest':
+        return tracks.sort((a, b) => {
+          const ra = ratingsMap[a.id] || 0;
+          const rb = ratingsMap[b.id] || 0;
+          if (!ra && !rb) return 0;
+          if (!ra) return 1;
+          if (!rb) return -1;
+          return ra - rb;
+        });
       default:
         return tracks;
     }
   }, [sort, countByTrack, pbByTrack, ratingsMap]);
 
+  const SORT_OPTIONS: { key: SortMode; label: string }[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'sessions', label: 'Sessions' },
+    { key: 'pb', label: 'PB' },
+    { key: 'hardest', label: 'Hardest' },
+    { key: 'easiest', label: 'Easiest' },
+  ];
+
   return (
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: allSessions.length > 0 ? 28 : 0 }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>Track Bible</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Sort</span>
-          {(['name', 'sessions', 'pb', 'difficulty'] as SortMode[]).map(s => (
+          {SORT_OPTIONS.map(({ key, label }) => (
             <button
-              key={s}
-              onClick={() => setSort(s)}
+              key={key}
+              onClick={() => setSort(key)}
               style={{
-                background: sort === s ? 'var(--red)' : 'var(--bg-elevated)',
-                border: `1px solid ${sort === s ? 'var(--red)' : 'var(--border)'}`,
+                background: sort === key ? 'var(--red)' : 'var(--bg-elevated)',
+                border: `1px solid ${sort === key ? 'var(--red)' : 'var(--border)'}`,
                 borderRadius: 4,
-                color: sort === s ? 'var(--white)' : 'var(--gray-mid)',
+                color: sort === key ? 'var(--white)' : 'var(--gray-mid)',
                 cursor: 'pointer',
                 fontFamily: 'var(--font-display)',
                 fontSize: 9,
@@ -171,7 +247,7 @@ function TrackGrid({
                 transition: 'all 0.15s',
               }}
             >
-              {s === 'pb' ? 'PB' : s.charAt(0).toUpperCase() + s.slice(1)}
+              {label}
             </button>
           ))}
         </div>
@@ -189,7 +265,6 @@ function TrackGrid({
         {sortedTracks.map(track => {
           const count = countByTrack[track.id] || 0;
           const pb = pbByTrack[track.id];
-          const diff = ratingsMap[track.id] || 0;
           return (
             <div key={track.id} className={`track-card${pb ? ' has-pb' : ''}`} onClick={() => onSelect(track)}>
               {count > 0 && (
@@ -203,13 +278,12 @@ function TrackGrid({
               ) : (
                 <div className="track-card-pb no-time">No Time</div>
               )}
-              {diff > 0 && (
-                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 4 }} onClick={e => e.stopPropagation()}>
-                  {[1,2,3,4,5].map(i => (
-                    <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i <= diff ? 'var(--red)' : 'var(--border)', opacity: i <= diff ? (0.4 + i * 0.15) : 0.3 }} />
-                  ))}
-                </div>
-              )}
+              <CardDifficultyDots
+                trackId={track.id}
+                rating={ratingsMap[track.id] || 0}
+                onRate={onRate}
+                isGuest={isGuest}
+              />
             </div>
           );
         })}
