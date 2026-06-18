@@ -49,7 +49,7 @@ export default function DriverProfile({ username }: { username: string }) {
   useEffect(() => {
     setLoading(true);
     setError('');
-    const base = import.meta.env.VITE_API_URL || '';
+    const base = import.meta.env.VITE_API_URL || '/api';
     fetch(`${base}/community/driver/${encodeURIComponent(username)}`)
       .then(r => {
         if (!r.ok) throw new Error('Driver not found');
