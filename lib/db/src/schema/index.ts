@@ -16,6 +16,7 @@ export const sessionsTable = pgTable("sessions", {
   tires: text("tires").notNull().default(""),
   fuelLoad: real("fuel_load").notNull().default(0),
   conditions: text("conditions").notNull().default(""),
+  timeOfDay: text("time_of_day").default(""),
   assists: text("assists").notNull().default(""),
   rating: integer("rating").notNull().default(0),
   notes: text("notes").notNull().default(""),

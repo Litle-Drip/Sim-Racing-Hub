@@ -236,6 +236,7 @@ export default function Sessions() {
   const [filterTrack, setFilterTrack] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterCar, setFilterCar] = useState('');
+  const [filterConditions, setFilterConditions] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
 
@@ -365,9 +366,10 @@ export default function Sessions() {
         if (filterTrack && s.trackId !== filterTrack) return false;
         if (filterType && s.type !== filterType) return false;
         if (filterCar && !s.car.toLowerCase().includes(filterCar.toLowerCase())) return false;
+        if (filterConditions && s.conditions !== filterConditions) return false;
         return true;
       });
-  }, [sessions, filterTrack, filterType, filterCar]);
+  }, [sessions, filterTrack, filterType, filterCar, filterConditions]);
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -411,7 +413,8 @@ export default function Sessions() {
         s3: bestS3,
         tires: form.tires,
         fuelLoad: Number(form.fuelLoad),
-        conditions: form.timeOfDay ? `${form.conditions} · ${form.timeOfDay}` : form.conditions,
+        conditions: form.conditions,
+        timeOfDay: form.timeOfDay || undefined,
         assists: form.assists,
         rating: form.rating,
         notes: form.notes,
@@ -487,6 +490,10 @@ export default function Sessions() {
         <select className="filter-select" value={filterCar} onChange={e => setFilterCar(e.target.value)}>
           <option value="">All Cars</option>
           {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select className="filter-select" value={filterConditions} onChange={e => setFilterConditions(e.target.value)}>
+          <option value="">All Conditions</option>
+          {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
 
@@ -585,7 +592,8 @@ export default function Sessions() {
                             );
                           })()}
                           <div className="expanded-item"><div className="expanded-label">Fuel Load</div><div className="expanded-value">{s.fuelLoad}%</div></div>
-                          <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions}</div></div>
+                          <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions || '—'}</div></div>
+                          {s.timeOfDay && <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay}</div></div>}
                           <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>
                           {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
                           {s.notes && <div className="expanded-notes"><div className="expanded-label" style={{ marginBottom: 6 }}>Notes</div>{s.notes}</div>}

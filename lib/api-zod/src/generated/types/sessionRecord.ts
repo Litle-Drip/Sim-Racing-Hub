@@ -22,6 +22,7 @@ export interface SessionRecord {
   tires: string;
   fuelLoad: number;
   conditions: string;
+  timeOfDay?: string | null;
   assists: string;
   rating: number;
   notes: string;

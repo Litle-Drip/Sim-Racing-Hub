@@ -48,6 +48,7 @@ export interface SessionRecord {
   tires: string;
   fuelLoad: number;
   conditions: string;
+  timeOfDay?: string | null;
   assists: string;
   rating: number;
   notes: string;
@@ -78,6 +79,7 @@ export interface CreateSessionRequest {
   tires: string;
   fuelLoad: number;
   conditions: string;
+  timeOfDay?: string;
   assists: string;
   rating: number;
   notes: string;

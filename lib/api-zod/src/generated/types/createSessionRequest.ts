@@ -22,6 +22,7 @@ export interface CreateSessionRequest {
   tires: string;
   fuelLoad: number;
   conditions: string;
+  timeOfDay?: string;
   assists: string;
   rating: number;
   notes: string;
