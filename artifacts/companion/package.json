@@ -24,7 +24,7 @@
     "@vitejs/plugin-react": "catalog:",
     "electron": "^34.5.1",
     "electron-builder": "^25.1.8",
-    "electron-vite": "^3.1.0",
+    "electron-vite": "^5.0.0",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
