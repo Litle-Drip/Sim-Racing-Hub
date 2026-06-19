@@ -18,6 +18,10 @@
     "f1-telemetry-client": "^0.1.26"
   },
   "devDependencies": {
+    "@rollup/rollup-darwin-arm64": "4.60.3",
+    "@rollup/rollup-darwin-x64": "4.60.3",
+    "@rollup/rollup-linux-x64-gnu": "4.60.3",
+    "@rollup/rollup-win32-x64-msvc": "4.60.3",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
