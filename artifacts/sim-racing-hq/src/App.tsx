@@ -22,6 +22,7 @@ import QuickLog from './pages/QuickLog';
 import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
 import Companion from './pages/Companion';
+import DownloadPage from './pages/DownloadPage';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -222,6 +223,9 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
           </button>
           <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/leaderboard')}>
             Leaderboard
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/download')}>
+            ↓ Download Companion App
           </button>
         </div>
       </div>
@@ -653,6 +657,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/setups">{() => <PublicSetups onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/tracks">{() => <PublicTracks onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/leaderboard">{() => <PublicLeaderboard onBack={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/download">{() => <DownloadPage />}</Route>
           <Route path="/log">{() => <QuickLog onDone={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/driver/:username">{(params) => <DriverProfile username={params.username} />}</Route>
           <Route component={HomeRoute} />
