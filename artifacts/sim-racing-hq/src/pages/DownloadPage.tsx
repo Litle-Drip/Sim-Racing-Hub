@@ -59,7 +59,7 @@ export default function DownloadPage() {
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
             <a
-              href="https://github.com/f1simhub/companion/releases/latest"
+              href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases/latest"
               target="_blank"
               rel="noreferrer"
               style={{
@@ -79,7 +79,7 @@ export default function DownloadPage() {
               ↓ Windows (x64)
             </a>
             <a
-              href="https://github.com/f1simhub/companion/releases/latest"
+              href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases/latest"
               target="_blank"
               rel="noreferrer"
               style={{
@@ -100,7 +100,7 @@ export default function DownloadPage() {
               ↓ macOS (Universal)
             </a>
             <a
-              href="https://github.com/f1simhub/companion/releases"
+              href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases"
               target="_blank"
               rel="noreferrer"
               style={{

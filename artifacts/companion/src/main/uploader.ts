@@ -20,6 +20,8 @@ export interface UploadPayload {
   platform: string;
   fuelRemaining: number;
   laps: LapRecord[];
+  aiDifficulty?: number;
+  position?: string;
 }
 
 export interface UploadResult {
@@ -93,11 +95,13 @@ export class Uploader {
       track: session.track,
       car: session.car,
       weather: session.weather,
-      assists: "",
-      gameVersion: "F1 25",
+      assists: session.assists,
+      gameVersion: session.gameVersion,
       platform: "PC",
       fuelRemaining: session.fuelRemaining,
       laps: session.laps,
+      aiDifficulty: session.aiDifficulty > 0 ? session.aiDifficulty : undefined,
+      position: session.position > 0 ? String(session.position) : undefined,
     };
   }
 

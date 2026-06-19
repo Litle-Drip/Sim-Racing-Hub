@@ -68,6 +68,9 @@ function wireUdp(): void {
   udp.on("participants", (data) => {
     tracker.handleParticipantsPacket(data as Parameters<typeof tracker.handleParticipantsPacket>[0]);
   });
+  udp.on("finalClassification", (data) => {
+    tracker.handleFinalClassificationPacket(data as Parameters<typeof tracker.handleFinalClassificationPacket>[0]);
+  });
   udp.on("error", (err) => {
     console.error("[UDP] error:", err);
   });

@@ -124,8 +124,9 @@ export default function Companion() {
         </div>
 
         {error && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'rgba(232,0,45,0.08)', border: '1px solid rgba(232,0,45,0.2)', borderRadius: 3 }}>
-            {error}
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'rgba(232,0,45,0.08)', border: '1px solid rgba(232,0,45,0.2)', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span>{error}</span>
+            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '3px 10px', flexShrink: 0 }} onClick={loadStatus}>Retry</button>
           </div>
         )}
 
@@ -215,7 +216,7 @@ export default function Companion() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           <a
-            href="https://github.com/f1simhub/companion/releases/latest"
+            href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases/latest"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -235,7 +236,7 @@ export default function Companion() {
             ↓ Windows (x64)
           </a>
           <a
-            href="https://github.com/f1simhub/companion/releases/latest"
+            href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases/latest"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -256,7 +257,7 @@ export default function Companion() {
             ↓ macOS (Universal)
           </a>
           <a
-            href="https://github.com/f1simhub/companion/releases"
+            href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases"
             target="_blank"
             rel="noreferrer"
             style={{

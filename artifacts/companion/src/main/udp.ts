@@ -49,6 +49,11 @@ export class UdpListener extends EventEmitter {
         this.emit("participants", data);
       });
 
+      this.client.on(PACKETS.finalClassification, (data: unknown) => {
+        this._lastPacketAt = Date.now();
+        this.emit("finalClassification", data);
+      });
+
       this.client.start();
       this._isRunning = true;
       this.emit("started", this.port);

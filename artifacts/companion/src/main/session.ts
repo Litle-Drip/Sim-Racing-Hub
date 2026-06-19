@@ -18,6 +18,10 @@ export interface SessionSnapshot {
   weather: string;
   laps: LapRecord[];
   fuelRemaining: number;
+  aiDifficulty: number;
+  position: number;
+  assists: string;
+  gameVersion: string;
 }
 
 // ──────────────────────────────────────────────
@@ -152,6 +156,10 @@ export class SessionTracker {
   private lastTyreCompound = 0;
   private lastFuelRemaining = 0;
   private lastPacketTime = 0;
+  private lastAiDifficulty = 0;
+  private lastPosition = 0;
+  private lastTractionControl = 0;
+  private lastAntiLockBrakes = 0;
 
   // Callbacks
   onSessionComplete: ((session: SessionSnapshot) => void) | null = null;
@@ -179,6 +187,7 @@ export class SessionTracker {
     m_sessionType?: number;
     m_trackId?: number;
     m_weather?: number;
+    m_aiDifficulty?: number;
   }): void {
     this.lastPacketTime = Date.now();
 
@@ -186,6 +195,8 @@ export class SessionTracker {
     const sessionType = data.m_sessionType ?? 0;
     const trackId = data.m_trackId ?? -1;
     const weather = data.m_weather ?? 0;
+    const aiDifficulty = data.m_aiDifficulty ?? 0;
+    if (aiDifficulty > 0) this.lastAiDifficulty = aiDifficulty;
 
     // sessionType 0 = Unknown (menus, lobby) — treat as end of active session
     const isMenuState = sessionType === 0 || uid === "0";
@@ -313,6 +324,8 @@ export class SessionTracker {
     m_visualTyreCompound?: number;
     m_tyreVisualCompound?: number;
     m_fuelRemainingLaps?: number;
+    m_tractionControl?: number;
+    m_antiLockBrakes?: number;
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!data.m_carStatusData) return;
@@ -323,6 +336,28 @@ export class SessionTracker {
     if (compound > 0) this.lastTyreCompound = compound;
     const fuel = car.m_fuelRemainingLaps ?? 0;
     if (fuel > 0) this.lastFuelRemaining = fuel;
+    if (car.m_tractionControl !== undefined) this.lastTractionControl = car.m_tractionControl;
+    if (car.m_antiLockBrakes !== undefined) this.lastAntiLockBrakes = car.m_antiLockBrakes;
+  }
+
+  handleFinalClassificationPacket(data: {
+    m_numCars?: number;
+    m_classificationData?: Array<{
+      m_position?: number;
+      m_numPitStops?: number;
+      m_resultStatus?: number;
+    }>;
+  }): void {
+    this.lastPacketTime = Date.now();
+    if (!data.m_classificationData) return;
+    const playerIdx = this.playerCarIdx < data.m_classificationData.length ? this.playerCarIdx : 0;
+    const classification = data.m_classificationData[playerIdx];
+    if (!classification) return;
+    // resultStatus 3=Finished, 7=Retired — only record if driver actually participated
+    const resultStatus = classification.m_resultStatus ?? 0;
+    if (resultStatus >= 2 && classification.m_position !== undefined && classification.m_position > 0) {
+      this.lastPosition = classification.m_position;
+    }
   }
 
   // Called when the app detects the game disconnected or a force-upload is needed
@@ -330,6 +365,12 @@ export class SessionTracker {
     if (this.sessionUID && this.validLaps.length > 0) {
       this.flushSession();
     }
+  }
+
+  private buildAssistsString(): string {
+    const tc = ["Off", "Medium", "Full"][this.lastTractionControl] ?? "Off";
+    const abs = this.lastAntiLockBrakes ? "On" : "Off";
+    return `TC: ${tc}, ABS: ${abs}`;
   }
 
   private flushSession(): void {
@@ -341,10 +382,15 @@ export class SessionTracker {
       weather: WEATHER_NAMES[this.weather] ?? "Clear",
       laps: [...this.validLaps],
       fuelRemaining: this.lastFuelRemaining,
+      aiDifficulty: this.lastAiDifficulty,
+      position: this.lastPosition,
+      assists: this.buildAssistsString(),
+      gameVersion: "F1 25",
     };
     this.sessionUID = null;
     this.validLaps = [];
     this.pendingLap = null;
+    this.lastPosition = 0;
     this.onSessionComplete?.(snap);
   }
 }
