@@ -21,6 +21,7 @@ import PublicLeaderboard from './pages/PublicLeaderboard';
 import QuickLog from './pages/QuickLog';
 import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
+import Companion from './pages/Companion';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -427,7 +428,7 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
 }
 
 const SHORTCUTS: Record<string, string> = {
-  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', c: 'community', a: 'account',
+  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', c: 'community', x: 'companion', a: 'account',
 };
 
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
@@ -518,6 +519,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
       case 'community': return <Community />;
+      case 'companion': return <Companion />;
       case 'account': return <Account />;
       default: return <Dashboard setPage={handleSetPage} />;
     }

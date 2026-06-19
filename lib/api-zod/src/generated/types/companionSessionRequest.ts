@@ -7,29 +7,28 @@
  */
 import type { LapRecord } from './lapRecord';
 
-export interface CreateSessionRequest {
+export interface CompanionSessionRequest {
   id: string;
   date: string;
   trackId: string;
   car: string;
   type: string;
-  bestLap: string;
-  avgLap: string;
-  worstLap: string;
-  s1: string;
-  s2: string;
-  s3: string;
-  tires: string;
-  fuelLoad: number;
-  conditions: string;
-  assists: string;
-  rating: number;
-  notes: string;
+  laps?: LapRecord[];
+  bestLap?: string;
+  avgLap?: string;
+  worstLap?: string;
+  s1?: string;
+  s2?: string;
+  s3?: string;
+  tires?: string;
+  fuelLoad?: number;
+  conditions?: string;
+  assists?: string;
+  rating?: number;
+  notes?: string;
   penalty?: string;
-  timeOfDay?: string;
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
-  laps?: LapRecord[];
   position?: string;
 }

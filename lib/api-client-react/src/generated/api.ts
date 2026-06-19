@@ -22,6 +22,10 @@ import type {
 import type {
   CommunitySessionRecord,
   CommunitySetupRecord,
+  CompanionApiKeyResponse,
+  CompanionApiKeyStatus,
+  CompanionSessionRequest,
+  CompanionSessionResponse,
   CreateHardwareRequest,
   CreateSessionRequest,
   CreateSetupRequest,
@@ -1317,6 +1321,443 @@ export const useDeleteHardware = <TError = ErrorType<UnauthorizedResponse | NotF
       return useMutation(getDeleteHardwareMutationOptions(options));
     }
 
+export const getGetTrackDifficultyUrl = () => {
+
+
+
+
+  return `/api/track-difficulty`
+}
+
+/**
+ * @summary Get all track difficulty ratings for the current user
+ */
+export const getTrackDifficulty = async ( options?: RequestInit): Promise<TrackDifficultyRecord[]> => {
+
+  return customFetch<TrackDifficultyRecord[]>(getGetTrackDifficultyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTrackDifficultyQueryKey = () => {
+    return [
+    `/api/track-difficulty`
+    ] as const;
+    }
+
+
+export const getGetTrackDifficultyQueryOptions = <TData = Awaited<ReturnType<typeof getTrackDifficulty>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrackDifficulty>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTrackDifficultyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTrackDifficulty>>> = ({ signal }) => getTrackDifficulty({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTrackDifficulty>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTrackDifficultyQueryResult = NonNullable<Awaited<ReturnType<typeof getTrackDifficulty>>>
+export type GetTrackDifficultyQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get all track difficulty ratings for the current user
+ */
+
+export function useGetTrackDifficulty<TData = Awaited<ReturnType<typeof getTrackDifficulty>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrackDifficulty>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTrackDifficultyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpsertTrackDifficultyUrl = (trackId: string,) => {
+
+
+
+
+  return `/api/track-difficulty/${trackId}`
+}
+
+/**
+ * @summary Set or clear a track difficulty rating
+ */
+export const upsertTrackDifficulty = async (trackId: string,
+    upsertTrackDifficultyRequest: UpsertTrackDifficultyRequest, options?: RequestInit): Promise<TrackDifficultyRecord> => {
+
+  return customFetch<TrackDifficultyRecord>(getUpsertTrackDifficultyUrl(trackId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      upsertTrackDifficultyRequest,)
+  }
+);}
+
+
+
+
+export const getUpsertTrackDifficultyMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertTrackDifficulty>>, TError,{trackId: string;data: BodyType<UpsertTrackDifficultyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertTrackDifficulty>>, TError,{trackId: string;data: BodyType<UpsertTrackDifficultyRequest>}, TContext> => {
+
+const mutationKey = ['upsertTrackDifficulty'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertTrackDifficulty>>, {trackId: string;data: BodyType<UpsertTrackDifficultyRequest>}> = (props) => {
+          const {trackId,data} = props ?? {};
+
+          return  upsertTrackDifficulty(trackId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertTrackDifficultyMutationResult = NonNullable<Awaited<ReturnType<typeof upsertTrackDifficulty>>>
+    export type UpsertTrackDifficultyMutationBody = BodyType<UpsertTrackDifficultyRequest>
+    export type UpsertTrackDifficultyMutationError = ErrorType<UnauthorizedResponse>
+
+    /**
+ * @summary Set or clear a track difficulty rating
+ */
+export const useUpsertTrackDifficulty = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertTrackDifficulty>>, TError,{trackId: string;data: BodyType<UpsertTrackDifficultyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertTrackDifficulty>>,
+        TError,
+        {trackId: string;data: BodyType<UpsertTrackDifficultyRequest>},
+        TContext
+      > => {
+      return useMutation(getUpsertTrackDifficultyMutationOptions(options));
+    }
+
+export const getGetCompanionApiKeyStatusUrl = () => {
+
+
+
+
+  return `/api/companion/apikey`
+}
+
+/**
+ * @summary Get API key status for the current user
+ */
+export const getCompanionApiKeyStatus = async ( options?: RequestInit): Promise<CompanionApiKeyStatus> => {
+
+  return customFetch<CompanionApiKeyStatus>(getGetCompanionApiKeyStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCompanionApiKeyStatusQueryKey = () => {
+    return [
+    `/api/companion/apikey`
+    ] as const;
+    }
+
+
+export const getGetCompanionApiKeyStatusQueryOptions = <TData = Awaited<ReturnType<typeof getCompanionApiKeyStatus>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanionApiKeyStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCompanionApiKeyStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanionApiKeyStatus>>> = ({ signal }) => getCompanionApiKeyStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanionApiKeyStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCompanionApiKeyStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getCompanionApiKeyStatus>>>
+export type GetCompanionApiKeyStatusQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get API key status for the current user
+ */
+
+export function useGetCompanionApiKeyStatus<TData = Awaited<ReturnType<typeof getCompanionApiKeyStatus>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanionApiKeyStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCompanionApiKeyStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGenerateCompanionApiKeyUrl = () => {
+
+
+
+
+  return `/api/companion/apikey`
+}
+
+/**
+ * @summary Generate (or regenerate) an API key for the current user
+ */
+export const generateCompanionApiKey = async ( options?: RequestInit): Promise<CompanionApiKeyResponse> => {
+
+  return customFetch<CompanionApiKeyResponse>(getGenerateCompanionApiKeyUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getGenerateCompanionApiKeyMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateCompanionApiKey>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateCompanionApiKey>>, TError,void, TContext> => {
+
+const mutationKey = ['generateCompanionApiKey'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateCompanionApiKey>>, void> = () => {
+
+
+          return  generateCompanionApiKey(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateCompanionApiKeyMutationResult = NonNullable<Awaited<ReturnType<typeof generateCompanionApiKey>>>
+
+    export type GenerateCompanionApiKeyMutationError = ErrorType<UnauthorizedResponse>
+
+    /**
+ * @summary Generate (or regenerate) an API key for the current user
+ */
+export const useGenerateCompanionApiKey = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateCompanionApiKey>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateCompanionApiKey>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getGenerateCompanionApiKeyMutationOptions(options));
+    }
+
+export const getRevokeCompanionApiKeyUrl = () => {
+
+
+
+
+  return `/api/companion/apikey`
+}
+
+/**
+ * @summary Revoke the current user's API key
+ */
+export const revokeCompanionApiKey = async ( options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRevokeCompanionApiKeyUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRevokeCompanionApiKeyMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeCompanionApiKey>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeCompanionApiKey>>, TError,void, TContext> => {
+
+const mutationKey = ['revokeCompanionApiKey'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeCompanionApiKey>>, void> = () => {
+
+
+          return  revokeCompanionApiKey(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeCompanionApiKeyMutationResult = NonNullable<Awaited<ReturnType<typeof revokeCompanionApiKey>>>
+
+    export type RevokeCompanionApiKeyMutationError = ErrorType<UnauthorizedResponse>
+
+    /**
+ * @summary Revoke the current user's API key
+ */
+export const useRevokeCompanionApiKey = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeCompanionApiKey>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeCompanionApiKey>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRevokeCompanionApiKeyMutationOptions(options));
+    }
+
+export const getUploadCompanionSessionUrl = () => {
+
+
+
+
+  return `/api/companion/session`
+}
+
+/**
+ * @summary Upload a session from the companion app (API key auth)
+ */
+export const uploadCompanionSession = async (companionSessionRequest: CompanionSessionRequest, options?: RequestInit): Promise<CompanionSessionResponse> => {
+
+  return customFetch<CompanionSessionResponse>(getUploadCompanionSessionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      companionSessionRequest,)
+  }
+);}
+
+
+
+
+export const getUploadCompanionSessionMutationOptions = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadCompanionSession>>, TError,{data: BodyType<CompanionSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadCompanionSession>>, TError,{data: BodyType<CompanionSessionRequest>}, TContext> => {
+
+const mutationKey = ['uploadCompanionSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadCompanionSession>>, {data: BodyType<CompanionSessionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadCompanionSession(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadCompanionSessionMutationResult = NonNullable<Awaited<ReturnType<typeof uploadCompanionSession>>>
+    export type UploadCompanionSessionMutationBody = BodyType<CompanionSessionRequest>
+    export type UploadCompanionSessionMutationError = ErrorType<NotFoundResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Upload a session from the companion app (API key auth)
+ */
+export const useUploadCompanionSession = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadCompanionSession>>, TError,{data: BodyType<CompanionSessionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadCompanionSession>>,
+        TError,
+        {data: BodyType<CompanionSessionRequest>},
+        TContext
+      > => {
+      return useMutation(getUploadCompanionSessionMutationOptions(options));
+    }
+
 export const getGetTrackNotesUrl = (trackId: string,) => {
 
 
@@ -1466,93 +1907,3 @@ export const useUpsertTrackNotes = <TError = ErrorType<UnauthorizedResponse>,
       return useMutation(getUpsertTrackNotesMutationOptions(options));
     }
 
-
-export const getGetTrackDifficultyUrl = () => {
-  return `/api/track-difficulty`
-}
-
-/**
- * @summary Get all track difficulty ratings for current user
- */
-export const getTrackDifficulty = async (options?: RequestInit): Promise<TrackDifficultyRecord[]> => {
-  return customFetch<TrackDifficultyRecord[]>(getGetTrackDifficultyUrl(), {
-    ...options,
-    method: 'GET',
-  });
-}
-
-export const getGetTrackDifficultyQueryKey = () => {
-  return [`/api/track-difficulty`] as const;
-}
-
-export const getGetTrackDifficultyQueryOptions = <TData = Awaited<ReturnType<typeof getTrackDifficulty>>, TError = ErrorType<UnauthorizedResponse>>(options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getTrackDifficulty>>, TError, TData>, request?: SecondParameter<typeof customFetch> }) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getGetTrackDifficultyQueryKey();
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getTrackDifficulty>>> = ({ signal }) => getTrackDifficulty({ signal, ...requestOptions });
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getTrackDifficulty>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetTrackDifficultyQueryResult = NonNullable<Awaited<ReturnType<typeof getTrackDifficulty>>>
-export type GetTrackDifficultyQueryError = ErrorType<UnauthorizedResponse>
-
-/**
- * @summary Get all track difficulty ratings for current user
- */
-export function useGetTrackDifficulty<TData = Awaited<ReturnType<typeof getTrackDifficulty>>, TError = ErrorType<UnauthorizedResponse>>(
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getTrackDifficulty>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetTrackDifficultyQueryOptions(options)
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-export const getUpsertTrackDifficultyUrl = (trackId: string) => {
-  return `/api/track-difficulty/${trackId}`
-}
-
-/**
- * @summary Upsert a personal difficulty rating for a track
- */
-export const upsertTrackDifficulty = async (trackId: string, upsertTrackDifficultyRequest: UpsertTrackDifficultyRequest, options?: RequestInit): Promise<TrackDifficultyRecord> => {
-  return customFetch<TrackDifficultyRecord>(getUpsertTrackDifficultyUrl(trackId), {
-    ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(upsertTrackDifficultyRequest),
-  });
-}
-
-export const getUpsertTrackDifficultyMutationOptions = <TError = ErrorType<UnauthorizedResponse>, TContext = unknown>(options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof upsertTrackDifficulty>>, TError, { trackId: string; data: BodyType<UpsertTrackDifficultyRequest> }, TContext>, request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof upsertTrackDifficulty>>, TError, { trackId: string; data: BodyType<UpsertTrackDifficultyRequest> }, TContext> => {
-  const mutationKey = ['upsertTrackDifficulty'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?
-    options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertTrackDifficulty>>, { trackId: string; data: BodyType<UpsertTrackDifficultyRequest> }> = (props) => {
-    const { trackId, data } = props ?? {};
-    return upsertTrackDifficulty(trackId, data, requestOptions)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type UpsertTrackDifficultyMutationResult = NonNullable<Awaited<ReturnType<typeof upsertTrackDifficulty>>>
-export type UpsertTrackDifficultyMutationBody = BodyType<UpsertTrackDifficultyRequest>
-export type UpsertTrackDifficultyMutationError = ErrorType<UnauthorizedResponse>
-
-/**
- * @summary Upsert a personal difficulty rating for a track
- */
-export const useUpsertTrackDifficulty = <TError = ErrorType<UnauthorizedResponse>, TContext = unknown>(options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof upsertTrackDifficulty>>, TError, { trackId: string; data: BodyType<UpsertTrackDifficultyRequest> }, TContext>, request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<
-  Awaited<ReturnType<typeof upsertTrackDifficulty>>,
-  TError,
-  { trackId: string; data: BodyType<UpsertTrackDifficultyRequest> },
-  TContext
-> => {
-  return useMutation(getUpsertTrackDifficultyMutationOptions(options));
-}

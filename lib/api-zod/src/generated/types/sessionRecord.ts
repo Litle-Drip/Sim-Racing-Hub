@@ -22,7 +22,6 @@ export interface SessionRecord {
   tires: string;
   fuelLoad: number;
   conditions: string;
-  timeOfDay?: string | null;
   assists: string;
   rating: number;
   notes: string;
@@ -35,5 +34,6 @@ export interface SessionRecord {
   sharedAt?: string | null;
   publicNote?: string | null;
   laps?: LapRecord[] | null;
+  timeOfDay?: string | null;
   position?: string;
 }

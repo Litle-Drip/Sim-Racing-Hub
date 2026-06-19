@@ -8,6 +8,10 @@
 
 export * from './communitySessionRecord';
 export * from './communitySetupRecord';
+export * from './companionApiKeyResponse';
+export * from './companionApiKeyStatus';
+export * from './companionSessionRequest';
+export * from './companionSessionResponse';
 export * from './cornerNote';
 export * from './createHardwareRequest';
 export * from './createSessionRequest';
@@ -26,6 +30,8 @@ export * from './setupRecord';
 export * from './shareSessionRequest';
 export * from './shareSessionResponse';
 export * from './shareSetupResponse';
+export * from './trackDifficultyRecord';
 export * from './trackNotesRecord';
 export * from './unauthorizedResponse';
+export * from './upsertTrackDifficultyRequest';
 export * from './upsertTrackNotesRequest';

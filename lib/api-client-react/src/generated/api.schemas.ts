@@ -48,7 +48,6 @@ export interface SessionRecord {
   tires: string;
   fuelLoad: number;
   conditions: string;
-  timeOfDay?: string | null;
   assists: string;
   rating: number;
   notes: string;
@@ -61,6 +60,7 @@ export interface SessionRecord {
   sharedAt?: string | null;
   publicNote?: string | null;
   laps?: LapRecord[] | null;
+  timeOfDay?: string | null;
   position?: string;
 }
 
@@ -79,11 +79,11 @@ export interface CreateSessionRequest {
   tires: string;
   fuelLoad: number;
   conditions: string;
-  timeOfDay?: string;
   assists: string;
   rating: number;
   notes: string;
   penalty?: string;
+  timeOfDay?: string;
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
@@ -166,12 +166,12 @@ export interface CommunitySetupRecord {
   onThrottle: string;
   offThrottle: string;
   notes: string;
-  gameVersion?: string | null;
   authorName: string;
   isOwn: boolean;
   avgRating?: number | null;
   ratingCount: number;
   sharedAt?: string | null;
+  gameVersion?: string | null;
 }
 
 export interface ShareSetupResponse {
@@ -221,7 +221,50 @@ export interface TrackDifficultyRecord {
 }
 
 export interface UpsertTrackDifficultyRequest {
+  /**
+     * @minimum 0
+     * @maximum 5
+     */
   rating: number;
+}
+
+export interface CompanionApiKeyStatus {
+  hasKey: boolean;
+  createdAt?: string | null;
+}
+
+export interface CompanionApiKeyResponse {
+  key: string;
+}
+
+export interface CompanionSessionRequest {
+  id: string;
+  date: string;
+  trackId: string;
+  car: string;
+  type: string;
+  laps?: LapRecord[];
+  bestLap?: string;
+  avgLap?: string;
+  worstLap?: string;
+  s1?: string;
+  s2?: string;
+  s3?: string;
+  tires?: string;
+  fuelLoad?: number;
+  conditions?: string;
+  assists?: string;
+  rating?: number;
+  notes?: string;
+  penalty?: string;
+  gameVersion?: string;
+  platform?: string;
+  inputDevice?: string;
+  position?: string;
+}
+
+export interface CompanionSessionResponse {
+  ok: boolean;
 }
 
 export interface TrackNotesRecord {
