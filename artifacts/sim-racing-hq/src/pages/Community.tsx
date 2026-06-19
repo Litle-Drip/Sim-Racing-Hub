@@ -126,6 +126,10 @@ function CommunitySetupCard({
         ))}
       </div>
 
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4 }}>
+        {setup.gameVersion?.trim() || '—'}
+      </div>
+
       <div className="community-card-footer">
         <StarRating
           avg={setup.avgRating}
@@ -170,8 +174,8 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
         </div>
         <div className="community-card-right">
           <span className={`badge ${TYPE_BADGE[session.type] || 'badge-practice'}`}>{session.type}</span>
-          {session.platform && <span className="badge badge-practice" style={{ fontSize: 9 }}>{session.platform}</span>}
-          {session.inputDevice && <span className="badge badge-practice" style={{ fontSize: 9 }}>{session.inputDevice}</span>}
+          {session.platform && <span className="badge badge-practice">{session.platform}</span>}
+          {session.inputDevice && <span className="badge badge-practice">{session.inputDevice}</span>}
           <div className="community-card-author">
             <Users size={10} />
             {session.authorName}
@@ -189,7 +193,7 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
       </div>
 
       {session.gameVersion && (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)', marginTop: 4 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4 }}>
           {session.gameVersion}
         </div>
       )}
@@ -202,7 +206,7 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
         <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
           {session.date}
         </span>
-        {onClick && <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>View Details →</span>}
+        {onClick && <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>View Details →</span>}
       </div>
     </div>
   );
@@ -214,6 +218,7 @@ export default function Community() {
   const [filterTrack, setFilterTrack] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
+  const [filterGameVersion, setFilterGameVersion] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterPlatform, setFilterPlatform] = useState('');
   const [filterInput, setFilterInput] = useState('');
@@ -227,6 +232,7 @@ export default function Community() {
     trackId: filterTrack || undefined,
     tag: filterTag || undefined,
     car: filterCar || undefined,
+    gameVersion: filterGameVersion || undefined,
   });
 
   const { data: sessions = [], isLoading: sessionsLoading } = useGetCommunitySessions({
@@ -301,8 +307,11 @@ export default function Community() {
 
   const challenge = useMemo(() => {
     const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    const week = Math.floor(((now.getTime() - start.getTime()) / 86400000 + start.getDay()) / 7);
+    // ISO week number (Monday-based, UTC-stable)
+    const day = now.getUTCDay(); // 0=Sun, 1=Mon
+    const mondayOffset = day === 0 ? 6 : day - 1;
+    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - mondayOffset));
+    const week = Math.floor(monday.getTime() / (7 * 24 * 3600 * 1000));
     const track = F1_TRACKS[week % F1_TRACKS.length];
     const challengeSessions = sessions
       .filter(s => s.trackId === track.id && s.bestLap && s.bestLap.trim() !== '')
@@ -317,7 +326,7 @@ export default function Community() {
       <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden', border: '1px solid rgba(232,0,45,0.3)' }}>
         <div style={{ background: 'rgba(232,0,45,0.08)', padding: '14px 20px', borderBottom: '1px solid rgba(232,0,45,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--red)' }}>Weekly Challenge</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)' }}>Weekly Challenge</span>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
               {challenge.track.flag} Fastest Lap at {challenge.track.name}
             </div>
@@ -413,6 +422,13 @@ export default function Community() {
               <option value="">All Cars</option>
               {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
+            <input
+              className="filter-select"
+              type="text"
+              placeholder="Filter by version…"
+              value={filterGameVersion}
+              onChange={(e) => setFilterGameVersion(e.target.value)}
+            />
           </div>
 
           {setupsLoading ? (
@@ -584,7 +600,7 @@ export default function Community() {
                   ...(detailSession.penalty && detailSession.penalty.trim() !== '' ? [{ label: 'Penalty', value: detailSession.penalty }] : []),
                 ].map(({ label, value }) => (
                   <div key={label}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>{label}</div>
                     <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)' }}>{value}</div>
                   </div>
                 ))}
@@ -592,7 +608,7 @@ export default function Community() {
 
               {detailSession.publicNote && (
                 <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Note</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Note</div>
                   <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{detailSession.publicNote}</div>
                 </div>
               )}

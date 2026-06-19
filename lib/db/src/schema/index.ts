@@ -16,6 +16,7 @@ export const sessionsTable = pgTable("sessions", {
   tires: text("tires").notNull().default(""),
   fuelLoad: real("fuel_load").notNull().default(0),
   conditions: text("conditions").notNull().default(""),
+  timeOfDay: text("time_of_day"),
   assists: text("assists").notNull().default(""),
   rating: integer("rating").notNull().default(0),
   notes: text("notes").notNull().default(""),
@@ -77,6 +78,19 @@ export const setupRatingsTable = pgTable("setup_ratings", {
 
 export type DbSetupRating = typeof setupRatingsTable.$inferSelect;
 export type InsertDbSetupRating = typeof setupRatingsTable.$inferInsert;
+
+export const trackDifficultyTable = pgTable("track_difficulty", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  trackId: text("track_id").notNull(),
+  rating: integer("rating").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [
+  unique("track_difficulty_uniq").on(t.userId, t.trackId),
+]);
+
+export type DbTrackDifficulty = typeof trackDifficultyTable.$inferSelect;
+export type InsertDbTrackDifficulty = typeof trackDifficultyTable.$inferInsert;
 
 export const trackNotesTable = pgTable("track_notes", {
   id: text("id").primaryKey(),

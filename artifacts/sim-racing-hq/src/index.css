@@ -20,6 +20,7 @@
   --teal: #00D2BE;
   --yellow: #FFF200;
   --green: #39B54A;
+  --purple: #8b5cf6;
   --font-display: 'Orbitron', monospace;
   --font-body: 'Rajdhani', sans-serif;
   --font-mono: 'Space Mono', monospace;
@@ -41,6 +42,7 @@
   --teal: #009E92;
   --yellow: #C4A600;
   --green: #2D8F3B;
+  --purple: #7c3aed;
 }
 
 /* =========================================================
@@ -213,25 +215,42 @@ table { border-collapse: collapse; width: 100%; }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 20px;
+  padding: 12px 20px 10px;
   border-top: 1px solid var(--border);
   margin-top: auto;
 }
 
+.nav-profile-avatar-ring {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.nav-profile-avatar-ring svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  transform: rotate(-90deg);
+}
+
 .nav-profile-avatar {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--red-dim);
-  border: 1px solid var(--red);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--red);
-  flex-shrink: 0;
+  position: absolute;
+  top: 3px;
+  left: 3px;
 }
 
 .nav-profile-info {
@@ -251,8 +270,8 @@ table { border-collapse: collapse; width: 100%; }
 
 .nav-profile-rank {
   font-family: var(--font-display);
-  font-size: 9px;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -375,14 +394,15 @@ table { border-collapse: collapse; width: 100%; }
 
 .page {
   padding: 32px 36px;
-  max-width: 1400px;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
 }
 
 .page-title {
@@ -407,7 +427,7 @@ table { border-collapse: collapse; width: 100%; }
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-bottom: 2px solid var(--red);
-  padding: 16px 20px;
+  padding: 20px 24px;
   transition: box-shadow 0.25s, border-color 0.25s;
   position: relative;
 }
@@ -424,6 +444,43 @@ table { border-collapse: collapse; width: 100%; }
   margin-top: 6px;
 }
 
+.stat-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.stat-trend--up { color: var(--teal); }
+.stat-trend--down { color: var(--red); }
+.stat-trend--flat { color: var(--gray-mid); }
+
+.stat-sparkline {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  opacity: 0.4;
+}
+
+.stat-card:hover .stat-sparkline {
+  opacity: 0.7;
+}
+
+.stat-icon {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  opacity: 0.15;
+  color: var(--red);
+}
+
+.stat-card:hover .stat-icon {
+  opacity: 0.3;
+}
+
 .stat-cta {
   color: var(--teal);
   cursor: pointer;
@@ -436,9 +493,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .stat-label {
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gray-mid);
   margin-bottom: 8px;
@@ -455,8 +512,8 @@ table { border-collapse: collapse; width: 100%; }
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 16px;
 }
 
 /* =========================================================
@@ -469,9 +526,9 @@ table { border-collapse: collapse; width: 100%; }
   gap: 8px;
   padding: 10px 20px;
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
   border: none;
@@ -513,15 +570,15 @@ table { border-collapse: collapse; width: 100%; }
 
 .btn-sm {
   padding: 6px 12px;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .btn-danger {
   background: transparent;
   color: var(--red);
   border: 1px solid rgba(232,0,45,0.3);
-  font-size: 9px;
-  padding: 4px 8px;
+  font-size: 11px;
+  padding: 4px 10px;
 }
 
 .btn-danger:hover {
@@ -553,12 +610,12 @@ table { border-collapse: collapse; width: 100%; }
 
 .data-table th {
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gray);
-  padding: 8px 14px;
+  padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid var(--border);
   background: var(--bg-card);
@@ -591,11 +648,11 @@ table { border-collapse: collapse; width: 100%; }
 
 .badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 8px;
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   border-radius: 0;
 }
@@ -629,10 +686,10 @@ table { border-collapse: collapse; width: 100%; }
   align-items: center;
   gap: 3px;
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--yellow);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   margin-left: 6px;
 }
 
@@ -783,9 +840,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .field-label {
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gray-mid);
 }
@@ -793,9 +850,9 @@ table { border-collapse: collapse; width: 100%; }
 .form-section-title {
   grid-column: 1 / -1;
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--red);
   border-bottom: 1px solid var(--border);
@@ -846,9 +903,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .expanded-label {
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gray);
 }
@@ -913,9 +970,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .heatmap-month-label {
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 11px;
   color: var(--gray);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   min-width: 52px;
 }
@@ -935,11 +992,11 @@ table { border-collapse: collapse; width: 100%; }
 
 .heatmap-day-label {
   font-family: var(--font-display);
-  font-size: 7px;
+  font-size: 11px;
   color: var(--gray);
-  height: 10px;
-  line-height: 10px;
-  letter-spacing: 0.05em;
+  height: 11px;
+  line-height: 11px;
+  letter-spacing: 0.04em;
 }
 
 .heatmap-cols {
@@ -1047,8 +1104,8 @@ table { border-collapse: collapse; width: 100%; }
 
 .dash-badge-name {
   font-family: var(--font-display);
-  font-size: 9px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  letter-spacing: 0.05em;
   color: var(--gray-mid);
   white-space: nowrap;
 }
@@ -1080,7 +1137,7 @@ table { border-collapse: collapse; width: 100%; }
 
 .dash-badge-count {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 10px;
   color: var(--gray);
 }
 
@@ -1135,9 +1192,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .mini-bar-label {
   font-family: var(--font-body);
-  font-size: 8px;
+  font-size: 10px;
   color: var(--gray);
-  width: 30px;
+  width: 34px;
   text-align: right;
 }
 
@@ -1158,10 +1215,10 @@ table { border-collapse: collapse; width: 100%; }
 /* Badge category tabs */
 .badge-tab {
   font-family: var(--font-display);
-  font-size: 8px;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 2px;
   color: var(--gray);
   background: transparent;
@@ -1265,9 +1322,9 @@ table { border-collapse: collapse; width: 100%; }
   top: 12px;
   right: 14px;
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 11px;
   color: var(--gray);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
 }
 
 .track-card-flag {
@@ -1352,9 +1409,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .track-stat-label {
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gray);
   margin-bottom: 6px;
@@ -1448,7 +1505,7 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 .setup-card-body {
-  padding: 14px 20px;
+  padding: 16px 20px;
 }
 
 .setup-preview-row {
@@ -1465,9 +1522,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .setup-preview-label {
   font-family: var(--font-display);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--gray);
 }
@@ -1575,8 +1632,8 @@ table { border-collapse: collapse; width: 100%; }
 
 .hw-card-track {
   font-family: var(--font-display);
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--gray-mid);
 }
@@ -1609,9 +1666,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .hw-param-label {
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--gray-mid);
 }
@@ -1710,8 +1767,8 @@ table { border-collapse: collapse; width: 100%; }
 
 .community-card-track {
   font-family: var(--font-display);
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--gray-mid);
 }
@@ -1749,9 +1806,9 @@ table { border-collapse: collapse; width: 100%; }
 
 .community-param-label {
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--gray-mid);
 }
@@ -1921,9 +1978,9 @@ table { border-collapse: collapse; width: 100%; }
   align-items: center;
   gap: 8px;
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gray-mid);
   cursor: pointer;

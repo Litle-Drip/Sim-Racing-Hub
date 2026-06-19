@@ -11,14 +11,14 @@ interface NavProps {
 }
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-  { id: 'sessions', label: 'Sessions', Icon: ClipboardList },
-  { id: 'tracks', label: 'Tracks', Icon: Map },
-  { id: 'setups', label: 'Setups', Icon: Settings2 },
-  { id: 'hardware', label: 'Hardware', Icon: Cpu },
-  { id: 'progress', label: 'Progress', Icon: TrendingUp },
-  { id: 'community', label: 'Community', Icon: Users },
-  { id: 'account', label: 'Account', Icon: User },
+  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, authRequired: false },
+  { id: 'sessions', label: 'Sessions', Icon: ClipboardList, authRequired: true },
+  { id: 'tracks', label: 'Tracks', Icon: Map, authRequired: false },
+  { id: 'setups', label: 'Setups', Icon: Settings2, authRequired: true },
+  { id: 'hardware', label: 'Hardware', Icon: Cpu, authRequired: true },
+  { id: 'progress', label: 'Progress', Icon: TrendingUp, authRequired: true },
+  { id: 'community', label: 'Community', Icon: Users, authRequired: false },
+  { id: 'account', label: 'Account', Icon: User, authRequired: true },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -33,7 +33,10 @@ export default function Nav({ page, setPage }: NavProps) {
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
 
-  const seatTimeHours = useMemo(() => Math.floor((sessions.length * 10) / 60), [sessions]);
+  const seatTimeHours = useMemo(() => {
+    const mins: Record<string, number> = { Practice: 30, Qualifying: 20, Race: 60, Hotlap: 15, 'Time Trial': 20 };
+    return Math.floor(sessions.reduce((a, s) => a + (mins[s.type] ?? 25), 0) / 60);
+  }, [sessions]);
   const favTrack = useMemo(() => {
     if (sessions.length === 0) return null;
     const counts: Record<string, number> = {};
@@ -56,6 +59,17 @@ export default function Nav({ page, setPage }: NavProps) {
 
   const rawName = user?.firstName ?? user?.username ?? 'Driver';
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
+
+  // Rank progress for ring
+  const rankTiers = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'] as const;
+  const currentTierIdx = rankTiers.indexOf(rankInfo.rank as typeof rankTiers[number]);
+  const thresholds = [0, 30, 100, 200, 350, 500];
+  const nextTier = currentTierIdx < rankTiers.length - 1 ? rankTiers[currentTierIdx + 1] : null;
+  const progressToNext = nextTier
+    ? Math.max(0, Math.min(100, ((rankInfo.points - thresholds[currentTierIdx]) / (thresholds[currentTierIdx + 1] - thresholds[currentTierIdx])) * 100))
+    : 100;
+  const ringCircum = 2 * Math.PI * 15;
+  const ringOffset = ringCircum - (progressToNext / 100) * ringCircum;
 
   return (
     <>
@@ -91,23 +105,39 @@ export default function Nav({ page, setPage }: NavProps) {
           </div>
         </div>
         <ul className="nav-links">
-          {NAV_ITEMS.map(({ id, label, Icon }) => (
-            <li key={id}>
-              <div
-                className={`nav-link${page === id ? ' active' : ''}`}
-                onClick={() => navigate(id)}
-              >
-                <Icon className="nav-icon" size={16} />
-                {label}
-              </div>
-            </li>
-          ))}
+          {NAV_ITEMS.map(({ id, label, Icon, authRequired }) => {
+            const isLocked = !user && authRequired;
+            return (
+              <li key={id}>
+                <div
+                  className={`nav-link${page === id ? ' active' : ''}${isLocked ? ' nav-link--locked' : ''}`}
+                  onClick={() => navigate(id)}
+                  title={isLocked ? 'Sign in required' : undefined}
+                  style={isLocked ? { opacity: 0.45 } : undefined}
+                >
+                  <Icon className="nav-icon" size={16} />
+                  {label}
+                  {isLocked && (
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--gray)' }}>🔒</span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
 
         {/* Profile Card */}
         <div className="nav-profile-card" onClick={() => navigate('account')} style={{ cursor: 'pointer' }}>
-          <div className="nav-profile-avatar">
-            {displayName.charAt(0).toUpperCase()}
+          <div className="nav-profile-avatar-ring">
+            <svg viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15" fill="none" stroke="var(--border)" strokeWidth="2" />
+              <circle cx="18" cy="18" r="15" fill="none" stroke={getRankColor(rankInfo.rank)} strokeWidth="2"
+                strokeDasharray={ringCircum} strokeDashoffset={ringOffset} strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
+            </svg>
+            <div className="nav-profile-avatar">
+              {displayName.charAt(0).toUpperCase()}
+            </div>
           </div>
           <div className="nav-profile-info">
             <div className="nav-profile-name">{displayName}</div>
@@ -117,7 +147,7 @@ export default function Nav({ page, setPage }: NavProps) {
             {streak > 0 && (
               <div className="nav-profile-streak">🔥 {streak} day streak</div>
             )}
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--gray)', marginTop: 2, lineHeight: 1.4 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--gray)', marginTop: 1, lineHeight: 1.3 }}>
               {seatTimeHours > 0 && <span>{seatTimeHours}h seat time</span>}
               {favTrack && <span style={{ display: 'block' }}>Fav: {favTrack}</span>}
             </div>
@@ -125,8 +155,7 @@ export default function Nav({ page, setPage }: NavProps) {
         </div>
 
         <div style={{
-          padding: '10px 20px 16px',
-          borderTop: '1px solid var(--border)',
+          padding: '6px 20px 14px',
         }}>
           <button
             onClick={toggleTheme}

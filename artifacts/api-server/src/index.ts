@@ -79,6 +79,15 @@ CREATE TABLE IF NOT EXISTS track_notes (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS track_difficulty (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  track_id TEXT NOT NULL,
+  rating INTEGER NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  CONSTRAINT track_difficulty_uniq UNIQUE (user_id, track_id)
+);
+
 CREATE TABLE IF NOT EXISTS hardware_settings (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -107,6 +116,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS input_device TEXT NOT NULL DEFAULT
 ALTER TABLE setups ADD COLUMN IF NOT EXISTS game_version TEXT NOT NULL DEFAULT '';
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS public_note TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS position TEXT NOT NULL DEFAULT '';
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS time_of_day TEXT;
 `;
 
 async function ensureDatabase(): Promise<void> {

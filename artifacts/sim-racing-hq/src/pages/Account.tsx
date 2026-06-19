@@ -45,8 +45,11 @@ export default function Account() {
     ? Math.max(0, Math.min(100, ((rankInfo.points - currentMin) / (nextMin - currentMin)) * 100))
     : 100;
 
-  // Total time
-  const totalMinutes = totalSessions * 10;
+  // Total time — estimated from session type
+  const SESSION_MINUTES: Record<string, number> = {
+    Practice: 30, Qualifying: 20, Race: 60, Hotlap: 15, 'Time Trial': 20,
+  };
+  const totalMinutes = sessions.reduce((acc, s) => acc + (SESSION_MINUTES[s.type] ?? 25), 0);
   const totalHours = Math.floor(totalMinutes / 60);
   const remainingMinutes = totalMinutes % 60;
 

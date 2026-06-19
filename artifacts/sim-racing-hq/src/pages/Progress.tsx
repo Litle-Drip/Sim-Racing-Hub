@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -8,6 +8,8 @@ import { lapToSeconds } from '../lib/storage';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapTimeDelta, sessionConsistency } from '../lib/engagement';
 import { LapTimeInput } from '../components/LapTimeInput';
+import { EmptyState } from '../components/EmptyState';
+import { TrendingUp } from 'lucide-react';
 
 function formatLapTime(seconds: number): string {
   if (!isFinite(seconds) || seconds === 0) return '—';
@@ -33,7 +35,7 @@ function LapTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
       {payload.map((p, i) => (
         <div key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: p.color, marginBottom: 2 }}>
           {p.name}: {formatLapTime(p.value)}
@@ -43,7 +45,7 @@ function LapTooltip({ active, payload, label }: TooltipProps) {
   );
 }
 
-export default function Progress() {
+export default function Progress({ setPage }: { setPage?: (p: string) => void }) {
   const { data: allSessions = [] } = useGetSessions();
   const [filterTrack, setFilterTrack] = useState(() => sessionStorage.getItem('progress-track') || '');
   const [filterCar, setFilterCar] = useState('');
@@ -52,6 +54,22 @@ export default function Progress() {
     setFilterTrack(v);
     sessionStorage.setItem('progress-track', v);
   };
+
+  // Auto-select the most recently used car when track filter changes
+  useEffect(() => {
+    if (!filterTrack) { setFilterCar(''); return; }
+    const trackSessions = allSessions.filter(s => s.trackId === filterTrack);
+    if (trackSessions.length === 0) { setFilterCar(''); return; }
+    const latestCar = [...trackSessions].sort((a, b) => b.date.localeCompare(a.date))[0].car;
+    setFilterCar(latestCar);
+  }, [filterTrack, allSessions]);
+
+  // Unique cars for the selected track (for dropdown)
+  const carsForTrack = useMemo(() => {
+    if (!filterTrack) return [];
+    const cars = [...new Set(allSessions.filter(s => s.trackId === filterTrack).map(s => s.car).filter(Boolean))];
+    return cars.sort();
+  }, [allSessions, filterTrack]);
 
   const filtered = useMemo(() => {
     return allSessions
@@ -138,12 +156,14 @@ export default function Progress() {
       </div>
 
       {allSessions.length === 0 ? (
-        <div className="empty-state" style={{ marginTop: 40 }}>
-          <div className="empty-state-title">No Sessions Logged Yet</div>
-          <div className="empty-state-desc" style={{ maxWidth: 420, lineHeight: 1.7 }}>
-            Log sessions with <strong>best lap</strong>, <strong>average lap</strong>, and <strong>worst lap</strong> times to see your
-            progression charts populate here. Head to <strong>Sessions</strong> to log your first race or hotlap.
-          </div>
+        <div style={{ marginTop: 40 }}>
+          <EmptyState
+            icon={<TrendingUp size={40} />}
+            headline="No sessions logged yet"
+            subtext="Personal bests are tracked automatically from your session data — best lap, average lap, and worst lap. Log your first session to see your progression charts come to life."
+            ctaLabel="Log a Session"
+            onCta={() => setPage?.('sessions')}
+          />
         </div>
       ) : (
       <>
@@ -152,12 +172,15 @@ export default function Progress() {
           <option value="">All Tracks</option>
           {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.flag} {t.short}</option>)}
         </select>
-        <input
-          className="filter-input"
-          placeholder="Filter by car..."
+        <select
+          className="filter-select"
           value={filterCar}
           onChange={e => setFilterCar(e.target.value)}
-        />
+          disabled={carsForTrack.length === 0}
+        >
+          <option value="">All Cars</option>
+          {carsForTrack.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
 
       <div className="chart-section">
@@ -178,7 +201,7 @@ export default function Progress() {
               <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#A8A8A8', letterSpacing: '0.06em' }}
+                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
                 axisLine={{ stroke: '#1E1E1E' }}
                 tickLine={false}
               />
@@ -240,7 +263,7 @@ export default function Progress() {
               <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 8, fill: '#A8A8A8', letterSpacing: '0.06em' }}
+                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
                 axisLine={{ stroke: '#1E1E1E' }}
                 tickLine={false}
               />
@@ -386,7 +409,7 @@ export default function Progress() {
                 <YAxis domain={[90, 100]} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} tickFormatter={v => `${v}%`} />
                 <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
                   <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>{(payload[0].value as number).toFixed(1)}%</div>
                   </div>
                 ) : null} />
@@ -416,31 +439,31 @@ function LapTimeDeltaTool() {
       <div className="card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
           <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 1</label>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 1</label>
             <LapTimeInput value={time1} onChange={setTime1} style={{ width: 140 }} />
           </div>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--gray)', marginTop: 16 }}>vs</span>
           <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 2</label>
+            <label style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 2</label>
             <LapTimeInput value={time2} onChange={setTime2} style={{ width: 140 }} />
           </div>
         </div>
         {result && (
           <div style={{ display: 'flex', gap: 24, alignItems: 'baseline' }}>
             <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Gap</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Gap</span>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--teal)', marginTop: 4 }}>
                 {result.diffMs >= 1000 ? `${(result.diffMs / 1000).toFixed(3)}s` : `${result.diffMs}ms`}
               </div>
             </div>
             <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Percentage</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Percentage</span>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--white)', marginTop: 4 }}>
                 {result.diffPercent.toFixed(2)}%
               </div>
             </div>
             <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Faster</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Faster</span>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)', marginTop: 4 }}>
                 Time {result.faster}
               </div>

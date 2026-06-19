@@ -36,7 +36,7 @@ export const F1_TRACKS: F1Track[] = [
 
 export const TIRE_COMPOUNDS = ['Soft', 'Medium', 'Hard', 'Inter', 'Wet'];
 export const SESSION_TYPES = ['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'];
-export const CONDITIONS = ['Dry', 'Damp', 'Wet', 'Light Rain', 'Heavy Rain', 'Storm'];
+export const CONDITIONS = ['Dry', 'Light Cloud', 'Overcast', 'Light Rain', 'Heavy Rain', 'Storm'];
 export const TIME_OF_DAY = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
 export const ASSISTS = ['None', 'Partial', 'Full', 'Apex Line', 'Suggested Gear Shifts', 'Apex Line + Gear Shifts'];
 export const GAME_VERSIONS = ['F1 25', 'F1 25 v1.1', 'F1 25 v1.2', 'F1 25 DLC', 'F1 24', 'F1 24 DLC', 'F1 26'];

@@ -22,6 +22,9 @@ export default function QuickLog({ onDone }: { onDone: () => void }) {
   const [car, setCar] = useState('');
   const [bestLap, setBestLap] = useState('');
   const [type, setType] = useState('Practice');
+  const [tires, setTires] = useState('Soft');
+  const [conditions, setConditions] = useState('Dry');
+  const [assists, setAssists] = useState('None');
 
   const handleSubmit = () => {
     if (!trackId || !car.trim() || !bestLap.trim()) {
@@ -37,19 +40,18 @@ export default function QuickLog({ onDone }: { onDone: () => void }) {
         car,
         type,
         bestLap,
-        avgLap: '',
-        worstLap: '',
+        avgLap: bestLap,
+        worstLap: bestLap,
         s1: '',
         s2: '',
         s3: '',
-        tires: '',
+        tires,
         fuelLoad: 0,
-        conditions: '',
-        assists: '',
+        conditions,
+        assists,
         rating: 0,
         notes: '',
         penalty: '',
-
       },
     });
   };
@@ -143,6 +145,42 @@ export default function QuickLog({ onDone }: { onDone: () => void }) {
               >
                 {t}
               </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Conditions */}
+        <div>
+          <label style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', display: 'block', marginBottom: 6 }}>
+            Conditions
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {['Dry', 'Damp', 'Wet'].map(c => (
+              <button key={c} type="button" onClick={() => setConditions(c)} style={{ flex: 1, padding: '10px 0', fontSize: 13, fontFamily: 'var(--font-body)', border: conditions === c ? '2px solid var(--teal)' : '1px solid var(--border)', borderRadius: 6, background: conditions === c ? 'rgba(0,210,190,0.10)' : 'transparent', color: conditions === c ? 'var(--teal)' : 'var(--gray-mid)', cursor: 'pointer', minHeight: 44 }}>{c}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tyre Compound */}
+        <div>
+          <label style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', display: 'block', marginBottom: 6 }}>
+            Tyre Compound
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {['Soft', 'Medium', 'Hard', 'Wet'].map(t => (
+              <button key={t} type="button" onClick={() => setTires(t)} style={{ flex: 1, padding: '10px 0', fontSize: 12, fontFamily: 'var(--font-body)', border: tires === t ? '2px solid var(--yellow)' : '1px solid var(--border)', borderRadius: 6, background: tires === t ? 'rgba(255,242,0,0.08)' : 'transparent', color: tires === t ? 'var(--yellow)' : 'var(--gray-mid)', cursor: 'pointer', minHeight: 44 }}>{t}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Assists */}
+        <div>
+          <label style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', display: 'block', marginBottom: 6 }}>
+            Assists
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {['None', 'Partial', 'Full'].map(a => (
+              <button key={a} type="button" onClick={() => setAssists(a)} style={{ flex: 1, padding: '10px 0', fontSize: 13, fontFamily: 'var(--font-body)', border: assists === a ? '2px solid var(--green)' : '1px solid var(--border)', borderRadius: 6, background: assists === a ? 'rgba(57,181,74,0.10)' : 'transparent', color: assists === a ? 'var(--green)' : 'var(--gray-mid)', cursor: 'pointer', minHeight: 44 }}>{a}</button>
             ))}
           </div>
         </div>
