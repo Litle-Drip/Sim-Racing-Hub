@@ -12,6 +12,9 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const app: Express = express();
 
@@ -87,5 +90,20 @@ app.use(
 );
 
 app.use("/api", router);
+
+// Serve the compiled web app in production
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const webAppDir = process.env.WEB_APP_DIR ||
+  path.resolve(__dirname, "../../sim-racing-hq/dist/public");
+
+if (existsSync(webAppDir)) {
+  app.use(express.static(webAppDir));
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(webAppDir, "index.html"));
+  });
+  logger.info({ webAppDir }, "Serving web app static files");
+} else {
+  logger.warn({ webAppDir }, "Web app build not found — API-only mode");
+}
 
 export default app;
