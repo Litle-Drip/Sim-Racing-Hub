@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { db, sessionsTable, apiKeysTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
@@ -263,44 +263,58 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
     const sessionDate =
       body.date ?? new Date().toISOString().slice(0, 10);
 
-    await db.insert(sessionsTable).values({
-      id: sessionId,
-      userId,
-      date: sessionDate,
-      trackId: body.track,
-      car: body.car,
-      type: body.sessionType,
-      bestLap,
-      avgLap,
-      worstLap,
-      s1,
-      s2,
-      s3,
-      tires: body.tyreCompound ?? "",
-      fuelLoad: body.fuelRemaining ?? 0,
-      conditions: body.weather ?? "",
-      assists: body.assists ?? "",
-      rating: body.rating ?? 0,
-      notes: body.notes ?? "",
-      penalty: body.penalty ?? "",
-      gameVersion: body.gameVersion ?? "",
-      platform: body.platform ?? "",
-      inputDevice: body.inputDevice ?? "",
-      position: body.position ?? "",
-      isPB: false,
-      isPublic: false,
-      laps: laps.length > 0 ? JSON.parse(JSON.stringify(laps)) : null,
-    }).onConflictDoNothing();
+    try {
+      await db.insert(sessionsTable).values({
+        id: sessionId,
+        userId,
+        date: sessionDate,
+        trackId: body.track,
+        car: body.car,
+        type: body.sessionType,
+        bestLap,
+        avgLap,
+        worstLap,
+        s1,
+        s2,
+        s3,
+        tires: body.tyreCompound ?? "",
+        fuelLoad: body.fuelRemaining ?? 0,
+        conditions: body.weather ?? "",
+        assists: body.assists ?? "",
+        rating: body.rating ?? 0,
+        notes: body.notes ?? "",
+        penalty: body.penalty ?? "",
+        gameVersion: body.gameVersion ?? "",
+        platform: body.platform ?? "",
+        inputDevice: body.inputDevice ?? "",
+        position: body.position ?? "",
+        isPB: false,
+        isPublic: false,
+        laps: laps.length > 0 ? JSON.parse(JSON.stringify(laps)) : null,
+      });
+    } catch (insertErr: unknown) {
+      const msg = insertErr instanceof Error ? insertErr.message : String(insertErr);
+      if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("23505")) {
+        res.status(409).json({ error: "Session with this id already exists" });
+        return;
+      }
+      throw insertErr;
+    }
 
     await recalcPBsForUser(userId);
 
     const [created] = await db
       .select()
       .from(sessionsTable)
-      .where(eq(sessionsTable.id, sessionId))
+      .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.userId, userId)))
       .limit(1);
 
-    res.status(201).json(created ? serializeSession(created) : { id: sessionId });
+    if (!created) {
+      res.status(500).json({ error: "Session insert succeeded but row not found" });
+      return;
+    }
+
+    res.status(201).json(serializeSession(created));
   } catch (err) {
     req.log.error({ err }, "POST /companion/session failed");
     res.status(500).json({ error: "Internal server error" });
