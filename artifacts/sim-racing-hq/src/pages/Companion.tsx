@@ -211,12 +211,69 @@ export default function Companion() {
           Download
         </div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 16 }}>
-          The companion app is an Electron desktop app for Windows and macOS. It runs in your system tray, reads UDP telemetry from F1 25, and silently uploads sessions when you exit a session.
+          The companion app is a desktop app for Windows and macOS. It runs in your system tray, reads UDP telemetry from F1 25, and silently uploads sessions when you exit.
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray)', padding: '6px 14px', border: '1px solid var(--border)', borderRadius: 3 }}>
-            Coming soon — Windows &amp; macOS
-          </span>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <a
+            href="https://github.com/f1simhub/companion/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontFamily: 'var(--font-display)',
+              fontSize: 12,
+              letterSpacing: '0.06em',
+              color: 'var(--white)',
+              background: 'var(--red)',
+              padding: '8px 16px',
+              borderRadius: 3,
+              textDecoration: 'none',
+            }}
+          >
+            ↓ Windows (x64)
+          </a>
+          <a
+            href="https://github.com/f1simhub/companion/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontFamily: 'var(--font-display)',
+              fontSize: 12,
+              letterSpacing: '0.06em',
+              color: 'var(--white)',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              padding: '8px 16px',
+              borderRadius: 3,
+              textDecoration: 'none',
+            }}
+          >
+            ↓ macOS (Universal)
+          </a>
+          <a
+            href="https://github.com/f1simhub/companion/releases"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              fontFamily: 'var(--font-body)',
+              fontSize: 12,
+              color: 'var(--gray-mid)',
+              padding: '8px 12px',
+              textDecoration: 'none',
+            }}
+          >
+            All releases →
+          </a>
+        </div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', lineHeight: 1.6 }}>
+          <strong style={{ color: 'var(--gray-mid)' }}>Note:</strong> Builds are currently unsigned. Windows may show a SmartScreen prompt — click <em>More info → Run anyway</em>. On macOS, right-click the DMG and choose <em>Open</em>.
         </div>
       </div>
 

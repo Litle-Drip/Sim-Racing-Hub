@@ -19,6 +19,7 @@ export interface CompanionSettings {
 }
 
 export interface CompanionAPI {
+  getVersion(): Promise<string>;
   getStatus(): Promise<CompanionStatus>;
   getSettings(): Promise<CompanionSettings>;
   setSettings(partial: Partial<CompanionSettings>): Promise<void>;
@@ -27,10 +28,12 @@ export interface CompanionAPI {
   onStatusUpdate(cb: (status: CompanionStatus) => void): () => void;
   openF1SimHub(): Promise<void>;
   openLogFile(): Promise<void>;
+  openReleasesPage(): Promise<void>;
   forceFlush(): Promise<void>;
 }
 
 const api: CompanionAPI = {
+  getVersion: () => ipcRenderer.invoke("get-version"),
   getStatus: () => ipcRenderer.invoke("get-status"),
   getSettings: () => ipcRenderer.invoke("get-settings"),
   setSettings: (partial) => ipcRenderer.invoke("set-settings", partial),
@@ -43,6 +46,7 @@ const api: CompanionAPI = {
   },
   openF1SimHub: () => ipcRenderer.invoke("open-f1simhub"),
   openLogFile: () => ipcRenderer.invoke("open-log-file"),
+  openReleasesPage: () => ipcRenderer.invoke("open-releases-page"),
   forceFlush: () => ipcRenderer.invoke("force-flush"),
 };
 

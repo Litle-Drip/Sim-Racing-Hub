@@ -75,6 +75,11 @@ export default function Settings({ onBack }: Props): React.ReactElement {
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
   const [portInput, setPortInput] = useState("");
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.companion.getVersion().then(setVersion).catch(() => setVersion(null));
+  }, []);
 
   useEffect(() => {
     window.companion.getSettings().then((s) => {
@@ -272,7 +277,7 @@ export default function Settings({ onBack }: Props): React.ReactElement {
         />
 
         {/* Logs */}
-        <div style={{ padding: "14px 20px", borderTop: "1px solid #1e1e1e", marginTop: 4 }}>
+        <div style={{ padding: "14px 20px", borderTop: "1px solid #1e1e1e", marginTop: 4, display: "flex", flexDirection: "column", gap: 8 }}>
           <button
             onClick={() => window.companion.openLogFile()}
             style={{
@@ -287,7 +292,30 @@ export default function Settings({ onBack }: Props): React.ReactElement {
           >
             View Logs
           </button>
+          <button
+            onClick={() => window.companion.openReleasesPage()}
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: "#1a1a1a",
+              border: "1px solid #2a2a2a",
+              borderRadius: 8,
+              color: "#555",
+              fontSize: 12,
+            }}
+          >
+            Check for Updates
+          </button>
         </div>
+
+        {/* Version footer */}
+        {version && (
+          <div style={{ padding: "8px 20px 16px", textAlign: "center" }}>
+            <span style={{ fontSize: 10, color: "#333", fontFamily: "monospace" }}>
+              v{version}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

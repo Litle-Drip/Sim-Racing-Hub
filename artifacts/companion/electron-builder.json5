@@ -2,6 +2,7 @@
   appId: "com.f1simhub.companion",
   productName: "F1SimHub Companion",
   copyright: "Copyright © 2025 F1SimHub",
+  icon: "resources/icon",
   directories: {
     buildResources: "resources",
     output: "dist"
@@ -18,20 +19,23 @@
     target: [{ target: "nsis", arch: ["x64"] }]
   },
   nsis: {
-    artifactName: "${name}-${version}-setup.${ext}",
+    artifactName: "f1simhub-companion-${version}-setup.${ext}",
     shortcutName: "${productName}",
     uninstallDisplayName: "${productName}",
     createDesktopShortcut: "always"
   },
   mac: {
     target: [
-      { target: "dmg", arch: ["x64", "arm64"] }
+      { target: "dmg", arch: ["universal"] }
     ],
     entitlementsInherit: "resources/entitlements.mac.plist",
     extendInfo: [
       { NSCameraUsageDescription: "Not used." },
       { NSMicrophoneUsageDescription: "Not used." }
     ]
+  },
+  dmg: {
+    artifactName: "f1simhub-companion-${version}-universal.${ext}"
   },
   linux: {
     target: ["AppImage", "snap", "deb"],

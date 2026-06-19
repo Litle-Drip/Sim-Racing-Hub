@@ -125,6 +125,8 @@ function startGameWatchdog(): void {
 
 // ─── IPC handlers ─────────────────────────────────────────────────────────────
 
+ipcMain.handle("get-version", () => app.getVersion());
+
 ipcMain.handle("get-status", () => buildStatus());
 
 ipcMain.handle("get-settings", () => ({
@@ -195,6 +197,10 @@ ipcMain.handle("open-f1simhub", () => {
 ipcMain.handle("open-log-file", () => {
   // Open the specific log file, not just the directory
   shell.openPath(getLogFilePath());
+});
+
+ipcMain.handle("open-releases-page", () => {
+  shell.openExternal("https://github.com/f1simhub/companion/releases/latest");
 });
 
 function getLogFilePath(): string {
