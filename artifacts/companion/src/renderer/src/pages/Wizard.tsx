@@ -35,8 +35,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
 
   useEffect(() => {
     if (step === 2) {
-      // Get local IPs via the OS
-      setLocalIPs(["Check your network settings for your local IP"]);
+      window.companion.getLocalIPs().then(setLocalIPs);
     }
     if (step === 3) {
       setWaitingForPacket(true);

@@ -196,6 +196,10 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
   };
 }
 
+router.get("/companion/verify", requireApiKey, (_req: Request, res: Response) => {
+  res.json({ ok: true });
+});
+
 router.post("/companion/session", requireApiKey, async (req: Request, res: Response) => {
   try {
     const userId = (req as ApiKeyRequest).companionUserId;

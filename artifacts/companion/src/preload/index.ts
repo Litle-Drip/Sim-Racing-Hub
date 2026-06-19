@@ -23,6 +23,7 @@ export interface CompanionAPI {
   getSettings(): Promise<CompanionSettings>;
   setSettings(partial: Partial<CompanionSettings>): Promise<void>;
   verifyApiKey(key: string): Promise<boolean>;
+  getLocalIPs(): Promise<string[]>;
   onStatusUpdate(cb: (status: CompanionStatus) => void): () => void;
   openF1SimHub(): Promise<void>;
   openLogFile(): Promise<void>;
@@ -34,6 +35,7 @@ const api: CompanionAPI = {
   getSettings: () => ipcRenderer.invoke("get-settings"),
   setSettings: (partial) => ipcRenderer.invoke("set-settings", partial),
   verifyApiKey: (key) => ipcRenderer.invoke("verify-api-key", key),
+  getLocalIPs: () => ipcRenderer.invoke("get-local-ips"),
   onStatusUpdate: (cb) => {
     const handler = (_: Electron.IpcRendererEvent, status: CompanionStatus): void => cb(status);
     ipcRenderer.on("status-update", handler);

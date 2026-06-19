@@ -8,6 +8,7 @@ import {
   nativeImage,
 } from "electron";
 import { join } from "path";
+import { networkInterfaces, tmpdir } from "os";
 import { store } from "./store";
 import { UdpListener } from "./udp";
 import { SessionTracker } from "./session";
@@ -164,7 +165,7 @@ ipcMain.handle("set-settings", async (_event, partial: Record<string, unknown>) 
 
 ipcMain.handle("verify-api-key", async (_event, key: string) => {
   try {
-    const resp = await fetch(`${store.get("apiBaseUrl")}/healthz`, {
+    const resp = await fetch(`${store.get("apiBaseUrl")}/companion/verify`, {
       headers: { Authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(8000),
     });
@@ -174,13 +175,35 @@ ipcMain.handle("verify-api-key", async (_event, key: string) => {
   }
 });
 
+ipcMain.handle("get-local-ips", () => {
+  const ifaces = networkInterfaces();
+  const ips: string[] = [];
+  for (const name of Object.keys(ifaces)) {
+    for (const iface of ifaces[name] ?? []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        ips.push(iface.address);
+      }
+    }
+  }
+  return ips.length > 0 ? ips : ["127.0.0.1"];
+});
+
 ipcMain.handle("open-f1simhub", () => {
   shell.openExternal("https://f1simhub.com");
 });
 
 ipcMain.handle("open-log-file", () => {
-  shell.openPath(app.getPath("logs"));
+  // Open the specific log file, not just the directory
+  shell.openPath(getLogFilePath());
 });
+
+function getLogFilePath(): string {
+  try {
+    return join(app.getPath("logs"), "companion.log");
+  } catch {
+    return join(tmpdir(), "companion.log");
+  }
+}
 
 ipcMain.handle("force-flush", async () => {
   tracker.forceFlush();
