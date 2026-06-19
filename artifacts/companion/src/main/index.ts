@@ -247,8 +247,30 @@ function createWindow(): BrowserWindow {
 
 // ─── Tray ─────────────────────────────────────────────────────────────────────
 
+function createTrayIcon(): Electron.NativeImage {
+  // Build a 16×16 teal (#00D4B4) square with rounded feel as RGBA buffer.
+  // This avoids needing external icon asset files in dev/Replit — replace with
+  // proper .ico / .icns files in resources/ for production packaging.
+  const size = 16;
+  const rgba = Buffer.alloc(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      // Rounded corners: leave corners transparent
+      const cx = Math.abs(x - 7.5);
+      const cy = Math.abs(y - 7.5);
+      const inCircle = Math.sqrt(cx * cx + cy * cy) <= 7;
+      rgba[i + 0] = 0;    // R
+      rgba[i + 1] = 212;  // G
+      rgba[i + 2] = 177;  // B
+      rgba[i + 3] = inCircle ? 255 : 0; // A
+    }
+  }
+  return nativeImage.createFromBuffer(rgba, { width: size, height: size });
+}
+
 function createTray(): Tray {
-  const icon = nativeImage.createEmpty();
+  const icon = createTrayIcon();
   const t = new Tray(icon);
   t.setToolTip("F1SimHub Companion");
 

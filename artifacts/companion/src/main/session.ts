@@ -187,15 +187,53 @@ export class SessionTracker {
     const trackId = data.m_trackId ?? -1;
     const weather = data.m_weather ?? 0;
 
+    // sessionType 0 = Unknown (menus, lobby) — treat as end of active session
+    const isMenuState = sessionType === 0 || uid === "0";
+
     if (uid !== this.sessionUID) {
-      // New session — flush old one if it had laps
+      // Session UID changed → boundary, flush accumulated laps
       if (this.sessionUID !== null && this.validLaps.length > 0) {
         this.flushSession();
       }
-      this.sessionUID = uid;
+      if (!isMenuState) {
+        this.sessionUID = uid;
+        this.sessionType = sessionType;
+        this.trackId = trackId;
+        this.weather = weather;
+        this.validLaps = [];
+        this.pendingLap = null;
+        this.currentLapNum = 0;
+        this.onStatusChange?.();
+      } else {
+        // Player is in menus — clear state without starting a new session
+        this.sessionUID = null;
+        this.validLaps = [];
+        this.pendingLap = null;
+        this.currentLapNum = 0;
+        this.onStatusChange?.();
+      }
+    } else if (this.sessionUID !== null && isMenuState) {
+      // Session type transitioned to menu/unknown under same UID → session ended
+      if (this.validLaps.length > 0) {
+        this.flushSession();
+      } else {
+        this.sessionUID = null;
+        this.validLaps = [];
+        this.pendingLap = null;
+        this.currentLapNum = 0;
+      }
+      this.onStatusChange?.();
+    } else if (
+      this.sessionUID !== null &&
+      sessionType !== this.sessionType &&
+      this.sessionType !== 0 &&
+      sessionType !== 0
+    ) {
+      // Session type changed within same UID (e.g. Q1→Q2 or P1→Race) — flush and restart
+      if (this.validLaps.length > 0) {
+        this.flushSession();
+      }
       this.sessionType = sessionType;
-      this.trackId = trackId;
-      this.weather = weather;
       this.validLaps = [];
       this.pendingLap = null;
       this.currentLapNum = 0;
