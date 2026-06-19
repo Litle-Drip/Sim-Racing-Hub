@@ -1,0 +1,33 @@
+{
+  "name": "@workspace/companion",
+  "version": "0.0.1",
+  "description": "F1SimHub Companion — desktop app that listens to F1 25 UDP telemetry and auto-uploads sessions",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "package": "electron-builder --config electron-builder.json5"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.1",
+    "f1-telemetry-client": "^0.1.26"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "electron": "^34.5.1",
+    "electron-vite": "^3.1.0",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "^5.8.3",
+    "vite": "catalog:"
+  }
+}
