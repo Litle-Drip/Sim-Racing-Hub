@@ -1,1 +1,136 @@
-The user needs a clear explanation of both issues and the steps to fix them. I've already shown the workflow file content. Let me now write up a clean commit message and mark the task complete.
+name: Release Companion App
+
+on:
+  push:
+    tags:
+      - 'companion-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. companion-v1.0.0)'
+        required: true
+
+jobs:
+  build-windows:
+    name: Build Windows (x64 NSIS)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & package
+        working-directory: artifacts/companion
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          pnpm build
+          pnpm package --publish never
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/companion/dist/*.exe
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS (Universal DMG)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & package
+        working-directory: artifacts/companion
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          pnpm build
+          pnpm package --publish never
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: artifacts/companion/dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/
+
+      - name: Download macOS DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/
+
+      - name: Get version from tag
+        id: version
+        run: |
+          TAG="${{ github.ref_name || github.event.inputs.tag }}"
+          VERSION="${TAG#companion-}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || github.event.inputs.tag }}
+          name: F1SimHub Companion ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          body: |
+            ## F1SimHub Companion ${{ steps.version.outputs.version }}
+
+            Desktop app that reads live F1 25 UDP telemetry and automatically uploads your sessions.
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | Windows 10/11 (x64) | `f1simhub-companion-*-setup.exe` |
+            | macOS 12+ (Intel + Apple Silicon) | `f1simhub-companion-*-universal.dmg` |
+
+            ### Setup
+            1. Download and install the app for your platform.
+            2. Launch **F1SimHub Companion** — it will appear in your system tray.
+            3. Complete the setup wizard: paste your API key from [f1simhub.com/companion](https://f1simhub.com/companion).
+            4. Enable UDP telemetry in F1 25 (Settings → Telemetry Settings → UDP: On, Port: 20777).
+            5. Start a session — the companion uploads automatically when you exit.
+
+            > **Note:** These builds are unsigned. Windows may show a SmartScreen warning; click "More info → Run anyway". macOS users: right-click the DMG → Open.
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
