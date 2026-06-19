@@ -163,77 +163,122 @@ router.delete("/companion/apikey", requireAuth, async (req: Request, res: Respon
   }
 });
 
+function serializeSession(r: typeof sessionsTable.$inferSelect) {
+  return {
+    id: r.id,
+    date: r.date,
+    trackId: r.trackId,
+    car: r.car,
+    type: r.type,
+    bestLap: r.bestLap,
+    avgLap: r.avgLap,
+    worstLap: r.worstLap,
+    s1: r.s1,
+    s2: r.s2,
+    s3: r.s3,
+    tires: r.tires,
+    fuelLoad: r.fuelLoad,
+    conditions: r.conditions,
+    timeOfDay: r.timeOfDay ?? null,
+    assists: r.assists,
+    rating: r.rating,
+    notes: r.notes,
+    penalty: r.penalty,
+    gameVersion: r.gameVersion,
+    platform: r.platform,
+    inputDevice: r.inputDevice,
+    isPublic: r.isPublic,
+    sharedAt: r.sharedAt ? r.sharedAt.toISOString() : null,
+    publicNote: r.publicNote ?? null,
+    laps: r.laps ?? null,
+    isPB: r.isPB,
+    position: r.position ?? "",
+  };
+}
+
 router.post("/companion/session", requireApiKey, async (req: Request, res: Response) => {
   try {
     const userId = (req as ApiKeyRequest).companionUserId;
+
+    // Telemetry-style payload from the companion app
     const body = req.body as {
-      id: string;
-      date: string;
-      trackId: string;
-      car: string;
-      type: string;
-      laps?: LapRecord[];
-      bestLap?: string;
-      avgLap?: string;
-      worstLap?: string;
-      s1?: string;
-      s2?: string;
-      s3?: string;
-      tires?: string;
-      fuelLoad?: number;
-      conditions?: string;
+      // Telemetry fields (companion app convention)
+      sessionType?: string;
+      track?: string;
+      car?: string;
+      lapTime?: string;
+      sectors?: { s1?: string; s2?: string; s3?: string };
+      tyreCompound?: string;
+      fuelRemaining?: number;
+      weather?: string;
       assists?: string;
-      rating?: number;
-      notes?: string;
-      penalty?: string;
       gameVersion?: string;
       platform?: string;
       inputDevice?: string;
+      laps?: LapRecord[];
+      // Optional meta
+      id?: string;
+      date?: string;
       position?: string;
+      notes?: string;
+      rating?: number;
+      penalty?: string;
     };
 
-    if (!body.id || !body.date || !body.trackId || !body.car || !body.type) {
-      res.status(400).json({ error: "Missing required fields: id, date, trackId, car, type" });
+    // Require at minimum sessionType, track, and car
+    if (!body.sessionType || !body.track || !body.car) {
+      res.status(400).json({ error: "Missing required fields: sessionType, track, car" });
       return;
     }
 
-    const laps: LapRecord[] = body.laps ?? [];
-    let bestLap = body.bestLap ?? "";
-    let avgLap = body.avgLap ?? "";
-    let worstLap = body.worstLap ?? "";
-    let s1 = body.s1 ?? "";
-    let s2 = body.s2 ?? "";
-    let s3 = body.s3 ?? "";
+    const laps: LapRecord[] = (body.laps ?? []).filter(
+      l => l.time && l.time.trim() !== ""
+    );
 
-    if (laps.length > 0 && !bestLap) {
+    let bestLap = body.lapTime ?? "";
+    let avgLap = "";
+    let worstLap = "";
+    let s1 = body.sectors?.s1 ?? "";
+    let s2 = body.sectors?.s2 ?? "";
+    let s3 = body.sectors?.s3 ?? "";
+
+    if (laps.length > 0) {
       const summary = computeLapSummary(laps);
-      bestLap = summary.bestLap;
+      if (!bestLap || lapToSeconds(summary.bestLap) < lapToSeconds(bestLap)) {
+        bestLap = summary.bestLap;
+        const bestRecord = laps.find(
+          l => lapToSeconds(l.time) === lapToSeconds(bestLap)
+        );
+        if (bestRecord) {
+          s1 = bestRecord.s1 ?? s1;
+          s2 = bestRecord.s2 ?? s2;
+          s3 = bestRecord.s3 ?? s3;
+        }
+      }
       avgLap = summary.avgLap;
       worstLap = summary.worstLap;
-      const bestLapRecord = laps.find(l => lapToSeconds(l.time) === lapToSeconds(bestLap));
-      if (bestLapRecord) {
-        s1 = bestLapRecord.s1 ?? "";
-        s2 = bestLapRecord.s2 ?? "";
-        s3 = bestLapRecord.s3 ?? "";
-      }
     }
 
+    const sessionId = body.id ?? randomBytes(16).toString("hex");
+    const sessionDate =
+      body.date ?? new Date().toISOString().slice(0, 10);
+
     await db.insert(sessionsTable).values({
-      id: body.id,
+      id: sessionId,
       userId,
-      date: body.date,
-      trackId: body.trackId,
+      date: sessionDate,
+      trackId: body.track,
       car: body.car,
-      type: body.type,
+      type: body.sessionType,
       bestLap,
       avgLap,
       worstLap,
       s1,
       s2,
       s3,
-      tires: body.tires ?? "",
-      fuelLoad: body.fuelLoad ?? 0,
-      conditions: body.conditions ?? "",
+      tires: body.tyreCompound ?? "",
+      fuelLoad: body.fuelRemaining ?? 0,
+      conditions: body.weather ?? "",
       assists: body.assists ?? "",
       rating: body.rating ?? 0,
       notes: body.notes ?? "",
@@ -249,7 +294,13 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
 
     await recalcPBsForUser(userId);
 
-    res.status(201).json({ ok: true });
+    const [created] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.id, sessionId))
+      .limit(1);
+
+    res.status(201).json(created ? serializeSession(created) : { id: sessionId });
   } catch (err) {
     req.log.error({ err }, "POST /companion/session failed");
     res.status(500).json({ error: "Internal server error" });

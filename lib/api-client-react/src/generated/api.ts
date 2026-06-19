@@ -25,7 +25,6 @@ import type {
   CompanionApiKeyResponse,
   CompanionApiKeyStatus,
   CompanionSessionRequest,
-  CompanionSessionResponse,
   CreateHardwareRequest,
   CreateSessionRequest,
   CreateSetupRequest,
@@ -1698,9 +1697,9 @@ export const getUploadCompanionSessionUrl = () => {
 /**
  * @summary Upload a session from the companion app (API key auth)
  */
-export const uploadCompanionSession = async (companionSessionRequest: CompanionSessionRequest, options?: RequestInit): Promise<CompanionSessionResponse> => {
+export const uploadCompanionSession = async (companionSessionRequest: CompanionSessionRequest, options?: RequestInit): Promise<SessionRecord> => {
 
-  return customFetch<CompanionSessionResponse>(getUploadCompanionSessionUrl(),
+  return customFetch<SessionRecord>(getUploadCompanionSessionUrl(),
   {
     ...options,
     method: 'POST',

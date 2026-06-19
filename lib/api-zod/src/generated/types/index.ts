@@ -11,7 +11,7 @@ export * from './communitySetupRecord';
 export * from './companionApiKeyResponse';
 export * from './companionApiKeyStatus';
 export * from './companionSessionRequest';
-export * from './companionSessionResponse';
+export * from './companionSessionSectors';
 export * from './cornerNote';
 export * from './createHardwareRequest';
 export * from './createSessionRequest';

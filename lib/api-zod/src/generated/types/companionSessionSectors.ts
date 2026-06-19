@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface CompanionSessionResponse {
-  ok: boolean;
+export interface CompanionSessionSectors {
+  s1?: string;
+  s2?: string;
+  s3?: string;
 }

@@ -237,34 +237,32 @@ export interface CompanionApiKeyResponse {
   key: string;
 }
 
-export interface CompanionSessionRequest {
-  id: string;
-  date: string;
-  trackId: string;
-  car: string;
-  type: string;
-  laps?: LapRecord[];
-  bestLap?: string;
-  avgLap?: string;
-  worstLap?: string;
+export interface CompanionSessionSectors {
   s1?: string;
   s2?: string;
   s3?: string;
-  tires?: string;
-  fuelLoad?: number;
-  conditions?: string;
+}
+
+export interface CompanionSessionRequest {
+  sessionType: string;
+  track: string;
+  car: string;
+  lapTime?: string;
+  sectors?: CompanionSessionSectors;
+  tyreCompound?: string;
+  fuelRemaining?: number;
+  weather?: string;
   assists?: string;
-  rating?: number;
-  notes?: string;
-  penalty?: string;
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  laps?: LapRecord[];
+  id?: string;
+  date?: string;
   position?: string;
-}
-
-export interface CompanionSessionResponse {
-  ok: boolean;
+  notes?: string;
+  rating?: number;
+  penalty?: string;
 }
 
 export interface TrackNotesRecord {

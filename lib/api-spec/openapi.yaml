@@ -482,11 +482,11 @@ paths:
               $ref: "#/components/schemas/CompanionSessionRequest"
       responses:
         "201":
-          description: Session uploaded
+          description: Session uploaded — returns the created session record
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CompanionSessionResponse"
+                $ref: "#/components/schemas/SessionRecord"
         "400":
           $ref: "#/components/responses/NotFound"
         "401":
@@ -1147,48 +1147,36 @@ components:
       required:
         - key
 
-    CompanionSessionRequest:
+    CompanionSessionSectors:
       type: object
       properties:
-        id:
-          type: string
-        date:
-          type: string
-        trackId:
-          type: string
-        car:
-          type: string
-        type:
-          type: string
-        laps:
-          type: array
-          items:
-            $ref: "#/components/schemas/LapRecord"
-        bestLap:
-          type: string
-        avgLap:
-          type: string
-        worstLap:
-          type: string
         s1:
           type: string
         s2:
           type: string
         s3:
           type: string
-        tires:
+
+    CompanionSessionRequest:
+      type: object
+      properties:
+        sessionType:
           type: string
-        fuelLoad:
+        track:
+          type: string
+        car:
+          type: string
+        lapTime:
+          type: string
+        sectors:
+          $ref: "#/components/schemas/CompanionSessionSectors"
+        tyreCompound:
+          type: string
+        fuelRemaining:
           type: number
-        conditions:
+        weather:
           type: string
         assists:
-          type: string
-        rating:
-          type: integer
-        notes:
-          type: string
-        penalty:
           type: string
         gameVersion:
           type: string
@@ -1196,22 +1184,26 @@ components:
           type: string
         inputDevice:
           type: string
+        laps:
+          type: array
+          items:
+            $ref: "#/components/schemas/LapRecord"
+        id:
+          type: string
+        date:
+          type: string
         position:
           type: string
+        notes:
+          type: string
+        rating:
+          type: integer
+        penalty:
+          type: string
       required:
-        - id
-        - date
-        - trackId
+        - sessionType
+        - track
         - car
-        - type
-
-    CompanionSessionResponse:
-      type: object
-      properties:
-        ok:
-          type: boolean
-      required:
-        - ok
 
     TrackNotesRecord:
       type: object

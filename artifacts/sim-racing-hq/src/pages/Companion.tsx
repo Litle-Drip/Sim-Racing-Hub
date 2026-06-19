@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@clerk/react';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api';
@@ -99,9 +99,9 @@ export default function Companion() {
     }
   }, [getToken]);
 
-  useState(() => {
+  useEffect(() => {
     loadStatus();
-  });
+  }, [loadStatus]);
 
   return (
     <div className="page" style={{ maxWidth: 720, margin: '0 auto' }}>

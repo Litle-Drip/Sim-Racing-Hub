@@ -444,11 +444,22 @@ export const GenerateCompanionApiKeyResponse = zod.object({
  * @summary Upload a session from the companion app (API key auth)
  */
 export const UploadCompanionSessionBody = zod.object({
-  "id": zod.string(),
-  "date": zod.string(),
-  "trackId": zod.string(),
+  "sessionType": zod.string(),
+  "track": zod.string(),
   "car": zod.string(),
-  "type": zod.string(),
+  "lapTime": zod.string().optional(),
+  "sectors": zod.object({
+  "s1": zod.string().optional(),
+  "s2": zod.string().optional(),
+  "s3": zod.string().optional()
+}).optional(),
+  "tyreCompound": zod.string().optional(),
+  "fuelRemaining": zod.coerce.number().optional(),
+  "weather": zod.string().optional(),
+  "assists": zod.string().optional(),
+  "gameVersion": zod.string().optional(),
+  "platform": zod.string().optional(),
+  "inputDevice": zod.string().optional(),
   "laps": zod.array(zod.object({
   "lap": zod.coerce.number(),
   "time": zod.string(),
@@ -458,23 +469,12 @@ export const UploadCompanionSessionBody = zod.object({
   "tires": zod.string(),
   "penalty": zod.string()
 })).optional(),
-  "bestLap": zod.string().optional(),
-  "avgLap": zod.string().optional(),
-  "worstLap": zod.string().optional(),
-  "s1": zod.string().optional(),
-  "s2": zod.string().optional(),
-  "s3": zod.string().optional(),
-  "tires": zod.string().optional(),
-  "fuelLoad": zod.coerce.number().optional(),
-  "conditions": zod.string().optional(),
-  "assists": zod.string().optional(),
-  "rating": zod.coerce.number().optional(),
+  "id": zod.string().optional(),
+  "date": zod.string().optional(),
+  "position": zod.string().optional(),
   "notes": zod.string().optional(),
-  "penalty": zod.string().optional(),
-  "gameVersion": zod.string().optional(),
-  "platform": zod.string().optional(),
-  "inputDevice": zod.string().optional(),
-  "position": zod.string().optional()
+  "rating": zod.coerce.number().optional(),
+  "penalty": zod.string().optional()
 })
 
 
