@@ -98,7 +98,7 @@ const webAppDir = process.env.WEB_APP_DIR ||
 
 if (existsSync(webAppDir)) {
   app.use(express.static(webAppDir));
-  app.get("*", (_req, res) => {
+  app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(webAppDir, "index.html"));
   });
   logger.info({ webAppDir }, "Serving web app static files");
