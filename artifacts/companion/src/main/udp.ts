@@ -27,7 +27,7 @@ export class UdpListener extends EventEmitter {
     if (port !== undefined) this.port = port;
 
     try {
-      this.client = new F1TelemetryClient({ port: this.port, forwardAddresses: [] });
+      this.client = new F1TelemetryClient({ port: this.port, address: '0.0.0.0', forwardAddresses: [] });
 
       this.client.on(PACKETS.session, (data: unknown) => {
         this._lastPacketAt = Date.now();
