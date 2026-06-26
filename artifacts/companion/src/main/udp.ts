@@ -1,10 +1,8 @@
 import { EventEmitter } from "events";
-import { F1TelemetryClient, constants } from "f1-telemetry-client";
-
-const { PACKETS } = constants;
+import * as dgram from "dgram";
 
 export class UdpListener extends EventEmitter {
-  private client: F1TelemetryClient | null = null;
+  private socket: dgram.Socket | null = null;
   private port: number;
   private _isRunning = false;
   private _lastPacketAt = 0;
@@ -14,70 +12,75 @@ export class UdpListener extends EventEmitter {
     this.port = port;
   }
 
-  get isRunning(): boolean {
-    return this._isRunning;
-  }
-
-  get lastPacketAt(): number {
-    return this._lastPacketAt;
-  }
+  get isRunning(): boolean { return this._isRunning; }
+  get lastPacketAt(): number { return this._lastPacketAt; }
 
   async start(port?: number): Promise<void> {
     if (this._isRunning) await this.stop();
     if (port !== undefined) this.port = port;
 
-    try {
-      this.client = new F1TelemetryClient({ port: this.port, address: '0.0.0.0', forwardAddresses: [] });
+    return new Promise((resolve, reject) => {
+      const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
+      this.socket = socket;
 
-      this.client.on(PACKETS.session, (data: unknown) => {
-        this._lastPacketAt = Date.now();
-        this.emit("session", data);
+      socket.on("error", (err) => {
+        this._isRunning = false;
+        this.emit("error", err);
+        reject(err);
       });
 
-      this.client.on(PACKETS.lapData, (data: unknown) => {
-        this._lastPacketAt = Date.now();
-        this.emit("lapData", data);
+      socket.on("listening", () => {
+        socket.setBroadcast(true);
+        this._isRunning = true;
+        this.emit("started", this.port);
+        resolve();
       });
 
-      this.client.on(PACKETS.carStatus, (data: unknown) => {
+      socket.on("message", (msg) => {
         this._lastPacketAt = Date.now();
-        this.emit("carStatus", data);
+        this.handlePacket(msg);
       });
 
-      this.client.on(PACKETS.participants, (data: unknown) => {
-        this._lastPacketAt = Date.now();
-        this.emit("participants", data);
-      });
+      socket.bind({ port: this.port, address: "0.0.0.0", exclusive: false });
+    });
+  }
 
-      this.client.on(PACKETS.finalClassification, (data: unknown) => {
-        this._lastPacketAt = Date.now();
-        this.emit("finalClassification", data);
-      });
+  private handlePacket(buf: Buffer): void {
+    if (buf.length < 24) return;
 
-      this.client.start();
-      this._isRunning = true;
-      this.emit("started", this.port);
-    } catch (err) {
-      this._isRunning = false;
-      this.emit("error", err);
-      throw err;
+    const packetFormat = buf.readUInt16LE(0);
+    const packetId = buf.readUInt8(6);
+
+    // Emit raw packet with type info so session tracker can handle it
+    this.emit("rawPacket", { packetFormat, packetId, data: buf });
+
+    // Emit named events based on packet ID (F1 2024 format)
+    switch (packetId) {
+      case 1: this.emit("session", { packetFormat, data: buf }); break;
+      case 2: this.emit("lapData", { packetFormat, data: buf }); break;
+      case 7: this.emit("carStatus", { packetFormat, data: buf }); break;
+      case 4: this.emit("participants", { packetFormat, data: buf }); break;
+      case 8: this.emit("finalClassification", { packetFormat, data: buf }); break;
     }
   }
 
   async stop(): Promise<void> {
-    if (this.client) {
-      try {
-        this.client.stop();
-      } catch {
-        // ignore
+    return new Promise((resolve) => {
+      if (this.socket) {
+        try {
+          this.socket.close(() => resolve());
+        } catch {
+          resolve();
+        }
+        this.socket = null;
+      } else {
+        resolve();
       }
-      this.client = null;
-    }
-    this._isRunning = false;
-    this.emit("stopped");
+      this._isRunning = false;
+      this.emit("stopped");
+    });
   }
 
-  /** True if a packet arrived within the last `windowMs` milliseconds. */
   isReceiving(windowMs = 5000): boolean {
     return this._isRunning && Date.now() - this._lastPacketAt < windowMs;
   }
