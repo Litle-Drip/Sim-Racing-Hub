@@ -14,7 +14,7 @@
     "package": "electron-builder --config electron-builder.json5 --publish never"
   },
   "dependencies": {
-    "electron-store": "^10.0.1",
+    "electron-store": "^^8.2.0",
     "f1-telemetry-client": "^0.1.26"
   },
   "devDependencies": {
