@@ -43,7 +43,7 @@ export class UdpListener extends EventEmitter {
         this.handlePacket(msg);
       });
 
-      socket.bind({ port: this.port, address: "0.0.0.0", exclusive: false }, () => {
+      socket.bind(this.port, "0.0.0.0", () => {
         socket.setBroadcast(true);
         this.socket = socket;
         this._isRunning = true;
