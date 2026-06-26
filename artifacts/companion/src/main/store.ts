@@ -11,7 +11,7 @@ export interface Settings {
 
 const defaults: Settings = {
   apiKey: "",
-  apiBaseUrl: "https://www.f1simhub.com/api",
+  apiBaseUrl: "https://sim-racing-hub.onrender.com/api",
   port: 20777,
   launchAtStartup: false,
   minimizeToTray: false,
