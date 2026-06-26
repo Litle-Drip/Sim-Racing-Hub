@@ -11,7 +11,7 @@ export interface Settings {
 
 const defaults: Settings = {
   apiKey: "",
-  apiBaseUrl: "https://f1simhub.com/api",
+  apiBaseUrl: "https://www.f1simhub.com/api",
   port: 20777,
   launchAtStartup: false,
   minimizeToTray: false,
