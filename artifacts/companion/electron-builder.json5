@@ -28,7 +28,9 @@
     target: [
       { target: "dmg", arch: ["universal"] }
     ],
-    entitlementsInherit: "resources/entitlements.mac.plist",
+    hardenedRuntime: false,
+    entitlements: "entitlements.mac.plist",
+    entitlementsInherit: "entitlements.mac.plist",
     extendInfo: [
       { NSCameraUsageDescription: "Not used." },
       { NSMicrophoneUsageDescription: "Not used." }
