@@ -19,7 +19,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       - name: Build companion
@@ -48,7 +48,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       - name: Build companion
