@@ -75,7 +75,6 @@ export class UdpListener extends EventEmitter {
   }
 
   private handlePacket(buf: Buffer): void {
-    console.log('PKT len=' + buf.length + ' bytes=' + buf.slice(0,10).toString('hex'));
     if (buf.length < HEADER_SIZE) return;
     
     const packetId = buf.readUInt8(6);
