@@ -1,6 +1,16 @@
 import { EventEmitter } from "events";
 import * as dgram from "dgram";
 
+// F1 2024 UDP spec constants
+const HEADER_SIZE = 29;
+const NUM_CARS = 22;
+
+// Per-car struct sizes (bytes)
+const LAP_DATA_SIZE = 57;
+const CAR_STATUS_SIZE = 55;
+const PARTICIPANT_SIZE = 59;
+const FINAL_CLASS_SIZE = 45;
+
 export class UdpListener extends EventEmitter {
   private socket: dgram.Socket | null = null;
   private port: number;
@@ -21,7 +31,6 @@ export class UdpListener extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
-      this.socket = socket;
 
       socket.on("error", (err) => {
         this._isRunning = false;
@@ -29,39 +38,19 @@ export class UdpListener extends EventEmitter {
         reject(err);
       });
 
-      socket.on("listening", () => {
-        socket.setBroadcast(true);
-        this._isRunning = true;
-        this.emit("started", this.port);
-        resolve();
-      });
-
-      socket.on("message", (msg) => {
+      socket.on("message", (msg: Buffer) => {
         this._lastPacketAt = Date.now();
         this.handlePacket(msg);
       });
 
-      socket.bind({ port: this.port, address: "0.0.0.0", exclusive: false });
+      socket.bind({ port: this.port, address: "0.0.0.0", exclusive: false }, () => {
+        socket.setBroadcast(true);
+        this.socket = socket;
+        this._isRunning = true;
+        this.emit("started", this.port);
+        resolve();
+      });
     });
-  }
-
-  private handlePacket(buf: Buffer): void {
-    if (buf.length < 24) return;
-
-    const packetFormat = buf.readUInt16LE(0);
-    const packetId = buf.readUInt8(6);
-
-    // Emit raw packet with type info so session tracker can handle it
-    this.emit("rawPacket", { packetFormat, packetId, data: buf });
-
-    // Emit named events based on packet ID (F1 2024 format)
-    switch (packetId) {
-      case 1: this.emit("session", { packetFormat, data: buf }); break;
-      case 2: this.emit("lapData", { packetFormat, data: buf }); break;
-      case 7: this.emit("carStatus", { packetFormat, data: buf }); break;
-      case 4: this.emit("participants", { packetFormat, data: buf }); break;
-      case 8: this.emit("finalClassification", { packetFormat, data: buf }); break;
-    }
   }
 
   async stop(): Promise<void> {
@@ -83,5 +72,103 @@ export class UdpListener extends EventEmitter {
 
   isReceiving(windowMs = 5000): boolean {
     return this._isRunning && Date.now() - this._lastPacketAt < windowMs;
+  }
+
+  private handlePacket(buf: Buffer): void {
+    if (buf.length < HEADER_SIZE) return;
+
+    const packetId = buf.readUInt8(6);
+    const sessionUID = buf.readBigUInt64LE(7).toString();
+    const playerCarIndex = buf.readUInt8(27);
+
+    switch (packetId) {
+      case 1: this.parseSession(buf, sessionUID); break;
+      case 2: this.parseLapData(buf); break;
+      case 4: this.parseParticipants(buf, playerCarIndex); break;
+      case 7: this.parseCarStatus(buf); break;
+      case 8: this.parseFinalClassification(buf); break;
+    }
+  }
+
+  private parseSession(buf: Buffer, sessionUID: string): void {
+    if (buf.length < 606) return;
+    this.emit("session", {
+      m_sessionUID: sessionUID,
+      m_weather: buf.readUInt8(29),
+      m_sessionType: buf.readUInt8(35),
+      m_trackId: buf.readInt8(36),
+      m_aiDifficulty: buf.readUInt8(605),
+    });
+  }
+
+  private parseLapData(buf: Buffer): void {
+    if (buf.length < HEADER_SIZE + NUM_CARS * LAP_DATA_SIZE) return;
+    const m_lapData = [];
+    for (let i = 0; i < NUM_CARS; i++) {
+      const o = HEADER_SIZE + i * LAP_DATA_SIZE;
+      m_lapData.push({
+        m_lastLapTimeInMS: buf.readUInt32LE(o),
+        m_currentLapTimeInMS: buf.readUInt32LE(o + 4),
+        m_sector1TimeInMS: buf.readUInt16LE(o + 8),
+        m_sector2TimeInMS: buf.readUInt16LE(o + 11),
+        m_lapDistance: buf.readFloatLE(o + 20),
+        m_currentLapNum: buf.readUInt8(o + 33),
+        m_currentLapInvalid: buf.readUInt8(o + 37),
+        m_penalties: buf.readUInt8(o + 38),
+      });
+    }
+    this.emit("lapData", { m_lapData });
+  }
+
+  private parseParticipants(buf: Buffer, playerCarIndex: number): void {
+    if (buf.length < HEADER_SIZE + 1 + NUM_CARS * PARTICIPANT_SIZE) return;
+    const m_numActiveCars = buf.readUInt8(HEADER_SIZE);
+    const m_participants = [];
+    for (let i = 0; i < NUM_CARS; i++) {
+      const o = HEADER_SIZE + 1 + i * PARTICIPANT_SIZE;
+      const nameStart = o + 7;
+      const nameEnd = buf.indexOf(0, nameStart);
+      const nameLimit = nameStart + 48;
+      const m_name = buf.toString("utf8", nameStart, nameEnd === -1 || nameEnd > nameLimit ? nameLimit : nameEnd);
+      m_participants.push({
+        m_teamId: buf.readUInt8(o + 3),
+        m_myTeam: buf.readUInt8(o + 4),
+        m_name,
+      });
+    }
+    this.emit("participants", { m_numActiveCars, m_participants, m_playerCarIndex: playerCarIndex });
+  }
+
+  private parseCarStatus(buf: Buffer): void {
+    if (buf.length < HEADER_SIZE + NUM_CARS * CAR_STATUS_SIZE) return;
+    const m_carStatusData = [];
+    for (let i = 0; i < NUM_CARS; i++) {
+      const o = HEADER_SIZE + i * CAR_STATUS_SIZE;
+      m_carStatusData.push({
+        m_tractionControl: buf.readUInt8(o),
+        m_antiLockBrakes: buf.readUInt8(o + 1),
+        m_fuelRemainingLaps: buf.readFloatLE(o + 13),
+        m_visualTyreCompound: buf.readUInt8(o + 26),
+      });
+    }
+    this.emit("carStatus", { m_carStatusData });
+  }
+
+  private parseFinalClassification(buf: Buffer): void {
+    if (buf.length < HEADER_SIZE + 1 + NUM_CARS * FINAL_CLASS_SIZE) return;
+    const m_numCars = buf.readUInt8(HEADER_SIZE);
+    const m_classificationData = [];
+    for (let i = 0; i < NUM_CARS; i++) {
+      const o = HEADER_SIZE + 1 + i * FINAL_CLASS_SIZE;
+      m_classificationData.push({
+        m_position: buf.readUInt8(o),
+        m_numLaps: buf.readUInt8(o + 1),
+        m_gridPosition: buf.readUInt8(o + 2),
+        m_points: buf.readUInt8(o + 3),
+        m_numPitStops: buf.readUInt8(o + 4),
+        m_resultStatus: buf.readUInt8(o + 5),
+      });
+    }
+    this.emit("finalClassification", { m_numCars, m_classificationData });
   }
 }
