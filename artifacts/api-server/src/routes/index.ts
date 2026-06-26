@@ -6,6 +6,7 @@ import trackNotesRouter from "./trackNotes";
 import trackDifficultyRouter from "./trackDifficulty";
 import hardwareRouter from "./hardware";
 import communityRouter from "./community";
+import companionRouter from "./companion";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(trackNotesRouter);
 router.use(trackDifficultyRouter);
 router.use(hardwareRouter);
 router.use(communityRouter);
+router.use(companionRouter);
 
 export default router;

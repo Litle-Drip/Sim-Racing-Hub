@@ -35,7 +35,6 @@ export const GetSessionsResponseItem = zod.object({
   "tires": zod.string(),
   "fuelLoad": zod.number(),
   "conditions": zod.string(),
-  "timeOfDay": zod.string().nullish(),
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string(),
@@ -56,6 +55,7 @@ export const GetSessionsResponseItem = zod.object({
   "tires": zod.string(),
   "penalty": zod.string()
 })).nullish(),
+  "timeOfDay": zod.string().nullish(),
   "position": zod.string().optional()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
@@ -79,11 +79,11 @@ export const CreateSessionBody = zod.object({
   "tires": zod.string(),
   "fuelLoad": zod.coerce.number(),
   "conditions": zod.string(),
-  "timeOfDay": zod.string().optional(),
   "assists": zod.string(),
   "rating": zod.coerce.number(),
   "notes": zod.string(),
   "penalty": zod.string().optional(),
+  "timeOfDay": zod.string().optional(),
   "gameVersion": zod.string().optional(),
   "platform": zod.string().optional(),
   "inputDevice": zod.string().optional(),
@@ -263,12 +263,12 @@ export const GetCommunitySetupsResponseItem = zod.object({
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
   "notes": zod.string(),
-  "gameVersion": zod.string().nullish(),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
   "ratingCount": zod.number(),
-  "sharedAt": zod.string().nullish()
+  "sharedAt": zod.string().nullish(),
+  "gameVersion": zod.string().nullish()
 })
 export const GetCommunitySetupsResponse = zod.array(GetCommunitySetupsResponseItem)
 
@@ -300,12 +300,12 @@ export const GetCommunitySetupResponse = zod.object({
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
   "notes": zod.string(),
-  "gameVersion": zod.string().nullish(),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
   "ratingCount": zod.number(),
-  "sharedAt": zod.string().nullish()
+  "sharedAt": zod.string().nullish(),
+  "gameVersion": zod.string().nullish()
 })
 
 
@@ -392,7 +392,7 @@ export const DeleteHardwareParams = zod.object({
 
 
 /**
- * @summary Get all track difficulty ratings for current user
+ * @summary Get all track difficulty ratings for the current user
  */
 export const GetTrackDifficultyResponseItem = zod.object({
   "trackId": zod.string(),
@@ -402,21 +402,79 @@ export const GetTrackDifficultyResponse = zod.array(GetTrackDifficultyResponseIt
 
 
 /**
- * @summary Upsert a personal difficulty rating for a track
+ * @summary Set or clear a track difficulty rating
  */
-export const PutTrackDifficultyParams = zod.object({
+export const UpsertTrackDifficultyParams = zod.object({
   "trackId": zod.coerce.string()
 })
 
-export const putTrackDifficultyBodyRatingMax = 5;
+export const upsertTrackDifficultyBodyRatingMin = 0;
+export const upsertTrackDifficultyBodyRatingMax = 5;
 
-export const PutTrackDifficultyBody = zod.object({
-  "rating": zod.coerce.number().min(0).max(putTrackDifficultyBodyRatingMax)
+
+
+export const UpsertTrackDifficultyBody = zod.object({
+  "rating": zod.coerce.number().min(upsertTrackDifficultyBodyRatingMin).max(upsertTrackDifficultyBodyRatingMax)
 })
 
-export const PutTrackDifficultyResponse = zod.object({
+export const UpsertTrackDifficultyResponse = zod.object({
   "trackId": zod.string(),
   "rating": zod.number()
+})
+
+
+/**
+ * @summary Get API key status for the current user
+ */
+export const GetCompanionApiKeyStatusResponse = zod.object({
+  "hasKey": zod.boolean(),
+  "createdAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Generate (or regenerate) an API key for the current user
+ */
+export const GenerateCompanionApiKeyResponse = zod.object({
+  "key": zod.string()
+})
+
+
+/**
+ * @summary Upload a session from the companion app (API key auth)
+ */
+export const UploadCompanionSessionBody = zod.object({
+  "sessionType": zod.string(),
+  "track": zod.string(),
+  "car": zod.string(),
+  "lapTime": zod.string().optional(),
+  "sectors": zod.object({
+  "s1": zod.string().optional(),
+  "s2": zod.string().optional(),
+  "s3": zod.string().optional()
+}).optional(),
+  "tyreCompound": zod.string().optional(),
+  "fuelRemaining": zod.coerce.number().optional(),
+  "weather": zod.string().optional(),
+  "assists": zod.string().optional(),
+  "gameVersion": zod.string().optional(),
+  "platform": zod.string().optional(),
+  "inputDevice": zod.string().optional(),
+  "laps": zod.array(zod.object({
+  "lap": zod.coerce.number(),
+  "time": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "tires": zod.string(),
+  "penalty": zod.string()
+})).optional(),
+  "id": zod.string().optional(),
+  "date": zod.string().optional(),
+  "position": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "rating": zod.coerce.number().optional(),
+  "penalty": zod.string().optional()
 })
 
 

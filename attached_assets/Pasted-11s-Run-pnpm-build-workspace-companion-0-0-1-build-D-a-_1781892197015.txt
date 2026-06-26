@@ -1,0 +1,70 @@
+11s
+Run pnpm build
+
+> @workspace/companion@0.0.1 build D:\a\Sim-Racing-Hub\Sim-Racing-Hub\artifacts\companion
+> electron-vite build
+
+D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\rollup@4.60.3\node_modules\rollup\dist\native.js:115
+		throw new Error(
+		      ^
+
+Error: Cannot find module @rollup/rollup-win32-x64-msvc. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+    at requireWithFriendlyError (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\rollup@4.60.3\node_modules\rollup\dist\native.js:115:9)
+    at Object.<anonymous> (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\rollup@4.60.3\node_modules\rollup\dist\native.js:124:76)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at loadCJSModuleWithModuleLoad (node:internal/modules/esm/translators:335:3)
+    at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:235:7)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25) {
+  [cause]: Error: Cannot find module '@rollup/rollup-win32-x64-msvc'
+  Require stack:
+  - D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\rollup@4.60.3\node_modules\rollup\dist\native.js
+      at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)
+      at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)
+      at Function._load (node:internal/modules/cjs/loader:1216:25)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+      at Module.require (node:internal/modules/cjs/loader:1527:12)
+      at require (node:internal/modules/helpers:147:16)
+      at requireWithFriendlyError (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\rollup@4.60.3\node_modules\rollup\dist\native.js:97:10)
+      at Object.<anonymous> (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\rollup@4.60.3\node_modules\rollup\dist\native.js:124:76)
+      at Module._compile (node:internal/modules/cjs/loader:1781:14) {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [
+      'D:\\a\\Sim-Racing-Hub\\Sim-Racing-Hub\\node_modules\\.pnpm\\rollup@4.60.3\\node_modules\\rollup\\dist\\native.js'
+    ]
+  }
+}
+
+Node.js v22.22.3
+ ELIFECYCLE  Command failed with exit code 1.
+
+> @workspace/companion@0.0.1 package D:\a\Sim-Racing-Hub\Sim-Racing-Hub\artifacts\companion
+> electron-builder --config electron-builder.json5 --publish never "--publish" "never"
+
+  • electron-builder  version=25.1.8 os=10.0.26100
+  • loaded configuration  file=D:\a\Sim-Racing-Hub\Sim-Racing-Hub\artifacts\companion\electron-builder.json5
+  • author is missed in the package.json  appPackageFile=D:\a\Sim-Racing-Hub\Sim-Racing-Hub\artifacts\companion\package.json
+  • executing @electron/rebuild  electronVersion=34.5.8 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=34.5.8 appOutDir=dist\win-unpacked
+  • downloading     url=https://github.com/electron/electron/releases/download/v34.5.8/electron-v34.5.8-win32-x64.zip size=116 MB parts=8
+  • downloaded      url=https://github.com/electron/electron/releases/download/v34.5.8/electron-v34.5.8-win32-x64.zip duration=460ms
+  • updating asar integrity executable resource  executablePath=dist\win-unpacked\f1simhub-companion.exe
+  ⨯ Application entry file "out\main\index.js" in the "D:\a\Sim-Racing-Hub\Sim-Racing-Hub\artifacts\companion\dist\win-unpacked\resources\app.asar" does not exist. Seems like a wrong configuration.  failedTask=build stackTrace=Error: Application entry file "out\main\index.js" in the "D:\a\Sim-Racing-Hub\Sim-Racing-Hub\artifacts\companion\dist\win-unpacked\resources\app.asar" does not exist. Seems like a wrong configuration.
+    at error (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\asar\asarFileChecker.ts:7:12)
+    at checkFileInArchive (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\asar\asarFileChecker.ts:31:11)
+    at WinPackager.checkFileInPackage (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\platformPackager.ts:527:7)
+    at WinPackager.sanityCheckPackage (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\platformPackager.ts:575:5)
+    at WinPackager.doPack (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\platformPackager.ts:329:5)
+    at WinPackager.pack (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\platformPackager.ts:138:5)
+    at Packager.doBuild (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\packager.ts:459:9)
+    at executeFinally (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\builder-util@25.1.7\node_modules\builder-util\src\promise.ts:12:14)
+    at Packager.build (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\app-builder-lib@25.1.8_dmg-builder@25.1.8\node_modules\app-builder-lib\src\packager.ts:393:31)
+    at executeFinally (D:\a\Sim-Racing-Hub\Sim-Racing-Hub\node_modules\.pnpm\builder-util@25.1.7\node_modules\builder-util\src\promise.ts:12:14)
+ ELIFECYCLE  Command failed with exit code 1.
+Error: Process completed with exit code 1.

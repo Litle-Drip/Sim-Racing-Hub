@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: sim-racing-hub
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: >
+      npm install -g pnpm@10 &&
+      pnpm install &&
+      pnpm --filter @workspace/sim-racing-hq run build &&
+      pnpm --filter @workspace/api-server run build
+    startCommand: node --enable-source-maps ./artifacts/api-server/dist/index.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: VITE_CLERK_PUBLISHABLE_KEY
+        sync: false

@@ -26,10 +26,10 @@ export interface CommunitySetupRecord {
   onThrottle: string;
   offThrottle: string;
   notes: string;
-  gameVersion?: string | null;
   authorName: string;
   isOwn: boolean;
   avgRating?: number | null;
   ratingCount: number;
   sharedAt?: string | null;
+  gameVersion?: string | null;
 }

@@ -21,6 +21,8 @@ import PublicLeaderboard from './pages/PublicLeaderboard';
 import QuickLog from './pages/QuickLog';
 import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
+import Companion from './pages/Companion';
+import DownloadPage from './pages/DownloadPage';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -221,6 +223,9 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
           </button>
           <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/leaderboard')}>
             Leaderboard
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/download')}>
+            ↓ Download Companion App
           </button>
         </div>
       </div>
@@ -427,7 +432,7 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
 }
 
 const SHORTCUTS: Record<string, string> = {
-  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', c: 'community', a: 'account',
+  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', c: 'community', x: 'companion', a: 'account',
 };
 
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
@@ -518,6 +523,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
       case 'community': return <Community />;
+      case 'companion': return <Companion />;
       case 'account': return <Account />;
       default: return <Dashboard setPage={handleSetPage} />;
     }
@@ -651,6 +657,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/setups">{() => <PublicSetups onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/tracks">{() => <PublicTracks onBack={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/leaderboard">{() => <PublicLeaderboard onBack={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/download">{() => <DownloadPage />}</Route>
           <Route path="/log">{() => <QuickLog onDone={() => window.location.href = basePath || '/'} />}</Route>
           <Route path="/driver/:username">{(params) => <DriverProfile username={params.username} />}</Route>
           <Route component={HomeRoute} />

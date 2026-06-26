@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, trackDifficultyTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
-import { PutTrackDifficultyBody } from "@workspace/api-zod";
+import { UpsertTrackDifficultyBody } from "@workspace/api-zod";
 
 const router = Router();
 
@@ -24,7 +24,7 @@ router.get("/track-difficulty", requireAuth, async (req, res) => {
 router.put("/track-difficulty/:trackId", requireAuth, async (req, res) => {
   const userId = (req as AuthRequest).userId as string;
   const trackId = req.params.trackId as string;
-  const parsed = PutTrackDifficultyBody.safeParse(req.body);
+  const parsed = UpsertTrackDifficultyBody.safeParse(req.body);
 
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });

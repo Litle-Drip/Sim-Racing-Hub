@@ -1,0 +1,47 @@
+{
+  appId: "com.f1simhub.companion",
+  productName: "F1SimHub Companion",
+  copyright: "Copyright © 2025 F1SimHub",
+  icon: "resources/icon",
+  directories: {
+    buildResources: "resources",
+    output: "dist"
+  },
+  files: [
+    "!**/.vscode/*",
+    "!src/*",
+    "!electron.vite.config.{js,ts,mjs,cjs}",
+    "!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}",
+    "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
+  ],
+  win: {
+    executableName: "f1simhub-companion",
+    target: [{ target: "nsis", arch: ["x64"] }]
+  },
+  nsis: {
+    artifactName: "f1simhub-companion-${version}-setup.${ext}",
+    shortcutName: "${productName}",
+    uninstallDisplayName: "${productName}",
+    createDesktopShortcut: "always"
+  },
+  mac: {
+    target: [
+      { target: "dmg", arch: ["universal"] }
+    ],
+    hardenedRuntime: false,
+    entitlements: "entitlements.mac.plist",
+    entitlementsInherit: "entitlements.mac.plist",
+    extendInfo: [
+      { NSCameraUsageDescription: "Not used." },
+      { NSMicrophoneUsageDescription: "Not used." }
+    ]
+  },
+  dmg: {
+    artifactName: "f1simhub-companion-${version}-universal.${ext}"
+  },
+  linux: {
+    target: ["AppImage", "snap", "deb"],
+    maintainer: "f1simhub.com",
+    category: "Utility"
+  }
+}

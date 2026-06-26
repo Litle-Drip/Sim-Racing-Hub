@@ -1,5 +1,15 @@
 import { pgTable, text, integer, boolean, real, timestamp, jsonb, unique } from "drizzle-orm/pg-core";
 
+export const apiKeysTable = pgTable("api_keys", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().unique(),
+  keyHash: text("key_hash").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type DbApiKey = typeof apiKeysTable.$inferSelect;
+export type InsertDbApiKey = typeof apiKeysTable.$inferInsert;
+
 export const sessionsTable = pgTable("sessions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
