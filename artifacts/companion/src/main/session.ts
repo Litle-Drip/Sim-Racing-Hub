@@ -362,7 +362,7 @@ export class SessionTracker {
 
   // Called when the app detects the game disconnected or a force-upload is needed
   forceFlush(): void {
-    if (this.sessionUID && (this.validLaps.length > 0 || this.pendingLap !== null)) {
+    if (this.sessionUID && this.validLaps.length > 0) {
       this.flushSession();
     }
   }
