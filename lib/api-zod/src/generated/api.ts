@@ -121,6 +121,7 @@ export const GetSessionsResponseItem = zod.object({
   "drsActivations": zod.number().nullish(),
   "maxRpm": zod.number().nullish(),
   "topGear": zod.number().nullish(),
+  "fuelRemainingLaps": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
@@ -175,7 +176,8 @@ export const CreateSessionBody = zod.object({
   "avgBrakePct": zod.coerce.number().optional(),
   "drsActivations": zod.coerce.number().optional(),
   "maxRpm": zod.coerce.number().optional(),
-  "topGear": zod.coerce.number().optional()
+  "topGear": zod.coerce.number().optional(),
+  "fuelRemainingLaps": zod.coerce.number().optional()
 })
 
 
@@ -616,7 +618,8 @@ export const UploadCompanionSessionBody = zod.object({
   "avgBrakePct": zod.coerce.number().optional(),
   "drsActivations": zod.coerce.number().optional(),
   "maxRpm": zod.coerce.number().optional(),
-  "topGear": zod.coerce.number().optional()
+  "topGear": zod.coerce.number().optional(),
+  "fuelRemainingLaps": zod.coerce.number().optional()
 })
 
 

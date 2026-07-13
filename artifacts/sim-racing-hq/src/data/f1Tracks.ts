@@ -36,6 +36,21 @@ export const F1_TRACKS: F1Track[] = [
 
 export const TIRE_COMPOUNDS = ['Soft', 'Medium', 'Hard', 'Inter', 'Wet'];
 export const SESSION_TYPES = ['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'];
+
+/**
+ * Maps a session `type` string to a badge CSS class. Handles both the
+ * simple manual-entry values above (Practice/Qualifying/Race/Hotlap/Time
+ * Trial) and the detailed strings the companion app captures from live F1
+ * telemetry (e.g. "Practice 2", "Q3", "Sprint Shootout 1", "Race 2").
+ */
+export function getTypeBadgeClass(type: string): string {
+  const t = type.toLowerCase();
+  if (t.startsWith('race')) return 'badge-race';
+  if (t === 'time trial' || t === 'hotlap') return 'badge-hotlap';
+  if (t.startsWith('sprint') || t.startsWith('q') || t.includes('qualifying') || t === 'osq') return 'badge-qualifying';
+  if (t.startsWith('practice')) return 'badge-practice';
+  return 'badge-practice';
+}
 export const CONDITIONS = ['Dry', 'Light Cloud', 'Overcast', 'Light Rain', 'Heavy Rain', 'Storm'];
 export const TIME_OF_DAY = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
 export const ASSISTS = ['None', 'Partial', 'Full', 'Apex Line', 'Suggested Gear Shifts', 'Apex Line + Gear Shifts'];

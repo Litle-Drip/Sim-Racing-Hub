@@ -131,6 +131,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     drsActivations: r.drsActivations ?? null,
     maxRpm: r.maxRpm ?? null,
     topGear: r.topGear ?? null,
+    fuelRemainingLaps: r.fuelRemainingLaps ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -209,6 +210,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
       drsActivations: data.drsActivations ?? null,
       maxRpm: data.maxRpm ?? null,
       topGear: data.topGear ?? null,
+      fuelRemainingLaps: data.fuelRemainingLaps ?? null,
     });
 
     await recalcPBsForUser(userId);

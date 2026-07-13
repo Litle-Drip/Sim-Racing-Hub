@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   avg_brake_pct REAL,
   drs_activations INTEGER,
   max_rpm INTEGER,
-  top_gear INTEGER
+  top_gear INTEGER,
+  fuel_remaining_laps REAL
 );
 
 CREATE TABLE IF NOT EXISTS setups (
@@ -179,6 +180,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS avg_brake_pct REAL;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS drs_activations INTEGER;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS max_rpm INTEGER;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS top_gear INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS fuel_remaining_laps REAL;
 `;
 
 async function ensureDatabase(): Promise<void> {

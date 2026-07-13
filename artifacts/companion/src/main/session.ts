@@ -98,6 +98,7 @@ export interface SessionSnapshot {
   drsActivations?: number;
   maxRpm?: number;
   topGear?: number;
+  tyreCompound?: string;
 }
 
 const TRACK_NAMES: Record<number, string> = {
@@ -134,8 +135,14 @@ const TRACK_NAMES: Record<number, string> = {
   30: "Miami",
   31: "Las Vegas",
   32: "Lusail",
+  // F1 25 added reverse-layout circuits (new track ids, not present in F1 24)
+  39: "Silverstone Reverse",
+  40: "Austria Reverse",
+  41: "Zandvoort Reverse",
 };
 
+// F1 25 inserted 5 sprint-weekend session types before Race, shifting Race
+// from 10->15 and Time Trial from 13->18 versus the F1 24 UDP spec.
 const SESSION_TYPES: Record<number, string> = {
   0: "Unknown",
   1: "Practice 1",
@@ -147,10 +154,15 @@ const SESSION_TYPES: Record<number, string> = {
   7: "Q3",
   8: "Short Q",
   9: "OSQ",
-  10: "Race",
-  11: "Race 2",
-  12: "Race 3",
-  13: "Time Trial",
+  10: "Sprint Shootout 1",
+  11: "Sprint Shootout 2",
+  12: "Sprint Shootout 3",
+  13: "Short Sprint Shootout",
+  14: "OSQ Sprint Shootout",
+  15: "Race",
+  16: "Race 2",
+  17: "Race 3",
+  18: "Time Trial",
 };
 
 const WEATHER_NAMES: Record<number, string> = {
@@ -786,6 +798,7 @@ export class SessionTracker {
       drsActivations: this.drsActivations || undefined,
       maxRpm: this.maxRpm || undefined,
       topGear: this.topGear || undefined,
+      tyreCompound: this.lastTyreCompound > 0 ? TYRE_NAMES[this.lastTyreCompound] : undefined,
     };
 
     this.sessionUID = null;
