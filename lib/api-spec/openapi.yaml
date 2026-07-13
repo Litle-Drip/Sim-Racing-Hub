@@ -598,6 +598,26 @@ components:
         - lineNotes
         - myNotes
 
+    LapTraceSample:
+      type: object
+      properties:
+        d:
+          type: number
+        speed:
+          type: number
+        throttle:
+          type: number
+        brake:
+          type: number
+        steer:
+          type: number
+      required:
+        - d
+        - speed
+        - throttle
+        - brake
+        - steer
+
     LapRecord:
       type: object
       properties:
@@ -615,6 +635,11 @@ components:
           type: string
         penalty:
           type: string
+        trace:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapTraceSample"
       required:
         - lap
         - time

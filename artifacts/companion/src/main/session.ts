@@ -1,5 +1,13 @@
 // F1 25 UDP session & lap state machine
 
+export interface LapTraceSample {
+  d: number; // lap distance, metres
+  speed: number; // km/h
+  throttle: number; // 0-100
+  brake: number; // 0-100
+  steer: number; // -100 (full left) to 100 (full right)
+}
+
 export interface LapRecord {
   lap: number;
   time: string;
@@ -8,6 +16,7 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  trace?: LapTraceSample[];
 }
 
 export interface CarSetupSnapshot {
@@ -211,6 +220,7 @@ interface LapState {
   s1Ms: number;
   s2Ms: number;
   invalid: boolean;
+  trace: LapTraceSample[];
 }
 
 export class SessionTracker {
@@ -274,6 +284,13 @@ export class SessionTracker {
   private drsActivations = 0;
   private maxRpm = 0;
   private topGear = 0;
+
+  // Per-lap distance trace (speed/throttle/brake/steer vs. lap distance),
+  // sampled from CarTelemetry and downsampled by TRACE_SAMPLE_EVERY so a
+  // full lap stays a few hundred points instead of every raw packet.
+  private currentLapDistanceM = 0;
+  private telemetrySampleCounter = 0;
+  private static readonly TRACE_SAMPLE_EVERY = 3;
 
   onSessionComplete: ((session: SessionSnapshot) => void) | null = null;
   onLapComplete: ((lap: LapRecord) => void) | null = null;
@@ -407,6 +424,7 @@ export class SessionTracker {
     const s2Ms = lap.m_sector2TimeInMS ?? 0;
     const lastLapMs = lap.m_lastLapTimeInMS ?? 0;
     const penalties = lap.m_penalties ?? 0;
+    this.currentLapDistanceM = lap.m_lapDistance ?? 0;
 
     if (!this.pendingLap || lapNum !== this.pendingLap.lapNum) {
       if (this.pendingLap && this.pendingLap.lapNum > 0 && lastLapMs > 0) {
@@ -420,13 +438,15 @@ export class SessionTracker {
             s1, s2, s3,
             tires: TYRE_NAMES[this.lastTyreCompound] ?? "Unknown",
             penalty: penalties > 0 ? `${penalties}s` : "",
+            trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
           };
           this.validLaps.push(record);
           this.onLapComplete?.(record);
           this.onStatusChange?.();
         }
       }
-      this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid };
+      this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid, trace: [] };
+      this.telemetrySampleCounter = 0;
       this.currentLapNum = lapNum;
     } else {
       if (s1Ms > 0) this.pendingLap.s1Ms = s1Ms;
@@ -467,6 +487,7 @@ export class SessionTracker {
   handleCarTelemetryPacket(data: { m_carTelemetryData?: Array<{
     m_speed?: number;
     m_throttle?: number;
+    m_steer?: number;
     m_brake?: number;
     m_gear?: number;
     m_engineRPM?: number;
@@ -502,6 +523,19 @@ export class SessionTracker {
     this.drsWasActive = drsActive;
     if ((car.m_engineRPM ?? 0) > this.maxRpm) this.maxRpm = car.m_engineRPM ?? 0;
     if ((car.m_gear ?? 0) > this.topGear) this.topGear = car.m_gear ?? 0;
+
+    if (this.pendingLap && !this.pendingLap.invalid) {
+      this.telemetrySampleCounter++;
+      if (this.telemetrySampleCounter % SessionTracker.TRACE_SAMPLE_EVERY === 0) {
+        this.pendingLap.trace.push({
+          d: Math.round(this.currentLapDistanceM),
+          speed: car.m_speed ?? 0,
+          throttle: Math.round((car.m_throttle ?? 0) * 100),
+          brake: Math.round((car.m_brake ?? 0) * 100),
+          steer: Math.round((car.m_steer ?? 0) * 100),
+        });
+      }
+    }
   }
 
   handleCarSetupPacket(data: { m_carSetups?: Array<{

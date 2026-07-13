@@ -10,7 +10,8 @@ import {
 
 const router = Router();
 
-type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string };
+type LapTraceSample = { d: number; speed: number; throttle: number; brake: number; steer: number };
+type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: LapTraceSample[] };
 
 function lapToSeconds(lap: string): number {
   if (!lap || !lap.includes(":")) {

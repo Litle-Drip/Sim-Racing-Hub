@@ -195,6 +195,7 @@ export class UdpListener extends EventEmitter {
       m_carTelemetryData.push({
         m_speed: buf.readUInt16LE(o),
         m_throttle: buf.readFloatLE(o + 2),
+        m_steer: buf.readFloatLE(o + 6),
         m_brake: buf.readFloatLE(o + 10),
         m_gear: buf.readInt8(o + 15),
         m_engineRPM: buf.readUInt16LE(o + 16),

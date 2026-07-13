@@ -37,7 +37,7 @@ export const sessionsTable = pgTable("sessions", {
   isPublic: boolean("is_public").notNull().default(false),
   sharedAt: timestamp("shared_at"),
   publicNote: text("public_note"),
-  laps: jsonb("laps").$type<Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>>()
+  laps: jsonb("laps").$type<Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: Array<{ d: number; speed: number; throttle: number; brake: number; steer: number }> }>>()
 ,
   position: text("position").notNull().default(""),
   isPB: boolean("is_pb").notNull().default(false),
