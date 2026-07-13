@@ -44,13 +44,46 @@ const TRACK_ALIASES: Record<string, string> = {
   "silverstone reverse": "silverstone",
   "austria reverse": "red_bull_ring",
   "zandvoort reverse": "zandvoort",
-  // Sessions captured before the companion app recognized track ids 39-41
-  // stored the app's raw numeric fallback text ("Track 39") instead of a
-  // name — map those literal fallback strings too, so already-uploaded
-  // sessions resolve correctly without needing new telemetry.
-  "track 39": "silverstone",
-  "track 40": "red_bull_ring",
-  "track 41": "zandvoort",
+};
+
+// Mirrors the companion app's TRACK_NAMES table (artifacts/companion/src/main/
+// session.ts) by F1 UDP track id, so its raw numeric fallback text — used
+// whenever the companion app's own table doesn't (yet) recognize an id — can
+// still be resolved to a canonical id. Ids with no current calendar entry
+// (Paul Ricard, Hockenheim, Sochi, Hanoi, Portimão) are intentionally omitted.
+const NUMERIC_TRACK_IDS: Record<number, string> = {
+  0: "albert_park",
+  2: "shanghai",
+  3: "bahrain",
+  4: "barcelona",
+  5: "monaco",
+  6: "montreal",
+  7: "silverstone",
+  9: "hungaroring",
+  10: "spa",
+  11: "monza",
+  12: "marina_bay",
+  13: "suzuka",
+  14: "yas_marina",
+  15: "cota",
+  16: "interlagos",
+  17: "red_bull_ring",
+  19: "rodriguez",
+  20: "baku",
+  21: "bahrain",
+  22: "silverstone",
+  23: "cota",
+  24: "suzuka",
+  26: "zandvoort",
+  27: "imola",
+  29: "jeddah",
+  30: "miami",
+  31: "las_vegas",
+  32: "losail",
+  // F1 25 reverse-layout circuits
+  39: "silverstone",
+  40: "red_bull_ring",
+  41: "zandvoort",
 };
 
 /**
@@ -63,5 +96,17 @@ export function normalizeTrackId(raw: string): string {
   if (!trimmed) return trimmed;
   const key = trimmed.toLowerCase();
   if (TRACK_ALIASES[key]) return TRACK_ALIASES[key];
+
+  // The companion app falls back to raw text like "Track 39" whenever a track
+  // id isn't in its own name table (e.g. an id added by a game update before
+  // the companion app was rebuilt). Resolve that fallback text by id directly
+  // instead of relying on an exact-string alias, so it self-heals regardless
+  // of exact spacing/casing and without needing a new alias per id.
+  const fallbackMatch = key.match(/^track[\s_-]*(\d+)$/);
+  if (fallbackMatch) {
+    const numericId = Number(fallbackMatch[1]);
+    if (NUMERIC_TRACK_IDS[numericId]) return NUMERIC_TRACK_IDS[numericId];
+  }
+
   return key.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
