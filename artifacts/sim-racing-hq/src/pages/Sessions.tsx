@@ -95,7 +95,12 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ─── Lap table (expanded view) ────────────────────────────────────────────────
 
-function LapTable({ laps }: { laps: SessionRecord['laps'] }) {
+function validLaps(laps: SessionRecord['laps']) {
+  return laps?.filter(l => l.time && l.time.trim() !== '') ?? [];
+}
+
+function LapTable({ laps: rawLaps }: { laps: SessionRecord['laps'] }) {
+  const laps = validLaps(rawLaps);
   if (!laps || laps.length === 0) return null;
   const fastestIdx = laps.reduce((best, l, i) => {
     return secsFromLap(l.time) < secsFromLap(laps[best].time) ? i : best;
@@ -413,7 +418,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const filtered = useMemo(() => {
     return [...sessions]
-      .sort((a, b) => b.date.localeCompare(a.date))
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
       .filter(s => {
         if (filterTrack && s.trackId !== filterTrack) return false;
         if (filterType && s.type !== filterType) return false;
@@ -422,6 +427,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         return true;
       });
   }, [sessions, filterTrack, filterType, filterCar, filterConditions]);
+
+  const mostRecentId = useMemo(() => {
+    if (sessions.length === 0) return null;
+    return [...sessions].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0].id;
+  }, [sessions]);
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -450,19 +460,22 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       }
     }
 
-    const lapRows = laps.length > 0 ? laps.map((l, i) => ({
-      lap: i + 1,
-      time: l.time,
-      s1: l.s1,
-      s2: l.s2,
-      s3: l.s3,
-      tires: l.tires || form.tires,
-      penalty: l.penalty,
-    })) : undefined;
+    const lapRows = laps.length > 0 ? laps
+      .filter(l => l.time.trim() !== '')
+      .map((l, i) => ({
+        lap: i + 1,
+        time: l.time,
+        s1: l.s1,
+        s2: l.s2,
+        s3: l.s3,
+        tires: l.tires || form.tires,
+        penalty: l.penalty,
+      })) : undefined;
 
     if (isGuest) {
       const newSession: SessionRecord = {
         id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
         date: form.date,
         trackId: form.trackId,
         car: form.car,
@@ -488,7 +501,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         sharedAt: null,
         publicNote: null,
         isPB: false,
-        laps: lapRows ?? null,
+        laps: lapRows && lapRows.length > 0 ? lapRows : null,
         position: form.type === 'Race' && form.position ? form.position : undefined,
       };
       const updatedSessions = computeGuestPBs([...guestSessions, newSession]);
@@ -680,8 +693,9 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     </td>
                     <td><RatingDots rating={s.rating} /></td>
                     <td style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {s.id === mostRecentId && <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>MOST RECENT</span>}
                       {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
-                      {s.laps && s.laps.length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{s.laps.length}L</span>}
+                      {validLaps(s.laps).length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{validLaps(s.laps).length}L</span>}
                       {s.notes && <FileText size={13} style={{ color: 'var(--gray)', verticalAlign: 'middle' }} />}
                       {expanded === s.id ? <ChevronUp size={13} style={{ color: 'var(--gray-mid)', marginLeft: 4 }} /> : <ChevronDown size={13} style={{ color: 'var(--gray-mid)', marginLeft: 4 }} />}
                     </td>
@@ -716,11 +730,20 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                               </div>
                             );
                           })()}
-                          <div className="expanded-item"><div className="expanded-label">Fuel Load</div><div className="expanded-value">{s.fuelLoad}%</div></div>
-                          <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions || '—'}</div></div>
-                          <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay || '—'}</div></div>
-                          <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>
+                          {!!s.fuelLoad && <div className="expanded-item"><div className="expanded-label">Fuel Load</div><div className="expanded-value">{s.fuelLoad}%</div></div>}
+                          {s.conditions && <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions}</div></div>}
+                          {s.timeOfDay && <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay}</div></div>}
+                          {s.assists && <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>}
                           {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
+                          {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
+                          {(!!s.trackTemperature || !!s.airTemperature) && <div className="expanded-item"><div className="expanded-label">Track / Air Temp</div><div className="expanded-value">{s.trackTemperature ?? '—'}° / {s.airTemperature ?? '—'}°</div></div>}
+                          {!!s.topSpeedKph && <div className="expanded-item"><div className="expanded-label">Top Speed</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{Math.round(s.topSpeedKph)} km/h</div></div>}
+                          {(!!s.avgThrottlePct || !!s.avgBrakePct) && <div className="expanded-item"><div className="expanded-label">Avg Throttle / Brake</div><div className="expanded-value">{s.avgThrottlePct?.toFixed(0) ?? '—'}% / {s.avgBrakePct?.toFixed(0) ?? '—'}%</div></div>}
+                          {!!s.maxRpm && <div className="expanded-item"><div className="expanded-label">Max RPM</div><div className="expanded-value">{s.maxRpm.toLocaleString()}</div></div>}
+                          {!!s.topGear && <div className="expanded-item"><div className="expanded-label">Top Gear</div><div className="expanded-value">{s.topGear}</div></div>}
+                          {!!s.drsActivations && <div className="expanded-item"><div className="expanded-label">DRS Activations</div><div className="expanded-value">{s.drsActivations}</div></div>}
+                          {s.tyreWear && <div className="expanded-item"><div className="expanded-label">Avg Tyre Wear</div><div className="expanded-value">{(s.tyreWear.reduce((a, b) => a + b, 0) / s.tyreWear.length).toFixed(1)}%</div></div>}
+                          {s.tyreSurfaceTemps && <div className="expanded-item"><div className="expanded-label">Avg Tyre Temp</div><div className="expanded-value">{Math.round(s.tyreSurfaceTemps.reduce((a, b) => a + b, 0) / s.tyreSurfaceTemps.length)}°C</div></div>}
                           {s.notes && <div className="expanded-notes"><div className="expanded-label" style={{ marginBottom: 6 }}>Notes</div>{s.notes}</div>}
 
                           {/* Per-lap table */}

@@ -68,6 +68,13 @@ export const sessionsTable = pgTable("sessions", {
 ,
   lapHistory: jsonb("lap_history").$type<Array<{ lap: number; lapTimeMs: number; sector1Ms: number; sector2Ms: number; sector3Ms: number; valid: boolean }>>()
 ,
+  aiDifficulty: integer("ai_difficulty"),
+  topSpeedKph: real("top_speed_kph"),
+  avgThrottlePct: real("avg_throttle_pct"),
+  avgBrakePct: real("avg_brake_pct"),
+  drsActivations: integer("drs_activations"),
+  maxRpm: integer("max_rpm"),
+  topGear: integer("top_gear"),
 });
 
 export type DbSession = typeof sessionsTable.$inferSelect;

@@ -46,6 +46,12 @@ export interface UploadPayload {
   setup?: CarSetupSnapshot;
   tyreStints?: TyreStint[];
   lapHistory?: LapHistoryEntry[];
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
 }
 
 export interface UploadResult {
@@ -150,6 +156,12 @@ export class Uploader {
       setup: session.setup,
       tyreStints: session.tyreStints,
       lapHistory: session.lapHistory,
+      topSpeedKph: session.topSpeedKph,
+      avgThrottlePct: session.avgThrottlePct,
+      avgBrakePct: session.avgBrakePct,
+      drsActivations: session.drsActivations,
+      maxRpm: session.maxRpm,
+      topGear: session.topGear,
     };
   }
 

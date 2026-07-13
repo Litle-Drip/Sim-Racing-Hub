@@ -58,7 +58,7 @@ async function recalcPBsForUser(userId: string) {
   const pbMap: Record<string, string> = {};
 
   const updates: { id: string; isPB: boolean }[] = sorted.map((s) => {
-    const key = s.trackId;
+    const key = normalizeTrackId(s.trackId);
     const currentPB = pbMap[key];
     const isNewPB = isFasterLap(s.bestLap, currentPB ?? "");
     if (isNewPB && s.bestLap && s.bestLap.trim() !== "") pbMap[key] = s.bestLap;
@@ -145,7 +145,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
   return {
     id: r.id,
     date: r.date,
-    trackId: r.trackId,
+    trackId: normalizeTrackId(r.trackId),
     car: r.car,
     type: r.type,
     bestLap: r.bestLap,
@@ -187,6 +187,14 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     setupSnapshot: r.setupSnapshot ?? null,
     tyreStints: r.tyreStints ?? null,
     lapHistory: r.lapHistory ?? null,
+    aiDifficulty: r.aiDifficulty ?? null,
+    topSpeedKph: r.topSpeedKph ?? null,
+    avgThrottlePct: r.avgThrottlePct ?? null,
+    avgBrakePct: r.avgBrakePct ?? null,
+    drsActivations: r.drsActivations ?? null,
+    maxRpm: r.maxRpm ?? null,
+    topGear: r.topGear ?? null,
+    createdAt: r.createdAt.toISOString(),
   };
 }
 
@@ -242,6 +250,13 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       };
       tyreStints?: Array<{ startLap: number; endLap: number; compound: string; visualCompound: string }>;
       lapHistory?: Array<{ lap: number; lapTimeMs: number; sector1Ms: number; sector2Ms: number; sector3Ms: number; valid: boolean }>;
+      aiDifficulty?: number;
+      topSpeedKph?: number;
+      avgThrottlePct?: number;
+      avgBrakePct?: number;
+      drsActivations?: number;
+      maxRpm?: number;
+      topGear?: number;
     };
 
     if (!body.sessionType || !body.track || !body.car) {
@@ -321,6 +336,13 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         setupSnapshot: body.setup ?? null,
         tyreStints: body.tyreStints ?? null,
         lapHistory: body.lapHistory ?? null,
+        aiDifficulty: body.aiDifficulty ?? null,
+        topSpeedKph: body.topSpeedKph ?? null,
+        avgThrottlePct: body.avgThrottlePct ?? null,
+        avgBrakePct: body.avgBrakePct ?? null,
+        drsActivations: body.drsActivations ?? null,
+        maxRpm: body.maxRpm ?? null,
+        topGear: body.topGear ?? null,
       });
     } catch (insertErr: unknown) {
       const msg = insertErr instanceof Error ? insertErr.message : String(insertErr);
