@@ -52,6 +52,7 @@ export interface UploadPayload {
   drsActivations?: number;
   maxRpm?: number;
   topGear?: number;
+  tyreCompound?: string;
 }
 
 export interface UploadResult {
@@ -162,6 +163,7 @@ export class Uploader {
       drsActivations: session.drsActivations,
       maxRpm: session.maxRpm,
       topGear: session.topGear,
+      tyreCompound: session.tyreCompound,
     };
   }
 

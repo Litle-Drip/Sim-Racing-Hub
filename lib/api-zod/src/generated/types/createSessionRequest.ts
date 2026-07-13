@@ -39,4 +39,5 @@ export interface CreateSessionRequest {
   drsActivations?: number;
   maxRpm?: number;
   topGear?: number;
+  fuelRemainingLaps?: number;
 }

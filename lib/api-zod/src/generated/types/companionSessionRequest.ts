@@ -56,4 +56,5 @@ export interface CompanionSessionRequest {
   drsActivations?: number;
   maxRpm?: number;
   topGear?: number;
+  fuelRemainingLaps?: number;
 }

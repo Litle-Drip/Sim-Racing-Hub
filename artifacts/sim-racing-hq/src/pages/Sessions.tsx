@@ -15,7 +15,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS, getTypeBadgeClass } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency } from '../lib/engagement';
@@ -69,14 +69,6 @@ function computeFromLaps(laps: FormLap[]) {
 
 // ─── Badge & display helpers ──────────────────────────────────────────────────
 
-const TYPE_BADGE: Record<string, string> = {
-  Practice: 'badge-practice',
-  Qualifying: 'badge-qualifying',
-  Race: 'badge-race',
-  Hotlap: 'badge-hotlap',
-  'Time Trial': 'badge-hotlap',
-};
-
 function RatingDots({ rating }: { rating: number }) {
   return (
     <span className="rating-dots">
@@ -93,6 +85,36 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
       {[1,2,3,4,5].map(i => (
         <span key={i} className={`star${i <= value ? ' filled' : ''}`} onClick={() => onChange(i)}>★</span>
       ))}
+    </div>
+  );
+}
+
+const SAFETY_CAR_LABELS: Record<number, string> = {
+  1: 'Full Safety Car',
+  2: 'Virtual Safety Car',
+  3: 'Formation Lap',
+};
+
+function safetyCarLabel(status: number): string {
+  return SAFETY_CAR_LABELS[status] ?? 'No Safety Car';
+}
+
+const ERS_MODE_LABELS: Record<number, string> = {
+  1: 'Medium',
+  2: 'Overtake',
+  3: 'Hotlap',
+};
+
+function ersModeLabel(mode: number): string {
+  return ERS_MODE_LABELS[mode] ?? 'None';
+}
+
+function ExpandedGroup({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
+  if (!show) return null;
+  return (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)', width: '100%' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', width: '100%' }}>{label}</div>
+      {children}
     </div>
   );
 }
@@ -775,7 +797,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     <td><span className="lap-time" style={{ color: 'var(--gray-light)', fontSize: 12 }}>{s.avgLap || '—'}</span></td>
                     <td><span className="lap-time" style={{ color: 'var(--gray-mid)', fontSize: 12 }}>{s.worstLap || '—'}</span></td>
                     <td>{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
-                    <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
+                    <td><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
                     <td style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
                     <td style={{ color: 'var(--gray-light)', fontSize: 12 }}>
                       {s.conditions || '—'}
@@ -820,20 +842,45 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                               </div>
                             );
                           })()}
-                          {!!s.fuelLoad && <div className="expanded-item"><div className="expanded-label">Fuel Load</div><div className="expanded-value">{s.fuelLoad}%</div></div>}
                           {s.conditions && <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions}</div></div>}
                           {s.timeOfDay && <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay}</div></div>}
                           {s.assists && <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>}
                           {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
                           {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
-                          {(!!s.trackTemperature || !!s.airTemperature) && <div className="expanded-item"><div className="expanded-label">Track / Air Temp</div><div className="expanded-value">{s.trackTemperature ?? '—'}° / {s.airTemperature ?? '—'}°</div></div>}
-                          {!!s.topSpeedKph && <div className="expanded-item"><div className="expanded-label">Top Speed</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{Math.round(s.topSpeedKph)} km/h</div></div>}
-                          {(!!s.avgThrottlePct || !!s.avgBrakePct) && <div className="expanded-item"><div className="expanded-label">Avg Throttle / Brake</div><div className="expanded-value">{s.avgThrottlePct?.toFixed(0) ?? '—'}% / {s.avgBrakePct?.toFixed(0) ?? '—'}%</div></div>}
-                          {!!s.maxRpm && <div className="expanded-item"><div className="expanded-label">Max RPM</div><div className="expanded-value">{s.maxRpm.toLocaleString()}</div></div>}
-                          {!!s.topGear && <div className="expanded-item"><div className="expanded-label">Top Gear</div><div className="expanded-value">{s.topGear}</div></div>}
-                          {!!s.drsActivations && <div className="expanded-item"><div className="expanded-label">DRS Activations</div><div className="expanded-value">{s.drsActivations}</div></div>}
-                          {s.tyreWear && <div className="expanded-item"><div className="expanded-label">Avg Tyre Wear</div><div className="expanded-value">{(s.tyreWear.reduce((a, b) => a + b, 0) / s.tyreWear.length).toFixed(1)}%</div></div>}
-                          {s.tyreSurfaceTemps && <div className="expanded-item"><div className="expanded-label">Avg Tyre Temp</div><div className="expanded-value">{Math.round(s.tyreSurfaceTemps.reduce((a, b) => a + b, 0) / s.tyreSurfaceTemps.length)}°C</div></div>}
+
+                          <ExpandedGroup label="Fuel & Tyres" show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps}>
+                            {!!s.fuelRemainingLaps && <div className="expanded-item"><div className="expanded-label">Fuel Remaining</div><div className="expanded-value">{s.fuelRemainingLaps.toFixed(1)} laps</div></div>}
+                            {!!s.fuelInTank && <div className="expanded-item"><div className="expanded-label">Fuel in Tank</div><div className="expanded-value">{s.fuelInTank.toFixed(1)} kg</div></div>}
+                            {s.tyreWear && <div className="expanded-item"><div className="expanded-label">Avg Tyre Wear</div><div className="expanded-value">{(s.tyreWear.reduce((a, b) => a + b, 0) / s.tyreWear.length).toFixed(1)}%</div></div>}
+                            {s.tyreSurfaceTemps && <div className="expanded-item"><div className="expanded-label">Avg Tyre Temp</div><div className="expanded-value">{Math.round(s.tyreSurfaceTemps.reduce((a, b) => a + b, 0) / s.tyreSurfaceTemps.length)}°C</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Track Conditions" show={!!s.trackTemperature || !!s.airTemperature || !!s.safetyCarStatus || !!s.pitSpeedLimit || !!s.totalLaps}>
+                            {(!!s.trackTemperature || !!s.airTemperature) && <div className="expanded-item"><div className="expanded-label">Track / Air Temp</div><div className="expanded-value">{s.trackTemperature ?? '—'}° / {s.airTemperature ?? '—'}°</div></div>}
+                            {!!s.safetyCarStatus && <div className="expanded-item"><div className="expanded-label">Safety Car</div><div className="expanded-value">{safetyCarLabel(s.safetyCarStatus)}</div></div>}
+                            {!!s.pitSpeedLimit && <div className="expanded-item"><div className="expanded-label">Pit Speed Limit</div><div className="expanded-value">{s.pitSpeedLimit} km/h</div></div>}
+                            {!!s.totalLaps && <div className="expanded-item"><div className="expanded-label">Total Laps</div><div className="expanded-value">{s.totalLaps}</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Performance" show={!!s.topSpeedKph || !!s.avgThrottlePct || !!s.avgBrakePct || !!s.maxRpm || !!s.topGear || !!s.drsActivations}>
+                            {!!s.topSpeedKph && <div className="expanded-item"><div className="expanded-label">Top Speed</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{Math.round(s.topSpeedKph)} km/h</div></div>}
+                            {(!!s.avgThrottlePct || !!s.avgBrakePct) && <div className="expanded-item"><div className="expanded-label">Avg Throttle / Brake</div><div className="expanded-value">{s.avgThrottlePct?.toFixed(0) ?? '—'}% / {s.avgBrakePct?.toFixed(0) ?? '—'}%</div></div>}
+                            {!!s.maxRpm && <div className="expanded-item"><div className="expanded-label">Max RPM</div><div className="expanded-value">{s.maxRpm.toLocaleString()}</div></div>}
+                            {!!s.topGear && <div className="expanded-item"><div className="expanded-label">Top Gear</div><div className="expanded-value">{s.topGear}</div></div>}
+                            {!!s.drsActivations && <div className="expanded-item"><div className="expanded-label">DRS Activations</div><div className="expanded-value">{s.drsActivations}</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="ERS" show={!!s.ersEnergyStored || !!s.ersDeployedThisLap || !!s.ersDeployMode}>
+                            {!!s.ersDeployMode && <div className="expanded-item"><div className="expanded-label">Deploy Mode</div><div className="expanded-value">{ersModeLabel(s.ersDeployMode)}</div></div>}
+                            {!!s.ersEnergyStored && <div className="expanded-item"><div className="expanded-label">Energy Stored</div><div className="expanded-value">{(s.ersEnergyStored / 1000).toFixed(2)} MJ</div></div>}
+                            {!!s.ersDeployedThisLap && <div className="expanded-item"><div className="expanded-label">Deployed This Lap</div><div className="expanded-value">{(s.ersDeployedThisLap / 1000).toFixed(2)} MJ</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Damage" show={!!s.wingDamage && (s.wingDamage.front > 0 || s.wingDamage.rear > 0)}>
+                            {!!s.wingDamage?.front && <div className="expanded-item"><div className="expanded-label">Front Wing</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.wingDamage.front}%</div></div>}
+                            {!!s.wingDamage?.rear && <div className="expanded-item"><div className="expanded-label">Rear Wing</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.wingDamage.rear}%</div></div>}
+                          </ExpandedGroup>
+
                           {s.notes && <div className="expanded-notes"><div className="expanded-label" style={{ marginBottom: 6 }}>Notes</div>{s.notes}</div>}
 
                           {/* Per-lap table */}

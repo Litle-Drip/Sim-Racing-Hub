@@ -195,6 +195,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     drsActivations: r.drsActivations ?? null,
     maxRpm: r.maxRpm ?? null,
     topGear: r.topGear ?? null,
+    fuelRemainingLaps: r.fuelRemainingLaps ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -305,7 +306,13 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         worstLap,
         s1, s2, s3,
         tires: body.tyreCompound ?? "",
-        fuelLoad: body.fuelRemaining ?? 0,
+        // fuelLoad is a starting-fuel PERCENTAGE for manually-logged sessions
+        // (see CreateSessionRequest/the Sessions.tsx form) — body.fuelRemaining
+        // is F1 telemetry's "laps of fuel remaining", a different unit
+        // entirely, so it must not be written into this column. It's still
+        // uploaded and stored separately as fuelRemainingLaps.
+        fuelLoad: 0,
+        fuelRemainingLaps: body.fuelRemaining ?? null,
         conditions: body.weather ?? "",
         timeOfDay: body.timeOfDay ?? null,
         assists: body.assists ?? "",

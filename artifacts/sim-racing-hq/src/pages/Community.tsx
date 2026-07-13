@@ -11,7 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES, getTypeBadgeClass } from '../data/f1Tracks';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -19,14 +19,6 @@ const TAG_BADGE: Record<string, string> = {
   Wet: 'badge-wet',
   Test: 'badge-practice',
   Sprint: 'badge-hotlap',
-};
-
-const TYPE_BADGE: Record<string, string> = {
-  Practice: 'badge-practice',
-  Qualifying: 'badge-qualifying',
-  Race: 'badge-race',
-  Hotlap: 'badge-hotlap',
-  'Time Trial': 'badge-hotlap',
 };
 
 function StarRating({
@@ -173,7 +165,7 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
           <div className="community-card-track">{trackLabel(session.trackId)}</div>
         </div>
         <div className="community-card-right">
-          <span className={`badge ${TYPE_BADGE[session.type] || 'badge-practice'}`}>{session.type}</span>
+          <span className={`badge ${getTypeBadgeClass(session.type)}`}>{session.type}</span>
           {session.platform && <span className="badge badge-practice">{session.platform}</span>}
           {session.inputDevice && <span className="badge badge-practice">{session.inputDevice}</span>}
           <div className="community-card-author">
@@ -581,7 +573,7 @@ export default function Community() {
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 28, color: 'var(--teal)' }}>
                   {detailSession.bestLap || '—'}
                 </span>
-                <span className={`badge ${TYPE_BADGE[detailSession.type] || 'badge-practice'}`}>{detailSession.type}</span>
+                <span className={`badge ${getTypeBadgeClass(detailSession.type)}`}>{detailSession.type}</span>
               </div>
 
               <div className="form-grid" style={{ gap: '12px 24px' }}>

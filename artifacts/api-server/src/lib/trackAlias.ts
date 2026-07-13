@@ -39,6 +39,11 @@ const TRACK_ALIASES: Record<string, string> = {
   "silverstone short": "silverstone",
   "cota short": "cota",
   "suzuka short": "suzuka",
+  // F1 25 added reverse-layout variants of these circuits — same track,
+  // group them under the existing canonical id rather than an orphaned one.
+  "silverstone reverse": "silverstone",
+  "austria reverse": "red_bull_ring",
+  "zandvoort reverse": "zandvoort",
 };
 
 /**

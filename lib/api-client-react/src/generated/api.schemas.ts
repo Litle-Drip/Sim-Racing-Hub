@@ -136,6 +136,7 @@ export interface SessionRecord {
   drsActivations?: number | null;
   maxRpm?: number | null;
   topGear?: number | null;
+  fuelRemainingLaps?: number | null;
   createdAt: string;
 }
 
@@ -171,6 +172,7 @@ export interface CreateSessionRequest {
   drsActivations?: number;
   maxRpm?: number;
   topGear?: number;
+  fuelRemainingLaps?: number;
 }
 
 export interface ShareSessionRequest {
@@ -370,6 +372,7 @@ export interface CompanionSessionRequest {
   drsActivations?: number;
   maxRpm?: number;
   topGear?: number;
+  fuelRemainingLaps?: number;
 }
 
 export interface TrackNotesRecord {

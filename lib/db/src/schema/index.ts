@@ -75,6 +75,7 @@ export const sessionsTable = pgTable("sessions", {
   drsActivations: integer("drs_activations"),
   maxRpm: integer("max_rpm"),
   topGear: integer("top_gear"),
+  fuelRemainingLaps: real("fuel_remaining_laps"),
 });
 
 export type DbSession = typeof sessionsTable.$inferSelect;
