@@ -48,7 +48,14 @@ CREATE TABLE IF NOT EXISTS sessions (
   brake_temps JSONB,
   setup_snapshot JSONB,
   tyre_stints JSONB,
-  lap_history JSONB
+  lap_history JSONB,
+  ai_difficulty INTEGER,
+  top_speed_kph REAL,
+  avg_throttle_pct REAL,
+  avg_brake_pct REAL,
+  drs_activations INTEGER,
+  max_rpm INTEGER,
+  top_gear INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS setups (
@@ -165,6 +172,13 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS brake_temps JSONB;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS setup_snapshot JSONB;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS tyre_stints JSONB;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS lap_history JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ai_difficulty INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS top_speed_kph REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS avg_throttle_pct REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS avg_brake_pct REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS drs_activations INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS max_rpm INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS top_gear INTEGER;
 `;
 
 async function ensureDatabase(): Promise<void> {

@@ -83,6 +83,12 @@ export interface SessionSnapshot {
   setup?: CarSetupSnapshot;
   tyreStints?: TyreStint[];
   lapHistory?: LapHistoryEntry[];
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
 }
 
 const TRACK_NAMES: Record<number, string> = {
@@ -257,6 +263,18 @@ export class SessionTracker {
   private lastTyreStints: TyreStint[] = [];
   private lastLapHistory: LapHistoryEntry[] = [];
 
+  // Session-level aggregates (running max/avg/count), distinct from the
+  // lastX "most recent sample" fields above — these summarize the whole
+  // session rather than a snapshot at flush time.
+  private topSpeedKph = 0;
+  private throttleSum = 0;
+  private brakeSum = 0;
+  private throttleBrakeSamples = 0;
+  private drsWasActive = false;
+  private drsActivations = 0;
+  private maxRpm = 0;
+  private topGear = 0;
+
   onSessionComplete: ((session: SessionSnapshot) => void) | null = null;
   onLapComplete: ((lap: LapRecord) => void) | null = null;
   onStatusChange: (() => void) | null = null;
@@ -318,12 +336,14 @@ export class SessionTracker {
         this.validLaps = [];
         this.pendingLap = null;
         this.currentLapNum = 0;
+        this.resetTelemetryState();
         this.onStatusChange?.();
       } else {
         this.sessionUID = null;
         this.validLaps = [];
         this.pendingLap = null;
         this.currentLapNum = 0;
+        this.resetTelemetryState();
         this.onStatusChange?.();
       }
     } else if (this.sessionUID !== null && isMenuState) {
@@ -334,6 +354,7 @@ export class SessionTracker {
         this.validLaps = [];
         this.pendingLap = null;
         this.currentLapNum = 0;
+        this.resetTelemetryState();
       }
       this.onStatusChange?.();
     } else if (
@@ -347,6 +368,7 @@ export class SessionTracker {
       this.validLaps = [];
       this.pendingLap = null;
       this.currentLapNum = 0;
+      this.resetTelemetryState();
       this.onStatusChange?.();
     } else {
       this.weather = weather;
@@ -468,6 +490,18 @@ export class SessionTracker {
     const surfaceTemps = car.m_tyresSurfaceTemperature ?? car.m_tyreSurfaceTemperature;
     if (surfaceTemps) this.lastTyreSurfaceTemps = surfaceTemps;
     if (car.m_brakesTemperature) this.lastBrakeTemps = car.m_brakesTemperature;
+
+    if ((car.m_speed ?? 0) > this.topSpeedKph) this.topSpeedKph = car.m_speed ?? 0;
+    if (car.m_throttle !== undefined && car.m_brake !== undefined) {
+      this.throttleSum += car.m_throttle * 100;
+      this.brakeSum += car.m_brake * 100;
+      this.throttleBrakeSamples++;
+    }
+    const drsActive = (car.m_drs ?? 0) === 1;
+    if (drsActive && !this.drsWasActive) this.drsActivations++;
+    this.drsWasActive = drsActive;
+    if ((car.m_engineRPM ?? 0) > this.maxRpm) this.maxRpm = car.m_engineRPM ?? 0;
+    if ((car.m_gear ?? 0) > this.topGear) this.topGear = car.m_gear ?? 0;
   }
 
   handleCarSetupPacket(data: { m_carSetups?: Array<{
@@ -629,6 +663,52 @@ export class SessionTracker {
     return `TC: ${tc}, ABS: ${abs}`;
   }
 
+  // Clears session-scoped telemetry so stale values from a previous
+  // session/sub-session can't leak into the next one's snapshot. Called at
+  // every session boundary (new session, menu, session-type change, flush).
+  // Deliberately excludes: playerCarIdx/teamId (participant identity, not
+  // session telemetry); aiDifficulty/trackTemperature/airTemperature/
+  // totalLaps/pitSpeedLimit/safetyCarStatus/timeOfDay (set unconditionally
+  // from every Session packet, including the one that triggers this reset,
+  // so they self-correct without needing to be zeroed here).
+  private resetTelemetryState(): void {
+    this.lastTyreCompound = 0;
+    this.lastFuelRemaining = 0;
+    this.lastTractionControl = 0;
+    this.lastAntiLockBrakes = 0;
+
+    this.lastSpeed = 0;
+    this.lastThrottle = 0;
+    this.lastBrake = 0;
+    this.lastGear = 0;
+    this.lastEngineRpm = 0;
+    this.lastDrsActive = 0;
+    this.lastTyreSurfaceTemps = [0, 0, 0, 0];
+    this.lastBrakeTemps = [0, 0, 0, 0];
+
+    this.lastFuelInTank = 0;
+    this.lastErsDeployMode = 0;
+    this.lastErsEnergyStored = 0;
+    this.lastErsDeployedThisLap = 0;
+
+    this.lastTyreWear = [0, 0, 0, 0];
+    this.lastFrontWingDamage = 0;
+    this.lastRearWingDamage = 0;
+
+    this.lastSetup = undefined;
+    this.lastTyreStints = [];
+    this.lastLapHistory = [];
+
+    this.topSpeedKph = 0;
+    this.throttleSum = 0;
+    this.brakeSum = 0;
+    this.throttleBrakeSamples = 0;
+    this.drsWasActive = false;
+    this.drsActivations = 0;
+    this.maxRpm = 0;
+    this.topGear = 0;
+  }
+
   private flushSession(): void {
     const snap: SessionSnapshot = {
       sessionUID: this.sessionUID!,
@@ -666,14 +746,19 @@ export class SessionTracker {
       setup: this.lastSetup,
       tyreStints: this.lastTyreStints.length > 0 ? [...this.lastTyreStints] : undefined,
       lapHistory: this.lastLapHistory.length > 0 ? [...this.lastLapHistory] : undefined,
+      topSpeedKph: this.topSpeedKph || undefined,
+      avgThrottlePct: this.throttleBrakeSamples > 0 ? this.throttleSum / this.throttleBrakeSamples : undefined,
+      avgBrakePct: this.throttleBrakeSamples > 0 ? this.brakeSum / this.throttleBrakeSamples : undefined,
+      drsActivations: this.drsActivations || undefined,
+      maxRpm: this.maxRpm || undefined,
+      topGear: this.topGear || undefined,
     };
 
     this.sessionUID = null;
     this.validLaps = [];
     this.pendingLap = null;
     this.lastPosition = 0;
-    this.lastTyreStints = [];
-    this.lastLapHistory = [];
+    this.resetTelemetryState();
     this.onSessionComplete?.(snap);
   }
 }
