@@ -44,6 +44,13 @@ const TRACK_ALIASES: Record<string, string> = {
   "silverstone reverse": "silverstone",
   "austria reverse": "red_bull_ring",
   "zandvoort reverse": "zandvoort",
+  // Sessions captured before the companion app recognized track ids 39-41
+  // stored the app's raw numeric fallback text ("Track 39") instead of a
+  // name — map those literal fallback strings too, so already-uploaded
+  // sessions resolve correctly without needing new telemetry.
+  "track 39": "silverstone",
+  "track 40": "red_bull_ring",
+  "track 41": "zandvoort",
 };
 
 /**
