@@ -847,12 +847,38 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           {s.assists && <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>}
                           {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
                           {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
+                          {!!s.position && <div className="expanded-item"><div className="expanded-label">Finish Position</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>P{s.position}</div></div>}
 
-                          <ExpandedGroup label="Fuel & Tyres" show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps}>
+                          <ExpandedGroup label="Fuel & Tyres" show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps || !!s.brakeTemps}>
                             {!!s.fuelRemainingLaps && <div className="expanded-item"><div className="expanded-label">Fuel Remaining</div><div className="expanded-value">{s.fuelRemainingLaps.toFixed(1)} laps</div></div>}
                             {!!s.fuelInTank && <div className="expanded-item"><div className="expanded-label">Fuel in Tank</div><div className="expanded-value">{s.fuelInTank.toFixed(1)} kg</div></div>}
                             {s.tyreWear && <div className="expanded-item"><div className="expanded-label">Avg Tyre Wear</div><div className="expanded-value">{(s.tyreWear.reduce((a, b) => a + b, 0) / s.tyreWear.length).toFixed(1)}%</div></div>}
                             {s.tyreSurfaceTemps && <div className="expanded-item"><div className="expanded-label">Avg Tyre Temp</div><div className="expanded-value">{Math.round(s.tyreSurfaceTemps.reduce((a, b) => a + b, 0) / s.tyreSurfaceTemps.length)}°C</div></div>}
+                            {s.brakeTemps && <div className="expanded-item"><div className="expanded-label">Avg Brake Temp</div><div className="expanded-value">{Math.round(s.brakeTemps.reduce((a, b) => a + b, 0) / s.brakeTemps.length)}°C</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Tyre Stints" show={!!s.tyreStints && s.tyreStints.length > 0}>
+                            {s.tyreStints?.map((stint, i) => (
+                              <div key={i} className="expanded-item">
+                                <div className="expanded-label">Stint {i + 1}</div>
+                                <div className="expanded-value">{stint.visualCompound || stint.compound} · L{stint.startLap}–{stint.endLap}</div>
+                              </div>
+                            ))}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Car Setup" show={!!s.setupSnapshot}>
+                            {!!s.setupSnapshot && (
+                              <>
+                                <div className="expanded-item"><div className="expanded-label">Wing F/R</div><div className="expanded-value">{s.setupSnapshot.frontWing} / {s.setupSnapshot.rearWing}</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Brake Bias</div><div className="expanded-value">{s.setupSnapshot.brakeBias}%</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Brake Pressure</div><div className="expanded-value">{s.setupSnapshot.brakePressure}%</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Tyre Pressure F/R</div><div className="expanded-value">{s.setupSnapshot.frontTyrePressure} / {s.setupSnapshot.rearTyrePressure} psi</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Camber F/R</div><div className="expanded-value">{s.setupSnapshot.frontCamber}° / {s.setupSnapshot.rearCamber}°</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Toe F/R</div><div className="expanded-value">{s.setupSnapshot.frontToe}° / {s.setupSnapshot.rearToe}°</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Ride Height F/R</div><div className="expanded-value">{s.setupSnapshot.frontRideHeight} / {s.setupSnapshot.rearRideHeight}</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Anti-Roll Bar F/R</div><div className="expanded-value">{s.setupSnapshot.frontAntiRollBar} / {s.setupSnapshot.rearAntiRollBar}</div></div>
+                              </>
+                            )}
                           </ExpandedGroup>
 
                           <ExpandedGroup label="Track Conditions" show={!!s.trackTemperature || !!s.airTemperature || !!s.safetyCarStatus || !!s.pitSpeedLimit || !!s.totalLaps}>
