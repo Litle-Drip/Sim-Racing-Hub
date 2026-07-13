@@ -32,7 +32,23 @@ CREATE TABLE IF NOT EXISTS sessions (
   laps JSONB,
   position TEXT NOT NULL DEFAULT '',
   is_pb BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  track_temperature INTEGER,
+  air_temperature INTEGER,
+  total_laps INTEGER,
+  pit_speed_limit INTEGER,
+  safety_car_status INTEGER,
+  fuel_in_tank REAL,
+  ers_deploy_mode INTEGER,
+  ers_energy_stored REAL,
+  ers_deployed_this_lap REAL,
+  tyre_wear JSONB,
+  wing_damage JSONB,
+  tyre_surface_temps JSONB,
+  brake_temps JSONB,
+  setup_snapshot JSONB,
+  tyre_stints JSONB,
+  lap_history JSONB
 );
 
 CREATE TABLE IF NOT EXISTS setups (
@@ -133,6 +149,22 @@ CREATE TABLE IF NOT EXISTS api_keys (
   key_hash TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS track_temperature INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS air_temperature INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS total_laps INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS pit_speed_limit INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS safety_car_status INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS fuel_in_tank REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ers_deploy_mode INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ers_energy_stored REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ers_deployed_this_lap REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS tyre_wear JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS wing_damage JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS tyre_surface_temps JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS brake_temps JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS setup_snapshot JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS tyre_stints JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS lap_history JSONB;
 `;
 
 async function ensureDatabase(): Promise<void> {
@@ -166,9 +198,7 @@ async function ensureDatabase(): Promise<void> {
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+  throw new Error("PORT environment variable is required but was not provided.");
 }
 
 const port = Number(rawPort);
@@ -178,16 +208,13 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 ensureDatabase()
-  .catch(() => {
-    /* already logged */
-  })
+  .catch(() => { /* already logged */ })
   .finally(() => {
     app.listen(port, (err) => {
       if (err) {
         logger.error({ err }, "Error listening on port");
         process.exit(1);
       }
-
       logger.info({ port }, "Server listening");
     });
   });

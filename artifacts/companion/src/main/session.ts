@@ -10,6 +10,43 @@ export interface LapRecord {
   penalty: string;
 }
 
+export interface CarSetupSnapshot {
+  frontWing: number;
+  rearWing: number;
+  onThrottle: number;
+  offThrottle: number;
+  frontCamber: number;
+  rearCamber: number;
+  frontToe: number;
+  rearToe: number;
+  frontSuspension: number;
+  rearSuspension: number;
+  frontAntiRollBar: number;
+  rearAntiRollBar: number;
+  frontRideHeight: number;
+  rearRideHeight: number;
+  brakePressure: number;
+  brakeBias: number;
+  frontTyrePressure: number;
+  rearTyrePressure: number;
+}
+
+export interface TyreStint {
+  startLap: number;
+  endLap: number;
+  compound: string;
+  visualCompound: string;
+}
+
+export interface LapHistoryEntry {
+  lap: number;
+  lapTimeMs: number;
+  sector1Ms: number;
+  sector2Ms: number;
+  sector3Ms: number;
+  valid: boolean;
+}
+
 export interface SessionSnapshot {
   sessionUID: string;
   sessionType: string;
@@ -22,11 +59,31 @@ export interface SessionSnapshot {
   position: number;
   assists: string;
   gameVersion: string;
+  trackTemperature?: number;
+  airTemperature?: number;
+  totalLaps?: number;
+  pitSpeedLimit?: number;
+  safetyCarStatus?: number;
+  timeOfDay?: string;
+  speed?: number;
+  throttle?: number;
+  brake?: number;
+  gear?: number;
+  engineRpm?: number;
+  drsActive?: number;
+  tyreSurfaceTemps?: [number, number, number, number];
+  brakeTemps?: [number, number, number, number];
+  fuelInTank?: number;
+  ersDeployMode?: number;
+  ersEnergyStored?: number;
+  ersDeployedThisLap?: number;
+  tyreWear?: [number, number, number, number];
+  frontWingDamage?: number;
+  rearWingDamage?: number;
+  setup?: CarSetupSnapshot;
+  tyreStints?: TyreStint[];
+  lapHistory?: LapHistoryEntry[];
 }
-
-// ──────────────────────────────────────────────
-// F1 25 / F1 23 lookup tables
-// ──────────────────────────────────────────────
 
 const TRACK_NAMES: Record<number, string> = {
   0: "Melbourne",
@@ -101,6 +158,17 @@ const TYRE_NAMES: Record<number, string> = {
   11: "SC",
 };
 
+const TYRE_ACTUAL_NAMES: Record<number, string> = {
+  16: "C5",
+  17: "C4",
+  18: "C3",
+  19: "C2",
+  20: "C1",
+  21: "C0",
+  7: "Intermediate",
+  8: "Wet",
+};
+
 const TEAM_NAMES: Record<number, string> = {
   0: "Mercedes",
   1: "Ferrari",
@@ -117,10 +185,6 @@ const TEAM_NAMES: Record<number, string> = {
   253: "My Team",
 };
 
-// ──────────────────────────────────────────────
-// Time formatting helpers
-// ──────────────────────────────────────────────
-
 function msToLapTime(ms: number): string {
   if (!ms || ms <= 0) return "";
   const totalSecs = ms / 1000;
@@ -129,9 +193,11 @@ function msToLapTime(ms: number): string {
   return `${mins}:${secs.toFixed(3).padStart(6, "0")}`;
 }
 
-// ──────────────────────────────────────────────
-// Session state
-// ──────────────────────────────────────────────
+function minutesToTimeString(minutesSinceMidnight: number): string {
+  const h = Math.floor(minutesSinceMidnight / 60);
+  const m = minutesSinceMidnight % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
 
 interface LapState {
   lapNum: number;
@@ -161,7 +227,36 @@ export class SessionTracker {
   private lastTractionControl = 0;
   private lastAntiLockBrakes = 0;
 
-  // Callbacks
+  private lastTrackTemperature = 0;
+  private lastAirTemperature = 0;
+  private lastTotalLaps = 0;
+  private lastPitSpeedLimit = 0;
+  private lastSafetyCarStatus = 0;
+  private lastTimeOfDay: string | undefined = undefined;
+
+  private lastSpeed = 0;
+  private lastThrottle = 0;
+  private lastBrake = 0;
+  private lastGear = 0;
+  private lastEngineRpm = 0;
+  private lastDrsActive = 0;
+  private lastTyreSurfaceTemps: [number, number, number, number] = [0, 0, 0, 0];
+  private lastBrakeTemps: [number, number, number, number] = [0, 0, 0, 0];
+
+  private lastFuelInTank = 0;
+  private lastErsDeployMode = 0;
+  private lastErsEnergyStored = 0;
+  private lastErsDeployedThisLap = 0;
+
+  private lastTyreWear: [number, number, number, number] = [0, 0, 0, 0];
+  private lastFrontWingDamage = 0;
+  private lastRearWingDamage = 0;
+
+  private lastSetup: CarSetupSnapshot | undefined = undefined;
+
+  private lastTyreStints: TyreStint[] = [];
+  private lastLapHistory: LapHistoryEntry[] = [];
+
   onSessionComplete: ((session: SessionSnapshot) => void) | null = null;
   onLapComplete: ((lap: LapRecord) => void) | null = null;
   onStatusChange: (() => void) | null = null;
@@ -188,6 +283,12 @@ export class SessionTracker {
     m_trackId?: number;
     m_weather?: number;
     m_aiDifficulty?: number;
+    m_trackTemperature?: number;
+    m_airTemperature?: number;
+    m_totalLaps?: number;
+    m_pitSpeedLimit?: number;
+    m_safetyCarStatus?: number;
+    m_timeOfDay?: number;
   }): void {
     this.lastPacketTime = Date.now();
 
@@ -198,14 +299,17 @@ export class SessionTracker {
     const aiDifficulty = data.m_aiDifficulty ?? 0;
     if (aiDifficulty > 0) this.lastAiDifficulty = aiDifficulty;
 
-    // sessionType 0 = Unknown (menus, lobby) — treat as end of active session
+    if (data.m_trackTemperature !== undefined) this.lastTrackTemperature = data.m_trackTemperature;
+    if (data.m_airTemperature !== undefined) this.lastAirTemperature = data.m_airTemperature;
+    if (data.m_totalLaps !== undefined && data.m_totalLaps > 0) this.lastTotalLaps = data.m_totalLaps;
+    if (data.m_pitSpeedLimit !== undefined) this.lastPitSpeedLimit = data.m_pitSpeedLimit;
+    if (data.m_safetyCarStatus !== undefined) this.lastSafetyCarStatus = data.m_safetyCarStatus;
+    if (data.m_timeOfDay !== undefined) this.lastTimeOfDay = minutesToTimeString(data.m_timeOfDay);
+
     const isMenuState = sessionType === 0 || uid === "0";
 
     if (uid !== this.sessionUID) {
-      // Session UID changed → boundary, flush accumulated laps
-      if (this.sessionUID !== null && this.validLaps.length > 0) {
-        this.flushSession();
-      }
+      if (this.sessionUID !== null && this.validLaps.length > 0) this.flushSession();
       if (!isMenuState) {
         this.sessionUID = uid;
         this.sessionType = sessionType;
@@ -216,7 +320,6 @@ export class SessionTracker {
         this.currentLapNum = 0;
         this.onStatusChange?.();
       } else {
-        // Player is in menus — clear state without starting a new session
         this.sessionUID = null;
         this.validLaps = [];
         this.pendingLap = null;
@@ -224,7 +327,6 @@ export class SessionTracker {
         this.onStatusChange?.();
       }
     } else if (this.sessionUID !== null && isMenuState) {
-      // Session type transitioned to menu/unknown under same UID → session ended
       if (this.validLaps.length > 0) {
         this.flushSession();
       } else {
@@ -240,10 +342,7 @@ export class SessionTracker {
       this.sessionType !== 0 &&
       sessionType !== 0
     ) {
-      // Session type changed within same UID (e.g. Q1→Q2 or P1→Race) — flush and restart
-      if (this.validLaps.length > 0) {
-        this.flushSession();
-      }
+      if (this.validLaps.length > 0) this.flushSession();
       this.sessionType = sessionType;
       this.validLaps = [];
       this.pendingLap = null;
@@ -256,9 +355,7 @@ export class SessionTracker {
 
   handleParticipantsPacket(data: { m_playerCarIndex?: number; m_participants?: Array<{ m_teamId?: number }> }): void {
     this.lastPacketTime = Date.now();
-    if (data.m_playerCarIndex !== undefined) {
-      this.playerCarIdx = data.m_playerCarIndex;
-    }
+    if (data.m_playerCarIndex !== undefined) this.playerCarIdx = data.m_playerCarIndex;
     if (data.m_participants && this.playerCarIdx < data.m_participants.length) {
       this.teamId = data.m_participants[this.playerCarIdx]?.m_teamId ?? 253;
     }
@@ -290,7 +387,6 @@ export class SessionTracker {
     const penalties = lap.m_penalties ?? 0;
 
     if (!this.pendingLap || lapNum !== this.pendingLap.lapNum) {
-      // Lap number changed → previous lap just completed
       if (this.pendingLap && this.pendingLap.lapNum > 0 && lastLapMs > 0) {
         if (!this.pendingLap.invalid) {
           const s1 = msToLapTime(this.pendingLap.s1Ms);
@@ -299,9 +395,7 @@ export class SessionTracker {
           const record: LapRecord = {
             lap: this.pendingLap.lapNum,
             time: msToLapTime(lastLapMs),
-            s1,
-            s2,
-            s3,
+            s1, s2, s3,
             tires: TYRE_NAMES[this.lastTyreCompound] ?? "Unknown",
             penalty: penalties > 0 ? `${penalties}s` : "",
           };
@@ -313,7 +407,6 @@ export class SessionTracker {
       this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid };
       this.currentLapNum = lapNum;
     } else {
-      // Update sector data while lap is in progress
       if (s1Ms > 0) this.pendingLap.s1Ms = s1Ms;
       if (s2Ms > 0) this.pendingLap.s2Ms = s2Ms;
       if (invalid) this.pendingLap.invalid = true;
@@ -326,18 +419,183 @@ export class SessionTracker {
     m_fuelRemainingLaps?: number;
     m_tractionControl?: number;
     m_antiLockBrakes?: number;
+    m_fuelInTank?: number;
+    m_ersStoreEnergy?: number;
+    m_ersDeployMode?: number;
+    m_ersDeployedThisLap?: number;
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!data.m_carStatusData) return;
     const playerIdx = this.playerCarIdx < data.m_carStatusData.length ? this.playerCarIdx : 0;
     const car = data.m_carStatusData[playerIdx];
     if (!car) return;
+
     const compound = car.m_visualTyreCompound ?? car.m_tyreVisualCompound ?? 0;
     if (compound > 0) this.lastTyreCompound = compound;
     const fuel = car.m_fuelRemainingLaps ?? 0;
     if (fuel > 0) this.lastFuelRemaining = fuel;
     if (car.m_tractionControl !== undefined) this.lastTractionControl = car.m_tractionControl;
     if (car.m_antiLockBrakes !== undefined) this.lastAntiLockBrakes = car.m_antiLockBrakes;
+    if (car.m_fuelInTank !== undefined && car.m_fuelInTank > 0) this.lastFuelInTank = car.m_fuelInTank;
+    if (car.m_ersStoreEnergy !== undefined) this.lastErsEnergyStored = car.m_ersStoreEnergy;
+    if (car.m_ersDeployMode !== undefined) this.lastErsDeployMode = car.m_ersDeployMode;
+    if (car.m_ersDeployedThisLap !== undefined) this.lastErsDeployedThisLap = car.m_ersDeployedThisLap;
+  }
+
+  handleCarTelemetryPacket(data: { m_carTelemetryData?: Array<{
+    m_speed?: number;
+    m_throttle?: number;
+    m_brake?: number;
+    m_gear?: number;
+    m_engineRPM?: number;
+    m_drs?: number;
+    m_tyreSurfaceTemperature?: [number, number, number, number];
+    m_tyresSurfaceTemperature?: [number, number, number, number];
+    m_brakesTemperature?: [number, number, number, number];
+  }> }): void {
+    this.lastPacketTime = Date.now();
+    if (!data.m_carTelemetryData) return;
+    const playerIdx = this.playerCarIdx < data.m_carTelemetryData.length ? this.playerCarIdx : 0;
+    const car = data.m_carTelemetryData[playerIdx];
+    if (!car) return;
+
+    if (car.m_speed !== undefined) this.lastSpeed = car.m_speed;
+    if (car.m_throttle !== undefined) this.lastThrottle = car.m_throttle;
+    if (car.m_brake !== undefined) this.lastBrake = car.m_brake;
+    if (car.m_gear !== undefined) this.lastGear = car.m_gear;
+    if (car.m_engineRPM !== undefined) this.lastEngineRpm = car.m_engineRPM;
+    if (car.m_drs !== undefined) this.lastDrsActive = car.m_drs;
+    const surfaceTemps = car.m_tyresSurfaceTemperature ?? car.m_tyreSurfaceTemperature;
+    if (surfaceTemps) this.lastTyreSurfaceTemps = surfaceTemps;
+    if (car.m_brakesTemperature) this.lastBrakeTemps = car.m_brakesTemperature;
+  }
+
+  handleCarSetupPacket(data: { m_carSetups?: Array<{
+    m_frontWing?: number;
+    m_rearWing?: number;
+    m_onThrottle?: number;
+    m_offThrottle?: number;
+    m_frontCamber?: number;
+    m_rearCamber?: number;
+    m_frontToe?: number;
+    m_rearToe?: number;
+    m_frontSuspension?: number;
+    m_rearSuspension?: number;
+    m_frontAntiRollBar?: number;
+    m_rearAntiRollBar?: number;
+    m_frontSuspensionHeight?: number;
+    m_rearSuspensionHeight?: number;
+    m_brakePressure?: number;
+    m_brakeBias?: number;
+    m_rearLeftTyrePressure?: number;
+    m_rearRightTyrePressure?: number;
+    m_frontLeftTyrePressure?: number;
+    m_frontRightTyrePressure?: number;
+  }> }): void {
+    this.lastPacketTime = Date.now();
+    if (!data.m_carSetups) return;
+    const playerIdx = this.playerCarIdx < data.m_carSetups.length ? this.playerCarIdx : 0;
+    const s = data.m_carSetups[playerIdx];
+    if (!s) return;
+
+    const frontTyrePressure =
+      (s.m_frontLeftTyrePressure ?? 0) > 0 && (s.m_frontRightTyrePressure ?? 0) > 0
+        ? ((s.m_frontLeftTyrePressure ?? 0) + (s.m_frontRightTyrePressure ?? 0)) / 2
+        : (s.m_frontLeftTyrePressure ?? s.m_frontRightTyrePressure ?? 0);
+    const rearTyrePressure =
+      (s.m_rearLeftTyrePressure ?? 0) > 0 && (s.m_rearRightTyrePressure ?? 0) > 0
+        ? ((s.m_rearLeftTyrePressure ?? 0) + (s.m_rearRightTyrePressure ?? 0)) / 2
+        : (s.m_rearLeftTyrePressure ?? s.m_rearRightTyrePressure ?? 0);
+
+    this.lastSetup = {
+      frontWing: s.m_frontWing ?? 0,
+      rearWing: s.m_rearWing ?? 0,
+      onThrottle: s.m_onThrottle ?? 0,
+      offThrottle: s.m_offThrottle ?? 0,
+      frontCamber: s.m_frontCamber ?? 0,
+      rearCamber: s.m_rearCamber ?? 0,
+      frontToe: s.m_frontToe ?? 0,
+      rearToe: s.m_rearToe ?? 0,
+      frontSuspension: s.m_frontSuspension ?? 0,
+      rearSuspension: s.m_rearSuspension ?? 0,
+      frontAntiRollBar: s.m_frontAntiRollBar ?? 0,
+      rearAntiRollBar: s.m_rearAntiRollBar ?? 0,
+      frontRideHeight: s.m_frontSuspensionHeight ?? 0,
+      rearRideHeight: s.m_rearSuspensionHeight ?? 0,
+      brakePressure: s.m_brakePressure ?? 0,
+      brakeBias: s.m_brakeBias ?? 0,
+      frontTyrePressure,
+      rearTyrePressure,
+    };
+  }
+
+  handleCarDamagePacket(data: { m_carDamageData?: Array<{
+    m_tyresWear?: [number, number, number, number];
+    m_frontLeftWingDamage?: number;
+    m_frontRightWingDamage?: number;
+    m_rearWingDamage?: number;
+  }> }): void {
+    this.lastPacketTime = Date.now();
+    if (!data.m_carDamageData) return;
+    const playerIdx = this.playerCarIdx < data.m_carDamageData.length ? this.playerCarIdx : 0;
+    const car = data.m_carDamageData[playerIdx];
+    if (!car) return;
+
+    if (car.m_tyresWear) this.lastTyreWear = car.m_tyresWear;
+    if (car.m_frontLeftWingDamage !== undefined && car.m_frontRightWingDamage !== undefined) {
+      this.lastFrontWingDamage = (car.m_frontLeftWingDamage + car.m_frontRightWingDamage) / 2;
+    } else if (car.m_frontLeftWingDamage !== undefined) {
+      this.lastFrontWingDamage = car.m_frontLeftWingDamage;
+    }
+    if (car.m_rearWingDamage !== undefined) this.lastRearWingDamage = car.m_rearWingDamage;
+  }
+
+  handleSessionHistoryPacket(data: {
+    m_carIdx?: number;
+    m_numLaps?: number;
+    m_lapHistoryData?: Array<{
+      m_lapTimeInMS?: number;
+      m_sector1TimeMS?: number;
+      m_sector2TimeMS?: number;
+      m_sector3TimeMS?: number;
+      m_lapValidBitFlags?: number;
+    }>;
+    m_tyreStintsHistoryData?: Array<{
+      m_endLap?: number;
+      m_tyreActualCompound?: number;
+      m_tyreVisualCompound?: number;
+    }>;
+  }): void {
+    this.lastPacketTime = Date.now();
+    if (!this.sessionUID) return;
+    if (!data.m_lapHistoryData) return;
+
+    this.lastLapHistory = data.m_lapHistoryData.map((l, i) => ({
+      lap: i + 1,
+      lapTimeMs: l.m_lapTimeInMS ?? 0,
+      sector1Ms: l.m_sector1TimeMS ?? 0,
+      sector2Ms: l.m_sector2TimeMS ?? 0,
+      sector3Ms: l.m_sector3TimeMS ?? 0,
+      valid: ((l.m_lapValidBitFlags ?? 0) & 0x01) !== 0,
+    }));
+
+    if (data.m_tyreStintsHistoryData) {
+      const stints: TyreStint[] = [];
+      let startLap = 1;
+      for (const stint of data.m_tyreStintsHistoryData) {
+        const endLap = (stint.m_endLap ?? 255) === 255
+          ? (this.validLaps.length > 0 ? this.validLaps[this.validLaps.length - 1].lap : startLap)
+          : (stint.m_endLap ?? startLap);
+        stints.push({
+          startLap,
+          endLap,
+          compound: TYRE_ACTUAL_NAMES[stint.m_tyreActualCompound ?? 0] ?? `C${stint.m_tyreActualCompound}`,
+          visualCompound: TYRE_NAMES[stint.m_tyreVisualCompound ?? 0] ?? "Unknown",
+        });
+        startLap = endLap + 1;
+      }
+      this.lastTyreStints = stints;
+    }
   }
 
   handleFinalClassificationPacket(data: {
@@ -353,14 +611,12 @@ export class SessionTracker {
     const playerIdx = this.playerCarIdx < data.m_classificationData.length ? this.playerCarIdx : 0;
     const classification = data.m_classificationData[playerIdx];
     if (!classification) return;
-    // resultStatus 3=Finished, 7=Retired — only record if driver actually participated
     const resultStatus = classification.m_resultStatus ?? 0;
     if (resultStatus >= 2 && classification.m_position !== undefined && classification.m_position > 0) {
       this.lastPosition = classification.m_position;
     }
   }
 
-  // Called when the app detects the game disconnected or a force-upload is needed
   forceFlush(): void {
     if (this.sessionUID && (this.validLaps.length > 0 || this.pendingLap !== null)) {
       this.flushSession();
@@ -386,11 +642,38 @@ export class SessionTracker {
       position: this.lastPosition,
       assists: this.buildAssistsString(),
       gameVersion: "F1 25",
+      trackTemperature: this.lastTrackTemperature || undefined,
+      airTemperature: this.lastAirTemperature || undefined,
+      totalLaps: this.lastTotalLaps || undefined,
+      pitSpeedLimit: this.lastPitSpeedLimit || undefined,
+      safetyCarStatus: this.lastSafetyCarStatus,
+      timeOfDay: this.lastTimeOfDay,
+      speed: this.lastSpeed || undefined,
+      throttle: this.lastThrottle || undefined,
+      brake: this.lastBrake || undefined,
+      gear: this.lastGear || undefined,
+      engineRpm: this.lastEngineRpm || undefined,
+      drsActive: this.lastDrsActive,
+      tyreSurfaceTemps: this.lastTyreSurfaceTemps.some(t => t > 0) ? this.lastTyreSurfaceTemps : undefined,
+      brakeTemps: this.lastBrakeTemps.some(t => t > 0) ? this.lastBrakeTemps : undefined,
+      fuelInTank: this.lastFuelInTank || undefined,
+      ersDeployMode: this.lastErsDeployMode,
+      ersEnergyStored: this.lastErsEnergyStored || undefined,
+      ersDeployedThisLap: this.lastErsDeployedThisLap || undefined,
+      tyreWear: this.lastTyreWear.some(w => w > 0) ? this.lastTyreWear : undefined,
+      frontWingDamage: this.lastFrontWingDamage || undefined,
+      rearWingDamage: this.lastRearWingDamage || undefined,
+      setup: this.lastSetup,
+      tyreStints: this.lastTyreStints.length > 0 ? [...this.lastTyreStints] : undefined,
+      lapHistory: this.lastLapHistory.length > 0 ? [...this.lastLapHistory] : undefined,
     };
+
     this.sessionUID = null;
     this.validLaps = [];
     this.pendingLap = null;
     this.lastPosition = 0;
+    this.lastTyreStints = [];
+    this.lastLapHistory = [];
     this.onSessionComplete?.(snap);
   }
 }

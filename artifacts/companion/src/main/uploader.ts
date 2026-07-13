@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { app } from "electron";
-import type { SessionSnapshot, LapRecord } from "./session";
+import type { SessionSnapshot, LapRecord, CarSetupSnapshot, TyreStint, LapHistoryEntry } from "./session";
 
 export interface PendingUpload {
   id: string;
@@ -22,6 +22,30 @@ export interface UploadPayload {
   laps: LapRecord[];
   aiDifficulty?: number;
   position?: string;
+  trackTemperature?: number;
+  airTemperature?: number;
+  totalLaps?: number;
+  pitSpeedLimit?: number;
+  safetyCarStatus?: number;
+  timeOfDay?: string;
+  speed?: number;
+  throttle?: number;
+  brake?: number;
+  gear?: number;
+  engineRpm?: number;
+  drsActive?: number;
+  tyreSurfaceTemps?: [number, number, number, number];
+  brakeTemps?: [number, number, number, number];
+  fuelInTank?: number;
+  ersDeployMode?: number;
+  ersEnergyStored?: number;
+  ersDeployedThisLap?: number;
+  tyreWear?: [number, number, number, number];
+  frontWingDamage?: number;
+  rearWingDamage?: number;
+  setup?: CarSetupSnapshot;
+  tyreStints?: TyreStint[];
+  lapHistory?: LapHistoryEntry[];
 }
 
 export interface UploadResult {
@@ -102,6 +126,30 @@ export class Uploader {
       laps: session.laps,
       aiDifficulty: session.aiDifficulty > 0 ? session.aiDifficulty : undefined,
       position: session.position > 0 ? String(session.position) : undefined,
+      trackTemperature: session.trackTemperature,
+      airTemperature: session.airTemperature,
+      totalLaps: session.totalLaps,
+      pitSpeedLimit: session.pitSpeedLimit,
+      safetyCarStatus: session.safetyCarStatus,
+      timeOfDay: session.timeOfDay,
+      speed: session.speed,
+      throttle: session.throttle,
+      brake: session.brake,
+      gear: session.gear,
+      engineRpm: session.engineRpm,
+      drsActive: session.drsActive,
+      tyreSurfaceTemps: session.tyreSurfaceTemps,
+      brakeTemps: session.brakeTemps,
+      fuelInTank: session.fuelInTank,
+      ersDeployMode: session.ersDeployMode,
+      ersEnergyStored: session.ersEnergyStored,
+      ersDeployedThisLap: session.ersDeployedThisLap,
+      tyreWear: session.tyreWear,
+      frontWingDamage: session.frontWingDamage,
+      rearWingDamage: session.rearWingDamage,
+      setup: session.setup,
+      tyreStints: session.tyreStints,
+      lapHistory: session.lapHistory,
     };
   }
 
@@ -126,9 +174,7 @@ export class Uploader {
         signal: AbortSignal.timeout(15000),
       });
 
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const best = bestLapTime(payload.laps);
       this.onUploadResult?.({
