@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { db, sessionsTable, apiKeysTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
+import { normalizeTrackId } from "../lib/trackAlias";
 import type { Request, Response, NextFunction } from "express";
 
 const router = Router();
@@ -280,7 +281,7 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         id: sessionId,
         userId,
         date: sessionDate,
-        trackId: body.track,
+        trackId: normalizeTrackId(body.track),
         car: body.car,
         type: body.sessionType,
         bestLap,

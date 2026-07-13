@@ -618,7 +618,7 @@ export class SessionTracker {
   }
 
   forceFlush(): void {
-    if (this.sessionUID && (this.validLaps.length > 0 || this.pendingLap !== null)) {
+    if (this.sessionUID && this.validLaps.length > 0) {
       this.flushSession();
     }
   }
