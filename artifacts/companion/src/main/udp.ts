@@ -10,9 +10,9 @@ const LAP_DATA_SIZE = 57;
 const CAR_STATUS_SIZE = 55;
 const CAR_TELEMETRY_SIZE = 60;
 const CAR_SETUP_SIZE = 50;
-const CAR_DAMAGE_SIZE = 42;
-const PARTICIPANT_SIZE = 59;
-const FINAL_CLASS_SIZE = 45;
+const CAR_DAMAGE_SIZE = 46;
+const PARTICIPANT_SIZE = 57;
+const FINAL_CLASS_SIZE = 46;
 
 // Session History sizes
 const LAP_HISTORY_SIZE = 14;
