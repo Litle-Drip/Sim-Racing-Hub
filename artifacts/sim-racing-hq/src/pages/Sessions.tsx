@@ -1,5 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity } from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { Toast } from '../components/Toast';
 import { EmptyState } from '../components/EmptyState';
 import {
@@ -99,7 +103,9 @@ function validLaps(laps: SessionRecord['laps']) {
   return laps?.filter(l => l.time && l.time.trim() !== '') ?? [];
 }
 
-function LapTable({ laps: rawLaps }: { laps: SessionRecord['laps'] }) {
+type LapEntry = NonNullable<SessionRecord['laps']>[number];
+
+function LapTable({ laps: rawLaps, onViewTelemetry }: { laps: SessionRecord['laps']; onViewTelemetry: (lap: LapEntry) => void }) {
   const laps = validLaps(rawLaps);
   if (!laps || laps.length === 0) return null;
   const fastestIdx = laps.reduce((best, l, i) => {
@@ -114,7 +120,7 @@ function LapTable({ laps: rawLaps }: { laps: SessionRecord['laps'] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            {['Lap', 'Time', 'S1', 'S2', 'S3', 'Tires', 'Penalty'].map(h => (
+            {['Lap', 'Time', 'S1', 'S2', 'S3', 'Tires', 'Penalty', ''].map(h => (
               <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase' }}>{h}</th>
             ))}
           </tr>
@@ -131,11 +137,94 @@ function LapTable({ laps: rawLaps }: { laps: SessionRecord['laps'] }) {
                 <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s3 || '—'}</td>
                 <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.tires || '—'}</td>
                 <td style={{ padding: '5px 8px', color: l.penalty ? 'var(--red)' : 'var(--gray-mid)' }}>{l.penalty || '—'}</td>
+                <td style={{ padding: '5px 8px' }}>
+                  {l.trace && l.trace.length > 0 && (
+                    <button
+                      className="btn btn-secondary"
+                      style={{ fontSize: 10, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+                      onClick={() => onViewTelemetry(l)}
+                      title="View speed/throttle/brake telemetry for this lap"
+                    >
+                      <Activity size={11} /> Telemetry
+                    </button>
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ─── Lap telemetry modal (speed/throttle/brake/steer vs. distance) ────────────
+
+function TelemetryTraceChart({
+  dataKey,
+  label,
+  color,
+  unit,
+  domain,
+  data,
+}: {
+  dataKey: 'speed' | 'throttle' | 'brake' | 'steer';
+  label: string;
+  color: string;
+  unit: string;
+  domain?: [number, number];
+  data: NonNullable<LapEntry['trace']>;
+}) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
+        {label}
+      </div>
+      <ResponsiveContainer width="100%" height={140}>
+        <LineChart data={data} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
+          <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
+          <XAxis
+            dataKey="d"
+            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
+            axisLine={{ stroke: '#1E1E1E' }}
+            tickLine={false}
+            tickFormatter={v => `${v}`}
+          />
+          <YAxis
+            domain={domain ?? ['auto', 'auto']}
+            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
+            axisLine={{ stroke: '#1E1E1E' }}
+            tickLine={false}
+            width={36}
+          />
+          <Tooltip content={({ active, payload, label: d }) => active && payload && payload.length > 0 ? (
+            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '8px 12px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>{d}m</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color }}>{payload[0].value}{unit}</div>
+            </div>
+          ) : null} />
+          <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function LapTelemetryModal({ lap, onClose }: { lap: LapEntry; onClose: () => void }) {
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 640 }}>
+        <div className="modal-header">
+          <span className="modal-title">Lap {lap.lap} Telemetry{lap.time ? ` — ${lap.time}` : ''}</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <TelemetryTraceChart dataKey="speed" label="Speed (km/h)" color="#00D2BE" unit=" km/h" data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="throttle" label="Throttle" color="#4CAF50" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="brake" label="Brake" color="#E8002D" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="steer" label="Steering" color="#a855f7" unit="%" domain={[-100, 100]} data={lap.trace ?? []} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -283,6 +372,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [filterConditions, setFilterConditions] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
+  const [telemetryLap, setTelemetryLap] = useState<LapEntry | null>(null);
   const [toast, setToast] = useState('');
 
   // ── Draft auto-save ────────────────────────────────────────────────────
@@ -749,7 +839,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           {/* Per-lap table */}
                           {s.laps && s.laps.length > 0 && (
                             <div style={{ width: '100%' }}>
-                              <LapTable laps={s.laps} />
+                              <LapTable laps={s.laps} onViewTelemetry={setTelemetryLap} />
                             </div>
                           )}
 
@@ -817,6 +907,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Lap Telemetry Modal ───────────────────────────────────────────── */}
+      {telemetryLap && (
+        <LapTelemetryModal lap={telemetryLap} onClose={() => setTelemetryLap(null)} />
       )}
 
       {/* ── Log Session Modal ─────────────────────────────────────────────── */}

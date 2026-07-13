@@ -36,7 +36,8 @@ function isFasterLap(a: string, b: string): boolean {
   return lapToSeconds(a) < lapToSeconds(b);
 }
 
-type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string };
+type LapTraceSample = { d: number; speed: number; throttle: number; brake: number; steer: number };
+type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: LapTraceSample[] };
 
 function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string; worstLap: string } {
   const valid = laps.filter(l => l.time && l.time.trim() !== "");

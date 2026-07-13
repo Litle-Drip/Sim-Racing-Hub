@@ -24,6 +24,7 @@ export * from './hardwareRecord';
 export * from './healthStatus';
 export * from './lapHistoryEntry';
 export * from './lapRecord';
+export * from './lapTraceSample';
 export * from './notFoundResponse';
 export * from './rateSetupRequest';
 export * from './rateSetupResponse';

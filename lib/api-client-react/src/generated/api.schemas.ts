@@ -23,6 +23,14 @@ export interface CornerNote {
   myNotes: string;
 }
 
+export interface LapTraceSample {
+  d: number;
+  speed: number;
+  throttle: number;
+  brake: number;
+  steer: number;
+}
+
 export interface LapRecord {
   lap: number;
   time: string;
@@ -31,6 +39,7 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  trace?: LapTraceSample[] | null;
 }
 
 export interface WingDamage {

@@ -53,7 +53,14 @@ export const GetSessionsResponseItem = zod.object({
   "s2": zod.string(),
   "s3": zod.string(),
   "tires": zod.string(),
-  "penalty": zod.string()
+  "penalty": zod.string(),
+  "trace": zod.array(zod.object({
+  "d": zod.number(),
+  "speed": zod.number(),
+  "throttle": zod.number(),
+  "brake": zod.number(),
+  "steer": zod.number()
+})).nullish()
 })).nullish(),
   "timeOfDay": zod.string().nullish(),
   "position": zod.string().optional(),
@@ -152,7 +159,14 @@ export const CreateSessionBody = zod.object({
   "s2": zod.string(),
   "s3": zod.string(),
   "tires": zod.string(),
-  "penalty": zod.string()
+  "penalty": zod.string(),
+  "trace": zod.array(zod.object({
+  "d": zod.coerce.number(),
+  "speed": zod.coerce.number(),
+  "throttle": zod.coerce.number(),
+  "brake": zod.coerce.number(),
+  "steer": zod.coerce.number()
+})).nullish()
 })).optional(),
   "position": zod.string().optional(),
   "aiDifficulty": zod.coerce.number().optional(),
@@ -532,7 +546,14 @@ export const UploadCompanionSessionBody = zod.object({
   "s2": zod.string(),
   "s3": zod.string(),
   "tires": zod.string(),
-  "penalty": zod.string()
+  "penalty": zod.string(),
+  "trace": zod.array(zod.object({
+  "d": zod.coerce.number(),
+  "speed": zod.coerce.number(),
+  "throttle": zod.coerce.number(),
+  "brake": zod.coerce.number(),
+  "steer": zod.coerce.number()
+})).nullish()
 })).optional(),
   "id": zod.string().optional(),
   "date": zod.string().optional(),
