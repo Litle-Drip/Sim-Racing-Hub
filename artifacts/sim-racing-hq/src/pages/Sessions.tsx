@@ -118,9 +118,9 @@ function ersModeLabel(mode: number): string {
 function ExpandedGroup({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
   if (!show) return null;
   return (
-    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)', width: '100%' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', width: '100%' }}>{label}</div>
-      {children}
+    <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
+      <div className="expanded-group-grid">{children}</div>
     </div>
   );
 }
@@ -846,11 +846,13 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             const bestS2 = validS2.length > 0 ? validS2.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
                             const bestS3 = validS3.length > 0 ? validS3.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
                             return (
-                              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)', width: '100%' }}>
-                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', width: '100%' }}>Best Sectors (from laps)</div>
-                                {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS1}</div></div>}
-                                {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS2}</div></div>}
-                                {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS3}</div></div>}
+                              <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>Best Sectors (from laps)</div>
+                                <div className="expanded-group-grid">
+                                  {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS1}</div></div>}
+                                  {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS2}</div></div>}
+                                  {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS3}</div></div>}
+                                </div>
                               </div>
                             );
                           })()}
@@ -923,12 +925,12 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
                           {/* Per-lap table */}
                           {s.laps && s.laps.length > 0 && (
-                            <div style={{ width: '100%' }}>
+                            <div style={{ gridColumn: '1 / -1' }}>
                               <LapTable laps={s.laps} onViewTelemetry={setTelemetryLap} />
                             </div>
                           )}
 
-                          <div style={{ marginLeft: 'auto', alignSelf: 'flex-start', paddingTop: 4, display: 'flex', gap: 8 }}>
+                          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 12, marginTop: 4, borderTop: '1px solid var(--border)' }}>
                             {!isGuest && (
                               <button
                                 className="btn btn-secondary"
