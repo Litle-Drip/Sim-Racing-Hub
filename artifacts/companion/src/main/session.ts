@@ -246,6 +246,7 @@ export class SessionTracker {
   private currentLapNum = 0;
   private pendingLap: LapState | null = null;
   private validLaps: LapRecord[] = [];
+  private lastRecordedLapMs = 0;
 
   private lastTyreCompound = 0;
   private lastFuelRemaining = 0;
@@ -444,8 +445,21 @@ export class SessionTracker {
     const penalties = lap.m_penalties ?? 0;
     this.currentLapDistanceM = lap.m_lapDistance ?? 0;
 
-    if (!this.pendingLap || lapNum !== this.pendingLap.lapNum) {
-      if (this.pendingLap && this.pendingLap.lapNum > 0 && lastLapMs > 0) {
+    // A rewind/flashback can make the game report a lower m_currentLapNum
+    // than the lap we were tracking (re-driving an earlier lap). That's not
+    // a forward lap completion, and m_lastLapTimeInMS/sector fields won't
+    // have refreshed for it yet — treating it as one produces a phantom
+    // duplicate record (same time as the real previous lap, blank sectors).
+    // Only ever complete a lap on forward progress, and skip if the "last
+    // lap" time is identical to the one we already recorded (stale data
+    // from before a rewind resolves back to forward-driving).
+    if (!this.pendingLap || lapNum > this.pendingLap.lapNum) {
+      if (
+        this.pendingLap &&
+        this.pendingLap.lapNum > 0 &&
+        lastLapMs > 0 &&
+        lastLapMs !== this.lastRecordedLapMs
+      ) {
         if (!this.pendingLap.invalid) {
           const s1 = msToLapTime(this.pendingLap.s1Ms);
           const s2 = msToLapTime(this.pendingLap.s2Ms);
@@ -459,12 +473,22 @@ export class SessionTracker {
             trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
           };
           this.validLaps.push(record);
+          this.lastRecordedLapMs = lastLapMs;
           this.onLapComplete?.(record);
           this.onStatusChange?.();
         }
       }
       this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid, trace: [] };
       this.telemetrySampleCounter = 0;
+      this.currentLapNum = lapNum;
+    } else if (lapNum < this.pendingLap.lapNum) {
+      // Rewind landed us back on an earlier lap — resume tracking it
+      // in place rather than starting a new pendingLap, so sector times
+      // accumulate correctly once forward driving resumes.
+      this.pendingLap.lapNum = lapNum;
+      this.pendingLap.s1Ms = s1Ms;
+      this.pendingLap.s2Ms = s2Ms;
+      this.pendingLap.invalid = invalid;
       this.currentLapNum = lapNum;
     } else {
       if (s1Ms > 0) this.pendingLap.s1Ms = s1Ms;

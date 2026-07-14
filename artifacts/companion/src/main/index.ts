@@ -110,7 +110,12 @@ uploader.onUploadResult = (result: UploadResult) => {
 
 function startGameWatchdog(): void {
   gameCheckInterval = setInterval(() => {
-    const receiving = udp.isReceiving(5000);
+    // A rewind/flashback can pause UDP telemetry output for several
+    // seconds; a short gap threshold here misreads that as the game
+    // disconnecting, force-flushing and fragmenting one continuous
+    // session into several uploaded ones. 20s tolerates that while still
+    // catching a genuine quit/crash reasonably quickly.
+    const receiving = udp.isReceiving(20000);
     const wasConnected = gameConnected;
     const wasReceiving = telemetryReceiving;
 
