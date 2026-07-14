@@ -1,5 +1,13 @@
 // F1 25 UDP session & lap state machine
 
+export interface LapTraceSample {
+  d: number; // lap distance, metres
+  speed: number; // km/h
+  throttle: number; // 0-100
+  brake: number; // 0-100
+  steer: number; // -100 (full left) to 100 (full right)
+}
+
 export interface LapRecord {
   lap: number;
   time: string;
@@ -8,6 +16,7 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  trace?: LapTraceSample[];
 }
 
 export interface CarSetupSnapshot {
@@ -84,6 +93,13 @@ export interface SessionSnapshot {
   setup?: CarSetupSnapshot;
   tyreStints?: TyreStint[];
   lapHistory?: LapHistoryEntry[];
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  tyreCompound?: string;
 }
 
 const TRACK_NAMES: Record<number, string> = {
@@ -120,8 +136,14 @@ const TRACK_NAMES: Record<number, string> = {
   30: "Miami",
   31: "Las Vegas",
   32: "Lusail",
+  // F1 25 added reverse-layout circuits (new track ids, not present in F1 24)
+  39: "Silverstone Reverse",
+  40: "Austria Reverse",
+  41: "Zandvoort Reverse",
 };
 
+// F1 25 inserted 5 sprint-weekend session types before Race, shifting Race
+// from 10->15 and Time Trial from 13->18 versus the F1 24 UDP spec.
 const SESSION_TYPES: Record<number, string> = {
   0: "Unknown",
   1: "Practice 1",
@@ -133,10 +155,15 @@ const SESSION_TYPES: Record<number, string> = {
   7: "Q3",
   8: "Short Q",
   9: "OSQ",
-  10: "Race",
-  11: "Race 2",
-  12: "Race 3",
-  13: "Time Trial",
+  10: "Sprint Shootout 1",
+  11: "Sprint Shootout 2",
+  12: "Sprint Shootout 3",
+  13: "Short Sprint Shootout",
+  14: "OSQ Sprint Shootout",
+  15: "Race",
+  16: "Race 2",
+  17: "Race 3",
+  18: "Time Trial",
 };
 
 const WEATHER_NAMES: Record<number, string> = {
@@ -170,10 +197,16 @@ const TYRE_ACTUAL_NAMES: Record<number, string> = {
   8: "Wet",
 };
 
+// Base ids confirmed against the current F1 25 team roster (AlphaTauri
+// rebranded to RB, Alfa Romeo rebranded to Sauber). F1 25's "2026 Season
+// Pack" adds alternate-livery variants of each team at a fixed offset from
+// its base id — 185 for '24 retro liveries, 220 for 2026-spec concept
+// liveries — confirmed live via a diagnostic log showing raw m_teamId=228
+// (=8+220) for a McLaren car driven in the 2026 content.
 const TEAM_NAMES: Record<number, string> = {
   0: "Mercedes",
   1: "Ferrari",
-  2: "Red Bull",
+  2: "Red Bull Racing",
   3: "Williams",
   4: "Aston Martin",
   5: "Alpine",
@@ -244,6 +277,7 @@ interface LapState {
   s1Ms: number;
   s2Ms: number;
   invalid: boolean;
+  trace: LapTraceSample[];
 }
 
 export class SessionTracker {
@@ -257,6 +291,7 @@ export class SessionTracker {
   private currentLapNum = 0;
   private pendingLap: LapState | null = null;
   private validLaps: LapRecord[] = [];
+  private lastRecordedLapMs = 0;
 
   private lastTyreCompound = 0;
   private lastFuelRemaining = 0;
@@ -295,6 +330,25 @@ export class SessionTracker {
 
   private lastTyreStints: TyreStint[] = [];
   private lastLapHistory: LapHistoryEntry[] = [];
+
+  // Session-level aggregates (running max/avg/count), distinct from the
+  // lastX "most recent sample" fields above — these summarize the whole
+  // session rather than a snapshot at flush time.
+  private topSpeedKph = 0;
+  private throttleSum = 0;
+  private brakeSum = 0;
+  private throttleBrakeSamples = 0;
+  private drsWasActive = false;
+  private drsActivations = 0;
+  private maxRpm = 0;
+  private topGear = 0;
+
+  // Per-lap distance trace (speed/throttle/brake/steer vs. lap distance),
+  // sampled from CarTelemetry and downsampled by TRACE_SAMPLE_EVERY so a
+  // full lap stays a few hundred points instead of every raw packet.
+  private currentLapDistanceM = 0;
+  private telemetrySampleCounter = 0;
+  private static readonly TRACE_SAMPLE_EVERY = 3;
 
   onSessionComplete: ((session: SessionSnapshot) => void) | null = null;
   onLapComplete: ((lap: LapRecord) => void) | null = null;
@@ -357,12 +411,14 @@ export class SessionTracker {
         this.validLaps = [];
         this.pendingLap = null;
         this.currentLapNum = 0;
+        this.resetTelemetryState();
         this.onStatusChange?.();
       } else {
         this.sessionUID = null;
         this.validLaps = [];
         this.pendingLap = null;
         this.currentLapNum = 0;
+        this.resetTelemetryState();
         this.onStatusChange?.();
       }
     } else if (this.sessionUID !== null && isMenuState) {
@@ -373,6 +429,7 @@ export class SessionTracker {
         this.validLaps = [];
         this.pendingLap = null;
         this.currentLapNum = 0;
+        this.resetTelemetryState();
       }
       this.onStatusChange?.();
     } else if (
@@ -386,6 +443,7 @@ export class SessionTracker {
       this.validLaps = [];
       this.pendingLap = null;
       this.currentLapNum = 0;
+      this.resetTelemetryState();
       this.onStatusChange?.();
     } else {
       this.weather = weather;
@@ -397,7 +455,13 @@ export class SessionTracker {
     if (data.m_playerCarIndex !== undefined) this.playerCarIdx = data.m_playerCarIndex;
     if (data.m_participants && this.playerCarIdx < data.m_participants.length) {
       const p = data.m_participants[this.playerCarIdx];
-      this.teamId = (p?.m_myTeam === 1) ? 253 : (p?.m_teamId ?? 253);
+      const raw = (p?.m_myTeam === 1) ? 253 : (p?.m_teamId ?? 253);
+      if (raw !== this.teamId) {
+        console.log(`[Participants] player idx=${this.playerCarIdx} raw m_teamId=${raw} -> ${TEAM_NAMES[raw] ?? "(unmapped)"}`);
+      }
+      this.teamId = raw;
+    } else {
+      console.log(`[Participants] no usable participant data: playerCarIdx=${this.playerCarIdx}, m_participants length=${data.m_participants?.length ?? "undefined"}`);
     }
   }
 
@@ -425,9 +489,23 @@ export class SessionTracker {
     const s2Ms = lap.m_sector2TimeInMS ?? 0;
     const lastLapMs = lap.m_lastLapTimeInMS ?? 0;
     const penalties = lap.m_penalties ?? 0;
+    this.currentLapDistanceM = lap.m_lapDistance ?? 0;
 
-    if (!this.pendingLap || lapNum !== this.pendingLap.lapNum) {
-      if (this.pendingLap && this.pendingLap.lapNum > 0 && lastLapMs > 0) {
+    // A rewind/flashback can make the game report a lower m_currentLapNum
+    // than the lap we were tracking (re-driving an earlier lap). That's not
+    // a forward lap completion, and m_lastLapTimeInMS/sector fields won't
+    // have refreshed for it yet — treating it as one produces a phantom
+    // duplicate record (same time as the real previous lap, blank sectors).
+    // Only ever complete a lap on forward progress, and skip if the "last
+    // lap" time is identical to the one we already recorded (stale data
+    // from before a rewind resolves back to forward-driving).
+    if (!this.pendingLap || lapNum > this.pendingLap.lapNum) {
+      if (
+        this.pendingLap &&
+        this.pendingLap.lapNum > 0 &&
+        lastLapMs > 0 &&
+        lastLapMs !== this.lastRecordedLapMs
+      ) {
         if (!this.pendingLap.invalid) {
           const s1 = msToLapTime(this.pendingLap.s1Ms);
           const s2 = msToLapTime(this.pendingLap.s2Ms);
@@ -438,13 +516,25 @@ export class SessionTracker {
             s1, s2, s3,
             tires: TYRE_NAMES[this.lastTyreCompound] ?? "Unknown",
             penalty: penalties > 0 ? `${penalties}s` : "",
+            trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
           };
           this.validLaps.push(record);
+          this.lastRecordedLapMs = lastLapMs;
           this.onLapComplete?.(record);
           this.onStatusChange?.();
         }
       }
-      this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid };
+      this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid, trace: [] };
+      this.telemetrySampleCounter = 0;
+      this.currentLapNum = lapNum;
+    } else if (lapNum < this.pendingLap.lapNum) {
+      // Rewind landed us back on an earlier lap — resume tracking it
+      // in place rather than starting a new pendingLap, so sector times
+      // accumulate correctly once forward driving resumes.
+      this.pendingLap.lapNum = lapNum;
+      this.pendingLap.s1Ms = s1Ms;
+      this.pendingLap.s2Ms = s2Ms;
+      this.pendingLap.invalid = invalid;
       this.currentLapNum = lapNum;
     } else {
       if (s1Ms > 0) this.pendingLap.s1Ms = s1Ms;
@@ -485,6 +575,7 @@ export class SessionTracker {
   handleCarTelemetryPacket(data: { m_carTelemetryData?: Array<{
     m_speed?: number;
     m_throttle?: number;
+    m_steer?: number;
     m_brake?: number;
     m_gear?: number;
     m_engineRPM?: number;
@@ -508,6 +599,31 @@ export class SessionTracker {
     const surfaceTemps = car.m_tyresSurfaceTemperature ?? car.m_tyreSurfaceTemperature;
     if (surfaceTemps) this.lastTyreSurfaceTemps = surfaceTemps;
     if (car.m_brakesTemperature) this.lastBrakeTemps = car.m_brakesTemperature;
+
+    if ((car.m_speed ?? 0) > this.topSpeedKph) this.topSpeedKph = car.m_speed ?? 0;
+    if (car.m_throttle !== undefined && car.m_brake !== undefined) {
+      this.throttleSum += car.m_throttle * 100;
+      this.brakeSum += car.m_brake * 100;
+      this.throttleBrakeSamples++;
+    }
+    const drsActive = (car.m_drs ?? 0) === 1;
+    if (drsActive && !this.drsWasActive) this.drsActivations++;
+    this.drsWasActive = drsActive;
+    if ((car.m_engineRPM ?? 0) > this.maxRpm) this.maxRpm = car.m_engineRPM ?? 0;
+    if ((car.m_gear ?? 0) > this.topGear) this.topGear = car.m_gear ?? 0;
+
+    if (this.pendingLap && !this.pendingLap.invalid) {
+      this.telemetrySampleCounter++;
+      if (this.telemetrySampleCounter % SessionTracker.TRACE_SAMPLE_EVERY === 0) {
+        this.pendingLap.trace.push({
+          d: Math.round(this.currentLapDistanceM),
+          speed: car.m_speed ?? 0,
+          throttle: Math.round((car.m_throttle ?? 0) * 100),
+          brake: Math.round((car.m_brake ?? 0) * 100),
+          steer: Math.round((car.m_steer ?? 0) * 100),
+        });
+      }
+    }
   }
 
   handleCarSetupPacket(data: { m_carSetups?: Array<{
@@ -658,7 +774,7 @@ export class SessionTracker {
   }
 
   forceFlush(): void {
-    if (this.sessionUID && (this.validLaps.length > 0 || this.pendingLap !== null)) {
+    if (this.sessionUID && this.validLaps.length > 0) {
       this.flushSession();
     }
   }
@@ -667,6 +783,52 @@ export class SessionTracker {
     const tc = ["Off", "Medium", "Full"][this.lastTractionControl] ?? "Off";
     const abs = this.lastAntiLockBrakes ? "On" : "Off";
     return `TC: ${tc}, ABS: ${abs}`;
+  }
+
+  // Clears session-scoped telemetry so stale values from a previous
+  // session/sub-session can't leak into the next one's snapshot. Called at
+  // every session boundary (new session, menu, session-type change, flush).
+  // Deliberately excludes: playerCarIdx/teamId (participant identity, not
+  // session telemetry); aiDifficulty/trackTemperature/airTemperature/
+  // totalLaps/pitSpeedLimit/safetyCarStatus/timeOfDay (set unconditionally
+  // from every Session packet, including the one that triggers this reset,
+  // so they self-correct without needing to be zeroed here).
+  private resetTelemetryState(): void {
+    this.lastTyreCompound = 0;
+    this.lastFuelRemaining = 0;
+    this.lastTractionControl = 0;
+    this.lastAntiLockBrakes = 0;
+
+    this.lastSpeed = 0;
+    this.lastThrottle = 0;
+    this.lastBrake = 0;
+    this.lastGear = 0;
+    this.lastEngineRpm = 0;
+    this.lastDrsActive = 0;
+    this.lastTyreSurfaceTemps = [0, 0, 0, 0];
+    this.lastBrakeTemps = [0, 0, 0, 0];
+
+    this.lastFuelInTank = 0;
+    this.lastErsDeployMode = 0;
+    this.lastErsEnergyStored = 0;
+    this.lastErsDeployedThisLap = 0;
+
+    this.lastTyreWear = [0, 0, 0, 0];
+    this.lastFrontWingDamage = 0;
+    this.lastRearWingDamage = 0;
+
+    this.lastSetup = undefined;
+    this.lastTyreStints = [];
+    this.lastLapHistory = [];
+
+    this.topSpeedKph = 0;
+    this.throttleSum = 0;
+    this.brakeSum = 0;
+    this.throttleBrakeSamples = 0;
+    this.drsWasActive = false;
+    this.drsActivations = 0;
+    this.maxRpm = 0;
+    this.topGear = 0;
   }
 
   private flushSession(): void {
@@ -709,14 +871,20 @@ export class SessionTracker {
       setup: this.lastSetup,
       tyreStints: this.lastTyreStints.length > 0 ? [...this.lastTyreStints] : undefined,
       lapHistory: this.lastLapHistory.length > 0 ? [...this.lastLapHistory] : undefined,
+      topSpeedKph: this.topSpeedKph || undefined,
+      avgThrottlePct: this.throttleBrakeSamples > 0 ? this.throttleSum / this.throttleBrakeSamples : undefined,
+      avgBrakePct: this.throttleBrakeSamples > 0 ? this.brakeSum / this.throttleBrakeSamples : undefined,
+      drsActivations: this.drsActivations || undefined,
+      maxRpm: this.maxRpm || undefined,
+      topGear: this.topGear || undefined,
+      tyreCompound: this.lastTyreCompound > 0 ? TYRE_NAMES[this.lastTyreCompound] : undefined,
     };
 
     this.sessionUID = null;
     this.validLaps = [];
     this.pendingLap = null;
     this.lastPosition = 0;
-    this.lastTyreStints = [];
-    this.lastLapHistory = [];
+    this.resetTelemetryState();
     this.onSessionComplete?.(snap);
   }
 }
