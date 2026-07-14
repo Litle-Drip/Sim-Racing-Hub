@@ -21,6 +21,16 @@
   --yellow: #FFF200;
   --green: #39B54A;
   --purple: #8b5cf6;
+  /* Pirelli tyre-compound colors — constant across themes, real-world convention */
+  --tyre-soft: #DA291C;
+  --tyre-medium: #FFC906;
+  --tyre-hard: #E4E4E4;
+  --tyre-inter: #3CB043;
+  --tyre-wet: #1E6FEB;
+  /* Podium colors — constant across themes */
+  --podium-gold: #FFD54A;
+  --podium-silver: #C7CDD4;
+  --podium-bronze: #CD7F32;
   --font-display: 'Orbitron', monospace;
   --font-body: 'Rajdhani', sans-serif;
   --font-mono: 'Space Mono', monospace;
@@ -403,6 +413,22 @@ table { border-collapse: collapse; width: 100%; }
   align-items: center;
   justify-content: space-between;
   margin-bottom: 36px;
+  padding-bottom: 14px;
+  position: relative;
+}
+
+/* Checkered-flag accent — a quiet nod to the start/finish line */
+.page-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 64px;
+  height: 8px;
+  opacity: 0.5;
+  background-image:
+    conic-gradient(var(--border-accent) 90deg, transparent 90deg 180deg, var(--border-accent) 180deg 270deg, transparent 270deg 360deg);
+  background-size: 8px 8px;
 }
 
 .page-title {
@@ -653,13 +679,14 @@ table { border-collapse: collapse; width: 100%; }
 
 .badge {
   display: inline-block;
-  padding: 3px 8px;
+  padding: 3px 10px;
   font-family: var(--font-display);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   border-radius: 0;
+  transform: skewX(-10deg);
 }
 
 .badge-practice { background: rgba(0,210,190,0.15); color: var(--teal); }
@@ -697,6 +724,58 @@ table { border-collapse: collapse; width: 100%; }
   letter-spacing: 0.06em;
   margin-left: 6px;
 }
+
+/* =========================================================
+   TYRE COMPOUND CHIP
+   ========================================================= */
+
+.tyre-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.tyre-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
+}
+
+.tyre-dot.tyre-soft { background: var(--tyre-soft); }
+.tyre-dot.tyre-medium { background: var(--tyre-medium); }
+.tyre-dot.tyre-hard { background: var(--tyre-hard); }
+.tyre-dot.tyre-inter { background: var(--tyre-inter); }
+.tyre-dot.tyre-wet { background: var(--tyre-wet); }
+
+/* =========================================================
+   CONSTRUCTOR / TEAM DOT
+   ========================================================= */
+
+.team-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.team-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* =========================================================
+   PODIUM COLORS
+   ========================================================= */
+
+.podium-1 { color: var(--podium-gold) !important; }
+.podium-2 { color: var(--podium-silver) !important; }
+.podium-3 { color: var(--podium-bronze) !important; }
 
 /* =========================================================
    RATING DOTS

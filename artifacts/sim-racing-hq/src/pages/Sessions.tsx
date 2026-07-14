@@ -15,7 +15,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS, getTypeBadgeClass } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS, getTypeBadgeClass, getTyreClass, getTeamColor } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency } from '../lib/engagement';
@@ -133,12 +133,28 @@ function validLaps(laps: SessionRecord['laps']) {
 
 type LapEntry = NonNullable<SessionRecord['laps']>[number];
 
+function fastestOf(laps: LapEntry[], field: 's1' | 's2' | 's3'): number {
+  let best = -1;
+  let bestSecs = Infinity;
+  laps.forEach((l, i) => {
+    const v = l[field];
+    if (!v || !v.trim()) return;
+    const secs = secsFromLap(v);
+    if (secs < bestSecs) { bestSecs = secs; best = i; }
+  });
+  return best;
+}
+
 function LapTable({ laps: rawLaps, onViewTelemetry }: { laps: SessionRecord['laps']; onViewTelemetry: (lap: LapEntry) => void }) {
   const laps = validLaps(rawLaps);
   if (!laps || laps.length === 0) return null;
   const fastestIdx = laps.reduce((best, l, i) => {
     return secsFromLap(l.time) < secsFromLap(laps[best].time) ? i : best;
   }, 0);
+  const showPurple = laps.length > 1;
+  const fastestS1 = fastestOf(laps, 's1');
+  const fastestS2 = fastestOf(laps, 's2');
+  const fastestS3 = fastestOf(laps, 's3');
 
   return (
     <div style={{ width: '100%', overflowX: 'auto', marginTop: 12 }}>
@@ -156,14 +172,22 @@ function LapTable({ laps: rawLaps, onViewTelemetry }: { laps: SessionRecord['lap
         <tbody>
           {laps.map((l, i) => {
             const isFastest = i === fastestIdx && laps.length > 1;
+            const tyreClass = getTyreClass(l.tires);
             return (
-              <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isFastest ? 'rgba(0,210,190,0.07)' : undefined }}>
+              <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isFastest ? 'rgba(139,92,246,0.08)' : undefined }}>
                 <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.lap}</td>
-                <td style={{ padding: '5px 8px', color: isFastest ? 'var(--teal)' : 'var(--white)', fontWeight: isFastest ? 700 : 400 }}>{l.time || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s1 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s2 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s3 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.tires || '—'}</td>
+                <td style={{ padding: '5px 8px', color: isFastest ? 'var(--purple)' : 'var(--white)', fontWeight: isFastest ? 700 : 400 }}>{l.time || '—'}</td>
+                <td style={{ padding: '5px 8px', color: showPurple && i === fastestS1 ? 'var(--purple)' : 'var(--gray-light)', fontWeight: showPurple && i === fastestS1 ? 700 : 400 }}>{l.s1 || '—'}</td>
+                <td style={{ padding: '5px 8px', color: showPurple && i === fastestS2 ? 'var(--purple)' : 'var(--gray-light)', fontWeight: showPurple && i === fastestS2 ? 700 : 400 }}>{l.s2 || '—'}</td>
+                <td style={{ padding: '5px 8px', color: showPurple && i === fastestS3 ? 'var(--purple)' : 'var(--gray-light)', fontWeight: showPurple && i === fastestS3 ? 700 : 400 }}>{l.s3 || '—'}</td>
+                <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>
+                  {l.tires ? (
+                    <span className="tyre-chip">
+                      <span className={`tyre-dot ${tyreClass}`} />
+                      {l.tires}
+                    </span>
+                  ) : '—'}
+                </td>
                 <td style={{ padding: '5px 8px', color: l.penalty ? 'var(--red)' : 'var(--gray-mid)' }}>{l.penalty || '—'}</td>
                 <td style={{ padding: '5px 8px' }}>
                   {l.trace && l.trace.length > 0 && (
@@ -801,7 +825,12 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                       {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 10, marginTop: 1 }}>{localTimeStr(s.createdAt)}</div>}
                     </td>
                     <td data-label="Track">{trackName(s.trackId)}</td>
-                    <td data-label="Car" style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
+                    <td data-label="Car" style={{ color: 'var(--white)', fontWeight: 600 }}>
+                      <span className="team-tag">
+                        {getTeamColor(s.car) && <span className="team-dot" style={{ background: getTeamColor(s.car)! }} />}
+                        {s.car}
+                      </span>
+                    </td>
                     <td data-label="Best Lap">
                       <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                       {s.isPB && <span className="pb-badge">★ PB</span>}
@@ -810,7 +839,12 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     <td data-label="Worst Lap"><span className="lap-time" style={{ color: 'var(--gray-mid)', fontSize: 12 }}>{s.worstLap || '—'}</span></td>
                     <td data-label="Consistency">{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
                     <td data-label="Type"><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
-                    <td data-label="Tires" style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
+                    <td data-label="Tires" style={{ color: 'var(--gray-mid)' }}>
+                      <span className="tyre-chip">
+                        <span className={`tyre-dot ${getTyreClass(s.tires)}`} />
+                        {s.tires}
+                      </span>
+                    </td>
                     <td data-label="Conditions" style={{ color: 'var(--gray-light)', fontSize: 12 }}>
                       {s.conditions || '—'}
                       {s.timeOfDay ? <span style={{ color: 'var(--gray-mid)', marginLeft: 4 }}>· {s.timeOfDay}</span> : null}
@@ -831,9 +865,9 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           {/* Sector times — from fastest lap or manual entry */}
                           {(s.s1 || s.s2 || s.s3) && (
                             <>
-                              {s.s1 && <div className="expanded-item"><div className="expanded-label">Best S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s1}</div></div>}
-                              {s.s2 && <div className="expanded-item"><div className="expanded-label">Best S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s2}</div></div>}
-                              {s.s3 && <div className="expanded-item"><div className="expanded-label">Best S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{s.s3}</div></div>}
+                              {s.s1 && <div className="expanded-item"><div className="expanded-label">Best S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)', fontWeight: 700 }}>{s.s1}</div></div>}
+                              {s.s2 && <div className="expanded-item"><div className="expanded-label">Best S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)', fontWeight: 700 }}>{s.s2}</div></div>}
+                              {s.s3 && <div className="expanded-item"><div className="expanded-label">Best S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)', fontWeight: 700 }}>{s.s3}</div></div>}
                             </>
                           )}
                           {/* Best sectors from laps data */}
@@ -849,9 +883,9 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                               <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
                                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>Best Sectors (from laps)</div>
                                 <div className="expanded-group-grid">
-                                  {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS1}</div></div>}
-                                  {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS2}</div></div>}
-                                  {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS3}</div></div>}
+                                  {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)', fontWeight: 700 }}>{bestS1}</div></div>}
+                                  {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)', fontWeight: 700 }}>{bestS2}</div></div>}
+                                  {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)', fontWeight: 700 }}>{bestS3}</div></div>}
                                 </div>
                               </div>
                             );
@@ -861,7 +895,17 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           {s.assists && <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>}
                           {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
                           {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
-                          {!!s.position && <div className="expanded-item"><div className="expanded-label">Finish Position</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>P{s.position}</div></div>}
+                          {!!s.position && (
+                            <div className="expanded-item">
+                              <div className="expanded-label">Finish Position</div>
+                              <div
+                                className={Number(s.position) === 1 ? 'expanded-value podium-1' : Number(s.position) === 2 ? 'expanded-value podium-2' : Number(s.position) === 3 ? 'expanded-value podium-3' : 'expanded-value'}
+                                style={{ fontFamily: 'var(--font-mono)', color: Number(s.position) > 3 ? 'var(--teal)' : undefined, fontWeight: Number(s.position) <= 3 ? 700 : 400 }}
+                              >
+                                P{s.position}
+                              </div>
+                            </div>
+                          )}
 
                           <ExpandedGroup label="Fuel & Tyres" show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps || !!s.brakeTemps}>
                             {!!s.fuelRemainingLaps && <div className="expanded-item"><div className="expanded-label">Fuel Remaining</div><div className="expanded-value">{s.fuelRemainingLaps.toFixed(1)} laps</div></div>}
@@ -875,7 +919,12 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             {s.tyreStints?.map((stint, i) => (
                               <div key={i} className="expanded-item">
                                 <div className="expanded-label">Stint {i + 1}</div>
-                                <div className="expanded-value">{stint.visualCompound || stint.compound} · L{stint.startLap}–{stint.endLap}</div>
+                                <div className="expanded-value">
+                                  <span className="tyre-chip">
+                                    <span className={`tyre-dot ${getTyreClass(stint.visualCompound || stint.compound)}`} />
+                                    {stint.visualCompound || stint.compound} · L{stint.startLap}–{stint.endLap}
+                                  </span>
+                                </div>
                               </div>
                             ))}
                           </ExpandedGroup>

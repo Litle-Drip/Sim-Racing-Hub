@@ -51,6 +51,53 @@ export function getTypeBadgeClass(type: string): string {
   if (t.startsWith('practice')) return 'badge-practice';
   return 'badge-practice';
 }
+/**
+ * Maps a tyre compound name to the CSS class carrying its real-world
+ * Pirelli color (soft=red, medium=yellow, hard=white, inter=green, wet=blue),
+ * matching the color coding used on F1 broadcast timing towers.
+ */
+export function getTyreClass(compound: string | null | undefined): string {
+  const c = (compound ?? '').trim().toLowerCase();
+  if (c === 'soft') return 'tyre-soft';
+  if (c === 'medium') return 'tyre-medium';
+  if (c === 'hard') return 'tyre-hard';
+  if (c === 'inter' || c === 'intermediate') return 'tyre-inter';
+  if (c === 'wet') return 'tyre-wet';
+  return '';
+}
+
+/** Constructor accent colors, matching each team's real livery. */
+const TEAM_COLORS: Record<string, string> = {
+  'red bull': '#3671C6',
+  'ferrari': '#E8002D',
+  'mclaren': '#FF8000',
+  'mercedes': '#27F4D2',
+  'aston martin': '#229971',
+  'alpine': '#FF87BC',
+  'williams': '#64C4FF',
+  'haas': '#B6BABD',
+  'kick sauber': '#52E252',
+  'sauber': '#52E252',
+  'rb': '#6692FF',
+  'racing bulls': '#6692FF',
+  'vcarb': '#6692FF',
+  'my team': '#00D2BE',
+};
+
+/**
+ * Best-effort constructor color for a free-text car/team string (e.g.
+ * "Ferrari SF-25 — Leclerc" or "My Team"). Returns null for unrecognized
+ * entries so callers can skip the accent rather than guess.
+ */
+export function getTeamColor(car: string | null | undefined): string | null {
+  const c = (car ?? '').trim().toLowerCase();
+  if (!c) return null;
+  for (const [name, color] of Object.entries(TEAM_COLORS)) {
+    if (c.startsWith(name)) return color;
+  }
+  return null;
+}
+
 export const CONDITIONS = ['Dry', 'Light Cloud', 'Overcast', 'Light Rain', 'Heavy Rain', 'Storm'];
 export const TIME_OF_DAY = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
 export const ASSISTS = ['None', 'Partial', 'Full', 'Apex Line', 'Suggested Gear Shifts', 'Apex Line + Gear Shifts'];

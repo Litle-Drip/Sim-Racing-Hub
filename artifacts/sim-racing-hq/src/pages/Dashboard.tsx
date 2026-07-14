@@ -2,7 +2,7 @@ import { useMemo, useRef, useEffect, useState } from 'react';
 import { useGetSessions, useGetSetups, useGetCommunitySessions } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
-import { F1_TRACKS } from '../data/f1Tracks';
+import { F1_TRACKS, getTeamColor } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
 import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
@@ -637,7 +637,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)' }}>
                 {F1_TRACKS.find(t => t.id === lastSession.trackId)?.flag} {trackName(lastSession.trackId)}
               </div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {getTeamColor(lastSession.car) && <span className="team-dot" style={{ background: getTeamColor(lastSession.car)! }} />}
                 {lastSession.car} · {lastSession.type} · {lastSession.date}
                 {lastSession.createdAt && !isNaN(new Date(lastSession.createdAt).getTime()) && (
                   <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
@@ -960,7 +961,12 @@ export default function Dashboard({ setPage }: DashboardProps) {
                 <tr key={s.id}>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
                   <td>{trackName(s.trackId)}</td>
-                  <td style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
+                  <td style={{ color: 'var(--white)', fontWeight: 600 }}>
+                    <span className="team-tag">
+                      {getTeamColor(s.car) && <span className="team-dot" style={{ background: getTeamColor(s.car)! }} />}
+                      {s.car}
+                    </span>
+                  </td>
                   <td>
                     <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                     {s.isPB && <span className="pb-badge">★ PB</span>}
