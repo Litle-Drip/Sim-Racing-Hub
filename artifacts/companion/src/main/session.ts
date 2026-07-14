@@ -49,6 +49,7 @@ export interface LapHistoryEntry {
 
 export interface SessionSnapshot {
   sessionUID: string;
+  date: string;
   sessionType: string;
   track: string;
   car: string;
@@ -176,13 +177,30 @@ const TEAM_NAMES: Record<number, string> = {
   3: "Williams",
   4: "Aston Martin",
   5: "Alpine",
-  6: "AlphaTauri",
+  6: "RB",
   7: "Haas",
   8: "McLaren",
-  9: "Alfa Romeo",
+  9: "Sauber",
   10: "Haas",
+  41: "F2 Generic",
   85: "Red Bull 2",
+  88: "Prema",
+  89: "Uni-Virtuosi",
+  90: "Carlin",
+  91: "Hitech",
+  92: "Art GP",
+  93: "MP Motorsport",
+  94: "Campos",
+  95: "Charouz",
+  96: "Dams",
+  97: "Russo",
+  98: "Trident",
+  99: "BWT HWA Racelab",
+  100: "Pertamina",
+  101: "McLaren F1",
+  102: "Prema F3",
   253: "My Team",
+  254: "My Team",
 };
 
 function msToLapTime(ms: number): string {
@@ -353,11 +371,12 @@ export class SessionTracker {
     }
   }
 
-  handleParticipantsPacket(data: { m_playerCarIndex?: number; m_participants?: Array<{ m_teamId?: number }> }): void {
+  handleParticipantsPacket(data: { m_playerCarIndex?: number; m_participants?: Array<{ m_teamId?: number; m_myTeam?: number }> }): void {
     this.lastPacketTime = Date.now();
     if (data.m_playerCarIndex !== undefined) this.playerCarIdx = data.m_playerCarIndex;
     if (data.m_participants && this.playerCarIdx < data.m_participants.length) {
-      this.teamId = data.m_participants[this.playerCarIdx]?.m_teamId ?? 253;
+      const p = data.m_participants[this.playerCarIdx];
+      this.teamId = (p?.m_myTeam === 1) ? 253 : (p?.m_teamId ?? 253);
     }
   }
 
@@ -630,8 +649,11 @@ export class SessionTracker {
   }
 
   private flushSession(): void {
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const snap: SessionSnapshot = {
       sessionUID: this.sessionUID!,
+      date: localDate,
       sessionType: SESSION_TYPES[this.sessionType] ?? "Unknown",
       track: TRACK_NAMES[this.trackId] ?? `Track ${this.trackId}`,
       car: TEAM_NAMES[this.teamId] ?? "My Team",

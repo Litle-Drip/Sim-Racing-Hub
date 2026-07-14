@@ -12,6 +12,7 @@ export interface PendingUpload {
 
 export interface UploadPayload {
   sessionType: string;
+  date?: string;
   track: string;
   car: string;
   weather: string;
@@ -22,12 +23,14 @@ export interface UploadPayload {
   laps: LapRecord[];
   aiDifficulty?: number;
   position?: string;
+  // Session packet extras
   trackTemperature?: number;
   airTemperature?: number;
   totalLaps?: number;
   pitSpeedLimit?: number;
   safetyCarStatus?: number;
   timeOfDay?: string;
+  // Car Telemetry (snapshot at session end)
   speed?: number;
   throttle?: number;
   brake?: number;
@@ -36,14 +39,18 @@ export interface UploadPayload {
   drsActive?: number;
   tyreSurfaceTemps?: [number, number, number, number];
   brakeTemps?: [number, number, number, number];
+  // Car Status extras
   fuelInTank?: number;
   ersDeployMode?: number;
   ersEnergyStored?: number;
   ersDeployedThisLap?: number;
+  // Car Damage (captured from packet 10)
   tyreWear?: [number, number, number, number];
   frontWingDamage?: number;
   rearWingDamage?: number;
+  // Car Setups
   setup?: CarSetupSnapshot;
+  // Session History
   tyreStints?: TyreStint[];
   lapHistory?: LapHistoryEntry[];
 }
@@ -116,6 +123,7 @@ export class Uploader {
   sessionToPayload(session: SessionSnapshot): UploadPayload {
     return {
       sessionType: session.sessionType,
+      date: session.date,
       track: session.track,
       car: session.car,
       weather: session.weather,
@@ -126,12 +134,14 @@ export class Uploader {
       laps: session.laps,
       aiDifficulty: session.aiDifficulty > 0 ? session.aiDifficulty : undefined,
       position: session.position > 0 ? String(session.position) : undefined,
+      // Session extras
       trackTemperature: session.trackTemperature,
       airTemperature: session.airTemperature,
       totalLaps: session.totalLaps,
       pitSpeedLimit: session.pitSpeedLimit,
       safetyCarStatus: session.safetyCarStatus,
       timeOfDay: session.timeOfDay,
+      // Telemetry
       speed: session.speed,
       throttle: session.throttle,
       brake: session.brake,
@@ -140,14 +150,18 @@ export class Uploader {
       drsActive: session.drsActive,
       tyreSurfaceTemps: session.tyreSurfaceTemps,
       brakeTemps: session.brakeTemps,
+      // Car Status
       fuelInTank: session.fuelInTank,
       ersDeployMode: session.ersDeployMode,
       ersEnergyStored: session.ersEnergyStored,
       ersDeployedThisLap: session.ersDeployedThisLap,
+      // Damage
       tyreWear: session.tyreWear,
       frontWingDamage: session.frontWingDamage,
       rearWingDamage: session.rearWingDamage,
+      // Setup
       setup: session.setup,
+      // History
       tyreStints: session.tyreStints,
       lapHistory: session.lapHistory,
     };
@@ -174,7 +188,9 @@ export class Uploader {
         signal: AbortSignal.timeout(15000),
       });
 
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
 
       const best = bestLapTime(payload.laps);
       this.onUploadResult?.({
