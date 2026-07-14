@@ -408,7 +408,13 @@ export class SessionTracker {
     this.lastPacketTime = Date.now();
     if (data.m_playerCarIndex !== undefined) this.playerCarIdx = data.m_playerCarIndex;
     if (data.m_participants && this.playerCarIdx < data.m_participants.length) {
-      this.teamId = data.m_participants[this.playerCarIdx]?.m_teamId ?? 253;
+      const raw = data.m_participants[this.playerCarIdx]?.m_teamId ?? 253;
+      if (raw !== this.teamId) {
+        console.log(`[Participants] player idx=${this.playerCarIdx} raw m_teamId=${raw} -> ${TEAM_NAMES[raw] ?? "(unmapped)"}`);
+      }
+      this.teamId = raw;
+    } else {
+      console.log(`[Participants] no usable participant data: playerCarIdx=${this.playerCarIdx}, m_participants length=${data.m_participants?.length ?? "undefined"}`);
     }
   }
 

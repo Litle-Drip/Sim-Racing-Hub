@@ -2097,6 +2097,60 @@ table { border-collapse: collapse; width: 100%; }
     grid-template-columns: repeat(2, 1fr);
   }
 
+  /* Sessions table: stack into cards instead of horizontally-scrolling
+     columns — a table row's expanded detail panel otherwise renders at
+     desktop width and needs two-directional scrolling to read. */
+  .sessions-table thead {
+    display: none;
+  }
+
+  .sessions-table,
+  .sessions-table tbody,
+  .sessions-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .sessions-table tr:not(.expanded-row) {
+    display: flex;
+    flex-wrap: wrap;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 4px 0;
+  }
+
+  .sessions-table tr:not(.expanded-row) td {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-bottom: none;
+    flex: 1 1 50%;
+    box-sizing: border-box;
+  }
+
+  .sessions-table tr:not(.expanded-row) td[data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    font-family: var(--font-display);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray);
+  }
+
+  .sessions-table tr:not(.expanded-row) td:last-child {
+    flex: 1 1 100%;
+    flex-direction: row;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    padding-top: 8px;
+  }
+
+  .sessions-table .expanded-row td {
+    padding: 12px !important;
+  }
+
   /* ── Modals ── */
 
   /* Full-screen sheet from the bottom */
