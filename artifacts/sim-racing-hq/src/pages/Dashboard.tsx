@@ -639,6 +639,9 @@ export default function Dashboard({ setPage }: DashboardProps) {
               </div>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
                 {lastSession.car} · {lastSession.type} · {lastSession.date}
+                {lastSession.createdAt && !isNaN(new Date(lastSession.createdAt).getTime()) && (
+                  <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
+                )}
               </div>
             </div>
             {lastSession.bestLap && (

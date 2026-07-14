@@ -49,6 +49,12 @@ function secsFromLap(t: string): number {
   return isNaN(n) ? Infinity : n;
 }
 
+function localTimeStr(createdAt: string): string {
+  const d = new Date(createdAt);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
 function secsToLapStr(secs: number): string {
   if (!isFinite(secs)) return '';
   const m = Math.floor(secs / 60);
@@ -207,10 +213,13 @@ function TelemetryTraceChart({
           <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
           <XAxis
             dataKey="d"
+            type="number"
+            domain={['dataMin', 'dataMax']}
             tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
             axisLine={{ stroke: '#1E1E1E' }}
             tickLine={false}
-            tickFormatter={v => `${v}`}
+            tickFormatter={v => `${v}m`}
+            tickCount={6}
           />
           <YAxis
             domain={domain ?? ['auto', 'auto']}
@@ -766,7 +775,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table sessions-table">
             <thead>
               <tr>
                 <th>Date</th>
@@ -787,24 +796,27 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               {filtered.map(s => (
                 <React.Fragment key={s.id}>
                   <tr onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
-                    <td>{trackName(s.trackId)}</td>
-                    <td style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
-                    <td>
+                    <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                      {s.date}
+                      {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 10, marginTop: 1 }}>{localTimeStr(s.createdAt)}</div>}
+                    </td>
+                    <td data-label="Track">{trackName(s.trackId)}</td>
+                    <td data-label="Car" style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
+                    <td data-label="Best Lap">
                       <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                       {s.isPB && <span className="pb-badge">★ PB</span>}
                     </td>
-                    <td><span className="lap-time" style={{ color: 'var(--gray-light)', fontSize: 12 }}>{s.avgLap || '—'}</span></td>
-                    <td><span className="lap-time" style={{ color: 'var(--gray-mid)', fontSize: 12 }}>{s.worstLap || '—'}</span></td>
-                    <td>{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
-                    <td><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
-                    <td style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
-                    <td style={{ color: 'var(--gray-light)', fontSize: 12 }}>
+                    <td data-label="Avg Lap"><span className="lap-time" style={{ color: 'var(--gray-light)', fontSize: 12 }}>{s.avgLap || '—'}</span></td>
+                    <td data-label="Worst Lap"><span className="lap-time" style={{ color: 'var(--gray-mid)', fontSize: 12 }}>{s.worstLap || '—'}</span></td>
+                    <td data-label="Consistency">{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
+                    <td data-label="Type"><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
+                    <td data-label="Tires" style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
+                    <td data-label="Conditions" style={{ color: 'var(--gray-light)', fontSize: 12 }}>
                       {s.conditions || '—'}
                       {s.timeOfDay ? <span style={{ color: 'var(--gray-mid)', marginLeft: 4 }}>· {s.timeOfDay}</span> : null}
                     </td>
-                    <td><RatingDots rating={s.rating} /></td>
-                    <td style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <td data-label="Rating"><RatingDots rating={s.rating} /></td>
+                    <td data-label="" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {s.id === mostRecentId && <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>MOST RECENT</span>}
                       {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
                       {validLaps(s.laps).length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{validLaps(s.laps).length}L</span>}
