@@ -9,10 +9,46 @@ import {
 } from "electron";
 import { join } from "path";
 import { networkInterfaces, tmpdir } from "os";
+import { mkdirSync, createWriteStream, type WriteStream } from "fs";
 import { store } from "./store";
 import { UdpListener } from "./udp";
 import { SessionTracker } from "./session";
 import { Uploader, type UploadResult } from "./uploader";
+
+function getLogFilePath(): string {
+  try {
+    return join(app.getPath("logs"), "companion.log");
+  } catch {
+    return join(tmpdir(), "companion.log");
+  }
+}
+
+// Mirror console output to a file so the "Open Log File" button in Settings
+// has something to show — a packaged app has no attached terminal, so
+// console.log otherwise goes nowhere the user can ever see it.
+function setupFileLogging(): void {
+  const logPath = getLogFilePath();
+  let stream: WriteStream;
+  try {
+    mkdirSync(join(logPath, ".."), { recursive: true });
+    stream = createWriteStream(logPath, { flags: "w" });
+  } catch {
+    return;
+  }
+  for (const level of ["log", "warn", "error"] as const) {
+    const original = console[level].bind(console);
+    console[level] = (...args: unknown[]) => {
+      original(...args);
+      try {
+        const line = args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+        stream.write(`[${new Date().toISOString()}] ${line}\n`);
+      } catch {
+        // best-effort — never let logging itself crash the app
+      }
+    };
+  }
+}
+setupFileLogging();
 
 const udp = new UdpListener(store.get("port", 20777));
 const tracker = new SessionTracker();
@@ -189,14 +225,6 @@ ipcMain.handle("get-local-ips", () => {
 ipcMain.handle("open-f1simhub", () => shell.openExternal("https://f1simhub.com"));
 ipcMain.handle("open-log-file", () => shell.openPath(getLogFilePath()));
 ipcMain.handle("open-releases-page", () => shell.openExternal("https://github.com/f1simhub/companion/releases/latest"));
-
-function getLogFilePath(): string {
-  try {
-    return join(app.getPath("logs"), "companion.log");
-  } catch {
-    return join(tmpdir(), "companion.log");
-  }
-}
 
 ipcMain.handle("force-flush", async () => {
   tracker.forceFlush();
