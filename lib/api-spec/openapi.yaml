@@ -598,6 +598,26 @@ components:
         - lineNotes
         - myNotes
 
+    LapTraceSample:
+      type: object
+      properties:
+        d:
+          type: number
+        speed:
+          type: number
+        throttle:
+          type: number
+        brake:
+          type: number
+        steer:
+          type: number
+      required:
+        - d
+        - speed
+        - throttle
+        - brake
+        - steer
+
     LapRecord:
       type: object
       properties:
@@ -615,6 +635,11 @@ components:
           type: string
         penalty:
           type: string
+        trace:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapTraceSample"
       required:
         - lap
         - time
@@ -623,6 +648,116 @@ components:
         - s3
         - tires
         - penalty
+
+    WingDamage:
+      type: object
+      properties:
+        front:
+          type: number
+        rear:
+          type: number
+      required:
+        - front
+        - rear
+
+    CarSetupSnapshot:
+      type: object
+      properties:
+        frontWing:
+          type: number
+        rearWing:
+          type: number
+        onThrottle:
+          type: number
+        offThrottle:
+          type: number
+        frontCamber:
+          type: number
+        rearCamber:
+          type: number
+        frontToe:
+          type: number
+        rearToe:
+          type: number
+        frontSuspension:
+          type: number
+        rearSuspension:
+          type: number
+        frontAntiRollBar:
+          type: number
+        rearAntiRollBar:
+          type: number
+        frontRideHeight:
+          type: number
+        rearRideHeight:
+          type: number
+        brakePressure:
+          type: number
+        brakeBias:
+          type: number
+        frontTyrePressure:
+          type: number
+        rearTyrePressure:
+          type: number
+      required:
+        - frontWing
+        - rearWing
+        - onThrottle
+        - offThrottle
+        - frontCamber
+        - rearCamber
+        - frontToe
+        - rearToe
+        - frontSuspension
+        - rearSuspension
+        - frontAntiRollBar
+        - rearAntiRollBar
+        - frontRideHeight
+        - rearRideHeight
+        - brakePressure
+        - brakeBias
+        - frontTyrePressure
+        - rearTyrePressure
+
+    TyreStintEntry:
+      type: object
+      properties:
+        startLap:
+          type: integer
+        endLap:
+          type: integer
+        compound:
+          type: string
+        visualCompound:
+          type: string
+      required:
+        - startLap
+        - endLap
+        - compound
+        - visualCompound
+
+    LapHistoryEntry:
+      type: object
+      properties:
+        lap:
+          type: integer
+        lapTimeMs:
+          type: integer
+        sector1Ms:
+          type: integer
+        sector2Ms:
+          type: integer
+        sector3Ms:
+          type: integer
+        valid:
+          type: boolean
+      required:
+        - lap
+        - lapTimeMs
+        - sector1Ms
+        - sector2Ms
+        - sector3Ms
+        - valid
 
     SessionRecord:
       type: object
@@ -693,6 +828,92 @@ components:
           nullable: true
         position:
           type: string
+        trackTemperature:
+          type: integer
+          nullable: true
+        airTemperature:
+          type: integer
+          nullable: true
+        totalLaps:
+          type: integer
+          nullable: true
+        pitSpeedLimit:
+          type: integer
+          nullable: true
+        safetyCarStatus:
+          type: integer
+          nullable: true
+        fuelInTank:
+          type: number
+          nullable: true
+        ersDeployMode:
+          type: integer
+          nullable: true
+        ersEnergyStored:
+          type: number
+          nullable: true
+        ersDeployedThisLap:
+          type: number
+          nullable: true
+        tyreWear:
+          type: array
+          nullable: true
+          items:
+            type: number
+        wingDamage:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/WingDamage"
+        tyreSurfaceTemps:
+          type: array
+          nullable: true
+          items:
+            type: number
+        brakeTemps:
+          type: array
+          nullable: true
+          items:
+            type: number
+        setupSnapshot:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CarSetupSnapshot"
+        tyreStints:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/TyreStintEntry"
+        lapHistory:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapHistoryEntry"
+        aiDifficulty:
+          type: integer
+          nullable: true
+        topSpeedKph:
+          type: number
+          nullable: true
+        avgThrottlePct:
+          type: number
+          nullable: true
+        avgBrakePct:
+          type: number
+          nullable: true
+        drsActivations:
+          type: integer
+          nullable: true
+        maxRpm:
+          type: integer
+          nullable: true
+        topGear:
+          type: integer
+          nullable: true
+        fuelRemainingLaps:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
       required:
         - id
         - date
@@ -713,6 +934,7 @@ components:
         - notes
         - isPB
         - isPublic
+        - createdAt
 
     CreateSessionRequest:
       type: object
@@ -767,6 +989,22 @@ components:
             $ref: "#/components/schemas/LapRecord"
         position:
           type: string
+        aiDifficulty:
+          type: integer
+        topSpeedKph:
+          type: number
+        avgThrottlePct:
+          type: number
+        avgBrakePct:
+          type: number
+        drsActivations:
+          type: integer
+        maxRpm:
+          type: integer
+        topGear:
+          type: integer
+        fuelRemainingLaps:
+          type: number
       required:
         - id
         - date
@@ -1200,6 +1438,68 @@ components:
           type: integer
         penalty:
           type: string
+        trackTemperature:
+          type: integer
+        airTemperature:
+          type: integer
+        totalLaps:
+          type: integer
+        pitSpeedLimit:
+          type: integer
+        safetyCarStatus:
+          type: integer
+        timeOfDay:
+          type: string
+        fuelInTank:
+          type: number
+        ersDeployMode:
+          type: integer
+        ersEnergyStored:
+          type: number
+        ersDeployedThisLap:
+          type: number
+        tyreWear:
+          type: array
+          items:
+            type: number
+        frontWingDamage:
+          type: number
+        rearWingDamage:
+          type: number
+        tyreSurfaceTemps:
+          type: array
+          items:
+            type: number
+        brakeTemps:
+          type: array
+          items:
+            type: number
+        setup:
+          $ref: "#/components/schemas/CarSetupSnapshot"
+        tyreStints:
+          type: array
+          items:
+            $ref: "#/components/schemas/TyreStintEntry"
+        lapHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/LapHistoryEntry"
+        aiDifficulty:
+          type: integer
+        topSpeedKph:
+          type: number
+        avgThrottlePct:
+          type: number
+        avgBrakePct:
+          type: number
+        drsActivations:
+          type: integer
+        maxRpm:
+          type: integer
+        topGear:
+          type: integer
+        fuelRemainingLaps:
+          type: number
       required:
         - sessionType
         - track

@@ -9,12 +9,46 @@ import {
 } from "electron";
 import { join } from "path";
 import { networkInterfaces, tmpdir } from "os";
+import { mkdirSync, createWriteStream, type WriteStream } from "fs";
 import { store } from "./store";
 import { UdpListener } from "./udp";
 import { SessionTracker } from "./session";
 import { Uploader, type UploadResult } from "./uploader";
 
-// ─── State ────────────────────────────────────────────────────────────────────
+function getLogFilePath(): string {
+  try {
+    return join(app.getPath("logs"), "companion.log");
+  } catch {
+    return join(tmpdir(), "companion.log");
+  }
+}
+
+// Mirror console output to a file so the "Open Log File" button in Settings
+// has something to show — a packaged app has no attached terminal, so
+// console.log otherwise goes nowhere the user can ever see it.
+function setupFileLogging(): void {
+  const logPath = getLogFilePath();
+  let stream: WriteStream;
+  try {
+    mkdirSync(join(logPath, ".."), { recursive: true });
+    stream = createWriteStream(logPath, { flags: "w" });
+  } catch {
+    return;
+  }
+  for (const level of ["log", "warn", "error"] as const) {
+    const original = console[level].bind(console);
+    console[level] = (...args: unknown[]) => {
+      original(...args);
+      try {
+        const line = args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+        stream.write(`[${new Date().toISOString()}] ${line}\n`);
+      } catch {
+        // best-effort — never let logging itself crash the app
+      }
+    };
+  }
+}
+setupFileLogging();
 
 const udp = new UdpListener(store.get("port", 20777));
 const tracker = new SessionTracker();
@@ -32,8 +66,6 @@ let lastUpload: LastUpload | null = null;
 let gameConnected = false;
 let telemetryReceiving = false;
 let gameCheckInterval: ReturnType<typeof setInterval> | null = null;
-
-// ─── IPC status push ──────────────────────────────────────────────────────────
 
 function pushStatus(): void {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -53,8 +85,6 @@ function buildStatus() {
   };
 }
 
-// ─── Wire UDP → tracker ───────────────────────────────────────────────────────
-
 function wireUdp(): void {
   udp.on("session", (data) => {
     tracker.handleSessionPacket(data as Parameters<typeof tracker.handleSessionPacket>[0]);
@@ -64,6 +94,18 @@ function wireUdp(): void {
   });
   udp.on("carStatus", (data) => {
     tracker.handleCarStatusPacket(data as Parameters<typeof tracker.handleCarStatusPacket>[0]);
+  });
+  udp.on("carTelemetry", (data) => {
+    tracker.handleCarTelemetryPacket(data as Parameters<typeof tracker.handleCarTelemetryPacket>[0]);
+  });
+  udp.on("carSetup", (data) => {
+    tracker.handleCarSetupPacket(data as Parameters<typeof tracker.handleCarSetupPacket>[0]);
+  });
+  udp.on("carDamage", (data) => {
+    tracker.handleCarDamagePacket(data as Parameters<typeof tracker.handleCarDamagePacket>[0]);
+  });
+  udp.on("sessionHistory", (data) => {
+    tracker.handleSessionHistoryPacket(data as Parameters<typeof tracker.handleSessionHistoryPacket>[0]);
   });
   udp.on("participants", (data) => {
     tracker.handleParticipantsPacket(data as Parameters<typeof tracker.handleParticipantsPacket>[0]);
@@ -102,36 +144,31 @@ uploader.onUploadResult = (result: UploadResult) => {
   pushStatus();
 };
 
-// ─── Game-connection watchdog ─────────────────────────────────────────────────
-
 function startGameWatchdog(): void {
   gameCheckInterval = setInterval(() => {
-    const receiving = udp.isReceiving(5000);
+    // A rewind/flashback can pause UDP telemetry output for several
+    // seconds; a short gap threshold here misreads that as the game
+    // disconnecting, force-flushing and fragmenting one continuous
+    // session into several uploaded ones. 20s tolerates that while still
+    // catching a genuine quit/crash reasonably quickly.
+    const receiving = udp.isReceiving(20000);
     const wasConnected = gameConnected;
     const wasReceiving = telemetryReceiving;
 
     gameConnected = receiving;
     telemetryReceiving = receiving;
 
-    if (receiving && !wasConnected) {
-      console.log("[Watchdog] Game connected");
-    }
+    if (receiving && !wasConnected) console.log("[Watchdog] Game connected");
     if (!receiving && wasConnected) {
       console.log("[Watchdog] Game disconnected — flushing session");
       tracker.forceFlush();
     }
-    if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving) {
-      pushStatus();
-    }
+    if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving) pushStatus();
   }, 3000);
 }
 
-// ─── IPC handlers ─────────────────────────────────────────────────────────────
-
 ipcMain.handle("get-version", () => app.getVersion());
-
 ipcMain.handle("get-status", () => buildStatus());
-
 ipcMain.handle("get-settings", () => ({
   apiKey: store.get("apiKey"),
   apiBaseUrl: store.get("apiBaseUrl"),
@@ -147,7 +184,6 @@ ipcMain.handle("set-settings", async (_event, partial: Record<string, unknown>) 
   if (partial.port !== undefined) {
     const newPort = Number(partial.port);
     store.set("port", newPort);
-    // Restart UDP on port change
     await udp.stop();
     await udp.start(newPort);
   }
@@ -156,14 +192,9 @@ ipcMain.handle("set-settings", async (_event, partial: Record<string, unknown>) 
     store.set("launchAtStartup", enabled);
     app.setLoginItemSettings({ openAtLogin: enabled });
   }
-  if (partial.minimizeToTray !== undefined) {
-    store.set("minimizeToTray", Boolean(partial.minimizeToTray));
-  }
-  if (partial.wizardComplete !== undefined) {
-    store.set("wizardComplete", Boolean(partial.wizardComplete));
-  }
+  if (partial.minimizeToTray !== undefined) store.set("minimizeToTray", Boolean(partial.minimizeToTray));
+  if (partial.wizardComplete !== undefined) store.set("wizardComplete", Boolean(partial.wizardComplete));
 
-  // Re-sync uploader credentials after any settings change
   uploader.setCredentials(store.get("apiKey"), store.get("apiBaseUrl"));
   pushStatus();
 });
@@ -185,42 +216,21 @@ ipcMain.handle("get-local-ips", () => {
   const ips: string[] = [];
   for (const name of Object.keys(ifaces)) {
     for (const iface of ifaces[name] ?? []) {
-      if (iface.family === "IPv4" && !iface.internal) {
-        ips.push(iface.address);
-      }
+      if (iface.family === "IPv4" && !iface.internal) ips.push(iface.address);
     }
   }
   return ips.length > 0 ? ips : ["127.0.0.1"];
 });
 
-ipcMain.handle("open-f1simhub", () => {
-  shell.openExternal("https://f1simhub.com");
-});
-
-ipcMain.handle("open-log-file", () => {
-  // Open the specific log file, not just the directory
-  shell.openPath(getLogFilePath());
-});
-
-ipcMain.handle("open-releases-page", () => {
-  shell.openExternal("https://github.com/f1simhub/companion/releases/latest");
-});
-
-function getLogFilePath(): string {
-  try {
-    return join(app.getPath("logs"), "companion.log");
-  } catch {
-    return join(tmpdir(), "companion.log");
-  }
-}
+ipcMain.handle("open-f1simhub", () => shell.openExternal("https://f1simhub.com"));
+ipcMain.handle("open-log-file", () => shell.openPath(getLogFilePath()));
+ipcMain.handle("open-releases-page", () => shell.openExternal("https://github.com/f1simhub/companion/releases/latest"));
 
 ipcMain.handle("force-flush", async () => {
   tracker.forceFlush();
   await uploader.flushPending();
   pushStatus();
 });
-
-// ─── Window ───────────────────────────────────────────────────────────────────
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -237,7 +247,6 @@ function createWindow(): BrowserWindow {
   });
 
   win.setMenuBarVisibility(false);
-
   win.on("close", (e) => {
     if (store.get("minimizeToTray") && tray) {
       e.preventDefault();
@@ -254,25 +263,19 @@ function createWindow(): BrowserWindow {
   return win;
 }
 
-// ─── Tray ─────────────────────────────────────────────────────────────────────
-
 function createTrayIcon(): Electron.NativeImage {
-  // Build a 16×16 teal (#00D4B4) square with rounded feel as RGBA buffer.
-  // This avoids needing external icon asset files in dev/Replit — replace with
-  // proper .ico / .icns files in resources/ for production packaging.
   const size = 16;
   const rgba = Buffer.alloc(size * size * 4);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const i = (y * size + x) * 4;
-      // Rounded corners: leave corners transparent
       const cx = Math.abs(x - 7.5);
       const cy = Math.abs(y - 7.5);
       const inCircle = Math.sqrt(cx * cx + cy * cy) <= 7;
-      rgba[i + 0] = 0;    // R
-      rgba[i + 1] = 212;  // G
-      rgba[i + 2] = 177;  // B
-      rgba[i + 3] = inCircle ? 255 : 0; // A
+      rgba[i + 0] = 0;
+      rgba[i + 1] = 212;
+      rgba[i + 2] = 177;
+      rgba[i + 3] = inCircle ? 255 : 0;
     }
   }
   return nativeImage.createFromBuffer(rgba, { width: size, height: size });
@@ -287,7 +290,6 @@ function createTray(): Tray {
     const lastUploadLabel = lastUpload
       ? `Last: ${lastUpload.track} — ${lastUpload.lapTime}`
       : "No uploads yet";
-
     t.setContextMenu(
       Menu.buildFromTemplate([
         { label: "Open F1SimHub Companion", click: () => mainWindow?.show() },
@@ -301,7 +303,6 @@ function createTray(): Tray {
   t.on("double-click", () => mainWindow?.show());
   updateMenu();
 
-  // Refresh tray menu when upload happens
   const originalOnResult = uploader.onUploadResult;
   uploader.onUploadResult = (result) => {
     originalOnResult?.(result);
@@ -311,15 +312,11 @@ function createTray(): Tray {
   return t;
 }
 
-// ─── App lifecycle ────────────────────────────────────────────────────────────
-
 app.whenReady().then(async () => {
   mainWindow = createWindow();
   tray = createTray();
-
   wireUdp();
 
-  // Start UDP listener
   try {
     await udp.start(store.get("port", 20777));
     console.log(`[UDP] Listening on port ${store.get("port", 20777)}`);
@@ -327,13 +324,9 @@ app.whenReady().then(async () => {
     console.error("[UDP] Failed to start:", err);
   }
 
-  // Sync uploader credentials
   uploader.setCredentials(store.get("apiKey"), store.get("apiBaseUrl"));
-
-  // Flush any pending uploads from previous crashes
   uploader.flushPending().catch(() => {});
   uploader.startRetryLoop(60_000);
-
   startGameWatchdog();
 
   app.on("activate", () => {

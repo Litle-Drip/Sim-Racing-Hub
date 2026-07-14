@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { Toast } from '../components/Toast';
-import { F1_TRACKS, F1Track, CORNER_NAMES } from '../data/f1Tracks';
+import { F1_TRACKS, F1Track, CORNER_NAMES, getTypeBadgeClass } from '../data/f1Tracks';
 import {
   useGetSessions,
   useGetTrackNotes,
@@ -17,14 +17,6 @@ import type { CornerNote, SessionRecord, TrackDifficultyRecord } from '@workspac
 import { lapToSeconds } from '../lib/storage';
 import { trackConsistency, TYRE_GUIDES } from '../lib/engagement';
 import { CIRCUIT_SCHOOL } from '../data/circuitSchool';
-
-const TYPE_BADGE: Record<string, string> = {
-  Practice: 'badge-practice',
-  Qualifying: 'badge-qualifying',
-  Race: 'badge-race',
-  Hotlap: 'badge-hotlap',
-  'Time Trial': 'badge-hotlap',
-};
 
 const DIFFICULTY_LABELS = ['', 'Easy', 'Moderate', 'Tricky', 'Hard', 'Brutal'];
 
@@ -621,7 +613,7 @@ function TrackDetail({
                     <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                     {s.isPB && <span className="pb-badge">★ PB</span>}
                   </td>
-                  <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
+                  <td><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
                   <td><RatingDots rating={s.rating} /></td>
                 </tr>
               ))}

@@ -37,10 +37,45 @@ export const sessionsTable = pgTable("sessions", {
   isPublic: boolean("is_public").notNull().default(false),
   sharedAt: timestamp("shared_at"),
   publicNote: text("public_note"),
-  laps: jsonb("laps").$type<Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>>(),
+  laps: jsonb("laps").$type<Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: Array<{ d: number; speed: number; throttle: number; brake: number; steer: number }> }>>()
+,
   position: text("position").notNull().default(""),
   isPB: boolean("is_pb").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Extended telemetry — all nullable so existing sessions are unaffected
+  trackTemperature: integer("track_temperature"),
+  airTemperature: integer("air_temperature"),
+  totalLaps: integer("total_laps"),
+  pitSpeedLimit: integer("pit_speed_limit"),
+  safetyCarStatus: integer("safety_car_status"),
+  fuelInTank: real("fuel_in_tank"),
+  ersDeployMode: integer("ers_deploy_mode"),
+  ersEnergyStored: real("ers_energy_stored"),
+  ersDeployedThisLap: real("ers_deployed_this_lap"),
+  tyreWear: jsonb("tyre_wear").$type<[number, number, number, number]>(),
+  wingDamage: jsonb("wing_damage").$type<{ front: number; rear: number }>(),
+  tyreSurfaceTemps: jsonb("tyre_surface_temps").$type<[number, number, number, number]>(),
+  brakeTemps: jsonb("brake_temps").$type<[number, number, number, number]>(),
+  setupSnapshot: jsonb("setup_snapshot").$type<{
+    frontWing: number; rearWing: number; onThrottle: number; offThrottle: number;
+    frontCamber: number; rearCamber: number; frontToe: number; rearToe: number;
+    frontSuspension: number; rearSuspension: number; frontAntiRollBar: number; rearAntiRollBar: number;
+    frontRideHeight: number; rearRideHeight: number; brakePressure: number; brakeBias: number;
+    frontTyrePressure: number; rearTyrePressure: number;
+  }>()
+,
+  tyreStints: jsonb("tyre_stints").$type<Array<{ startLap: number; endLap: number; compound: string; visualCompound: string }>>()
+,
+  lapHistory: jsonb("lap_history").$type<Array<{ lap: number; lapTimeMs: number; sector1Ms: number; sector2Ms: number; sector3Ms: number; valid: boolean }>>()
+,
+  aiDifficulty: integer("ai_difficulty"),
+  topSpeedKph: real("top_speed_kph"),
+  avgThrottlePct: real("avg_throttle_pct"),
+  avgBrakePct: real("avg_brake_pct"),
+  drsActivations: integer("drs_activations"),
+  maxRpm: integer("max_rpm"),
+  topGear: integer("top_gear"),
+  fuelRemainingLaps: real("fuel_remaining_laps"),
 });
 
 export type DbSession = typeof sessionsTable.$inferSelect;

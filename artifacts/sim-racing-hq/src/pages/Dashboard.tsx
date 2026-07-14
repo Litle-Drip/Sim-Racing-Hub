@@ -246,6 +246,13 @@ export default function Dashboard({ setPage }: DashboardProps) {
     return data;
   }, [sessions]);
 
+  const lastSession = useMemo(() => {
+    if (sessions.length === 0) return null;
+    return [...sessions].sort((a, b) =>
+      b.date.localeCompare(a.date) || (b.createdAt ?? '').localeCompare(a.createdAt ?? '')
+    )[0];
+  }, [sessions]);
+
   const mostDrivenTrack = useMemo(() => {
     if (sessions.length === 0) return null;
     const counts: Record<string, number> = {};
@@ -617,6 +624,37 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         )}
       </div>
+
+      {/* ── Last Session Summary ─────────────────────────────────────────── */}
+      {lastSession && (
+        <div className="card" style={{ padding: '14px 20px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
+            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => setPage('sessions')}>View All</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)' }}>
+                {F1_TRACKS.find(t => t.id === lastSession.trackId)?.flag} {trackName(lastSession.trackId)}
+              </div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
+                {lastSession.car} · {lastSession.type} · {lastSession.date}
+                {lastSession.createdAt && !isNaN(new Date(lastSession.createdAt).getTime()) && (
+                  <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
+                )}
+              </div>
+            </div>
+            {lastSession.bestLap && (
+              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: lastSession.isPB ? '#FFF200' : 'var(--teal)', fontWeight: 700 }}>
+                  {lastSession.bestLap}{lastSession.isPB ? ' 🏆' : ''}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
       {nextGoal && (

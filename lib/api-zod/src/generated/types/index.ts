@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
+export * from './carSetupSnapshot';
 export * from './communitySessionRecord';
 export * from './communitySetupRecord';
 export * from './companionApiKeyResponse';
@@ -21,7 +22,9 @@ export * from './getCommunitySessionsParams';
 export * from './getCommunitySetupsParams';
 export * from './hardwareRecord';
 export * from './healthStatus';
+export * from './lapHistoryEntry';
 export * from './lapRecord';
+export * from './lapTraceSample';
 export * from './notFoundResponse';
 export * from './rateSetupRequest';
 export * from './rateSetupResponse';
@@ -32,6 +35,8 @@ export * from './shareSessionResponse';
 export * from './shareSetupResponse';
 export * from './trackDifficultyRecord';
 export * from './trackNotesRecord';
+export * from './tyreStintEntry';
 export * from './unauthorizedResponse';
 export * from './upsertTrackDifficultyRequest';
 export * from './upsertTrackNotesRequest';
+export * from './wingDamage';

@@ -23,6 +23,14 @@ export interface CornerNote {
   myNotes: string;
 }
 
+export interface LapTraceSample {
+  d: number;
+  speed: number;
+  throttle: number;
+  brake: number;
+  steer: number;
+}
+
 export interface LapRecord {
   lap: number;
   time: string;
@@ -31,6 +39,49 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  trace?: LapTraceSample[] | null;
+}
+
+export interface WingDamage {
+  front: number;
+  rear: number;
+}
+
+export interface CarSetupSnapshot {
+  frontWing: number;
+  rearWing: number;
+  onThrottle: number;
+  offThrottle: number;
+  frontCamber: number;
+  rearCamber: number;
+  frontToe: number;
+  rearToe: number;
+  frontSuspension: number;
+  rearSuspension: number;
+  frontAntiRollBar: number;
+  rearAntiRollBar: number;
+  frontRideHeight: number;
+  rearRideHeight: number;
+  brakePressure: number;
+  brakeBias: number;
+  frontTyrePressure: number;
+  rearTyrePressure: number;
+}
+
+export interface TyreStintEntry {
+  startLap: number;
+  endLap: number;
+  compound: string;
+  visualCompound: string;
+}
+
+export interface LapHistoryEntry {
+  lap: number;
+  lapTimeMs: number;
+  sector1Ms: number;
+  sector2Ms: number;
+  sector3Ms: number;
+  valid: boolean;
 }
 
 export interface SessionRecord {
@@ -62,6 +113,31 @@ export interface SessionRecord {
   laps?: LapRecord[] | null;
   timeOfDay?: string | null;
   position?: string;
+  trackTemperature?: number | null;
+  airTemperature?: number | null;
+  totalLaps?: number | null;
+  pitSpeedLimit?: number | null;
+  safetyCarStatus?: number | null;
+  fuelInTank?: number | null;
+  ersDeployMode?: number | null;
+  ersEnergyStored?: number | null;
+  ersDeployedThisLap?: number | null;
+  tyreWear?: number[] | null;
+  wingDamage?: WingDamage | null;
+  tyreSurfaceTemps?: number[] | null;
+  brakeTemps?: number[] | null;
+  setupSnapshot?: CarSetupSnapshot | null;
+  tyreStints?: TyreStintEntry[] | null;
+  lapHistory?: LapHistoryEntry[] | null;
+  aiDifficulty?: number | null;
+  topSpeedKph?: number | null;
+  avgThrottlePct?: number | null;
+  avgBrakePct?: number | null;
+  drsActivations?: number | null;
+  maxRpm?: number | null;
+  topGear?: number | null;
+  fuelRemainingLaps?: number | null;
+  createdAt: string;
 }
 
 export interface CreateSessionRequest {
@@ -89,6 +165,14 @@ export interface CreateSessionRequest {
   inputDevice?: string;
   laps?: LapRecord[];
   position?: string;
+  aiDifficulty?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  fuelRemainingLaps?: number;
 }
 
 export interface ShareSessionRequest {
@@ -263,6 +347,32 @@ export interface CompanionSessionRequest {
   notes?: string;
   rating?: number;
   penalty?: string;
+  trackTemperature?: number;
+  airTemperature?: number;
+  totalLaps?: number;
+  pitSpeedLimit?: number;
+  safetyCarStatus?: number;
+  timeOfDay?: string;
+  fuelInTank?: number;
+  ersDeployMode?: number;
+  ersEnergyStored?: number;
+  ersDeployedThisLap?: number;
+  tyreWear?: number[];
+  frontWingDamage?: number;
+  rearWingDamage?: number;
+  tyreSurfaceTemps?: number[];
+  brakeTemps?: number[];
+  setup?: CarSetupSnapshot;
+  tyreStints?: TyreStintEntry[];
+  lapHistory?: LapHistoryEntry[];
+  aiDifficulty?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  fuelRemainingLaps?: number;
 }
 
 export interface TrackNotesRecord {

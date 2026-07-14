@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
+import { normalizeTrackId } from "../lib/trackAlias";
 import {
   CreateSessionBody,
   GetSessionsResponse,
@@ -9,7 +10,8 @@ import {
 
 const router = Router();
 
-type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string };
+type LapTraceSample = { d: number; speed: number; throttle: number; brake: number; steer: number };
+type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: LapTraceSample[] };
 
 function lapToSeconds(lap: string): number {
   if (!lap || !lap.includes(":")) {
@@ -59,7 +61,7 @@ async function recalcPBsForUser(userId: string) {
   const pbMap: Record<string, string> = {};
 
   const updates: { id: string; isPB: boolean }[] = sorted.map((s) => {
-    const key = s.trackId;
+    const key = normalizeTrackId(s.trackId);
     const currentPB = pbMap[key];
     const isNewPB = isFasterLap(s.bestLap, currentPB);
     if (isNewPB && s.bestLap && s.bestLap.trim() !== "") {
@@ -80,7 +82,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
   return {
     id: r.id,
     date: r.date,
-    trackId: r.trackId,
+    trackId: normalizeTrackId(r.trackId),
     car: r.car,
     type: r.type,
     bestLap: r.bestLap,
@@ -106,6 +108,31 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     laps: r.laps ?? null,
     isPB: r.isPB,
     position: r.position ?? '',
+    trackTemperature: r.trackTemperature ?? null,
+    airTemperature: r.airTemperature ?? null,
+    totalLaps: r.totalLaps ?? null,
+    pitSpeedLimit: r.pitSpeedLimit ?? null,
+    safetyCarStatus: r.safetyCarStatus ?? null,
+    fuelInTank: r.fuelInTank ?? null,
+    ersDeployMode: r.ersDeployMode ?? null,
+    ersEnergyStored: r.ersEnergyStored ?? null,
+    ersDeployedThisLap: r.ersDeployedThisLap ?? null,
+    tyreWear: r.tyreWear ?? null,
+    wingDamage: r.wingDamage ?? null,
+    tyreSurfaceTemps: r.tyreSurfaceTemps ?? null,
+    brakeTemps: r.brakeTemps ?? null,
+    setupSnapshot: r.setupSnapshot ?? null,
+    tyreStints: r.tyreStints ?? null,
+    lapHistory: r.lapHistory ?? null,
+    aiDifficulty: r.aiDifficulty ?? null,
+    topSpeedKph: r.topSpeedKph ?? null,
+    avgThrottlePct: r.avgThrottlePct ?? null,
+    avgBrakePct: r.avgBrakePct ?? null,
+    drsActivations: r.drsActivations ?? null,
+    maxRpm: r.maxRpm ?? null,
+    topGear: r.topGear ?? null,
+    fuelRemainingLaps: r.fuelRemainingLaps ?? null,
+    createdAt: r.createdAt.toISOString(),
   };
 }
 
@@ -133,7 +160,9 @@ router.post("/sessions", requireAuth, async (req, res) => {
   }
 
   const data = parsed.data;
-  const incomingLaps = (data.laps ?? []) as LapRecord[];
+  const incomingLaps = ((data.laps ?? []) as LapRecord[]).filter(
+    l => l.time && l.time.trim() !== ""
+  );
 
   // Auto-compute best/avg/worst from laps if laps provided and summary fields are blank
   let bestLap = data.bestLap;
@@ -151,7 +180,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
       id: data.id,
       userId,
       date: data.date,
-      trackId: data.trackId,
+      trackId: normalizeTrackId(data.trackId),
       car: data.car,
       type: data.type,
       bestLap,
@@ -174,6 +203,14 @@ router.post("/sessions", requireAuth, async (req, res) => {
       laps: incomingLaps.length > 0 ? incomingLaps : null,
       position: data.position ?? '',
       isPB: false,
+      aiDifficulty: data.aiDifficulty ?? null,
+      topSpeedKph: data.topSpeedKph ?? null,
+      avgThrottlePct: data.avgThrottlePct ?? null,
+      avgBrakePct: data.avgBrakePct ?? null,
+      drsActivations: data.drsActivations ?? null,
+      maxRpm: data.maxRpm ?? null,
+      topGear: data.topGear ?? null,
+      fuelRemainingLaps: data.fuelRemainingLaps ?? null,
     });
 
     await recalcPBsForUser(userId);

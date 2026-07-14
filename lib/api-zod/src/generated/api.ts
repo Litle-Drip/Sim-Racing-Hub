@@ -53,10 +53,76 @@ export const GetSessionsResponseItem = zod.object({
   "s2": zod.string(),
   "s3": zod.string(),
   "tires": zod.string(),
-  "penalty": zod.string()
+  "penalty": zod.string(),
+  "trace": zod.array(zod.object({
+  "d": zod.number(),
+  "speed": zod.number(),
+  "throttle": zod.number(),
+  "brake": zod.number(),
+  "steer": zod.number()
+})).nullish()
 })).nullish(),
   "timeOfDay": zod.string().nullish(),
-  "position": zod.string().optional()
+  "position": zod.string().optional(),
+  "trackTemperature": zod.number().nullish(),
+  "airTemperature": zod.number().nullish(),
+  "totalLaps": zod.number().nullish(),
+  "pitSpeedLimit": zod.number().nullish(),
+  "safetyCarStatus": zod.number().nullish(),
+  "fuelInTank": zod.number().nullish(),
+  "ersDeployMode": zod.number().nullish(),
+  "ersEnergyStored": zod.number().nullish(),
+  "ersDeployedThisLap": zod.number().nullish(),
+  "tyreWear": zod.array(zod.number()).nullish(),
+  "wingDamage": zod.object({
+  "front": zod.number(),
+  "rear": zod.number()
+}).nullish(),
+  "tyreSurfaceTemps": zod.array(zod.number()).nullish(),
+  "brakeTemps": zod.array(zod.number()).nullish(),
+  "setupSnapshot": zod.object({
+  "frontWing": zod.number(),
+  "rearWing": zod.number(),
+  "onThrottle": zod.number(),
+  "offThrottle": zod.number(),
+  "frontCamber": zod.number(),
+  "rearCamber": zod.number(),
+  "frontToe": zod.number(),
+  "rearToe": zod.number(),
+  "frontSuspension": zod.number(),
+  "rearSuspension": zod.number(),
+  "frontAntiRollBar": zod.number(),
+  "rearAntiRollBar": zod.number(),
+  "frontRideHeight": zod.number(),
+  "rearRideHeight": zod.number(),
+  "brakePressure": zod.number(),
+  "brakeBias": zod.number(),
+  "frontTyrePressure": zod.number(),
+  "rearTyrePressure": zod.number()
+}).nullish(),
+  "tyreStints": zod.array(zod.object({
+  "startLap": zod.number(),
+  "endLap": zod.number(),
+  "compound": zod.string(),
+  "visualCompound": zod.string()
+})).nullish(),
+  "lapHistory": zod.array(zod.object({
+  "lap": zod.number(),
+  "lapTimeMs": zod.number(),
+  "sector1Ms": zod.number(),
+  "sector2Ms": zod.number(),
+  "sector3Ms": zod.number(),
+  "valid": zod.boolean()
+})).nullish(),
+  "aiDifficulty": zod.number().nullish(),
+  "topSpeedKph": zod.number().nullish(),
+  "avgThrottlePct": zod.number().nullish(),
+  "avgBrakePct": zod.number().nullish(),
+  "drsActivations": zod.number().nullish(),
+  "maxRpm": zod.number().nullish(),
+  "topGear": zod.number().nullish(),
+  "fuelRemainingLaps": zod.number().nullish(),
+  "createdAt": zod.string()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
 
@@ -94,9 +160,24 @@ export const CreateSessionBody = zod.object({
   "s2": zod.string(),
   "s3": zod.string(),
   "tires": zod.string(),
-  "penalty": zod.string()
+  "penalty": zod.string(),
+  "trace": zod.array(zod.object({
+  "d": zod.coerce.number(),
+  "speed": zod.coerce.number(),
+  "throttle": zod.coerce.number(),
+  "brake": zod.coerce.number(),
+  "steer": zod.coerce.number()
+})).nullish()
 })).optional(),
-  "position": zod.string().optional()
+  "position": zod.string().optional(),
+  "aiDifficulty": zod.coerce.number().optional(),
+  "topSpeedKph": zod.coerce.number().optional(),
+  "avgThrottlePct": zod.coerce.number().optional(),
+  "avgBrakePct": zod.coerce.number().optional(),
+  "drsActivations": zod.coerce.number().optional(),
+  "maxRpm": zod.coerce.number().optional(),
+  "topGear": zod.coerce.number().optional(),
+  "fuelRemainingLaps": zod.coerce.number().optional()
 })
 
 
@@ -467,14 +548,78 @@ export const UploadCompanionSessionBody = zod.object({
   "s2": zod.string(),
   "s3": zod.string(),
   "tires": zod.string(),
-  "penalty": zod.string()
+  "penalty": zod.string(),
+  "trace": zod.array(zod.object({
+  "d": zod.coerce.number(),
+  "speed": zod.coerce.number(),
+  "throttle": zod.coerce.number(),
+  "brake": zod.coerce.number(),
+  "steer": zod.coerce.number()
+})).nullish()
 })).optional(),
   "id": zod.string().optional(),
   "date": zod.string().optional(),
   "position": zod.string().optional(),
   "notes": zod.string().optional(),
   "rating": zod.coerce.number().optional(),
-  "penalty": zod.string().optional()
+  "penalty": zod.string().optional(),
+  "trackTemperature": zod.coerce.number().optional(),
+  "airTemperature": zod.coerce.number().optional(),
+  "totalLaps": zod.coerce.number().optional(),
+  "pitSpeedLimit": zod.coerce.number().optional(),
+  "safetyCarStatus": zod.coerce.number().optional(),
+  "timeOfDay": zod.string().optional(),
+  "fuelInTank": zod.coerce.number().optional(),
+  "ersDeployMode": zod.coerce.number().optional(),
+  "ersEnergyStored": zod.coerce.number().optional(),
+  "ersDeployedThisLap": zod.coerce.number().optional(),
+  "tyreWear": zod.array(zod.coerce.number()).optional(),
+  "frontWingDamage": zod.coerce.number().optional(),
+  "rearWingDamage": zod.coerce.number().optional(),
+  "tyreSurfaceTemps": zod.array(zod.coerce.number()).optional(),
+  "brakeTemps": zod.array(zod.coerce.number()).optional(),
+  "setup": zod.object({
+  "frontWing": zod.coerce.number(),
+  "rearWing": zod.coerce.number(),
+  "onThrottle": zod.coerce.number(),
+  "offThrottle": zod.coerce.number(),
+  "frontCamber": zod.coerce.number(),
+  "rearCamber": zod.coerce.number(),
+  "frontToe": zod.coerce.number(),
+  "rearToe": zod.coerce.number(),
+  "frontSuspension": zod.coerce.number(),
+  "rearSuspension": zod.coerce.number(),
+  "frontAntiRollBar": zod.coerce.number(),
+  "rearAntiRollBar": zod.coerce.number(),
+  "frontRideHeight": zod.coerce.number(),
+  "rearRideHeight": zod.coerce.number(),
+  "brakePressure": zod.coerce.number(),
+  "brakeBias": zod.coerce.number(),
+  "frontTyrePressure": zod.coerce.number(),
+  "rearTyrePressure": zod.coerce.number()
+}).optional(),
+  "tyreStints": zod.array(zod.object({
+  "startLap": zod.coerce.number(),
+  "endLap": zod.coerce.number(),
+  "compound": zod.string(),
+  "visualCompound": zod.string()
+})).optional(),
+  "lapHistory": zod.array(zod.object({
+  "lap": zod.coerce.number(),
+  "lapTimeMs": zod.coerce.number(),
+  "sector1Ms": zod.coerce.number(),
+  "sector2Ms": zod.coerce.number(),
+  "sector3Ms": zod.coerce.number(),
+  "valid": zod.boolean()
+})).optional(),
+  "aiDifficulty": zod.coerce.number().optional(),
+  "topSpeedKph": zod.coerce.number().optional(),
+  "avgThrottlePct": zod.coerce.number().optional(),
+  "avgBrakePct": zod.coerce.number().optional(),
+  "drsActivations": zod.coerce.number().optional(),
+  "maxRpm": zod.coerce.number().optional(),
+  "topGear": zod.coerce.number().optional(),
+  "fuelRemainingLaps": zod.coerce.number().optional()
 })
 
 

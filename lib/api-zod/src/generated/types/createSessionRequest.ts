@@ -32,4 +32,12 @@ export interface CreateSessionRequest {
   inputDevice?: string;
   laps?: LapRecord[];
   position?: string;
+  aiDifficulty?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  fuelRemainingLaps?: number;
 }

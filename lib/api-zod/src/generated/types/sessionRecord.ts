@@ -5,7 +5,11 @@
  * Sim Racing HQ API — F1 sim companion
  * OpenAPI spec version: 0.2.0
  */
+import type { CarSetupSnapshot } from './carSetupSnapshot';
+import type { LapHistoryEntry } from './lapHistoryEntry';
 import type { LapRecord } from './lapRecord';
+import type { TyreStintEntry } from './tyreStintEntry';
+import type { WingDamage } from './wingDamage';
 
 export interface SessionRecord {
   id: string;
@@ -36,4 +40,29 @@ export interface SessionRecord {
   laps?: LapRecord[] | null;
   timeOfDay?: string | null;
   position?: string;
+  trackTemperature?: number | null;
+  airTemperature?: number | null;
+  totalLaps?: number | null;
+  pitSpeedLimit?: number | null;
+  safetyCarStatus?: number | null;
+  fuelInTank?: number | null;
+  ersDeployMode?: number | null;
+  ersEnergyStored?: number | null;
+  ersDeployedThisLap?: number | null;
+  tyreWear?: number[] | null;
+  wingDamage?: WingDamage | null;
+  tyreSurfaceTemps?: number[] | null;
+  brakeTemps?: number[] | null;
+  setupSnapshot?: CarSetupSnapshot | null;
+  tyreStints?: TyreStintEntry[] | null;
+  lapHistory?: LapHistoryEntry[] | null;
+  aiDifficulty?: number | null;
+  topSpeedKph?: number | null;
+  avgThrottlePct?: number | null;
+  avgBrakePct?: number | null;
+  drsActivations?: number | null;
+  maxRpm?: number | null;
+  topGear?: number | null;
+  fuelRemainingLaps?: number | null;
+  createdAt: string;
 }

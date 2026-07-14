@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { F1_TRACKS } from '../data/f1Tracks';
+import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
 import { getRankColor } from '../lib/engagement';
 import type { RankInfo, Achievement } from '../lib/engagement';
 
@@ -32,14 +32,6 @@ interface DriverData {
   pbs: DriverPB[];
   recentSessions: DriverSession[];
 }
-
-const TYPE_BADGE: Record<string, string> = {
-  Practice: 'badge-practice',
-  Qualifying: 'badge-qualifying',
-  Race: 'badge-race',
-  Hotlap: 'badge-hotlap',
-  'Time Trial': 'badge-hotlap',
-};
 
 export default function DriverProfile({ username }: { username: string }) {
   const [driver, setDriver] = useState<DriverData | null>(null);
@@ -236,7 +228,7 @@ export default function DriverProfile({ username }: { username: string }) {
                   <td>{trackFlag(s.trackId)} {trackName(s.trackId)}</td>
                   <td style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
                   <td><span className="lap-time">{s.bestLap || '—'}</span></td>
-                  <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
+                  <td><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
                   <td style={{ color: 'var(--gray-mid)' }}>{[s.platform, s.inputDevice].filter(Boolean).join(' · ') || '—'}</td>
                 </tr>
               ))}

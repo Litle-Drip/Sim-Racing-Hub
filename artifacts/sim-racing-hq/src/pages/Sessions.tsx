@@ -1,5 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity } from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { Toast } from '../components/Toast';
 import { EmptyState } from '../components/EmptyState';
 import {
@@ -11,7 +15,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS, getTypeBadgeClass } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency } from '../lib/engagement';
@@ -45,6 +49,12 @@ function secsFromLap(t: string): number {
   return isNaN(n) ? Infinity : n;
 }
 
+function localTimeStr(createdAt: string): string {
+  const d = new Date(createdAt);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
 function secsToLapStr(secs: number): string {
   if (!isFinite(secs)) return '';
   const m = Math.floor(secs / 60);
@@ -64,14 +74,6 @@ function computeFromLaps(laps: FormLap[]) {
 }
 
 // ─── Badge & display helpers ──────────────────────────────────────────────────
-
-const TYPE_BADGE: Record<string, string> = {
-  Practice: 'badge-practice',
-  Qualifying: 'badge-qualifying',
-  Race: 'badge-race',
-  Hotlap: 'badge-hotlap',
-  'Time Trial': 'badge-hotlap',
-};
 
 function RatingDots({ rating }: { rating: number }) {
   return (
@@ -93,9 +95,46 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
+const SAFETY_CAR_LABELS: Record<number, string> = {
+  1: 'Full Safety Car',
+  2: 'Virtual Safety Car',
+  3: 'Formation Lap',
+};
+
+function safetyCarLabel(status: number): string {
+  return SAFETY_CAR_LABELS[status] ?? 'No Safety Car';
+}
+
+const ERS_MODE_LABELS: Record<number, string> = {
+  1: 'Medium',
+  2: 'Overtake',
+  3: 'Hotlap',
+};
+
+function ersModeLabel(mode: number): string {
+  return ERS_MODE_LABELS[mode] ?? 'None';
+}
+
+function ExpandedGroup({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
+  if (!show) return null;
+  return (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)', width: '100%' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', width: '100%' }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
 // ─── Lap table (expanded view) ────────────────────────────────────────────────
 
-function LapTable({ laps }: { laps: SessionRecord['laps'] }) {
+function validLaps(laps: SessionRecord['laps']) {
+  return laps?.filter(l => l.time && l.time.trim() !== '') ?? [];
+}
+
+type LapEntry = NonNullable<SessionRecord['laps']>[number];
+
+function LapTable({ laps: rawLaps, onViewTelemetry }: { laps: SessionRecord['laps']; onViewTelemetry: (lap: LapEntry) => void }) {
+  const laps = validLaps(rawLaps);
   if (!laps || laps.length === 0) return null;
   const fastestIdx = laps.reduce((best, l, i) => {
     return secsFromLap(l.time) < secsFromLap(laps[best].time) ? i : best;
@@ -109,7 +148,7 @@ function LapTable({ laps }: { laps: SessionRecord['laps'] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            {['Lap', 'Time', 'S1', 'S2', 'S3', 'Tires', 'Penalty'].map(h => (
+            {['Lap', 'Time', 'S1', 'S2', 'S3', 'Tires', 'Penalty', ''].map(h => (
               <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase' }}>{h}</th>
             ))}
           </tr>
@@ -126,11 +165,97 @@ function LapTable({ laps }: { laps: SessionRecord['laps'] }) {
                 <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s3 || '—'}</td>
                 <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.tires || '—'}</td>
                 <td style={{ padding: '5px 8px', color: l.penalty ? 'var(--red)' : 'var(--gray-mid)' }}>{l.penalty || '—'}</td>
+                <td style={{ padding: '5px 8px' }}>
+                  {l.trace && l.trace.length > 0 && (
+                    <button
+                      className="btn btn-secondary"
+                      style={{ fontSize: 10, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+                      onClick={() => onViewTelemetry(l)}
+                      title="View speed/throttle/brake telemetry for this lap"
+                    >
+                      <Activity size={11} /> Telemetry
+                    </button>
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ─── Lap telemetry modal (speed/throttle/brake/steer vs. distance) ────────────
+
+function TelemetryTraceChart({
+  dataKey,
+  label,
+  color,
+  unit,
+  domain,
+  data,
+}: {
+  dataKey: 'speed' | 'throttle' | 'brake' | 'steer';
+  label: string;
+  color: string;
+  unit: string;
+  domain?: [number, number];
+  data: NonNullable<LapEntry['trace']>;
+}) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
+        {label}
+      </div>
+      <ResponsiveContainer width="100%" height={140}>
+        <LineChart data={data} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
+          <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
+          <XAxis
+            dataKey="d"
+            type="number"
+            domain={['dataMin', 'dataMax']}
+            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
+            axisLine={{ stroke: '#1E1E1E' }}
+            tickLine={false}
+            tickFormatter={v => `${v}m`}
+            tickCount={6}
+          />
+          <YAxis
+            domain={domain ?? ['auto', 'auto']}
+            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
+            axisLine={{ stroke: '#1E1E1E' }}
+            tickLine={false}
+            width={36}
+          />
+          <Tooltip content={({ active, payload, label: d }) => active && payload && payload.length > 0 ? (
+            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '8px 12px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>{d}m</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color }}>{payload[0].value}{unit}</div>
+            </div>
+          ) : null} />
+          <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function LapTelemetryModal({ lap, onClose }: { lap: LapEntry; onClose: () => void }) {
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 640 }}>
+        <div className="modal-header">
+          <span className="modal-title">Lap {lap.lap} Telemetry{lap.time ? ` — ${lap.time}` : ''}</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <TelemetryTraceChart dataKey="speed" label="Speed (km/h)" color="#00D2BE" unit=" km/h" data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="throttle" label="Throttle" color="#4CAF50" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="brake" label="Brake" color="#E8002D" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="steer" label="Steering" color="#a855f7" unit="%" domain={[-100, 100]} data={lap.trace ?? []} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -278,6 +403,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [filterConditions, setFilterConditions] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
+  const [telemetryLap, setTelemetryLap] = useState<LapEntry | null>(null);
   const [toast, setToast] = useState('');
 
   // ── Draft auto-save ────────────────────────────────────────────────────
@@ -413,7 +539,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const filtered = useMemo(() => {
     return [...sessions]
-      .sort((a, b) => b.date.localeCompare(a.date))
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
       .filter(s => {
         if (filterTrack && s.trackId !== filterTrack) return false;
         if (filterType && s.type !== filterType) return false;
@@ -422,6 +548,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         return true;
       });
   }, [sessions, filterTrack, filterType, filterCar, filterConditions]);
+
+  const mostRecentId = useMemo(() => {
+    if (sessions.length === 0) return null;
+    return [...sessions].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0].id;
+  }, [sessions]);
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -450,19 +581,22 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       }
     }
 
-    const lapRows = laps.length > 0 ? laps.map((l, i) => ({
-      lap: i + 1,
-      time: l.time,
-      s1: l.s1,
-      s2: l.s2,
-      s3: l.s3,
-      tires: l.tires || form.tires,
-      penalty: l.penalty,
-    })) : undefined;
+    const lapRows = laps.length > 0 ? laps
+      .filter(l => l.time.trim() !== '')
+      .map((l, i) => ({
+        lap: i + 1,
+        time: l.time,
+        s1: l.s1,
+        s2: l.s2,
+        s3: l.s3,
+        tires: l.tires || form.tires,
+        penalty: l.penalty,
+      })) : undefined;
 
     if (isGuest) {
       const newSession: SessionRecord = {
         id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
         date: form.date,
         trackId: form.trackId,
         car: form.car,
@@ -488,7 +622,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         sharedAt: null,
         publicNote: null,
         isPB: false,
-        laps: lapRows ?? null,
+        laps: lapRows && lapRows.length > 0 ? lapRows : null,
         position: form.type === 'Race' && form.position ? form.position : undefined,
       };
       const updatedSessions = computeGuestPBs([...guestSessions, newSession]);
@@ -641,7 +775,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table sessions-table">
             <thead>
               <tr>
                 <th>Date</th>
@@ -662,26 +796,30 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               {filtered.map(s => (
                 <React.Fragment key={s.id}>
                   <tr onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
-                    <td>{trackName(s.trackId)}</td>
-                    <td style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
-                    <td>
+                    <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                      {s.date}
+                      {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 10, marginTop: 1 }}>{localTimeStr(s.createdAt)}</div>}
+                    </td>
+                    <td data-label="Track">{trackName(s.trackId)}</td>
+                    <td data-label="Car" style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
+                    <td data-label="Best Lap">
                       <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                       {s.isPB && <span className="pb-badge">★ PB</span>}
                     </td>
-                    <td><span className="lap-time" style={{ color: 'var(--gray-light)', fontSize: 12 }}>{s.avgLap || '—'}</span></td>
-                    <td><span className="lap-time" style={{ color: 'var(--gray-mid)', fontSize: 12 }}>{s.worstLap || '—'}</span></td>
-                    <td>{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
-                    <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
-                    <td style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
-                    <td style={{ color: 'var(--gray-light)', fontSize: 12 }}>
+                    <td data-label="Avg Lap"><span className="lap-time" style={{ color: 'var(--gray-light)', fontSize: 12 }}>{s.avgLap || '—'}</span></td>
+                    <td data-label="Worst Lap"><span className="lap-time" style={{ color: 'var(--gray-mid)', fontSize: 12 }}>{s.worstLap || '—'}</span></td>
+                    <td data-label="Consistency">{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
+                    <td data-label="Type"><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
+                    <td data-label="Tires" style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
+                    <td data-label="Conditions" style={{ color: 'var(--gray-light)', fontSize: 12 }}>
                       {s.conditions || '—'}
                       {s.timeOfDay ? <span style={{ color: 'var(--gray-mid)', marginLeft: 4 }}>· {s.timeOfDay}</span> : null}
                     </td>
-                    <td><RatingDots rating={s.rating} /></td>
-                    <td style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <td data-label="Rating"><RatingDots rating={s.rating} /></td>
+                    <td data-label="" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {s.id === mostRecentId && <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>MOST RECENT</span>}
                       {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
-                      {s.laps && s.laps.length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{s.laps.length}L</span>}
+                      {validLaps(s.laps).length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{validLaps(s.laps).length}L</span>}
                       {s.notes && <FileText size={13} style={{ color: 'var(--gray)', verticalAlign: 'middle' }} />}
                       {expanded === s.id ? <ChevronUp size={13} style={{ color: 'var(--gray-mid)', marginLeft: 4 }} /> : <ChevronDown size={13} style={{ color: 'var(--gray-mid)', marginLeft: 4 }} />}
                     </td>
@@ -716,17 +854,77 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                               </div>
                             );
                           })()}
-                          <div className="expanded-item"><div className="expanded-label">Fuel Load</div><div className="expanded-value">{s.fuelLoad}%</div></div>
-                          <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions || '—'}</div></div>
-                          <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay || '—'}</div></div>
-                          <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>
+                          {s.conditions && <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions}</div></div>}
+                          {s.timeOfDay && <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay}</div></div>}
+                          {s.assists && <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>}
                           {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
+                          {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
+                          {!!s.position && <div className="expanded-item"><div className="expanded-label">Finish Position</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>P{s.position}</div></div>}
+
+                          <ExpandedGroup label="Fuel & Tyres" show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps || !!s.brakeTemps}>
+                            {!!s.fuelRemainingLaps && <div className="expanded-item"><div className="expanded-label">Fuel Remaining</div><div className="expanded-value">{s.fuelRemainingLaps.toFixed(1)} laps</div></div>}
+                            {!!s.fuelInTank && <div className="expanded-item"><div className="expanded-label">Fuel in Tank</div><div className="expanded-value">{s.fuelInTank.toFixed(1)} kg</div></div>}
+                            {s.tyreWear && <div className="expanded-item"><div className="expanded-label">Avg Tyre Wear</div><div className="expanded-value">{(s.tyreWear.reduce((a, b) => a + b, 0) / s.tyreWear.length).toFixed(1)}%</div></div>}
+                            {s.tyreSurfaceTemps && <div className="expanded-item"><div className="expanded-label">Avg Tyre Temp</div><div className="expanded-value">{Math.round(s.tyreSurfaceTemps.reduce((a, b) => a + b, 0) / s.tyreSurfaceTemps.length)}°C</div></div>}
+                            {s.brakeTemps && <div className="expanded-item"><div className="expanded-label">Avg Brake Temp</div><div className="expanded-value">{Math.round(s.brakeTemps.reduce((a, b) => a + b, 0) / s.brakeTemps.length)}°C</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Tyre Stints" show={!!s.tyreStints && s.tyreStints.length > 0}>
+                            {s.tyreStints?.map((stint, i) => (
+                              <div key={i} className="expanded-item">
+                                <div className="expanded-label">Stint {i + 1}</div>
+                                <div className="expanded-value">{stint.visualCompound || stint.compound} · L{stint.startLap}–{stint.endLap}</div>
+                              </div>
+                            ))}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Car Setup" show={!!s.setupSnapshot}>
+                            {!!s.setupSnapshot && (
+                              <>
+                                <div className="expanded-item"><div className="expanded-label">Wing F/R</div><div className="expanded-value">{s.setupSnapshot.frontWing} / {s.setupSnapshot.rearWing}</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Brake Bias</div><div className="expanded-value">{s.setupSnapshot.brakeBias}%</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Brake Pressure</div><div className="expanded-value">{s.setupSnapshot.brakePressure}%</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Tyre Pressure F/R</div><div className="expanded-value">{s.setupSnapshot.frontTyrePressure.toFixed(1)} / {s.setupSnapshot.rearTyrePressure.toFixed(1)} psi</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Camber F/R</div><div className="expanded-value">{s.setupSnapshot.frontCamber.toFixed(1)}° / {s.setupSnapshot.rearCamber.toFixed(1)}°</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Toe F/R</div><div className="expanded-value">{s.setupSnapshot.frontToe.toFixed(2)}° / {s.setupSnapshot.rearToe.toFixed(2)}°</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Ride Height F/R</div><div className="expanded-value">{s.setupSnapshot.frontRideHeight} / {s.setupSnapshot.rearRideHeight}</div></div>
+                                <div className="expanded-item"><div className="expanded-label">Anti-Roll Bar F/R</div><div className="expanded-value">{s.setupSnapshot.frontAntiRollBar} / {s.setupSnapshot.rearAntiRollBar}</div></div>
+                              </>
+                            )}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Track Conditions" show={!!s.trackTemperature || !!s.airTemperature || !!s.safetyCarStatus || !!s.pitSpeedLimit || !!s.totalLaps}>
+                            {(!!s.trackTemperature || !!s.airTemperature) && <div className="expanded-item"><div className="expanded-label">Track / Air Temp</div><div className="expanded-value">{s.trackTemperature ?? '—'}° / {s.airTemperature ?? '—'}°</div></div>}
+                            {!!s.safetyCarStatus && <div className="expanded-item"><div className="expanded-label">Safety Car</div><div className="expanded-value">{safetyCarLabel(s.safetyCarStatus)}</div></div>}
+                            {!!s.pitSpeedLimit && <div className="expanded-item"><div className="expanded-label">Pit Speed Limit</div><div className="expanded-value">{s.pitSpeedLimit} km/h</div></div>}
+                            {!!s.totalLaps && <div className="expanded-item"><div className="expanded-label">Total Laps</div><div className="expanded-value">{s.totalLaps}</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Performance" show={!!s.topSpeedKph || !!s.avgThrottlePct || !!s.avgBrakePct || !!s.maxRpm || !!s.topGear || !!s.drsActivations}>
+                            {!!s.topSpeedKph && <div className="expanded-item"><div className="expanded-label">Top Speed</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{Math.round(s.topSpeedKph)} km/h</div></div>}
+                            {(!!s.avgThrottlePct || !!s.avgBrakePct) && <div className="expanded-item"><div className="expanded-label">Avg Throttle / Brake</div><div className="expanded-value">{s.avgThrottlePct?.toFixed(0) ?? '—'}% / {s.avgBrakePct?.toFixed(0) ?? '—'}%</div></div>}
+                            {!!s.maxRpm && <div className="expanded-item"><div className="expanded-label">Max RPM</div><div className="expanded-value">{s.maxRpm.toLocaleString()}</div></div>}
+                            {!!s.topGear && <div className="expanded-item"><div className="expanded-label">Top Gear</div><div className="expanded-value">{s.topGear}</div></div>}
+                            {!!s.drsActivations && <div className="expanded-item"><div className="expanded-label">DRS Activations</div><div className="expanded-value">{s.drsActivations}</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="ERS" show={!!s.ersEnergyStored || !!s.ersDeployedThisLap || !!s.ersDeployMode}>
+                            {!!s.ersDeployMode && <div className="expanded-item"><div className="expanded-label">Deploy Mode</div><div className="expanded-value">{ersModeLabel(s.ersDeployMode)}</div></div>}
+                            {!!s.ersEnergyStored && <div className="expanded-item"><div className="expanded-label">Energy Stored</div><div className="expanded-value">{(s.ersEnergyStored / 1_000_000).toFixed(2)} MJ</div></div>}
+                            {!!s.ersDeployedThisLap && <div className="expanded-item"><div className="expanded-label">Deployed This Lap</div><div className="expanded-value">{(s.ersDeployedThisLap / 1_000_000).toFixed(2)} MJ</div></div>}
+                          </ExpandedGroup>
+
+                          <ExpandedGroup label="Damage" show={!!s.wingDamage && (s.wingDamage.front > 0 || s.wingDamage.rear > 0)}>
+                            {!!s.wingDamage?.front && <div className="expanded-item"><div className="expanded-label">Front Wing</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.wingDamage.front}%</div></div>}
+                            {!!s.wingDamage?.rear && <div className="expanded-item"><div className="expanded-label">Rear Wing</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.wingDamage.rear}%</div></div>}
+                          </ExpandedGroup>
+
                           {s.notes && <div className="expanded-notes"><div className="expanded-label" style={{ marginBottom: 6 }}>Notes</div>{s.notes}</div>}
 
                           {/* Per-lap table */}
                           {s.laps && s.laps.length > 0 && (
                             <div style={{ width: '100%' }}>
-                              <LapTable laps={s.laps} />
+                              <LapTable laps={s.laps} onViewTelemetry={setTelemetryLap} />
                             </div>
                           )}
 
@@ -794,6 +992,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Lap Telemetry Modal ───────────────────────────────────────────── */}
+      {telemetryLap && (
+        <LapTelemetryModal lap={telemetryLap} onClose={() => setTelemetryLap(null)} />
       )}
 
       {/* ── Log Session Modal ─────────────────────────────────────────────── */}

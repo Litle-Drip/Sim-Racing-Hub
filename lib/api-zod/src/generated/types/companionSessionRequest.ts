@@ -5,8 +5,11 @@
  * Sim Racing HQ API — F1 sim companion
  * OpenAPI spec version: 0.2.0
  */
+import type { CarSetupSnapshot } from './carSetupSnapshot';
 import type { CompanionSessionSectors } from './companionSessionSectors';
+import type { LapHistoryEntry } from './lapHistoryEntry';
 import type { LapRecord } from './lapRecord';
+import type { TyreStintEntry } from './tyreStintEntry';
 
 export interface CompanionSessionRequest {
   sessionType: string;
@@ -28,4 +31,30 @@ export interface CompanionSessionRequest {
   notes?: string;
   rating?: number;
   penalty?: string;
+  trackTemperature?: number;
+  airTemperature?: number;
+  totalLaps?: number;
+  pitSpeedLimit?: number;
+  safetyCarStatus?: number;
+  timeOfDay?: string;
+  fuelInTank?: number;
+  ersDeployMode?: number;
+  ersEnergyStored?: number;
+  ersDeployedThisLap?: number;
+  tyreWear?: number[];
+  frontWingDamage?: number;
+  rearWingDamage?: number;
+  tyreSurfaceTemps?: number[];
+  brakeTemps?: number[];
+  setup?: CarSetupSnapshot;
+  tyreStints?: TyreStintEntry[];
+  lapHistory?: LapHistoryEntry[];
+  aiDifficulty?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  fuelRemainingLaps?: number;
 }

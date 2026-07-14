@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, avg, count, sql } from "drizzle-orm";
 import { db, setupsTable, setupRatingsTable, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
+import { normalizeTrackId } from "../lib/trackAlias";
 import { getAuth } from "@clerk/express";
 
 function escapeLike(s: string): string {
@@ -320,7 +321,7 @@ router.get("/community/sessions", async (req, res) => {
     const mapped = rows.map((r) => ({
       id: r.id,
       date: r.date,
-      trackId: r.trackId,
+      trackId: normalizeTrackId(r.trackId),
       car: r.car,
       type: r.type,
       bestLap: r.bestLap,
@@ -412,9 +413,10 @@ router.get("/community/driver/:username", async (req, res) => {
     const pbMap: Record<string, { trackId: string; car: string; bestLap: string; date: string }> = {};
     publicSessions.forEach((s) => {
       if (!s.bestLap || s.bestLap.trim() === "") return;
-      const existing = pbMap[s.trackId];
+      const trackId = normalizeTrackId(s.trackId);
+      const existing = pbMap[trackId];
       if (!existing || lapToSeconds(s.bestLap) < lapToSeconds(existing.bestLap)) {
-        pbMap[s.trackId] = { trackId: s.trackId, car: s.car, bestLap: s.bestLap, date: s.date };
+        pbMap[trackId] = { trackId, car: s.car, bestLap: s.bestLap, date: s.date };
       }
     });
 
@@ -424,7 +426,7 @@ router.get("/community/driver/:username", async (req, res) => {
       avatarUrl: user.image_url ?? null,
       sessions: publicSessions.length,
       setups: publicSetups.length,
-      tracks: new Set(publicSessions.map(s => s.trackId)).size,
+      tracks: new Set(publicSessions.map(s => normalizeTrackId(s.trackId))).size,
       pbs: Object.values(pbMap),
       recentSessions: publicSessions
         .sort((a, b) => b.date.localeCompare(a.date))
@@ -432,7 +434,7 @@ router.get("/community/driver/:username", async (req, res) => {
         .map(s => ({
           id: s.id,
           date: s.date,
-          trackId: s.trackId,
+          trackId: normalizeTrackId(s.trackId),
           car: s.car,
           type: s.type,
           bestLap: s.bestLap,

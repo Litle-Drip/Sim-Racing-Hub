@@ -5,6 +5,7 @@
  * Sim Racing HQ API — F1 sim companion
  * OpenAPI spec version: 0.2.0
  */
+import type { LapTraceSample } from './lapTraceSample';
 
 export interface LapRecord {
   lap: number;
@@ -14,4 +15,5 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  trace?: LapTraceSample[] | null;
 }
