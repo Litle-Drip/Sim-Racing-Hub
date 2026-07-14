@@ -196,19 +196,45 @@ const TYRE_ACTUAL_NAMES: Record<number, string> = {
   8: "Wet",
 };
 
+// Base ids confirmed against the current F1 25 team roster (AlphaTauri
+// rebranded to RB, Alfa Romeo rebranded to Sauber). F1 25's "2026 Season
+// Pack" adds alternate-livery variants of each team at a fixed offset from
+// its base id — 185 for '24 retro liveries, 220 for 2026-spec concept
+// liveries — confirmed live via a diagnostic log showing raw m_teamId=228
+// (=8+220) for a McLaren car driven in the 2026 content.
 const TEAM_NAMES: Record<number, string> = {
   0: "Mercedes",
   1: "Ferrari",
-  2: "Red Bull",
+  2: "Red Bull Racing",
   3: "Williams",
   4: "Aston Martin",
   5: "Alpine",
-  6: "AlphaTauri",
+  6: "RB",
   7: "Haas",
   8: "McLaren",
-  9: "Alfa Romeo",
-  10: "Haas",
-  85: "Red Bull 2",
+  9: "Sauber",
+  41: "F1 Generic",
+  104: "My Team",
+  185: "Mercedes '24",
+  186: "Ferrari '24",
+  187: "Red Bull Racing '24",
+  188: "Williams '24",
+  189: "Aston Martin '24",
+  190: "Alpine '24",
+  191: "RB '24",
+  192: "Haas '24",
+  193: "McLaren '24",
+  194: "Sauber '24",
+  220: "Mercedes '26",
+  221: "Ferrari '26",
+  222: "Red Bull Racing '26",
+  223: "Williams '26",
+  224: "Aston Martin '26",
+  225: "Alpine '26",
+  226: "RB '26",
+  227: "Haas '26",
+  228: "McLaren '26",
+  229: "Sauber '26",
   253: "My Team",
 };
 
