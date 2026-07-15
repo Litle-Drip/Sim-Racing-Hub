@@ -14,6 +14,7 @@ import Tracks from './pages/Tracks';
 import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
+import RaceEngineer from './pages/RaceEngineer';
 import Community from './pages/Community';
 import PublicSetups from './pages/PublicSetups';
 import PublicTracks from './pages/PublicTracks';
@@ -240,7 +241,7 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -311,6 +312,7 @@ const PAGE_LABELS: Record<string, string> = {
   setups: 'Setup Vault',
   hardware: 'Hardware Vault',
   progress: 'PB Progression',
+  engineer: 'Race Engineer',
 };
 
 const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
@@ -340,6 +342,13 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'Chart your personal bests across every circuit',
       'Lap variance chart shows how consistent you are',
       'Filter by car and session type to spot trends',
+    ],
+  },
+  engineer: {
+    bullets: [
+      'AI coaching built from your actual session data',
+      'Get specific, data-driven feedback after every debrief',
+      'Ask follow-up questions about your pace and consistency',
     ],
   },
 };
@@ -432,7 +441,7 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
 }
 
 const SHORTCUTS: Record<string, string> = {
-  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', c: 'community', x: 'companion', a: 'account',
+  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', c: 'community', x: 'companion', a: 'account',
 };
 
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
@@ -522,6 +531,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
+      case 'engineer': return <RaceEngineer />;
       case 'community': return <Community />;
       case 'companion': return <Companion />;
       case 'account': return <Account />;
