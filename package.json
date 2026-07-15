@@ -10,7 +10,7 @@
   },
   "private": true,
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.111.0"
+    "@anthropic-ai/sdk": "0.90.0"
   },
   "pnpm": {
     "supportedArchitectures": {
