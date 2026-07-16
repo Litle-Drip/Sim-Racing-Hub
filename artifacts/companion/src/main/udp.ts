@@ -123,13 +123,24 @@ export class UdpListener extends EventEmitter {
     const m_lapData = [];
     for (let i = 0; i < NUM_CARS; i++) {
       const o = HEADER_SIZE + i * LAP_DATA_SIZE;
+      // Sector times are split into a ms part (uint16, 0-65535) and a
+      // minutes part (uint8) — reading only the ms part silently truncates
+      // any sector over ~65s (rare, but real: a spin/off-track recovery
+      // within one sector). Combine both, matching how session history's
+      // sector times are already reconstructed further down.
+      const s1Ms = buf.readUInt16LE(o + 8);
+      const s1Min = buf.readUInt8(o + 10);
+      const s2Ms = buf.readUInt16LE(o + 11);
+      const s2Min = buf.readUInt8(o + 13);
       m_lapData.push({
         m_lastLapTimeInMS: buf.readUInt32LE(o),
         m_currentLapTimeInMS: buf.readUInt32LE(o + 4),
-        m_sector1TimeInMS: buf.readUInt16LE(o + 8),
-        m_sector2TimeInMS: buf.readUInt16LE(o + 11),
+        m_sector1TimeInMS: s1Min * 60_000 + s1Ms,
+        m_sector2TimeInMS: s2Min * 60_000 + s2Ms,
         m_lapDistance: buf.readFloatLE(o + 20),
         m_currentLapNum: buf.readUInt8(o + 33),
+        m_pitStatus: buf.readUInt8(o + 34),
+        m_numPitStops: buf.readUInt8(o + 35),
         m_currentLapInvalid: buf.readUInt8(o + 37),
         m_penalties: buf.readUInt8(o + 38),
       });
@@ -182,6 +193,7 @@ export class UdpListener extends EventEmitter {
         m_rearRightTyrePressure: buf.readFloatLE(o + 33),
         m_frontLeftTyrePressure: buf.readFloatLE(o + 37),
         m_frontRightTyrePressure: buf.readFloatLE(o + 41),
+        m_fuelLoad: buf.readFloatLE(o + 46),
       });
     }
     this.emit("carSetup", { m_carSetups });
@@ -212,6 +224,13 @@ export class UdpListener extends EventEmitter {
           buf.readUInt8(o + 32),
           buf.readUInt8(o + 33),
         ] as [number, number, number, number],
+        m_engineTemperature: buf.readUInt16LE(o + 38),
+        m_tyresPressure: [
+          buf.readFloatLE(o + 40),
+          buf.readFloatLE(o + 44),
+          buf.readFloatLE(o + 48),
+          buf.readFloatLE(o + 52),
+        ] as [number, number, number, number],
       });
     }
     this.emit("carTelemetry", { m_carTelemetryData });
@@ -226,8 +245,13 @@ export class UdpListener extends EventEmitter {
         m_tractionControl: buf.readUInt8(o),
         m_antiLockBrakes: buf.readUInt8(o + 1),
         m_fuelInTank: buf.readFloatLE(o + 5),
+        m_fuelCapacity: buf.readFloatLE(o + 9),
         m_fuelRemainingLaps: buf.readFloatLE(o + 13),
+        m_maxRPM: buf.readUInt16LE(o + 17),
+        m_actualTyreCompound: buf.readUInt8(o + 25),
         m_visualTyreCompound: buf.readUInt8(o + 26),
+        m_tyresAgeLaps: buf.readUInt8(o + 27),
+        m_vehicleFiaFlags: buf.readInt8(o + 28),
         m_ersStoreEnergy: buf.readFloatLE(o + 37),
         m_ersDeployMode: buf.readUInt8(o + 41),
         m_ersDeployedThisLap: buf.readFloatLE(o + 50),
@@ -269,6 +293,11 @@ export class UdpListener extends EventEmitter {
         m_frontLeftWingDamage: buf.readUInt8(o + 24),
         m_frontRightWingDamage: buf.readUInt8(o + 25),
         m_rearWingDamage: buf.readUInt8(o + 26),
+        m_floorDamage: buf.readUInt8(o + 27),
+        m_diffuserDamage: buf.readUInt8(o + 28),
+        m_sidepodDamage: buf.readUInt8(o + 29),
+        m_gearBoxDamage: buf.readUInt8(o + 32),
+        m_engineDamage: buf.readUInt8(o + 33),
       });
     }
     this.emit("carDamage", { m_carDamageData });

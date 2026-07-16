@@ -76,6 +76,20 @@ export const sessionsTable = pgTable("sessions", {
   maxRpm: integer("max_rpm"),
   topGear: integer("top_gear"),
   fuelRemainingLaps: real("fuel_remaining_laps"),
+  actualTyreCompound: text("actual_tyre_compound"),
+  tyreAgeLaps: integer("tyre_age_laps"),
+  pitStops: integer("pit_stops"),
+  fuelCapacity: real("fuel_capacity"),
+  startingFuelKg: real("starting_fuel_kg"),
+  engineMaxRpm: integer("engine_max_rpm"),
+  engineTemperature: integer("engine_temperature"),
+  vehicleFiaFlags: integer("vehicle_fia_flags"),
+  tyrePressureLive: jsonb("tyre_pressure_live").$type<[number, number, number, number]>(),
+  floorDamage: integer("floor_damage"),
+  diffuserDamage: integer("diffuser_damage"),
+  sidepodDamage: integer("sidepod_damage"),
+  gearBoxDamage: integer("gear_box_damage"),
+  engineDamage: integer("engine_damage"),
 });
 
 export type DbSession = typeof sessionsTable.$inferSelect;
