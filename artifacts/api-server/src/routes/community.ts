@@ -366,6 +366,7 @@ router.get("/community/driver/:username", async (req, res) => {
   try {
     const secretKey = process.env.CLERK_SECRET_KEY;
     if (!secretKey) {
+      req.log.error("CLERK_SECRET_KEY is not configured; cannot resolve driver profiles");
       res.status(404).json({ error: "Driver not found" });
       return;
     }
@@ -376,6 +377,10 @@ router.get("/community/driver/:username", async (req, res) => {
       { headers: { Authorization: `Bearer ${secretKey}` } }
     );
     if (!userResp.ok) {
+      req.log.error(
+        { status: userResp.status, body: await userResp.text().catch(() => "") },
+        "Clerk user lookup failed for driver profile",
+      );
       res.status(404).json({ error: "Driver not found" });
       return;
     }
