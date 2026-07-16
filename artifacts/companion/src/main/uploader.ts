@@ -86,7 +86,20 @@ function loadPending(): PendingUpload[] {
   const p = pendingPath();
   if (!existsSync(p)) return [];
   try {
-    return JSON.parse(readFileSync(p, "utf-8")) as PendingUpload[];
+    const items = JSON.parse(readFileSync(p, "utf-8")) as PendingUpload[];
+    // Items queued before session ids existed have no payload.id, so the
+    // server can't dedupe them — every retry inserts a brand new row. Give
+    // each a stable id once, here, so from this point on they behave like
+    // any other upload: retried safely, never duplicated.
+    let backfilled = false;
+    for (const item of items) {
+      if (!item.payload.id) {
+        item.payload.id = randomId();
+        backfilled = true;
+      }
+    }
+    if (backfilled) savePending(items);
+    return items;
   } catch {
     return [];
   }
