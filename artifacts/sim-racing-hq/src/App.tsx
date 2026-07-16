@@ -24,6 +24,7 @@ import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
 import Companion from './pages/Companion';
 import DownloadPage from './pages/DownloadPage';
+import ServiceStatusBanner from './components/ServiceStatusBanner';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -680,40 +681,44 @@ function ClerkProviderWithRoutes() {
 export default function App() {
   if (!clerkPubKey) {
     return (
-      <div style={{
-        minHeight: '100dvh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#080808',
-        padding: 24,
-        fontFamily: 'monospace',
-      }}>
+      <>
+        <ServiceStatusBanner />
         <div style={{
-          background: '#111',
-          border: '1px solid #E8002D',
-          padding: '32px 40px',
-          maxWidth: 520,
-          width: '100%',
+          minHeight: '100dvh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#080808',
+          padding: 24,
+          fontFamily: 'monospace',
         }}>
-          <div style={{ color: '#E8002D', fontSize: 12, letterSpacing: '0.12em', marginBottom: 16 }}>
-            CONFIGURATION ERROR
-          </div>
-          <div style={{ color: '#F0F0F0', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
-            <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is not set.
-          </div>
-          <div style={{ color: '#A8A8A8', fontSize: 13, lineHeight: 1.7 }}>
-            In Vercel → Settings → Environment Variables, add:<br />
-            <span style={{ color: '#00D2BE' }}>VITE_CLERK_PUBLISHABLE_KEY</span> = your <code>pk_live_...</code> or <code>pk_test_...</code> key<br /><br />
-            Then redeploy for the change to take effect.
+          <div style={{
+            background: '#111',
+            border: '1px solid #E8002D',
+            padding: '32px 40px',
+            maxWidth: 520,
+            width: '100%',
+          }}>
+            <div style={{ color: '#E8002D', fontSize: 12, letterSpacing: '0.12em', marginBottom: 16 }}>
+              CONFIGURATION ERROR
+            </div>
+            <div style={{ color: '#F0F0F0', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
+              <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is not set.
+            </div>
+            <div style={{ color: '#A8A8A8', fontSize: 13, lineHeight: 1.7 }}>
+              In Vercel → Settings → Environment Variables, add:<br />
+              <span style={{ color: '#00D2BE' }}>VITE_CLERK_PUBLISHABLE_KEY</span> = your <code>pk_live_...</code> or <code>pk_test_...</code> key<br /><br />
+              Then redeploy for the change to take effect.
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
     <WouterRouter base={basePath}>
+      <ServiceStatusBanner />
       <ClerkProviderWithRoutes />
     </WouterRouter>
   );
