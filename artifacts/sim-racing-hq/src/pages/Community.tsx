@@ -214,7 +214,7 @@ export default function Community() {
   const [filterType, setFilterType] = useState('');
   const [filterPlatform, setFilterPlatform] = useState('');
   const [filterInput, setFilterInput] = useState('');
-  const [sessionSort, setSessionSort] = useState<'fastest' | 'recent' | 'rating'>('fastest');
+  const [sessionSort, setSessionSort] = useState<'fastest' | 'recent' | 'rating'>('recent');
   const [importingId, setImportingId] = useState<string | null>(null);
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
   const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
