@@ -319,6 +319,8 @@ function DataCleanupModal({
     return s;
   });
   const [deleting, setDeleting] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const toggle = (id: string) => {
     setSelected(prev => {
@@ -331,11 +333,30 @@ function DataCleanupModal({
 
   const handleDeleteSelected = async () => {
     setDeleting(true);
-    try {
-      await onDeleteSelected([...selected]);
+    setDeleteError('');
+    const ids = [...selected];
+    setProgress({ done: 0, total: ids.length });
+    let failures = 0;
+    // Delete one at a time with a hard timeout per request — the underlying
+    // fetch has none, so a single unresponsive request (a cold backend, a
+    // dropped connection) would otherwise hang this forever with no way to
+    // recover or even tell the user something's wrong.
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await Promise.race([
+          onDeleteSelected([ids[i]]),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timed out')), 20000)),
+        ]);
+      } catch {
+        failures++;
+      }
+      setProgress({ done: i + 1, total: ids.length });
+    }
+    setDeleting(false);
+    if (failures > 0) {
+      setDeleteError(`${failures} of ${ids.length} couldn't be deleted (server didn't respond in time). The rest were removed — try again for the remaining ones.`);
+    } else {
       onClose();
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -369,7 +390,7 @@ function DataCleanupModal({
                   </div>
                   {cluster.map(s => (
                     <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
-                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
+                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--red)' }} />
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
                         {cleanupRowLabel(s)} — {s.laps?.length ?? 0} laps
                       </span>
@@ -389,7 +410,7 @@ function DataCleanupModal({
                   </div>
                   {emptySessions.map(s => (
                     <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
-                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
+                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--red)' }} />
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
                         {cleanupRowLabel(s)} — {trackNameForCleanup(s.trackId)} · {s.car}
                       </span>
@@ -401,17 +422,23 @@ function DataCleanupModal({
           )}
         </div>
         {totalIssues > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
-            <button className="btn btn-secondary" onClick={onClose} disabled={deleting}>Cancel</button>
-            <button
-              className="btn btn-secondary"
-              style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
-              onClick={handleDeleteSelected}
-              disabled={deleting || selected.size === 0}
-            >
-              <Trash2 size={11} style={{ marginRight: 4 }} />
-              {deleting ? 'Deleting…' : `Delete Selected (${selected.size})`}
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+            {deleteError && <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)' }}>{deleteError}</div>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+              {deleting && progress && (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>{progress.done} / {progress.total}</span>
+              )}
+              <button className="btn btn-secondary" onClick={onClose} disabled={deleting}>Cancel</button>
+              <button
+                className="btn btn-secondary"
+                style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
+                onClick={handleDeleteSelected}
+                disabled={deleting || selected.size === 0}
+              >
+                <Trash2 size={11} style={{ marginRight: 4 }} />
+                {deleting ? 'Deleting…' : `Delete Selected (${selected.size})`}
+              </button>
+            </div>
           </div>
         )}
       </div>
