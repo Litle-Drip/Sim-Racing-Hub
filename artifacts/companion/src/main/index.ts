@@ -312,31 +312,47 @@ function createTray(): Tray {
   return t;
 }
 
-app.whenReady().then(async () => {
-  mainWindow = createWindow();
-  tray = createTray();
-  wireUdp();
-
-  try {
-    await udp.start(store.get("port", 20777));
-    console.log(`[UDP] Listening on port ${store.get("port", 20777)}`);
-  } catch (err) {
-    console.error("[UDP] Failed to start:", err);
-  }
-
-  uploader.setCredentials(store.get("apiKey"), store.get("apiBaseUrl"));
-  uploader.flushPending().catch(() => {});
-  uploader.startRetryLoop(60_000);
-  startGameWatchdog();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow();
-    } else {
-      mainWindow?.show();
+// A second running instance would bind the same UDP port and independently
+// upload every session the first instance already handles — quit it
+// immediately rather than let it duplicate telemetry uploads.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
     }
   });
-});
+
+  app.whenReady().then(async () => {
+    mainWindow = createWindow();
+    tray = createTray();
+    wireUdp();
+
+    try {
+      await udp.start(store.get("port", 20777));
+      console.log(`[UDP] Listening on port ${store.get("port", 20777)}`);
+    } catch (err) {
+      console.error("[UDP] Failed to start:", err);
+    }
+
+    uploader.setCredentials(store.get("apiKey"), store.get("apiBaseUrl"));
+    uploader.flushPending().catch(() => {});
+    uploader.startRetryLoop(60_000);
+    startGameWatchdog();
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        mainWindow = createWindow();
+      } else {
+        mainWindow?.show();
+      }
+    });
+  });
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

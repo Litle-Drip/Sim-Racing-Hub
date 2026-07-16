@@ -57,6 +57,7 @@ export interface LapHistoryEntry {
 }
 
 export interface SessionSnapshot {
+  id: string;
   sessionUID: string;
   sessionType: string;
   track: string;
@@ -237,6 +238,16 @@ const TEAM_NAMES: Record<number, string> = {
   229: "Sauber '26",
   253: "My Team",
 };
+
+// Generated once per flush and carried through every retry of that same
+// upload (network flakiness, a slow/cold server, or an accidental second
+// app instance all trigger retries) so the server can dedupe on it instead
+// of inserting a new row per attempt. A genuinely new flush — even for the
+// same game session, e.g. a fragment split by a real disconnect — gets its
+// own fresh id, so distinct lap data is never silently dropped as a dupe.
+function randomFlushId(): string {
+  return `session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
 
 function msToLapTime(ms: number): string {
   if (!ms || ms <= 0) return "";
@@ -813,6 +824,7 @@ export class SessionTracker {
 
   private flushSession(): void {
     const snap: SessionSnapshot = {
+      id: randomFlushId(),
       sessionUID: this.sessionUID!,
       sessionType: SESSION_TYPES[this.sessionType] ?? "Unknown",
       track: TRACK_NAMES[this.trackId] ?? `Track ${this.trackId}`,
