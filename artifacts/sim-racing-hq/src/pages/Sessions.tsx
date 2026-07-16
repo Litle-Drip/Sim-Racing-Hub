@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity, AlertTriangle } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -19,6 +19,7 @@ import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency } from '../lib/engagement';
+import { findDataIssues } from '../lib/dataCleanup';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -260,6 +261,142 @@ function LapTelemetryModal({ lap, onClose }: { lap: LapEntry; onClose: () => voi
   );
 }
 
+// ─── Data cleanup (duplicate/garbage telemetry sessions) ──────────────────────
+
+function trackNameForCleanup(id: string): string {
+  return F1_TRACKS.find(t => t.id === id)?.short ?? id;
+}
+
+function cleanupRowLabel(s: SessionRecord): string {
+  const parts = [s.date];
+  if (s.createdAt) {
+    const t = new Date(s.createdAt);
+    if (!isNaN(t.getTime())) parts.push(t.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
+  }
+  return parts.join(' · ');
+}
+
+function DataCleanupModal({
+  duplicateClusters,
+  emptySessions,
+  onClose,
+  onDeleteSelected,
+}: {
+  duplicateClusters: SessionRecord[][];
+  emptySessions: SessionRecord[];
+  onClose: () => void;
+  onDeleteSelected: (ids: string[]) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    // Default: keep the earliest upload in each duplicate cluster, select the
+    // rest for deletion. Empty/incomplete sessions have nothing worth
+    // keeping, so select all of them by default.
+    duplicateClusters.forEach(cluster => cluster.slice(1).forEach(sess => s.add(sess.id)));
+    emptySessions.forEach(sess => s.add(sess.id));
+    return s;
+  });
+  const [deleting, setDeleting] = useState(false);
+
+  const toggle = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    setDeleting(true);
+    try {
+      await onDeleteSelected([...selected]);
+      onClose();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const totalIssues = duplicateClusters.reduce((n, c) => n + c.length, 0) + emptySessions.length;
+
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 720, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-header">
+          <span className="modal-title">Review & Clean Up Data</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body" style={{ overflowY: 'auto' }}>
+          {totalIssues === 0 ? (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', padding: '20px 0', textAlign: 'center' }}>
+              No duplicate or empty telemetry sessions found. Your data looks clean.
+            </div>
+          ) : (
+            <>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginBottom: 16, lineHeight: 1.5 }}>
+                Scanned only sessions uploaded by the companion app (manually-logged sessions are never touched). Checked rows will be deleted — uncheck anything you want to keep.
+              </div>
+
+              {duplicateClusters.map((cluster, ci) => (
+                <div key={ci} style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <AlertTriangle size={13} style={{ color: 'var(--yellow)' }} />
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>
+                      Duplicate — {trackNameForCleanup(cluster[0].trackId)} · {cluster[0].car} · {cluster[0].bestLap || '—'}
+                    </span>
+                  </div>
+                  {cluster.map(s => (
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
+                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
+                        {cleanupRowLabel(s)} — {s.laps?.length ?? 0} laps
+                      </span>
+                      {!selected.has(s.id) && <span style={{ fontSize: 10, color: 'var(--teal)', fontFamily: 'var(--font-body)' }}>KEEP</span>}
+                    </label>
+                  ))}
+                </div>
+              ))}
+
+              {emptySessions.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <AlertTriangle size={13} style={{ color: 'var(--red)' }} />
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>
+                      Empty sessions (no laps recorded)
+                    </span>
+                  </div>
+                  {emptySessions.map(s => (
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
+                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
+                        {cleanupRowLabel(s)} — {trackNameForCleanup(s.trackId)} · {s.car}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        {totalIssues > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+            <button className="btn btn-secondary" onClick={onClose} disabled={deleting}>Cancel</button>
+            <button
+              className="btn btn-secondary"
+              style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
+              onClick={handleDeleteSelected}
+              disabled={deleting || selected.size === 0}
+            >
+              <Trash2 size={11} style={{ marginRight: 4 }} />
+              {deleting ? 'Deleting…' : `Delete Selected (${selected.size})`}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Lap input row (form) ─────────────────────────────────────────────────────
 
 function LapRow({
@@ -404,6 +541,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
   const [telemetryLap, setTelemetryLap] = useState<LapEntry | null>(null);
+  const [cleanupOpen, setCleanupOpen] = useState(false);
   const [toast, setToast] = useState('');
 
   // ── Draft auto-save ────────────────────────────────────────────────────
@@ -460,7 +598,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   });
   const saving = isGuest ? false : apiSaving;
 
-  const { mutate: apiDeleteSession } = useDeleteSession({
+  const { mutate: apiDeleteSession, mutateAsync: apiDeleteSessionAsync } = useDeleteSession({
     mutation: { onSuccess: () => qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() }) },
   });
 
@@ -683,6 +821,19 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     apiDeleteSession({ id });
   };
 
+  const dataIssues = useMemo(() => findDataIssues(sessions), [sessions]);
+  const dataIssuesCount = dataIssues.duplicateClusters.reduce((n, c) => n + c.length, 0) + dataIssues.emptySessions.length;
+
+  const handleBulkDelete = async (ids: string[]) => {
+    if (isGuest) {
+      setGuestSessions(prev => computeGuestPBs(prev.filter(s => !ids.includes(s.id))));
+      return;
+    }
+    for (const id of ids) {
+      await apiDeleteSessionAsync({ id });
+    }
+  };
+
   const handleShare = (session: SessionRecord, e: React.MouseEvent) => {
     e.stopPropagation();
     if (session.isPublic) {
@@ -715,9 +866,16 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Session Log</h1>
-        <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}>
-          <Plus size={12} /> Log Session
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {dataIssuesCount > 0 && (
+            <button className="btn btn-secondary" style={{ color: 'var(--yellow)', borderColor: 'var(--yellow)' }} onClick={() => setCleanupOpen(true)}>
+              <AlertTriangle size={12} style={{ marginRight: 4 }} /> Review Data ({dataIssuesCount})
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}>
+            <Plus size={12} /> Log Session
+          </button>
+        </div>
       </div>
 
       {isGuest && (
@@ -999,6 +1157,15 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       {/* ── Lap Telemetry Modal ───────────────────────────────────────────── */}
       {telemetryLap && (
         <LapTelemetryModal lap={telemetryLap} onClose={() => setTelemetryLap(null)} />
+      )}
+
+      {cleanupOpen && (
+        <DataCleanupModal
+          duplicateClusters={dataIssues.duplicateClusters}
+          emptySessions={dataIssues.emptySessions}
+          onClose={() => setCleanupOpen(false)}
+          onDeleteSelected={handleBulkDelete}
+        />
       )}
 
       {/* ── Log Session Modal ─────────────────────────────────────────────── */}
