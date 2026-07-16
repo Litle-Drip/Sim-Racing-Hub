@@ -54,6 +54,20 @@ export interface UploadPayload {
   maxRpm?: number;
   topGear?: number;
   tyreCompound?: string;
+  actualTyreCompound?: string;
+  tyreAgeLaps?: number;
+  pitStops?: number;
+  fuelCapacity?: number;
+  startingFuelKg?: number;
+  engineMaxRpm?: number;
+  engineTemperature?: number;
+  vehicleFiaFlags?: number;
+  tyrePressureLive?: [number, number, number, number];
+  floorDamage?: number;
+  diffuserDamage?: number;
+  sidepodDamage?: number;
+  gearBoxDamage?: number;
+  engineDamage?: number;
 }
 
 export interface UploadResult {
@@ -166,6 +180,20 @@ export class Uploader {
       maxRpm: session.maxRpm,
       topGear: session.topGear,
       tyreCompound: session.tyreCompound,
+      actualTyreCompound: session.actualTyreCompound,
+      tyreAgeLaps: session.tyreAgeLaps,
+      pitStops: session.pitStops,
+      fuelCapacity: session.fuelCapacity,
+      startingFuelKg: session.startingFuelKg,
+      engineMaxRpm: session.engineMaxRpm,
+      engineTemperature: session.engineTemperature,
+      vehicleFiaFlags: session.vehicleFiaFlags,
+      tyrePressureLive: session.tyrePressureLive,
+      floorDamage: session.floorDamage,
+      diffuserDamage: session.diffuserDamage,
+      sidepodDamage: session.sidepodDamage,
+      gearBoxDamage: session.gearBoxDamage,
+      engineDamage: session.engineDamage,
     };
   }
 

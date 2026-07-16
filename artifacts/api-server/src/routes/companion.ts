@@ -196,6 +196,20 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     maxRpm: r.maxRpm ?? null,
     topGear: r.topGear ?? null,
     fuelRemainingLaps: r.fuelRemainingLaps ?? null,
+    actualTyreCompound: r.actualTyreCompound ?? null,
+    tyreAgeLaps: r.tyreAgeLaps ?? null,
+    pitStops: r.pitStops ?? null,
+    fuelCapacity: r.fuelCapacity ?? null,
+    startingFuelKg: r.startingFuelKg ?? null,
+    engineMaxRpm: r.engineMaxRpm ?? null,
+    engineTemperature: r.engineTemperature ?? null,
+    vehicleFiaFlags: r.vehicleFiaFlags ?? null,
+    tyrePressureLive: r.tyrePressureLive ?? null,
+    floorDamage: r.floorDamage ?? null,
+    diffuserDamage: r.diffuserDamage ?? null,
+    sidepodDamage: r.sidepodDamage ?? null,
+    gearBoxDamage: r.gearBoxDamage ?? null,
+    engineDamage: r.engineDamage ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -259,6 +273,20 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       drsActivations?: number;
       maxRpm?: number;
       topGear?: number;
+      actualTyreCompound?: string;
+      tyreAgeLaps?: number;
+      pitStops?: number;
+      fuelCapacity?: number;
+      startingFuelKg?: number;
+      engineMaxRpm?: number;
+      engineTemperature?: number;
+      vehicleFiaFlags?: number;
+      tyrePressureLive?: [number, number, number, number];
+      floorDamage?: number;
+      diffuserDamage?: number;
+      sidepodDamage?: number;
+      gearBoxDamage?: number;
+      engineDamage?: number;
     };
 
     if (!body.sessionType || !body.track || !body.car) {
@@ -351,6 +379,20 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         drsActivations: body.drsActivations ?? null,
         maxRpm: body.maxRpm ?? null,
         topGear: body.topGear ?? null,
+        actualTyreCompound: body.actualTyreCompound ?? null,
+        tyreAgeLaps: body.tyreAgeLaps ?? null,
+        pitStops: body.pitStops ?? null,
+        fuelCapacity: body.fuelCapacity ?? null,
+        startingFuelKg: body.startingFuelKg ?? null,
+        engineMaxRpm: body.engineMaxRpm ?? null,
+        engineTemperature: body.engineTemperature ?? null,
+        vehicleFiaFlags: body.vehicleFiaFlags ?? null,
+        tyrePressureLive: body.tyrePressureLive ?? null,
+        floorDamage: body.floorDamage ?? null,
+        diffuserDamage: body.diffuserDamage ?? null,
+        sidepodDamage: body.sidepodDamage ?? null,
+        gearBoxDamage: body.gearBoxDamage ?? null,
+        engineDamage: body.engineDamage ?? null,
       });
     } catch (insertErr: unknown) {
       const msg = insertErr instanceof Error ? insertErr.message : String(insertErr);

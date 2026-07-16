@@ -100,6 +100,20 @@ export interface SessionSnapshot {
   maxRpm?: number;
   topGear?: number;
   tyreCompound?: string;
+  actualTyreCompound?: string;
+  tyreAgeLaps?: number;
+  pitStops?: number;
+  fuelCapacity?: number;
+  startingFuelKg?: number;
+  engineMaxRpm?: number;
+  engineTemperature?: number;
+  vehicleFiaFlags?: number;
+  tyrePressureLive?: [number, number, number, number];
+  floorDamage?: number;
+  diffuserDamage?: number;
+  sidepodDamage?: number;
+  gearBoxDamage?: number;
+  engineDamage?: number;
 }
 
 const TRACK_NAMES: Record<number, string> = {
@@ -323,6 +337,21 @@ export class SessionTracker {
   private lastTyreStints: TyreStint[] = [];
   private lastLapHistory: LapHistoryEntry[] = [];
 
+  private lastActualTyreCompound = 0;
+  private lastTyreAgeLaps = 0;
+  private lastPitStops = 0;
+  private lastFuelCapacity = 0;
+  private lastStartingFuelKg = 0;
+  private lastEngineMaxRpm = 0;
+  private lastEngineTemperature = 0;
+  private lastVehicleFiaFlags = -1;
+  private lastTyrePressureLive: [number, number, number, number] = [0, 0, 0, 0];
+  private lastFloorDamage = 0;
+  private lastDiffuserDamage = 0;
+  private lastSidepodDamage = 0;
+  private lastGearBoxDamage = 0;
+  private lastEngineDamage = 0;
+
   // Session-level aggregates (running max/avg/count), distinct from the
   // lastX "most recent sample" fields above — these summarize the whole
   // session rather than a snapshot at flush time.
@@ -465,6 +494,7 @@ export class SessionTracker {
     m_currentLapInvalid?: number;
     m_penalties?: number;
     m_lapDistance?: number;
+    m_numPitStops?: number;
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!this.sessionUID) return;
@@ -481,6 +511,7 @@ export class SessionTracker {
     const lastLapMs = lap.m_lastLapTimeInMS ?? 0;
     const penalties = lap.m_penalties ?? 0;
     this.currentLapDistanceM = lap.m_lapDistance ?? 0;
+    if (lap.m_numPitStops !== undefined) this.lastPitStops = lap.m_numPitStops;
 
     // A rewind/flashback can make the game report a lower m_currentLapNum
     // than the lap we were tracking (re-driving an earlier lap). That's not
@@ -537,7 +568,12 @@ export class SessionTracker {
   handleCarStatusPacket(data: { m_carStatusData?: Array<{
     m_visualTyreCompound?: number;
     m_tyreVisualCompound?: number;
+    m_actualTyreCompound?: number;
+    m_tyresAgeLaps?: number;
     m_fuelRemainingLaps?: number;
+    m_fuelCapacity?: number;
+    m_maxRPM?: number;
+    m_vehicleFiaFlags?: number;
     m_tractionControl?: number;
     m_antiLockBrakes?: number;
     m_fuelInTank?: number;
@@ -553,8 +589,13 @@ export class SessionTracker {
 
     const compound = car.m_visualTyreCompound ?? car.m_tyreVisualCompound ?? 0;
     if (compound > 0) this.lastTyreCompound = compound;
+    if (car.m_actualTyreCompound !== undefined && car.m_actualTyreCompound > 0) this.lastActualTyreCompound = car.m_actualTyreCompound;
+    if (car.m_tyresAgeLaps !== undefined) this.lastTyreAgeLaps = car.m_tyresAgeLaps;
     const fuel = car.m_fuelRemainingLaps ?? 0;
     if (fuel > 0) this.lastFuelRemaining = fuel;
+    if (car.m_fuelCapacity !== undefined && car.m_fuelCapacity > 0) this.lastFuelCapacity = car.m_fuelCapacity;
+    if (car.m_maxRPM !== undefined && car.m_maxRPM > 0) this.lastEngineMaxRpm = car.m_maxRPM;
+    if (car.m_vehicleFiaFlags !== undefined) this.lastVehicleFiaFlags = car.m_vehicleFiaFlags;
     if (car.m_tractionControl !== undefined) this.lastTractionControl = car.m_tractionControl;
     if (car.m_antiLockBrakes !== undefined) this.lastAntiLockBrakes = car.m_antiLockBrakes;
     if (car.m_fuelInTank !== undefined && car.m_fuelInTank > 0) this.lastFuelInTank = car.m_fuelInTank;
@@ -574,6 +615,8 @@ export class SessionTracker {
     m_tyreSurfaceTemperature?: [number, number, number, number];
     m_tyresSurfaceTemperature?: [number, number, number, number];
     m_brakesTemperature?: [number, number, number, number];
+    m_engineTemperature?: number;
+    m_tyresPressure?: [number, number, number, number];
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!data.m_carTelemetryData) return;
@@ -590,6 +633,8 @@ export class SessionTracker {
     const surfaceTemps = car.m_tyresSurfaceTemperature ?? car.m_tyreSurfaceTemperature;
     if (surfaceTemps) this.lastTyreSurfaceTemps = surfaceTemps;
     if (car.m_brakesTemperature) this.lastBrakeTemps = car.m_brakesTemperature;
+    if (car.m_engineTemperature !== undefined && car.m_engineTemperature > 0) this.lastEngineTemperature = car.m_engineTemperature;
+    if (car.m_tyresPressure && car.m_tyresPressure.some(p => p > 0)) this.lastTyrePressureLive = car.m_tyresPressure;
 
     if ((car.m_speed ?? 0) > this.topSpeedKph) this.topSpeedKph = car.m_speed ?? 0;
     if (car.m_throttle !== undefined && car.m_brake !== undefined) {
@@ -638,12 +683,15 @@ export class SessionTracker {
     m_rearRightTyrePressure?: number;
     m_frontLeftTyrePressure?: number;
     m_frontRightTyrePressure?: number;
+    m_fuelLoad?: number;
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!data.m_carSetups) return;
     const playerIdx = this.playerCarIdx < data.m_carSetups.length ? this.playerCarIdx : 0;
     const s = data.m_carSetups[playerIdx];
     if (!s) return;
+
+    if (s.m_fuelLoad !== undefined && s.m_fuelLoad > 0) this.lastStartingFuelKg = s.m_fuelLoad;
 
     const frontTyrePressure =
       (s.m_frontLeftTyrePressure ?? 0) > 0 && (s.m_frontRightTyrePressure ?? 0) > 0
@@ -681,6 +729,11 @@ export class SessionTracker {
     m_frontLeftWingDamage?: number;
     m_frontRightWingDamage?: number;
     m_rearWingDamage?: number;
+    m_floorDamage?: number;
+    m_diffuserDamage?: number;
+    m_sidepodDamage?: number;
+    m_gearBoxDamage?: number;
+    m_engineDamage?: number;
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!data.m_carDamageData) return;
@@ -695,6 +748,11 @@ export class SessionTracker {
       this.lastFrontWingDamage = car.m_frontLeftWingDamage;
     }
     if (car.m_rearWingDamage !== undefined) this.lastRearWingDamage = car.m_rearWingDamage;
+    if (car.m_floorDamage !== undefined) this.lastFloorDamage = car.m_floorDamage;
+    if (car.m_diffuserDamage !== undefined) this.lastDiffuserDamage = car.m_diffuserDamage;
+    if (car.m_sidepodDamage !== undefined) this.lastSidepodDamage = car.m_sidepodDamage;
+    if (car.m_gearBoxDamage !== undefined) this.lastGearBoxDamage = car.m_gearBoxDamage;
+    if (car.m_engineDamage !== undefined) this.lastEngineDamage = car.m_engineDamage;
   }
 
   handleSessionHistoryPacket(data: {
@@ -762,6 +820,12 @@ export class SessionTracker {
     if (resultStatus >= 2 && classification.m_position !== undefined && classification.m_position > 0) {
       this.lastPosition = classification.m_position;
     }
+    // Authoritative final count once the race has actually finished —
+    // LapData's live count (tracked throughout, all session types) is the
+    // fallback for sessions that never reach a final classification.
+    if (resultStatus >= 2 && classification.m_numPitStops !== undefined) {
+      this.lastPitStops = classification.m_numPitStops;
+    }
   }
 
   forceFlush(): void {
@@ -820,6 +884,21 @@ export class SessionTracker {
     this.drsActivations = 0;
     this.maxRpm = 0;
     this.topGear = 0;
+
+    this.lastActualTyreCompound = 0;
+    this.lastTyreAgeLaps = 0;
+    this.lastPitStops = 0;
+    this.lastFuelCapacity = 0;
+    this.lastStartingFuelKg = 0;
+    this.lastEngineMaxRpm = 0;
+    this.lastEngineTemperature = 0;
+    this.lastVehicleFiaFlags = -1;
+    this.lastTyrePressureLive = [0, 0, 0, 0];
+    this.lastFloorDamage = 0;
+    this.lastDiffuserDamage = 0;
+    this.lastSidepodDamage = 0;
+    this.lastGearBoxDamage = 0;
+    this.lastEngineDamage = 0;
   }
 
   private flushSession(): void {
@@ -867,6 +946,20 @@ export class SessionTracker {
       maxRpm: this.maxRpm || undefined,
       topGear: this.topGear || undefined,
       tyreCompound: this.lastTyreCompound > 0 ? TYRE_NAMES[this.lastTyreCompound] : undefined,
+      actualTyreCompound: this.lastActualTyreCompound > 0 ? (TYRE_ACTUAL_NAMES[this.lastActualTyreCompound] ?? `C${this.lastActualTyreCompound}`) : undefined,
+      tyreAgeLaps: this.lastTyreAgeLaps || undefined,
+      pitStops: this.lastPitStops || undefined,
+      fuelCapacity: this.lastFuelCapacity || undefined,
+      startingFuelKg: this.lastStartingFuelKg || undefined,
+      engineMaxRpm: this.lastEngineMaxRpm || undefined,
+      engineTemperature: this.lastEngineTemperature || undefined,
+      vehicleFiaFlags: this.lastVehicleFiaFlags >= 0 ? this.lastVehicleFiaFlags : undefined,
+      tyrePressureLive: this.lastTyrePressureLive.some(p => p > 0) ? this.lastTyrePressureLive : undefined,
+      floorDamage: this.lastFloorDamage || undefined,
+      diffuserDamage: this.lastDiffuserDamage || undefined,
+      sidepodDamage: this.lastSidepodDamage || undefined,
+      gearBoxDamage: this.lastGearBoxDamage || undefined,
+      engineDamage: this.lastEngineDamage || undefined,
     };
 
     this.sessionUID = null;

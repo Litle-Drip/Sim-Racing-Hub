@@ -122,6 +122,20 @@ export const GetSessionsResponseItem = zod.object({
   "maxRpm": zod.number().nullish(),
   "topGear": zod.number().nullish(),
   "fuelRemainingLaps": zod.number().nullish(),
+  "actualTyreCompound": zod.string().nullish(),
+  "tyreAgeLaps": zod.number().nullish(),
+  "pitStops": zod.number().nullish(),
+  "fuelCapacity": zod.number().nullish(),
+  "startingFuelKg": zod.number().nullish(),
+  "engineMaxRpm": zod.number().nullish(),
+  "engineTemperature": zod.number().nullish(),
+  "vehicleFiaFlags": zod.number().nullish(),
+  "tyrePressureLive": zod.array(zod.number()).nullish(),
+  "floorDamage": zod.number().nullish(),
+  "diffuserDamage": zod.number().nullish(),
+  "sidepodDamage": zod.number().nullish(),
+  "gearBoxDamage": zod.number().nullish(),
+  "engineDamage": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
@@ -619,7 +633,21 @@ export const UploadCompanionSessionBody = zod.object({
   "drsActivations": zod.coerce.number().optional(),
   "maxRpm": zod.coerce.number().optional(),
   "topGear": zod.coerce.number().optional(),
-  "fuelRemainingLaps": zod.coerce.number().optional()
+  "fuelRemainingLaps": zod.coerce.number().optional(),
+  "actualTyreCompound": zod.string().optional(),
+  "tyreAgeLaps": zod.coerce.number().optional(),
+  "pitStops": zod.coerce.number().optional(),
+  "fuelCapacity": zod.coerce.number().optional(),
+  "startingFuelKg": zod.coerce.number().optional(),
+  "engineMaxRpm": zod.coerce.number().optional(),
+  "engineTemperature": zod.coerce.number().optional(),
+  "vehicleFiaFlags": zod.coerce.number().optional(),
+  "tyrePressureLive": zod.array(zod.coerce.number()).optional(),
+  "floorDamage": zod.coerce.number().optional(),
+  "diffuserDamage": zod.coerce.number().optional(),
+  "sidepodDamage": zod.coerce.number().optional(),
+  "gearBoxDamage": zod.coerce.number().optional(),
+  "engineDamage": zod.coerce.number().optional()
 })
 
 
