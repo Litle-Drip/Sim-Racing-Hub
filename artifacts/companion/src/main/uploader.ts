@@ -11,6 +11,7 @@ export interface PendingUpload {
 }
 
 export interface UploadPayload {
+  id: string;
   sessionType: string;
   track: string;
   car: string;
@@ -122,6 +123,7 @@ export class Uploader {
 
   sessionToPayload(session: SessionSnapshot): UploadPayload {
     return {
+      id: session.id,
       sessionType: session.sessionType,
       track: session.track,
       car: session.car,
@@ -185,10 +187,14 @@ export class Uploader {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(30000),
       });
 
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      // 409 means a prior attempt with this same id already landed server-
+      // side (the request that "timed out" client-side actually succeeded,
+      // or a retry raced an earlier one) — the upload already achieved its
+      // goal, so treat it as success rather than retrying forever.
+      if (!resp.ok && resp.status !== 409) throw new Error(`HTTP ${resp.status}`);
 
       const best = bestLapTime(payload.laps);
       this.onUploadResult?.({
