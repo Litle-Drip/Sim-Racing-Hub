@@ -5,6 +5,16 @@ on:
     branches:
       - main
 
+# This workflow fires on every push to main and updates the same rolling
+# "main"-tagged release. Frequent successive pushes previously queued
+# overlapping runs that raced each other uploading assets to that one
+# release, which GitHub's API doesn't handle gracefully — cancel any
+# in-progress run for this workflow+ref when a newer push arrives so only
+# the latest one ever touches the release.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-windows:
     name: Build Windows (x64)
