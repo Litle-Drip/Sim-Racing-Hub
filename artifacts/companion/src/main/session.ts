@@ -558,6 +558,13 @@ export class SessionTracker {
       this.pendingLap.s2Ms = s2Ms;
       this.pendingLap.invalid = invalid;
       this.currentLapNum = lapNum;
+      // Drop any trace samples past the rewind point — otherwise replaying
+      // the same stretch of track re-appends instead of overwriting, and
+      // repeated rewinds (e.g. practicing a corner) make the trace grow
+      // without bound.
+      this.pendingLap.trace = this.pendingLap.trace.filter(
+        (s) => s.d <= this.currentLapDistanceM
+      );
     } else {
       if (s1Ms > 0) this.pendingLap.s1Ms = s1Ms;
       if (s2Ms > 0) this.pendingLap.s2Ms = s2Ms;
