@@ -12,6 +12,22 @@ function hashKey(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
 
+// A well-formed lap trace has at most a few thousand points (F1 25 sends
+// telemetry at 60Hz, downsampled client-side). A companion-app bug can
+// produce traces with duplicated, unbounded segments (e.g. from repeated
+// rewinds) that are large enough to crash the server on insert — clamp
+// defensively so a single bad upload can never take the whole API down.
+const MAX_TRACE_SAMPLES = 3000;
+
+function capTrace<T extends { trace?: unknown[] }>(laps: T[]): T[] {
+  for (const lap of laps) {
+    if (Array.isArray(lap.trace) && lap.trace.length > MAX_TRACE_SAMPLES) {
+      lap.trace = lap.trace.slice(0, MAX_TRACE_SAMPLES);
+    }
+  }
+  return laps;
+}
+
 function lapToSeconds(lap: string): number {
   if (!lap || !lap.includes(":")) {
     const n = parseFloat(lap);
@@ -294,7 +310,7 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       return;
     }
 
-    const laps: LapRecord[] = (body.laps ?? []).filter(l => l.time && l.time.trim() !== "");
+    const laps: LapRecord[] = capTrace((body.laps ?? []).filter(l => l.time && l.time.trim() !== ""));
 
     let bestLap = body.lapTime ?? "";
     let avgLap = "";
