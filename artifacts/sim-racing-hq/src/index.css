@@ -5,6 +5,7 @@
    ========================================================= */
 
 :root, [data-theme="dark"] {
+  --service-banner-height: 0px;
   --bg: #080808;
   --bg-card: #111111;
   --bg-elevated: #1A1A1A;
@@ -129,9 +130,9 @@ table { border-collapse: collapse; width: 100%; }
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 0;
+  top: var(--service-banner-height);
   left: 0;
-  height: 100vh;
+  height: calc(100vh - var(--service-banner-height));
   z-index: 100;
   transition: transform 0.25s ease;
 }
@@ -308,7 +309,7 @@ table { border-collapse: collapse; width: 100%; }
 .nav-hamburger {
   display: none;
   position: fixed;
-  top: 14px;
+  top: calc(14px + var(--service-banner-height));
   left: 14px;
   z-index: 200;
   background: var(--bg-card);
@@ -345,6 +346,7 @@ table { border-collapse: collapse; width: 100%; }
   display: none;
   position: fixed;
   inset: 0;
+  top: var(--service-banner-height);
   background: rgba(0, 0, 0, 0.6);
   z-index: 99;
 }
