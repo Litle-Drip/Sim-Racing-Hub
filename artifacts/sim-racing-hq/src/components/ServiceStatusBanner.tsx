@@ -93,8 +93,30 @@ function useGithubStatus(): GithubStatus | null {
 }
 
 function Banner({ borderColor, bg, label, children }: { borderColor: string; bg: string; label: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Fixed-position elements (like the mobile nav hamburger) don't get pushed
+  // down by this sticky banner taking up flow space, so they'd otherwise sit
+  // underneath it and be unclickable. Publish the banner's real height as a
+  // CSS variable so those elements can offset themselves below it.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty('--service-banner-height', `${el.offsetHeight}px`);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.setProperty('--service-banner-height', '0px');
+    };
+  }, []);
+
   return (
     <div
+      ref={ref}
       role="alert"
       style={{
         position: 'sticky',
