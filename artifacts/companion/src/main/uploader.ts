@@ -68,6 +68,7 @@ export interface UploadPayload {
   sidepodDamage?: number;
   gearBoxDamage?: number;
   engineDamage?: number;
+  liveBrakeBias?: number;
 }
 
 export interface UploadResult {
@@ -207,6 +208,7 @@ export class Uploader {
       sidepodDamage: session.sidepodDamage,
       gearBoxDamage: session.gearBoxDamage,
       engineDamage: session.engineDamage,
+      liveBrakeBias: session.liveBrakeBias,
     };
   }
 

@@ -136,6 +136,7 @@ export const GetSessionsResponseItem = zod.object({
   "sidepodDamage": zod.number().nullish(),
   "gearBoxDamage": zod.number().nullish(),
   "engineDamage": zod.number().nullish(),
+  "liveBrakeBias": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
@@ -647,7 +648,8 @@ export const UploadCompanionSessionBody = zod.object({
   "diffuserDamage": zod.coerce.number().optional(),
   "sidepodDamage": zod.coerce.number().optional(),
   "gearBoxDamage": zod.coerce.number().optional(),
-  "engineDamage": zod.coerce.number().optional()
+  "engineDamage": zod.coerce.number().optional(),
+  "liveBrakeBias": zod.coerce.number().optional()
 })
 
 

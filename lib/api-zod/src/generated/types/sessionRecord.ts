@@ -78,5 +78,6 @@ export interface SessionRecord {
   sidepodDamage?: number | null;
   gearBoxDamage?: number | null;
   engineDamage?: number | null;
+  liveBrakeBias?: number | null;
   createdAt: string;
 }
