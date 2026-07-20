@@ -151,6 +151,7 @@ export interface SessionRecord {
   sidepodDamage?: number | null;
   gearBoxDamage?: number | null;
   engineDamage?: number | null;
+  liveBrakeBias?: number | null;
   createdAt: string;
 }
 
@@ -401,6 +402,7 @@ export interface CompanionSessionRequest {
   sidepodDamage?: number;
   gearBoxDamage?: number;
   engineDamage?: number;
+  liveBrakeBias?: number;
 }
 
 export interface TrackNotesRecord {

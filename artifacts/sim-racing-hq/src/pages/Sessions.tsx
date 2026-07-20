@@ -1092,7 +1092,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             ))}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Car Setup" show={!!s.setupSnapshot}>
+                          <ExpandedGroup label="Car Setup" show={!!s.setupSnapshot || !!s.liveBrakeBias}>
                             {!!s.setupSnapshot && (
                               <>
                                 <div className="expanded-item"><div className="expanded-label">Wing F/R</div><div className="expanded-value">{s.setupSnapshot.frontWing} / {s.setupSnapshot.rearWing}</div></div>
@@ -1105,6 +1105,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                                 <div className="expanded-item"><div className="expanded-label">Anti-Roll Bar F/R</div><div className="expanded-value">{s.setupSnapshot.frontAntiRollBar} / {s.setupSnapshot.rearAntiRollBar}</div></div>
                               </>
                             )}
+                            {!!s.liveBrakeBias && <div className="expanded-item"><div className="expanded-label">Live Brake Bias</div><div className="expanded-value">{s.liveBrakeBias}%</div></div>}
                           </ExpandedGroup>
 
                           <ExpandedGroup label="Track Conditions" show={!!s.trackTemperature || !!s.airTemperature || !!s.safetyCarStatus || !!s.pitSpeedLimit || !!s.totalLaps || s.vehicleFiaFlags != null}>

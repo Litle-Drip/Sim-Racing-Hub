@@ -956,6 +956,9 @@ components:
         engineDamage:
           type: integer
           nullable: true
+        liveBrakeBias:
+          type: integer
+          nullable: true
         createdAt:
           type: string
       required:
@@ -1573,6 +1576,8 @@ components:
         gearBoxDamage:
           type: integer
         engineDamage:
+          type: integer
+        liveBrakeBias:
           type: integer
       required:
         - sessionType

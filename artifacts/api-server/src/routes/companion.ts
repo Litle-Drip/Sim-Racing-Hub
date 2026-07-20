@@ -287,6 +287,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     sidepodDamage: r.sidepodDamage ?? null,
     gearBoxDamage: r.gearBoxDamage ?? null,
     engineDamage: r.engineDamage ?? null,
+    liveBrakeBias: r.liveBrakeBias ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -370,6 +371,7 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       sidepodDamage?: number;
       gearBoxDamage?: number;
       engineDamage?: number;
+      liveBrakeBias?: number;
     };
 
     if (!body.sessionType || !body.track || !body.car) {
@@ -492,6 +494,7 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         sidepodDamage: body.sidepodDamage ?? null,
         gearBoxDamage: body.gearBoxDamage ?? null,
         engineDamage: body.engineDamage ?? null,
+        liveBrakeBias: body.liveBrakeBias ?? null,
       });
     } catch (insertErr: unknown) {
       const msg = insertErr instanceof Error ? insertErr.message : String(insertErr);

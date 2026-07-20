@@ -71,4 +71,5 @@ export interface CompanionSessionRequest {
   sidepodDamage?: number;
   gearBoxDamage?: number;
   engineDamage?: number;
+  liveBrakeBias?: number;
 }

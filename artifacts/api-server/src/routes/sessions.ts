@@ -162,6 +162,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     sidepodDamage: r.sidepodDamage ?? null,
     gearBoxDamage: r.gearBoxDamage ?? null,
     engineDamage: r.engineDamage ?? null,
+    liveBrakeBias: r.liveBrakeBias ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }

@@ -244,6 +244,7 @@ export class UdpListener extends EventEmitter {
       m_carStatusData.push({
         m_tractionControl: buf.readUInt8(o),
         m_antiLockBrakes: buf.readUInt8(o + 1),
+        m_frontBrakeBias: buf.readUInt8(o + 3),
         m_fuelInTank: buf.readFloatLE(o + 5),
         m_fuelCapacity: buf.readFloatLE(o + 9),
         m_fuelRemainingLaps: buf.readFloatLE(o + 13),

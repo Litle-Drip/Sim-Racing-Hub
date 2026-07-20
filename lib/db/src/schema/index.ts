@@ -90,6 +90,7 @@ export const sessionsTable = pgTable("sessions", {
   sidepodDamage: integer("sidepod_damage"),
   gearBoxDamage: integer("gear_box_damage"),
   engineDamage: integer("engine_damage"),
+  liveBrakeBias: integer("live_brake_bias"),
 });
 
 export type DbSession = typeof sessionsTable.$inferSelect;

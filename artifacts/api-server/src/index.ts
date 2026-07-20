@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   diffuser_damage INTEGER,
   sidepod_damage INTEGER,
   gear_box_damage INTEGER,
-  engine_damage INTEGER
+  engine_damage INTEGER,
+  live_brake_bias INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS setups (
@@ -209,6 +210,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS diffuser_damage INTEGER;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS sidepod_damage INTEGER;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS gear_box_damage INTEGER;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS engine_damage INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS live_brake_bias INTEGER;
 `;
 
 async function ensureDatabase(): Promise<void> {

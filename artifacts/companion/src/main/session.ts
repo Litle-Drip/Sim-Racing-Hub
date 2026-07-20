@@ -114,6 +114,7 @@ export interface SessionSnapshot {
   sidepodDamage?: number;
   gearBoxDamage?: number;
   engineDamage?: number;
+  liveBrakeBias?: number;
 }
 
 const TRACK_NAMES: Record<number, string> = {
@@ -351,6 +352,7 @@ export class SessionTracker {
   private lastSidepodDamage = 0;
   private lastGearBoxDamage = 0;
   private lastEngineDamage = 0;
+  private lastLiveBrakeBias = 0;
 
   // Session-level aggregates (running max/avg/count), distinct from the
   // lastX "most recent sample" fields above — these summarize the whole
@@ -581,6 +583,7 @@ export class SessionTracker {
     m_fuelCapacity?: number;
     m_maxRPM?: number;
     m_vehicleFiaFlags?: number;
+    m_frontBrakeBias?: number;
     m_tractionControl?: number;
     m_antiLockBrakes?: number;
     m_fuelInTank?: number;
@@ -603,6 +606,7 @@ export class SessionTracker {
     if (car.m_fuelCapacity !== undefined && car.m_fuelCapacity > 0) this.lastFuelCapacity = car.m_fuelCapacity;
     if (car.m_maxRPM !== undefined && car.m_maxRPM > 0) this.lastEngineMaxRpm = car.m_maxRPM;
     if (car.m_vehicleFiaFlags !== undefined) this.lastVehicleFiaFlags = car.m_vehicleFiaFlags;
+    if (car.m_frontBrakeBias !== undefined && car.m_frontBrakeBias > 0) this.lastLiveBrakeBias = car.m_frontBrakeBias;
     if (car.m_tractionControl !== undefined) this.lastTractionControl = car.m_tractionControl;
     if (car.m_antiLockBrakes !== undefined) this.lastAntiLockBrakes = car.m_antiLockBrakes;
     if (car.m_fuelInTank !== undefined && car.m_fuelInTank > 0) this.lastFuelInTank = car.m_fuelInTank;
@@ -906,6 +910,7 @@ export class SessionTracker {
     this.lastSidepodDamage = 0;
     this.lastGearBoxDamage = 0;
     this.lastEngineDamage = 0;
+    this.lastLiveBrakeBias = 0;
   }
 
   private flushSession(): void {
@@ -967,6 +972,7 @@ export class SessionTracker {
       sidepodDamage: this.lastSidepodDamage || undefined,
       gearBoxDamage: this.lastGearBoxDamage || undefined,
       engineDamage: this.lastEngineDamage || undefined,
+      liveBrakeBias: this.lastLiveBrakeBias || undefined,
     };
 
     this.sessionUID = null;
