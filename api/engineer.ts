@@ -4,6 +4,16 @@ export const config = { runtime: "edge" };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface LapRecord {
+  lap: number;
+  time: string;
+  s1: string;
+  s2: string;
+  s3: string;
+  tires: string;
+  penalty: string;
+}
+
 interface Session {
   date: string;
   trackId: string;
@@ -18,6 +28,7 @@ interface Session {
   tires?: string | null;
   notes?: string | null;
   isPB?: boolean;
+  laps?: LapRecord[] | null;
 }
 
 interface UserData {
@@ -134,6 +145,36 @@ function buildSystemPrompt(userData: UserData): string {
       return `  ${track}: ${parts.join(" | ")}`;
     }).join("\n") || "  No sector data logged yet.";
 
+  // Lap-by-lap breakdown — most recent session with individual laps logged
+  // (companion app uploads these; manually-logged sessions won't have them).
+  const sessionsWithLaps = sessions
+    .filter((s) => s.laps && s.laps.length > 0)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const lapSession = sessionsWithLaps[0];
+
+  const lapBreakdownLines = lapSession
+    ? (() => {
+        const laps = lapSession.laps!;
+        const times = laps
+          .map((l) => lapToSec(l.time))
+          .filter((t): t is number => t !== null);
+        const spread = times.length > 0 ? Math.max(...times) - Math.min(...times) : 0;
+        const degradation =
+          times.length >= 2
+            ? `Lap ${laps[0].lap} -> Lap ${laps[laps.length - 1].lap} delta: ${
+                times[times.length - 1] - times[0] >= 0 ? "+" : ""
+              }${(times[times.length - 1] - times[0]).toFixed(3)}s`
+            : null;
+        const lapLines = laps
+          .map((l) => {
+            const flag = l.penalty ? ` ⚠ ${l.penalty}` : "";
+            return `    L${l.lap}: ${l.time} | S1 ${l.s1 || "—"} S2 ${l.s2 || "—"} S3 ${l.s3 || "—"} | ${l.tires || "—"}${flag}`;
+          })
+          .join("\n");
+        return `  ${lapSession.date} | ${lapSession.trackId} | ${lapSession.car} | ${laps.length} laps | spread ${spread.toFixed(3)}s${degradation ? ` | ${degradation}` : ""}\n${lapLines}`;
+      })()
+    : "  No individual lap-by-lap data logged yet — only session summaries (best/avg/worst). Log via the companion app to unlock lap-by-lap and tyre degradation analysis.";
+
   return `You are ${firstName}'s personal F1 race engineer on F1 Sim Hub. You have full access to their session history. Your job is to give precise, data-driven coaching exactly like a real F1 engineer in a post-session debrief.
 
 RULES — FOLLOW STRICTLY:
@@ -142,6 +183,7 @@ RULES — FOLLOW STRICTLY:
 - Always address the driver as: ${firstName}
 - Every coaching point MUST reference their actual data — specific times, specific tracks, specific sessions. Never give generic advice.
 - If data is limited, say so directly and tell them exactly what to log next to get better analysis.
+- If a LAP-BY-LAP BREAKDOWN is present below, that IS the driver's individual lap/sector/tyre data — analyze it directly. Never ask the driver to paste lap-by-lap data you already have.
 - Tone: clinical and precise, like Lambiase briefing Verstappen. Brief genuine encouragement only when clearly earned.
 - NEVER say "Great question", "Certainly!", "Of course!" or any AI filler. Just answer.
 - Use line breaks between distinct points for readability.
@@ -158,6 +200,9 @@ ${pbLines}
 
 BEST SECTOR TIMES:
 ${sectorLines}
+
+LAP-BY-LAP BREAKDOWN (most recent session with individual laps logged):
+${lapBreakdownLines}
 
 SESSION COUNT BY TRACK:
 ${trackLines}

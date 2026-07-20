@@ -78,6 +78,7 @@ export default function RaceEngineer() {
               tires: s.tires || null,
               notes: s.notes || null,
               isPB: s.isPB ?? false,
+              laps: s.laps && s.laps.length > 0 ? s.laps : null,
             })),
           },
         }),
