@@ -4,7 +4,7 @@ import type { SessionRecord } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
-import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency, estimateSeatTimeMinutes } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
 
 const DIFF_COLORS: Record<string, string> = {
@@ -420,7 +420,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
     const weekStr = weekAgo.toISOString().slice(0, 10);
     const weekSessions = sessions.filter(s => s.date >= weekStr);
     const pbs = weekSessions.filter(s => s.isPB).length;
-    const totalMinutes = weekSessions.length * 10;
+    const totalMinutes = Math.round(estimateSeatTimeMinutes(weekSessions));
     return { sessions: weekSessions.length, pbs, seatTime: totalMinutes };
   }, [sessions]);
 

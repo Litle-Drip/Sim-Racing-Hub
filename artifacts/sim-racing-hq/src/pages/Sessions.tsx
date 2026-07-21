@@ -20,6 +20,7 @@ import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency } from '../lib/engagement';
 import { findDataIssues } from '../lib/dataCleanup';
+import { FOCUS_SESSION_KEY } from '../lib/storage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -771,6 +772,24 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     return [...sessions].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0].id;
   }, [sessions]);
 
+  // Jump-to-session handoff from other pages (e.g. Tracks' PB tile) — clear
+  // any active filters so the target session is guaranteed visible, expand
+  // its row, and scroll it into view.
+  useEffect(() => {
+    const focusId = sessionStorage.getItem(FOCUS_SESSION_KEY);
+    if (!focusId || sessions.length === 0) return;
+    sessionStorage.removeItem(FOCUS_SESSION_KEY);
+    if (!sessions.some(s => s.id === focusId)) return;
+    setFilterTrack('');
+    setFilterType('');
+    setFilterCar('');
+    setFilterConditions('');
+    setExpanded(focusId);
+    setTimeout(() => {
+      document.getElementById(`session-row-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  }, [sessions]);
+
   // ── Save ──────────────────────────────────────────────────────────────────
 
   const handleSave = () => {
@@ -1058,7 +1077,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
             <tbody>
               {filtered.map(s => (
                 <React.Fragment key={s.id}>
-                  <tr onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
+                  <tr id={`session-row-${s.id}`} onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
                     <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                       {s.date}
                       {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 10, marginTop: 1 }}>{localTimeStr(s.createdAt)}</div>}

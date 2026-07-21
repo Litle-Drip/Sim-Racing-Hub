@@ -20,3 +20,7 @@ export function isFasterLap(a: string, b: string): boolean {
   if (!b || b.trim() === '') return true;
   return lapToSeconds(a) < lapToSeconds(b);
 }
+
+// Handoff key used to jump from another page (e.g. Tracks' PB tile) straight
+// to a specific session on the Sessions page, expanded and scrolled into view.
+export const FOCUS_SESSION_KEY = 'f1simhub-focus-session';
