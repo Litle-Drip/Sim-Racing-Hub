@@ -35,22 +35,77 @@ export const F1_TRACKS: F1Track[] = [
 ];
 
 export const TIRE_COMPOUNDS = ['Soft', 'Medium', 'Hard', 'Inter', 'Wet'];
-export const SESSION_TYPES = ['Practice', 'Qualifying', 'Race', 'Hotlap'];
-export const CONDITIONS = ['Dry', 'Damp', 'Wet'];
-export const ASSISTS = ['None', 'Partial', 'Full'];
+export const SESSION_TYPES = ['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'];
+
+/**
+ * Maps a session `type` string to a badge CSS class. Handles both the
+ * simple manual-entry values above (Practice/Qualifying/Race/Hotlap/Time
+ * Trial) and the detailed strings the companion app captures from live F1
+ * telemetry (e.g. "Practice 2", "Q3", "Sprint Shootout 1", "Race 2").
+ */
+export function getTypeBadgeClass(type: string): string {
+  const t = type.toLowerCase();
+  if (t.startsWith('race')) return 'badge-race';
+  if (t === 'time trial' || t === 'hotlap') return 'badge-hotlap';
+  if (t.startsWith('sprint') || t.startsWith('q') || t.includes('qualifying') || t === 'osq') return 'badge-qualifying';
+  if (t.startsWith('practice')) return 'badge-practice';
+  return 'badge-practice';
+}
+export const CONDITIONS = ['Dry', 'Light Cloud', 'Overcast', 'Light Rain', 'Heavy Rain', 'Storm'];
+export const TIME_OF_DAY = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
+export const ASSISTS = ['None', 'Partial', 'Full', 'Apex Line', 'Suggested Gear Shifts', 'Apex Line + Gear Shifts'];
+export const GAME_VERSIONS = ['F1 25', 'F1 25 v1.1', 'F1 25 v1.2', 'F1 25 DLC', 'F1 24', 'F1 24 DLC', 'F1 26'];
 export const SETUP_TAGS = ['Qualifying', 'Race', 'Wet', 'Test', 'Sprint'];
 export const PLATFORMS = ['PC', 'PlayStation', 'Xbox'];
 export const INPUT_DEVICES = ['Wheel', 'Controller'];
 
+/** Pre-populated corner names for each circuit (index 0 = Turn 1). */
+export const CORNER_NAMES: Record<string, string[]> = {
+  bahrain: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15'],
+  jeddah: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Turn 16', 'Turn 17', 'Turn 18', 'Turn 19', 'Turn 20', 'Turn 21', 'Turn 22', 'Turn 23', 'Turn 24', 'Turn 25', 'Turn 26', 'Turn 27'],
+  albert_park: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Turn 16'],
+  suzuka: ['Turn 1', 'Turn 2', 'Degner 1', 'Degner 2', 'Hairpin', 'Turn 6', '200R', 'Dunlop', 'Turn 9', 'Turn 10', 'Turn 11', 'Spoon 1', 'Spoon 2', '130R', 'Casio Triangle 1', 'Casio Triangle 2', 'Turn 17', 'Turn 18'],
+  shanghai: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Hairpin', 'Turn 15', 'Turn 16'],
+  miami: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Turn 16', 'Turn 17', 'Turn 18', 'Turn 19'],
+  imola: ['Tamburello', 'Tamburello 2', 'Villeneuve', 'Tosa', 'Piratella', 'Acque Minerali 1', 'Acque Minerali 2', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Variante Alta 1', 'Variante Alta 2', 'Rivazza 1', 'Rivazza 2', 'Turn 16', 'Turn 17', 'Turn 18', 'Turn 19'],
+  monaco: ['Sainte Devote', 'Beau Rivage', 'Massenet', 'Casino', 'Mirabeau Haute', 'Mirabeau Bas', 'Portier', 'Tunnel Entry', 'Tunnel Exit', 'Nouvelle Chicane 1', 'Nouvelle Chicane 2', 'Tabac', 'Turn 13', 'Swimming Pool 1', 'Swimming Pool 2', 'La Rascasse', 'Anthony Noghes', 'Turn 18', 'Turn 19'],
+  barcelona: ['Elf', 'Turn 2', 'Turn 3', 'Turn 4', 'Seat', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'La Caixa', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'New Chicane 1', 'New Chicane 2'],
+  montreal: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Wall of Champions'],
+  red_bull_ring: ['Turn 1', 'Turn 2 Remus', 'Turn 3 Schlossgold', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9 Rindt', 'Turn 10'],
+  silverstone: ['Abbey', 'Farm', 'Village', 'The Loop', 'Aintree', 'Turn 6', 'Luffield', 'Woodcote', 'Copse', 'Maggots', 'Becketts', 'Chapel', 'Turn 13', 'Stowe', 'Vale', 'Club', 'Turn 17', 'Turn 18'],
+  hungaroring: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14'],
+  spa: ['La Source', 'Eau Rouge', 'Raidillon', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Pouhon 1', 'Pouhon 2', 'Fagnes', 'Campus', 'Stavelot', 'Turn 15', 'Blanchimont', 'Bus Stop 1', 'Bus Stop 2', 'Turn 19'],
+  zandvoort: ['Tarzanbocht', 'Gerlachbocht', 'Hugenholtz', 'Hunzerug', 'Turn 5', 'Turn 6', 'Scheivlak', 'Mastersbocht', 'Turn 9', 'Turn 10', 'Turn 11', 'Hans Ernstbocht', 'Arie Luyendyk', 'Turn 14'],
+  monza: ['Variante del Rettifilo 1', 'Variante del Rettifilo 2', 'Curva Grande', 'Variante della Roggia 1', 'Variante della Roggia 2', 'Turn 6', 'Lesmo 1', 'Lesmo 2', 'Curva del Serraglio', 'Ascari 1', 'Parabolica'],
+  baku: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Castle', 'Turn 17', 'Turn 18', 'Turn 19', 'Turn 20'],
+  marina_bay: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Singapore Sling', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Turn 16', 'Turn 17', 'Turn 18', 'Turn 19'],
+  cota: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Turn 16', 'Turn 17', 'Turn 18', 'Turn 19', 'Turn 20'],
+  rodriguez: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Foro Sol 1', 'Foro Sol 2', 'Foro Sol 3', 'Turn 15', 'Turn 16', 'Turn 17'],
+  interlagos: ['Senna S 1', 'Senna S 2', 'Curva do Sol', 'Descida do Lago', 'Turn 5', 'Turn 6', 'Turn 7', 'Laranjinha', 'Turn 9', 'Turn 10', 'Mergulho', 'Juncao', 'Subida dos Boxes', 'Turn 14', 'Turn 15'],
+  las_vegas: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Turn 16', 'Turn 17'],
+  losail: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Turn 16'],
+  yas_marina: ['Turn 1', 'Turn 2', 'Turn 3', 'Turn 4', 'Turn 5', 'Turn 6', 'Turn 7', 'Turn 8', 'Turn 9', 'Turn 10', 'Turn 11', 'Turn 12', 'Turn 13', 'Turn 14', 'Turn 15', 'Turn 16'],
+};
+
 export const F1_25_CARS = [
-  'Red Bull RB21',
-  'McLaren MCL39',
-  'Ferrari SF-25',
-  'Mercedes W16',
-  'Aston Martin AMR25',
-  'Alpine A525',
-  'Haas VF-25',
-  'RB VCARB 02',
-  'Williams FW47',
-  'Sauber C45',
+  'Red Bull RB21 — Verstappen',
+  'Red Bull RB21 — Lawson',
+  'Ferrari SF-25 — Leclerc',
+  'Ferrari SF-25 — Hamilton',
+  'McLaren MCL39 — Norris',
+  'McLaren MCL39 — Piastri',
+  'Mercedes W16 — Russell',
+  'Mercedes W16 — Antonelli',
+  'Aston Martin AMR25 — Alonso',
+  'Aston Martin AMR25 — Stroll',
+  'Alpine A525 — Gasly',
+  'Alpine A525 — Doohan',
+  'Williams FW47 — Albon',
+  'Williams FW47 — Sainz',
+  'Haas VF-25 — Ocon',
+  'Haas VF-25 — Bearman',
+  'Kick Sauber C45 — Hülkenberg',
+  'Kick Sauber C45 — Bortoleto',
+  'RB VCARB 01 — Tsunoda',
+  'RB VCARB 01 — Hadjar',
 ];

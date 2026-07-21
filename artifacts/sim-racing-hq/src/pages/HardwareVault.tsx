@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Cpu, Trash2, Eye } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
+import { Toast } from '../components/Toast';
 import { useGetHardware, useCreateHardware, useDeleteHardware, getGetHardwareQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { HardwareRecord } from '@workspace/api-client-react';
@@ -13,7 +15,7 @@ const PERIPHERAL_COLORS: Record<string, string> = {
   'Pedals': 'var(--teal)',
   'Handbrake': 'var(--yellow)',
   'Shifter': 'var(--green)',
-  'Button Box': '#8888FF',
+  'Button Box': 'var(--purple)',
 };
 
 const PERIPHERAL_BADGE: Record<string, string> = {
@@ -65,30 +67,30 @@ function HardwareDetailModal({ profile, onClose }: { profile: HardwareRecord; on
           <table className="data-table">
             <tbody>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Type</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Type</td>
                 <td>
                   <span className={`badge ${PERIPHERAL_BADGE[profile.peripheralType] || 'badge-practice'}`}>{profile.peripheralType}</span>
                 </td>
               </tr>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Hardware</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Hardware</td>
                 <td style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)' }}>{[profile.brand, profile.model].filter(Boolean).join(' ') || '—'}</td>
               </tr>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Track</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Track</td>
                 <td style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)' }}>{trackName(profile.trackId)}</td>
               </tr>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Game</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Game</td>
                 <td style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)' }}>{profile.game || '—'}</td>
               </tr>
               <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Date</td>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Date</td>
                 <td style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)' }}>{profile.date}</td>
               </tr>
               {FFB_FIELDS.map(({ key, label, unit }) => (
                 <tr key={key}>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>{label}</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>{label}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>
                     {profile[key] ? `${profile[key]}${unit || ''}` : '—'}
                   </td>
@@ -96,7 +98,7 @@ function HardwareDetailModal({ profile, onClose }: { profile: HardwareRecord; on
               ))}
               {profile.notes && (
                 <tr>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray-mid)', letterSpacing: '0.1em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
                   <td style={{ fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{profile.notes}</td>
                 </tr>
               )}
@@ -122,6 +124,7 @@ export default function HardwareVault() {
   const [filterType, setFilterType] = useState('');
   const [filterTrack, setFilterTrack] = useState('');
   const [viewProfile, setViewProfile] = useState<HardwareRecord | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
 
   const { mutate: createHardware, isPending: saving } = useCreateHardware({
     mutation: {
@@ -131,6 +134,7 @@ export default function HardwareVault() {
         setForm(defaultForm());
         setFormErrors({});
         setSaveError('');
+        setToast({ message: 'Hardware saved ✓' });
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save profile. Please try again.';
@@ -183,6 +187,13 @@ export default function HardwareVault() {
 
   return (
     <div className="page">
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDone={() => setToast(null)}
+        />
+      )}
       <div className="page-header">
         <h1 className="page-title">Hardware Vault</h1>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
@@ -211,15 +222,20 @@ export default function HardwareVault() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="card" style={{ padding: 0 }}>
-          <div className="empty-state">
-            <Cpu size={36} style={{ color: 'var(--border-accent)', marginBottom: 16 }} />
-            <div className="empty-state-title">No Hardware Profiles</div>
-            <div className="empty-state-desc">
-              {profiles.length === 0
-                ? 'Save your first FFB profile using the button above.'
-                : 'No profiles match your current filters.'}
+          {profiles.length === 0 ? (
+            <EmptyState
+              icon={<Cpu size={40} />}
+              headline="No hardware profiles yet"
+              subtext="Document every piece of your rig — wheel base, pedals, FFB settings, and button mappings. Compare configs across sessions and never lose a setting that felt perfect."
+              ctaLabel="Add Hardware Profile"
+              onCta={() => setShowModal(true)}
+            />
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-title">No Profiles Found</div>
+              <div className="empty-state-desc">No profiles match your current filters. Try adjusting or clearing them.</div>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div className="hw-grid">

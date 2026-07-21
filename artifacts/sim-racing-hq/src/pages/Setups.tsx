@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Plus, Eye, Trash2, Share2, Lock } from 'lucide-react';
+import { Plus, Eye, Trash2, Share2, Lock, Wrench } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
+import { Toast } from '../components/Toast';
 import { useGetSetups, useCreateSetup, useDeleteSetup, useShareSetup, getGetSetupsQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SetupRecord } from '@workspace/api-client-react';
@@ -65,7 +67,7 @@ function SetupViewModal({
   onShare: (id: string) => void;
 }) {
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
-  const isPublic = (setup as any).isPublic as boolean | undefined;
+  const isPublic = setup.isPublic;
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
@@ -78,15 +80,19 @@ function SetupViewModal({
             <tbody>
               {COMPARE_FIELDS.map(({ key, label }) => (
                 <tr key={key}>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>{label}</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>{label}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>
                     {key === 'trackId' ? trackName(String(setup[key])) : String(setup[key] ?? '—')}
                   </td>
                 </tr>
               ))}
+              <tr>
+                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Game Version</td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>{setup.gameVersion?.trim() || '—'}</td>
+              </tr>
               {setup.notes && (
                 <tr>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray-mid)', letterSpacing: '0.1em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
                   <td style={{ fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{setup.notes}</td>
                 </tr>
               )}
@@ -136,7 +142,7 @@ function CompareView({ setups, onBack }: { setups: [SetupRecord, SetupRecord]; o
               const diff = av !== bv;
               return (
                 <tr key={key}>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>{label}</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>{label}</td>
                   <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 13, color: diff ? 'var(--red)' : 'var(--teal)' }}>{av || '—'}</td>
                   <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 13, color: diff ? 'var(--red)' : 'var(--teal)' }}>{bv || '—'}</td>
                 </tr>
@@ -162,6 +168,7 @@ export default function Setups() {
   const [selected, setSelected] = useState<string[]>([]);
   const [viewSetup, setViewSetup] = useState<SetupRecord | null>(null);
   const [comparing, setComparing] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
 
   const { mutate: createSetup, isPending: saving } = useCreateSetup({
     mutation: {
@@ -171,6 +178,7 @@ export default function Setups() {
         setForm(defaultForm());
         setFormErrors({});
         setSaveError('');
+        setToast({ message: 'Setup saved ✓' });
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save setup. Please try again.';
@@ -188,8 +196,14 @@ export default function Setups() {
 
   const { mutate: shareSetup } = useShareSetup({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
         qc.invalidateQueries({ queryKey: getGetSetupsQueryKey() });
+        const setup = setups.find(s => s.id === variables.id);
+        const wasPublic = setup?.isPublic;
+        setToast({ message: wasPublic ? 'Removed from Community ✓' : 'Shared to Community ✓' });
+      },
+      onError: () => {
+        setToast({ message: 'Failed to update sharing — please try again.', variant: 'error' });
       },
     },
   });
@@ -234,7 +248,7 @@ export default function Setups() {
         onThrottle: String(form.onThrottle),
         offThrottle: String(form.offThrottle),
         notes: form.notes,
-        gameVersion: form.gameVersion,
+        gameVersion: form.gameVersion ?? undefined,
       },
     });
   };
@@ -261,6 +275,13 @@ export default function Setups() {
 
   return (
     <div className="page">
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDone={() => setToast(null)}
+        />
+      )}
       <div className="page-header">
         <h1 className="page-title">Setup Vault</h1>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
@@ -301,12 +322,22 @@ export default function Setups() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="card" style={{ padding: 0 }}>
-          <div className="empty-state">
-            <div className="empty-state-title">No Setups Found</div>
-            <div className="empty-state-desc">
-              {setups.length === 0 ? 'Save your first setup using the button above.' : 'No setups match your current filters.'}
+          {setups.length === 0 ? (
+            <EmptyState
+              icon={<Wrench size={40} />}
+              headline="No setups saved yet"
+              subtext="Save your car settings here — front wing, rear wing, suspension, brakes. One setup per track per car, so you always know what worked."
+              ctaLabel="Add Setup"
+              onCta={() => setShowModal(true)}
+              secondaryLabel="Browse Community Setups"
+              onSecondary={() => window.dispatchEvent(new CustomEvent('nav', { detail: 'community' }))}
+            />
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-title">No Setups Found</div>
+              <div className="empty-state-desc">No setups match your current filters. Try adjusting or clearing them.</div>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div className="setup-grid">
@@ -328,8 +359,9 @@ export default function Setups() {
                 <span className={`badge ${TAG_BADGE[setup.tag] || 'badge-practice'}`}>{setup.tag}</span>
               </div>
               <div className="setup-card-body">
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, color: 'var(--gray-mid)', letterSpacing: '0.12em', marginBottom: 10 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', marginBottom: 10 }}>
                   {trackName(setup.trackId)}
+                  <span style={{ marginLeft: 8, color: 'var(--gray)' }}>{setup.gameVersion?.trim() || '—'}</span>
                 </div>
                 <div className="setup-preview-row">
                   {[
@@ -345,7 +377,7 @@ export default function Setups() {
                 </div>
               </div>
               <div className="setup-card-actions">
-                {(setup as any).isPublic && (
+                {setup.isPublic && (
                   <span className="badge badge-community">Public</span>
                 )}
                 <button className="btn btn-ghost btn-sm" onClick={() => setViewSetup(setup)}>
@@ -354,10 +386,10 @@ export default function Setups() {
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => shareSetup({ id: setup.id })}
-                  title={(setup as any).isPublic ? 'Unshare from Community' : 'Share to Community'}
+                  title={setup.isPublic ? 'Unshare from Community' : 'Share to Community'}
                 >
-                  {(setup as any).isPublic ? <Lock size={11} /> : <Share2 size={11} />}
-                  {(setup as any).isPublic ? 'Unshare' : 'Share'}
+                  {setup.isPublic ? <Lock size={11} /> : <Share2 size={11} />}
+                  {setup.isPublic ? 'Unshare' : 'Share'}
                 </button>
                 <button className="btn btn-danger" onClick={() => handleDelete(setup.id)}>
                   <Trash2 size={11} /> Delete
@@ -376,7 +408,7 @@ export default function Setups() {
           onClose={() => setViewSetup(null)}
           onShare={(id) => {
             shareSetup({ id });
-            setViewSetup(prev => prev ? { ...prev, isPublic: !(prev as any).isPublic } as any : null);
+            setViewSetup(prev => prev ? { ...prev, isPublic: !prev.isPublic } : null);
           }}
         />
       )}
@@ -480,7 +512,7 @@ export default function Setups() {
                 <div className="form-section-title">Metadata</div>
                 <div className="field">
                   <label className="field-label">Game Version</label>
-                  <input type="text" placeholder="e.g. F1 25 v1.2" value={form.gameVersion} onChange={e => setField('gameVersion', e.target.value)} />
+                  <input type="text" placeholder="F1 25 v1.0" value={form.gameVersion ?? ''} onChange={e => setField('gameVersion', e.target.value)} />
                 </div>
 
                 <div className="field full">

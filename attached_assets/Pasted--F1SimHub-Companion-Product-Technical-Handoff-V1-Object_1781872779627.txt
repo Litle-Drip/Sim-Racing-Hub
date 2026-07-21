@@ -1,0 +1,376 @@
+# F1SimHub Companion – Product & Technical Handoff (V1)
+
+## Objective
+
+Build a lightweight desktop companion application for F1SimHub that automatically captures telemetry from EA Sports F1 25 (and future F1 games) and uploads completed laps to the F1SimHub backend.
+
+The goal is to eliminate manual lap entry and make lap tracking completely automatic.
+
+---
+
+# Vision
+
+The user experience should be:
+
+1. User creates an F1SimHub account.
+2. User downloads F1SimHub Companion.
+3. User signs in once.
+4. User enables UDP telemetry in the F1 game.
+5. Every completed lap automatically appears on F1SimHub.
+
+The companion should feel invisible and require no interaction after the initial setup.
+
+---
+
+# Supported Platforms
+
+### Phase 1
+
+* Windows 10+
+* Windows 11
+* macOS (Intel)
+* macOS (Apple Silicon)
+
+### Phase 2
+
+* iOS Companion
+* Android Companion
+
+No Linux support is required initially.
+
+---
+
+# Supported Game Platforms
+
+The companion must work with:
+
+* PC (Steam / EA App / Epic)
+* Xbox Series X/S
+* PlayStation 5
+
+For console players:
+
+The console broadcasts telemetry over the local network.
+
+The companion runs on any Windows PC or Mac connected to the same Wi-Fi.
+
+The computer does NOT need to run the game.
+
+---
+
+# Architecture
+
+EA Sports F1 Game
+
+↓
+
+UDP Telemetry Broadcast
+
+↓
+
+F1SimHub Companion
+
+↓
+
+Decode Telemetry
+
+↓
+
+Detect Completed Lap
+
+↓
+
+Upload via HTTPS
+
+↓
+
+F1SimHub API
+
+↓
+
+Database
+
+↓
+
+Website Dashboard
+
+---
+
+# Responsibilities of the Companion
+
+The companion should:
+
+* Listen for UDP packets
+* Decode EA telemetry packets
+* Detect session start
+* Detect session end
+* Detect lap completion
+* Upload lap information
+* Retry uploads if offline
+* Automatically reconnect
+* Auto-update itself
+* Run in background
+* Launch on startup (optional setting)
+
+---
+
+# Initial Telemetry to Upload
+
+Every completed lap should include:
+
+## Driver
+
+* User ID
+* Driver Name (if available)
+
+## Session
+
+* Timestamp
+* Track
+* Game Version
+* Session Type
+* Weather
+* Air Temperature
+* Track Temperature
+
+## Lap
+
+* Lap Time
+* Valid / Invalid
+* Personal Best
+* Sector 1
+* Sector 2
+* Sector 3
+
+## Car
+
+* Team
+* Car Setup (future)
+* Fuel Remaining
+* Fuel Used
+* ERS Remaining
+
+## Tires
+
+* Compound
+* Age
+* Wear
+* Temperatures
+
+## Assists
+
+* Racing Line
+* Traction Control
+* ABS
+* Automatic / Manual Gears
+* Pit Assist
+* Brake Assist
+
+---
+
+# Companion UI
+
+The UI should be intentionally minimal.
+
+Main screen:
+
+F1SimHub Companion
+
+Status:
+✓ Signed In
+
+Game:
+✓ Connected
+
+Telemetry:
+✓ Receiving Data
+
+Last Upload:
+Monza
+1:21.563
+
+Account:
+[egan@example.com](mailto:egan@example.com)
+
+Button:
+Open F1SimHub
+
+Settings
+
+---
+
+# Settings
+
+The settings page should contain:
+
+Account
+
+* Sign In
+* Sign Out
+
+Telemetry
+
+* UDP Port
+* Auto Detect
+* Test Connection
+
+Startup
+
+* Launch at Startup
+* Minimize to Tray
+
+Updates
+
+* Automatically install updates
+
+Logs
+
+* View Logs
+* Export Logs
+
+---
+
+# First-Time Setup Wizard
+
+The first launch should guide users through setup.
+
+Step 1
+
+Sign into F1SimHub.
+
+Step 2
+
+Detect local IP address.
+
+Display:
+
+IP Address
+
+192.168.x.x
+
+Port
+
+20777
+
+Step 3
+
+Explain how to enter these values into F1 25.
+
+Step 4
+
+Wait until telemetry is received.
+
+Once telemetry arrives:
+
+✓ Connected
+
+Setup Complete
+
+---
+
+# Backend API
+
+Example endpoint:
+
+POST /api/laps
+
+Payload example:
+
+{
+"userId": "...",
+"track": "Monza",
+"lapTime": 81.563,
+"sector1": 26.111,
+"sector2": 29.453,
+"sector3": 25.999,
+"tyreCompound": "Soft",
+"fuelRemaining": 18.2,
+"weather": "Clear",
+"assists": {
+"tc": "Off",
+"abs": "Off"
+}
+}
+
+---
+
+# Future Features
+
+The companion should be architected to support:
+
+* Live telemetry streaming
+* Real-time delta to best lap
+* Speed traces
+* Brake traces
+* Throttle traces
+* Steering traces
+* Tire degradation graphs
+* Fuel strategy analysis
+* ERS analysis
+* Session replay
+* Ghost lap comparison
+* AI coaching
+* Corner-by-corner analysis
+* Discord Rich Presence
+* OBS overlay integration
+
+---
+
+# Technology Preferences
+
+Preferred stack:
+
+Desktop
+
+* Electron
+* Node.js
+* React (optional)
+
+Networking
+
+* UDP listener
+* Existing F1 telemetry parser
+
+Communication
+
+* HTTPS REST API
+* WebSockets (future)
+
+Updates
+
+* Electron auto-updater
+
+Authentication
+
+* Existing F1SimHub authentication
+
+---
+
+# UX Philosophy
+
+The companion should never feel like a separate product.
+
+Users should think:
+
+"My laps automatically appear on F1SimHub."
+
+—not—
+
+"I have to use another telemetry app."
+
+The companion exists solely as an invisible bridge between the game and the F1SimHub platform.
+
+---
+
+# Success Criteria (Version 1)
+
+A user should be able to:
+
+* Install the companion in under 2 minutes.
+* Sign in once.
+* Enable UDP telemetry in F1 25.
+* Complete a lap.
+* Refresh F1SimHub.
+* See the lap automatically uploaded without any manual input.
+
+If this workflow is seamless, the core objective has been achieved.

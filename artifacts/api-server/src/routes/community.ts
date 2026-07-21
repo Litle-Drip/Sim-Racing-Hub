@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, avg, count, sql } from "drizzle-orm";
 import { db, setupsTable, setupRatingsTable, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
+import { normalizeTrackId } from "../lib/trackAlias";
 import { getAuth } from "@clerk/express";
 
 function escapeLike(s: string): string {
@@ -80,7 +81,7 @@ function serializeCommunitySetup(
 }
 
 router.get("/community/setups", async (req, res) => {
-  const { trackId, car, tag } = req.query as Record<string, string | undefined>;
+  const { trackId, car, tag, gameVersion } = req.query as Record<string, string | undefined>;
   const { userId: currentUserId } = getAuth(req);
   try {
     const rows = await db
@@ -97,6 +98,7 @@ router.get("/community/setups", async (req, res) => {
           trackId ? eq(setupsTable.trackId, trackId) : undefined,
           car ? sql`lower(${setupsTable.car}) like ${"%" + escapeLike(car.toLowerCase()) + "%"}` : undefined,
           tag ? eq(setupsTable.tag, tag) : undefined,
+          gameVersion ? eq(setupsTable.gameVersion, gameVersion) : undefined,
         ),
       )
       .groupBy(setupsTable.id);
@@ -319,7 +321,7 @@ router.get("/community/sessions", async (req, res) => {
     const mapped = rows.map((r) => ({
       id: r.id,
       date: r.date,
-      trackId: r.trackId,
+      trackId: normalizeTrackId(r.trackId),
       car: r.car,
       type: r.type,
       bestLap: r.bestLap,
@@ -348,6 +350,106 @@ router.get("/community/sessions", async (req, res) => {
     res.json(mapped);
   } catch (err) {
     req.log.error({ err }, "Failed to get community sessions");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Public Driver Profile ────────────────────────────────────────────────────
+
+router.get("/community/driver/:username", async (req, res) => {
+  const { username } = req.params;
+  if (!username || username.length > 100) {
+    res.status(400).json({ error: "Invalid username" });
+    return;
+  }
+
+  try {
+    const secretKey = process.env.CLERK_SECRET_KEY;
+    if (!secretKey) {
+      req.log.error("CLERK_SECRET_KEY is not configured; cannot resolve driver profiles");
+      res.status(404).json({ error: "Driver not found" });
+      return;
+    }
+
+    // Look up user by username via Clerk
+    const userResp = await fetch(
+      `https://api.clerk.com/v1/users?username[]=${encodeURIComponent(username)}&limit=1`,
+      { headers: { Authorization: `Bearer ${secretKey}` } }
+    );
+    if (!userResp.ok) {
+      req.log.error(
+        { status: userResp.status, body: await userResp.text().catch(() => "") },
+        "Clerk user lookup failed for driver profile",
+      );
+      res.status(404).json({ error: "Driver not found" });
+      return;
+    }
+    const users = (await userResp.json()) as Array<{
+      id: string;
+      username?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      created_at?: number;
+      image_url?: string | null;
+    }>;
+
+    if (users.length === 0) {
+      res.status(404).json({ error: "Driver not found" });
+      return;
+    }
+
+    const user = users[0];
+    const userId = user.id;
+    const displayName = user.username ?? (user.first_name ? `${user.first_name} ${user.last_name ?? ""}`.trim() : "Anonymous");
+
+    // Get public sessions
+    const publicSessions = await db
+      .select()
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.userId, userId), eq(sessionsTable.isPublic, true)));
+
+    // Get public setups
+    const publicSetups = await db
+      .select()
+      .from(setupsTable)
+      .where(and(eq(setupsTable.userId, userId), eq(setupsTable.isPublic, true)));
+
+    // Compute PBs per track from public sessions
+    const pbMap: Record<string, { trackId: string; car: string; bestLap: string; date: string }> = {};
+    publicSessions.forEach((s) => {
+      if (!s.bestLap || s.bestLap.trim() === "") return;
+      const trackId = normalizeTrackId(s.trackId);
+      const existing = pbMap[trackId];
+      if (!existing || lapToSeconds(s.bestLap) < lapToSeconds(existing.bestLap)) {
+        pbMap[trackId] = { trackId, car: s.car, bestLap: s.bestLap, date: s.date };
+      }
+    });
+
+    res.json({
+      username: displayName,
+      memberSince: user.created_at ? new Date(user.created_at).toISOString().slice(0, 10) : null,
+      avatarUrl: user.image_url ?? null,
+      sessions: publicSessions.length,
+      setups: publicSetups.length,
+      tracks: new Set(publicSessions.map(s => normalizeTrackId(s.trackId))).size,
+      pbs: Object.values(pbMap),
+      recentSessions: publicSessions
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 10)
+        .map(s => ({
+          id: s.id,
+          date: s.date,
+          trackId: normalizeTrackId(s.trackId),
+          car: s.car,
+          type: s.type,
+          bestLap: s.bestLap,
+          conditions: s.conditions,
+          platform: s.platform,
+          inputDevice: s.inputDevice,
+        })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get driver profile");
     res.status(500).json({ error: "Internal server error" });
   }
 });

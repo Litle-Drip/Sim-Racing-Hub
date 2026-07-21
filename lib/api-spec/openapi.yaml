@@ -2,8 +2,8 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: Sim Racing HQ API — F1 sim companion
 servers:
   - url: /api
     description: Base API path
@@ -20,6 +20,8 @@ tags:
     description: Hardware settings operations
   - name: community
     description: Community setup sharing operations
+  - name: companion
+    description: Companion app API key and session upload
 paths:
   /healthz:
     get:
@@ -85,6 +87,35 @@ paths:
       responses:
         "204":
           description: Session deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /sessions/{id}/share:
+    post:
+      operationId: shareSession
+      tags: [sessions]
+      summary: Toggle public sharing on a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareSessionRequest"
+      responses:
+        "200":
+          description: Share state updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareSessionResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -168,6 +199,27 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /community/sessions:
+    get:
+      operationId: getCommunitySessions
+      tags: [community]
+      summary: Get all publicly shared sessions
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of community sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommunitySessionRecord"
+
   /community/setups:
     get:
       operationId: getCommunitySetups
@@ -185,6 +237,11 @@ paths:
           schema:
             type: string
         - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: gameVersion
           in: query
           required: false
           schema:
@@ -331,6 +388,110 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /track-difficulty:
+    get:
+      operationId: getTrackDifficulty
+      tags: [trackNotes]
+      summary: Get all track difficulty ratings for the current user
+      responses:
+        "200":
+          description: List of track difficulty ratings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrackDifficultyRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /track-difficulty/{trackId}:
+    put:
+      operationId: upsertTrackDifficulty
+      tags: [trackNotes]
+      summary: Set or clear a track difficulty rating
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertTrackDifficultyRequest"
+      responses:
+        "200":
+          description: Difficulty rating saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackDifficultyRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /companion/apikey:
+    get:
+      operationId: getCompanionApiKeyStatus
+      tags: [companion]
+      summary: Get API key status for the current user
+      responses:
+        "200":
+          description: API key status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanionApiKeyStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: generateCompanionApiKey
+      tags: [companion]
+      summary: Generate (or regenerate) an API key for the current user
+      responses:
+        "200":
+          description: New raw API key — shown once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanionApiKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: revokeCompanionApiKey
+      tags: [companion]
+      summary: Revoke the current user's API key
+      responses:
+        "204":
+          description: Key revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /companion/session:
+    post:
+      operationId: uploadCompanionSession
+      tags: [companion]
+      summary: Upload a session from the companion app (API key auth)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanionSessionRequest"
+      responses:
+        "201":
+          description: Session uploaded — returns the created session record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionRecord"
+        "400":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /track-notes/{trackId}:
     get:
       operationId: getTrackNotes
@@ -437,6 +598,167 @@ components:
         - lineNotes
         - myNotes
 
+    LapTraceSample:
+      type: object
+      properties:
+        d:
+          type: number
+        speed:
+          type: number
+        throttle:
+          type: number
+        brake:
+          type: number
+        steer:
+          type: number
+      required:
+        - d
+        - speed
+        - throttle
+        - brake
+        - steer
+
+    LapRecord:
+      type: object
+      properties:
+        lap:
+          type: integer
+        time:
+          type: string
+        s1:
+          type: string
+        s2:
+          type: string
+        s3:
+          type: string
+        tires:
+          type: string
+        penalty:
+          type: string
+        trace:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapTraceSample"
+      required:
+        - lap
+        - time
+        - s1
+        - s2
+        - s3
+        - tires
+        - penalty
+
+    WingDamage:
+      type: object
+      properties:
+        front:
+          type: number
+        rear:
+          type: number
+      required:
+        - front
+        - rear
+
+    CarSetupSnapshot:
+      type: object
+      properties:
+        frontWing:
+          type: number
+        rearWing:
+          type: number
+        onThrottle:
+          type: number
+        offThrottle:
+          type: number
+        frontCamber:
+          type: number
+        rearCamber:
+          type: number
+        frontToe:
+          type: number
+        rearToe:
+          type: number
+        frontSuspension:
+          type: number
+        rearSuspension:
+          type: number
+        frontAntiRollBar:
+          type: number
+        rearAntiRollBar:
+          type: number
+        frontRideHeight:
+          type: number
+        rearRideHeight:
+          type: number
+        brakePressure:
+          type: number
+        brakeBias:
+          type: number
+        frontTyrePressure:
+          type: number
+        rearTyrePressure:
+          type: number
+      required:
+        - frontWing
+        - rearWing
+        - onThrottle
+        - offThrottle
+        - frontCamber
+        - rearCamber
+        - frontToe
+        - rearToe
+        - frontSuspension
+        - rearSuspension
+        - frontAntiRollBar
+        - rearAntiRollBar
+        - frontRideHeight
+        - rearRideHeight
+        - brakePressure
+        - brakeBias
+        - frontTyrePressure
+        - rearTyrePressure
+
+    TyreStintEntry:
+      type: object
+      properties:
+        startLap:
+          type: integer
+        endLap:
+          type: integer
+        compound:
+          type: string
+        visualCompound:
+          type: string
+      required:
+        - startLap
+        - endLap
+        - compound
+        - visualCompound
+
+    LapHistoryEntry:
+      type: object
+      properties:
+        lap:
+          type: integer
+        lapTimeMs:
+          type: integer
+        sector1Ms:
+          type: integer
+        sector2Ms:
+          type: integer
+        sector3Ms:
+          type: integer
+        valid:
+          type: boolean
+      required:
+        - lap
+        - lapTimeMs
+        - sector1Ms
+        - sector2Ms
+        - sector3Ms
+        - valid
+
     SessionRecord:
       type: object
       properties:
@@ -476,6 +798,169 @@ components:
           type: string
         isPB:
           type: boolean
+        penalty:
+          type: string
+          nullable: true
+        gameVersion:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          nullable: true
+        inputDevice:
+          type: string
+          nullable: true
+        isPublic:
+          type: boolean
+        sharedAt:
+          type: string
+          nullable: true
+        publicNote:
+          type: string
+          nullable: true
+        laps:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapRecord"
+        timeOfDay:
+          type: string
+          nullable: true
+        position:
+          type: string
+        trackTemperature:
+          type: integer
+          nullable: true
+        airTemperature:
+          type: integer
+          nullable: true
+        totalLaps:
+          type: integer
+          nullable: true
+        pitSpeedLimit:
+          type: integer
+          nullable: true
+        safetyCarStatus:
+          type: integer
+          nullable: true
+        fuelInTank:
+          type: number
+          nullable: true
+        ersDeployMode:
+          type: integer
+          nullable: true
+        ersEnergyStored:
+          type: number
+          nullable: true
+        ersDeployedThisLap:
+          type: number
+          nullable: true
+        tyreWear:
+          type: array
+          nullable: true
+          items:
+            type: number
+        wingDamage:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/WingDamage"
+        tyreSurfaceTemps:
+          type: array
+          nullable: true
+          items:
+            type: number
+        brakeTemps:
+          type: array
+          nullable: true
+          items:
+            type: number
+        setupSnapshot:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CarSetupSnapshot"
+        tyreStints:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/TyreStintEntry"
+        lapHistory:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapHistoryEntry"
+        aiDifficulty:
+          type: integer
+          nullable: true
+        topSpeedKph:
+          type: number
+          nullable: true
+        avgThrottlePct:
+          type: number
+          nullable: true
+        avgBrakePct:
+          type: number
+          nullable: true
+        drsActivations:
+          type: integer
+          nullable: true
+        maxRpm:
+          type: integer
+          nullable: true
+        topGear:
+          type: integer
+          nullable: true
+        fuelRemainingLaps:
+          type: number
+          nullable: true
+        actualTyreCompound:
+          type: string
+          nullable: true
+        tyreAgeLaps:
+          type: integer
+          nullable: true
+        pitStops:
+          type: integer
+          nullable: true
+        fuelCapacity:
+          type: number
+          nullable: true
+        startingFuelKg:
+          type: number
+          nullable: true
+        engineMaxRpm:
+          type: integer
+          nullable: true
+        engineTemperature:
+          type: integer
+          nullable: true
+        vehicleFiaFlags:
+          type: integer
+          nullable: true
+        tyrePressureLive:
+          type: array
+          items:
+            type: number
+          nullable: true
+        floorDamage:
+          type: integer
+          nullable: true
+        diffuserDamage:
+          type: integer
+          nullable: true
+        sidepodDamage:
+          type: integer
+          nullable: true
+        gearBoxDamage:
+          type: integer
+          nullable: true
+        engineDamage:
+          type: integer
+          nullable: true
+        liveBrakeBias:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
       required:
         - id
         - date
@@ -495,6 +980,8 @@ components:
         - rating
         - notes
         - isPB
+        - isPublic
+        - createdAt
 
     CreateSessionRequest:
       type: object
@@ -533,6 +1020,38 @@ components:
           type: integer
         notes:
           type: string
+        penalty:
+          type: string
+        timeOfDay:
+          type: string
+        gameVersion:
+          type: string
+        platform:
+          type: string
+        inputDevice:
+          type: string
+        laps:
+          type: array
+          items:
+            $ref: "#/components/schemas/LapRecord"
+        position:
+          type: string
+        aiDifficulty:
+          type: integer
+        topSpeedKph:
+          type: number
+        avgThrottlePct:
+          type: number
+        avgBrakePct:
+          type: number
+        drsActivations:
+          type: integer
+        maxRpm:
+          type: integer
+        topGear:
+          type: integer
+        fuelRemainingLaps:
+          type: number
       required:
         - id
         - date
@@ -551,6 +1070,82 @@ components:
         - assists
         - rating
         - notes
+
+    ShareSessionRequest:
+      type: object
+      properties:
+        publicNote:
+          type: string
+
+    ShareSessionResponse:
+      type: object
+      properties:
+        isPublic:
+          type: boolean
+        sharedAt:
+          type: string
+          nullable: true
+      required:
+        - isPublic
+
+    CommunitySessionRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        trackId:
+          type: string
+        car:
+          type: string
+        type:
+          type: string
+        bestLap:
+          type: string
+        avgLap:
+          type: string
+        tires:
+          type: string
+        conditions:
+          type: string
+        penalty:
+          type: string
+          nullable: true
+        gameVersion:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          nullable: true
+        inputDevice:
+          type: string
+          nullable: true
+        publicNote:
+          type: string
+          nullable: true
+        authorName:
+          type: string
+        isOwn:
+          type: boolean
+        sharedAt:
+          type: string
+          nullable: true
+        rating:
+          type: integer
+      required:
+        - id
+        - date
+        - trackId
+        - car
+        - type
+        - bestLap
+        - avgLap
+        - tires
+        - conditions
+        - authorName
+        - isOwn
+        - rating
 
     SetupRecord:
       type: object
@@ -596,6 +1191,9 @@ components:
         isPublic:
           type: boolean
         sharedAt:
+          type: string
+          nullable: true
+        gameVersion:
           type: string
           nullable: true
       required:
@@ -670,6 +1268,9 @@ components:
         ratingCount:
           type: integer
         sharedAt:
+          type: string
+          nullable: true
+        gameVersion:
           type: string
           nullable: true
       required:
@@ -769,6 +1370,8 @@ components:
           type: string
         notes:
           type: string
+        gameVersion:
+          type: string
       required:
         - id
         - label
@@ -788,6 +1391,198 @@ components:
         - onThrottle
         - offThrottle
         - notes
+
+    TrackDifficultyRecord:
+      type: object
+      properties:
+        trackId:
+          type: string
+        rating:
+          type: integer
+      required:
+        - trackId
+        - rating
+
+    UpsertTrackDifficultyRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 0
+          maximum: 5
+      required:
+        - rating
+
+    CompanionApiKeyStatus:
+      type: object
+      properties:
+        hasKey:
+          type: boolean
+        createdAt:
+          type: string
+          nullable: true
+      required:
+        - hasKey
+
+    CompanionApiKeyResponse:
+      type: object
+      properties:
+        key:
+          type: string
+      required:
+        - key
+
+    CompanionSessionSectors:
+      type: object
+      properties:
+        s1:
+          type: string
+        s2:
+          type: string
+        s3:
+          type: string
+
+    CompanionSessionRequest:
+      type: object
+      properties:
+        sessionType:
+          type: string
+        track:
+          type: string
+        car:
+          type: string
+        lapTime:
+          type: string
+        sectors:
+          $ref: "#/components/schemas/CompanionSessionSectors"
+        tyreCompound:
+          type: string
+        fuelRemaining:
+          type: number
+        weather:
+          type: string
+        assists:
+          type: string
+        gameVersion:
+          type: string
+        platform:
+          type: string
+        inputDevice:
+          type: string
+        laps:
+          type: array
+          items:
+            $ref: "#/components/schemas/LapRecord"
+        id:
+          type: string
+        date:
+          type: string
+        position:
+          type: string
+        notes:
+          type: string
+        rating:
+          type: integer
+        penalty:
+          type: string
+        trackTemperature:
+          type: integer
+        airTemperature:
+          type: integer
+        totalLaps:
+          type: integer
+        pitSpeedLimit:
+          type: integer
+        safetyCarStatus:
+          type: integer
+        timeOfDay:
+          type: string
+        fuelInTank:
+          type: number
+        ersDeployMode:
+          type: integer
+        ersEnergyStored:
+          type: number
+        ersDeployedThisLap:
+          type: number
+        tyreWear:
+          type: array
+          items:
+            type: number
+        frontWingDamage:
+          type: number
+        rearWingDamage:
+          type: number
+        tyreSurfaceTemps:
+          type: array
+          items:
+            type: number
+        brakeTemps:
+          type: array
+          items:
+            type: number
+        setup:
+          $ref: "#/components/schemas/CarSetupSnapshot"
+        tyreStints:
+          type: array
+          items:
+            $ref: "#/components/schemas/TyreStintEntry"
+        lapHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/LapHistoryEntry"
+        aiDifficulty:
+          type: integer
+        topSpeedKph:
+          type: number
+        avgThrottlePct:
+          type: number
+        avgBrakePct:
+          type: number
+        drsActivations:
+          type: integer
+        maxRpm:
+          type: integer
+        topGear:
+          type: integer
+        fuelRemainingLaps:
+          type: number
+        actualTyreCompound:
+          type: string
+        tyreAgeLaps:
+          type: integer
+        pitStops:
+          type: integer
+        fuelCapacity:
+          type: number
+        startingFuelKg:
+          type: number
+        engineMaxRpm:
+          type: integer
+        engineTemperature:
+          type: integer
+        vehicleFiaFlags:
+          type: integer
+        tyrePressureLive:
+          type: array
+          items:
+            type: number
+        floorDamage:
+          type: integer
+        diffuserDamage:
+          type: integer
+        sidepodDamage:
+          type: integer
+        gearBoxDamage:
+          type: integer
+        engineDamage:
+          type: integer
+        liveBrakeBias:
+          type: integer
+      required:
+        - sessionType
+        - track
+        - car
 
     TrackNotesRecord:
       type: object

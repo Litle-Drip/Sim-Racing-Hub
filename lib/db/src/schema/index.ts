@@ -1,5 +1,15 @@
 import { pgTable, text, integer, boolean, real, timestamp, jsonb, unique } from "drizzle-orm/pg-core";
 
+export const apiKeysTable = pgTable("api_keys", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().unique(),
+  keyHash: text("key_hash").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type DbApiKey = typeof apiKeysTable.$inferSelect;
+export type InsertDbApiKey = typeof apiKeysTable.$inferInsert;
+
 export const sessionsTable = pgTable("sessions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
@@ -16,6 +26,7 @@ export const sessionsTable = pgTable("sessions", {
   tires: text("tires").notNull().default(""),
   fuelLoad: real("fuel_load").notNull().default(0),
   conditions: text("conditions").notNull().default(""),
+  timeOfDay: text("time_of_day"),
   assists: text("assists").notNull().default(""),
   rating: integer("rating").notNull().default(0),
   notes: text("notes").notNull().default(""),
@@ -26,9 +37,60 @@ export const sessionsTable = pgTable("sessions", {
   isPublic: boolean("is_public").notNull().default(false),
   sharedAt: timestamp("shared_at"),
   publicNote: text("public_note"),
-  laps: jsonb("laps").$type<Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string }>>(),
+  laps: jsonb("laps").$type<Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: Array<{ d: number; speed: number; throttle: number; brake: number; steer: number }> }>>()
+,
+  position: text("position").notNull().default(""),
   isPB: boolean("is_pb").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Extended telemetry — all nullable so existing sessions are unaffected
+  trackTemperature: integer("track_temperature"),
+  airTemperature: integer("air_temperature"),
+  totalLaps: integer("total_laps"),
+  pitSpeedLimit: integer("pit_speed_limit"),
+  safetyCarStatus: integer("safety_car_status"),
+  fuelInTank: real("fuel_in_tank"),
+  ersDeployMode: integer("ers_deploy_mode"),
+  ersEnergyStored: real("ers_energy_stored"),
+  ersDeployedThisLap: real("ers_deployed_this_lap"),
+  tyreWear: jsonb("tyre_wear").$type<[number, number, number, number]>(),
+  wingDamage: jsonb("wing_damage").$type<{ front: number; rear: number }>(),
+  tyreSurfaceTemps: jsonb("tyre_surface_temps").$type<[number, number, number, number]>(),
+  brakeTemps: jsonb("brake_temps").$type<[number, number, number, number]>(),
+  setupSnapshot: jsonb("setup_snapshot").$type<{
+    frontWing: number; rearWing: number; onThrottle: number; offThrottle: number;
+    frontCamber: number; rearCamber: number; frontToe: number; rearToe: number;
+    frontSuspension: number; rearSuspension: number; frontAntiRollBar: number; rearAntiRollBar: number;
+    frontRideHeight: number; rearRideHeight: number; brakePressure: number; brakeBias: number;
+    frontTyrePressure: number; rearTyrePressure: number;
+  }>()
+,
+  tyreStints: jsonb("tyre_stints").$type<Array<{ startLap: number; endLap: number; compound: string; visualCompound: string }>>()
+,
+  lapHistory: jsonb("lap_history").$type<Array<{ lap: number; lapTimeMs: number; sector1Ms: number; sector2Ms: number; sector3Ms: number; valid: boolean }>>()
+,
+  aiDifficulty: integer("ai_difficulty"),
+  topSpeedKph: real("top_speed_kph"),
+  avgThrottlePct: real("avg_throttle_pct"),
+  avgBrakePct: real("avg_brake_pct"),
+  drsActivations: integer("drs_activations"),
+  maxRpm: integer("max_rpm"),
+  topGear: integer("top_gear"),
+  fuelRemainingLaps: real("fuel_remaining_laps"),
+  actualTyreCompound: text("actual_tyre_compound"),
+  tyreAgeLaps: integer("tyre_age_laps"),
+  pitStops: integer("pit_stops"),
+  fuelCapacity: real("fuel_capacity"),
+  startingFuelKg: real("starting_fuel_kg"),
+  engineMaxRpm: integer("engine_max_rpm"),
+  engineTemperature: integer("engine_temperature"),
+  vehicleFiaFlags: integer("vehicle_fia_flags"),
+  tyrePressureLive: jsonb("tyre_pressure_live").$type<[number, number, number, number]>(),
+  floorDamage: integer("floor_damage"),
+  diffuserDamage: integer("diffuser_damage"),
+  sidepodDamage: integer("sidepod_damage"),
+  gearBoxDamage: integer("gear_box_damage"),
+  engineDamage: integer("engine_damage"),
+  liveBrakeBias: integer("live_brake_bias"),
 });
 
 export type DbSession = typeof sessionsTable.$inferSelect;
@@ -76,6 +138,19 @@ export const setupRatingsTable = pgTable("setup_ratings", {
 
 export type DbSetupRating = typeof setupRatingsTable.$inferSelect;
 export type InsertDbSetupRating = typeof setupRatingsTable.$inferInsert;
+
+export const trackDifficultyTable = pgTable("track_difficulty", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  trackId: text("track_id").notNull(),
+  rating: integer("rating").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [
+  unique("track_difficulty_uniq").on(t.userId, t.trackId),
+]);
+
+export type DbTrackDifficulty = typeof trackDifficultyTable.$inferSelect;
+export type InsertDbTrackDifficulty = typeof trackDifficultyTable.$inferInsert;
 
 export const trackNotesTable = pgTable("track_notes", {
   id: text("id").primaryKey(),
