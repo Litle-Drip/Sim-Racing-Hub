@@ -56,7 +56,22 @@ CREATE TABLE IF NOT EXISTS sessions (
   drs_activations INTEGER,
   max_rpm INTEGER,
   top_gear INTEGER,
-  fuel_remaining_laps REAL
+  fuel_remaining_laps REAL,
+  actual_tyre_compound TEXT,
+  tyre_age_laps INTEGER,
+  pit_stops INTEGER,
+  fuel_capacity REAL,
+  starting_fuel_kg REAL,
+  engine_max_rpm INTEGER,
+  engine_temperature INTEGER,
+  vehicle_fia_flags INTEGER,
+  tyre_pressure_live JSONB,
+  floor_damage INTEGER,
+  diffuser_damage INTEGER,
+  sidepod_damage INTEGER,
+  gear_box_damage INTEGER,
+  engine_damage INTEGER,
+  live_brake_bias INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS setups (
@@ -181,6 +196,21 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS drs_activations INTEGER;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS max_rpm INTEGER;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS top_gear INTEGER;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS fuel_remaining_laps REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS actual_tyre_compound TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS tyre_age_laps INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS pit_stops INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS fuel_capacity REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS starting_fuel_kg REAL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS engine_max_rpm INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS engine_temperature INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS vehicle_fia_flags INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS tyre_pressure_live JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS floor_damage INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS diffuser_damage INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS sidepod_damage INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS gear_box_damage INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS engine_damage INTEGER;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS live_brake_bias INTEGER;
 `;
 
 async function ensureDatabase(): Promise<void> {

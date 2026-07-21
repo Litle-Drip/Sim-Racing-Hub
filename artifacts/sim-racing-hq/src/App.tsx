@@ -14,6 +14,7 @@ import Tracks from './pages/Tracks';
 import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
+import RaceEngineer from './pages/RaceEngineer';
 import Community from './pages/Community';
 import PublicSetups from './pages/PublicSetups';
 import PublicTracks from './pages/PublicTracks';
@@ -23,6 +24,7 @@ import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
 import Companion from './pages/Companion';
 import DownloadPage from './pages/DownloadPage';
+import ServiceStatusBanner from './components/ServiceStatusBanner';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -240,7 +242,7 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -311,6 +313,7 @@ const PAGE_LABELS: Record<string, string> = {
   setups: 'Setup Vault',
   hardware: 'Hardware Vault',
   progress: 'PB Progression',
+  engineer: 'Race Engineer',
 };
 
 const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
@@ -340,6 +343,13 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'Chart your personal bests across every circuit',
       'Lap variance chart shows how consistent you are',
       'Filter by car and session type to spot trends',
+    ],
+  },
+  engineer: {
+    bullets: [
+      'AI coaching built from your actual session data',
+      'Get specific, data-driven feedback after every debrief',
+      'Ask follow-up questions about your pace and consistency',
     ],
   },
 };
@@ -432,7 +442,7 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
 }
 
 const SHORTCUTS: Record<string, string> = {
-  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', c: 'community', x: 'companion', a: 'account',
+  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', c: 'community', x: 'companion', a: 'account',
 };
 
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
@@ -522,6 +532,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
+      case 'engineer': return <RaceEngineer />;
       case 'community': return <Community />;
       case 'companion': return <Companion />;
       case 'account': return <Account />;
@@ -670,40 +681,44 @@ function ClerkProviderWithRoutes() {
 export default function App() {
   if (!clerkPubKey) {
     return (
-      <div style={{
-        minHeight: '100dvh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#080808',
-        padding: 24,
-        fontFamily: 'monospace',
-      }}>
+      <>
+        <ServiceStatusBanner />
         <div style={{
-          background: '#111',
-          border: '1px solid #E8002D',
-          padding: '32px 40px',
-          maxWidth: 520,
-          width: '100%',
+          minHeight: '100dvh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#080808',
+          padding: 24,
+          fontFamily: 'monospace',
         }}>
-          <div style={{ color: '#E8002D', fontSize: 12, letterSpacing: '0.12em', marginBottom: 16 }}>
-            CONFIGURATION ERROR
-          </div>
-          <div style={{ color: '#F0F0F0', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
-            <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is not set.
-          </div>
-          <div style={{ color: '#A8A8A8', fontSize: 13, lineHeight: 1.7 }}>
-            In Vercel → Settings → Environment Variables, add:<br />
-            <span style={{ color: '#00D2BE' }}>VITE_CLERK_PUBLISHABLE_KEY</span> = your <code>pk_live_...</code> or <code>pk_test_...</code> key<br /><br />
-            Then redeploy for the change to take effect.
+          <div style={{
+            background: '#111',
+            border: '1px solid #E8002D',
+            padding: '32px 40px',
+            maxWidth: 520,
+            width: '100%',
+          }}>
+            <div style={{ color: '#E8002D', fontSize: 12, letterSpacing: '0.12em', marginBottom: 16 }}>
+              CONFIGURATION ERROR
+            </div>
+            <div style={{ color: '#F0F0F0', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
+              <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is not set.
+            </div>
+            <div style={{ color: '#A8A8A8', fontSize: 13, lineHeight: 1.7 }}>
+              In Vercel → Settings → Environment Variables, add:<br />
+              <span style={{ color: '#00D2BE' }}>VITE_CLERK_PUBLISHABLE_KEY</span> = your <code>pk_live_...</code> or <code>pk_test_...</code> key<br /><br />
+              Then redeploy for the change to take effect.
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
     <WouterRouter base={basePath}>
+      <ServiceStatusBanner />
       <ClerkProviderWithRoutes />
     </WouterRouter>
   );

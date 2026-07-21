@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity, AlertTriangle } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -19,6 +19,7 @@ import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency } from '../lib/engagement';
+import { findDataIssues } from '../lib/dataCleanup';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -115,12 +116,34 @@ function ersModeLabel(mode: number): string {
   return ERS_MODE_LABELS[mode] ?? 'None';
 }
 
+const FIA_FLAG_LABELS: Record<number, string> = {
+  1: 'Green',
+  2: 'Blue',
+  3: 'Yellow',
+  4: 'Red',
+};
+
+const FIA_FLAG_COLORS: Record<number, string> = {
+  1: 'var(--green)',
+  2: 'var(--teal)',
+  3: 'var(--yellow)',
+  4: 'var(--red)',
+};
+
+function fiaFlagLabel(flag: number): string {
+  return FIA_FLAG_LABELS[flag] ?? 'None';
+}
+
+function fiaFlagColor(flag: number): string {
+  return FIA_FLAG_COLORS[flag] ?? 'var(--gray-light)';
+}
+
 function ExpandedGroup({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
   if (!show) return null;
   return (
-    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)', width: '100%' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', width: '100%' }}>{label}</div>
-      {children}
+    <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
+      <div className="expanded-group-grid">{children}</div>
     </div>
   );
 }
@@ -255,6 +278,169 @@ function LapTelemetryModal({ lap, onClose }: { lap: LapEntry; onClose: () => voi
           <TelemetryTraceChart dataKey="brake" label="Brake" color="#E8002D" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
           <TelemetryTraceChart dataKey="steer" label="Steering" color="#a855f7" unit="%" domain={[-100, 100]} data={lap.trace ?? []} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Data cleanup (duplicate/garbage telemetry sessions) ──────────────────────
+
+function trackNameForCleanup(id: string): string {
+  return F1_TRACKS.find(t => t.id === id)?.short ?? id;
+}
+
+function cleanupRowLabel(s: SessionRecord): string {
+  const parts = [s.date];
+  if (s.createdAt) {
+    const t = new Date(s.createdAt);
+    if (!isNaN(t.getTime())) parts.push(t.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
+  }
+  return parts.join(' · ');
+}
+
+function DataCleanupModal({
+  duplicateClusters,
+  emptySessions,
+  onClose,
+  onDeleteSelected,
+}: {
+  duplicateClusters: SessionRecord[][];
+  emptySessions: SessionRecord[];
+  onClose: () => void;
+  onDeleteSelected: (ids: string[]) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    // Default: keep the earliest upload in each duplicate cluster, select the
+    // rest for deletion. Empty/incomplete sessions have nothing worth
+    // keeping, so select all of them by default.
+    duplicateClusters.forEach(cluster => cluster.slice(1).forEach(sess => s.add(sess.id)));
+    emptySessions.forEach(sess => s.add(sess.id));
+    return s;
+  });
+  const [deleting, setDeleting] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+
+  const toggle = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    setDeleting(true);
+    setDeleteError('');
+    const ids = [...selected];
+    setProgress({ done: 0, total: ids.length });
+    let failures = 0;
+    // Delete one at a time with a hard timeout per request — the underlying
+    // fetch has none, so a single unresponsive request (a cold backend, a
+    // dropped connection) would otherwise hang this forever with no way to
+    // recover or even tell the user something's wrong.
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await Promise.race([
+          onDeleteSelected([ids[i]]),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timed out')), 20000)),
+        ]);
+      } catch {
+        failures++;
+      }
+      setProgress({ done: i + 1, total: ids.length });
+    }
+    setDeleting(false);
+    if (failures > 0) {
+      setDeleteError(`${failures} of ${ids.length} couldn't be deleted (server didn't respond in time). The rest were removed — try again for the remaining ones.`);
+    } else {
+      onClose();
+    }
+  };
+
+  const totalIssues = duplicateClusters.reduce((n, c) => n + c.length, 0) + emptySessions.length;
+
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 720, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-header">
+          <span className="modal-title">Review & Clean Up Data</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body" style={{ overflowY: 'auto' }}>
+          {totalIssues === 0 ? (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', padding: '20px 0', textAlign: 'center' }}>
+              No duplicate or empty telemetry sessions found. Your data looks clean.
+            </div>
+          ) : (
+            <>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginBottom: 16, lineHeight: 1.5 }}>
+                Scanned only sessions uploaded by the companion app (manually-logged sessions are never touched). Checked rows will be deleted — uncheck anything you want to keep.
+              </div>
+
+              {duplicateClusters.map((cluster, ci) => (
+                <div key={ci} style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <AlertTriangle size={13} style={{ color: 'var(--yellow)' }} />
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>
+                      Duplicate — {trackNameForCleanup(cluster[0].trackId)} · {cluster[0].car} · {cluster[0].bestLap || '—'}
+                    </span>
+                  </div>
+                  {cluster.map(s => (
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
+                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--red)' }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
+                        {cleanupRowLabel(s)} — {s.laps?.length ?? 0} laps
+                      </span>
+                      {!selected.has(s.id) && <span style={{ fontSize: 10, color: 'var(--teal)', fontFamily: 'var(--font-body)' }}>KEEP</span>}
+                    </label>
+                  ))}
+                </div>
+              ))}
+
+              {emptySessions.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <AlertTriangle size={13} style={{ color: 'var(--red)' }} />
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>
+                      Empty sessions (no laps recorded)
+                    </span>
+                  </div>
+                  {emptySessions.map(s => (
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
+                      <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--red)' }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
+                        {cleanupRowLabel(s)} — {trackNameForCleanup(s.trackId)} · {s.car}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        {totalIssues > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+            {deleteError && <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)' }}>{deleteError}</div>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+              {deleting && progress && (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>{progress.done} / {progress.total}</span>
+              )}
+              <button className="btn btn-secondary" onClick={onClose} disabled={deleting}>Cancel</button>
+              <button
+                className="btn btn-secondary"
+                style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
+                onClick={handleDeleteSelected}
+                disabled={deleting || selected.size === 0}
+              >
+                <Trash2 size={11} style={{ marginRight: 4 }} />
+                {deleting ? 'Deleting…' : `Delete Selected (${selected.size})`}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -404,6 +590,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
   const [telemetryLap, setTelemetryLap] = useState<LapEntry | null>(null);
+  const [cleanupOpen, setCleanupOpen] = useState(false);
   const [toast, setToast] = useState('');
 
   // ── Draft auto-save ────────────────────────────────────────────────────
@@ -460,7 +647,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   });
   const saving = isGuest ? false : apiSaving;
 
-  const { mutate: apiDeleteSession } = useDeleteSession({
+  const { mutate: apiDeleteSession, mutateAsync: apiDeleteSessionAsync } = useDeleteSession({
     mutation: { onSuccess: () => qc.invalidateQueries({ queryKey: getGetSessionsQueryKey() }) },
   });
 
@@ -683,6 +870,19 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     apiDeleteSession({ id });
   };
 
+  const dataIssues = useMemo(() => findDataIssues(sessions), [sessions]);
+  const dataIssuesCount = dataIssues.duplicateClusters.reduce((n, c) => n + c.length, 0) + dataIssues.emptySessions.length;
+
+  const handleBulkDelete = async (ids: string[]) => {
+    if (isGuest) {
+      setGuestSessions(prev => computeGuestPBs(prev.filter(s => !ids.includes(s.id))));
+      return;
+    }
+    for (const id of ids) {
+      await apiDeleteSessionAsync({ id });
+    }
+  };
+
   const handleShare = (session: SessionRecord, e: React.MouseEvent) => {
     e.stopPropagation();
     if (session.isPublic) {
@@ -715,9 +915,16 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Session Log</h1>
-        <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}>
-          <Plus size={12} /> Log Session
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {dataIssuesCount > 0 && (
+            <button className="btn btn-secondary" style={{ color: 'var(--yellow)', borderColor: 'var(--yellow)' }} onClick={() => setCleanupOpen(true)}>
+              <AlertTriangle size={12} style={{ marginRight: 4 }} /> Review Data ({dataIssuesCount})
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}>
+            <Plus size={12} /> Log Session
+          </button>
+        </div>
       </div>
 
       {isGuest && (
@@ -846,11 +1053,13 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             const bestS2 = validS2.length > 0 ? validS2.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
                             const bestS3 = validS3.length > 0 ? validS3.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
                             return (
-                              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid var(--border)', width: '100%' }}>
-                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', width: '100%' }}>Best Sectors (from laps)</div>
-                                {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS1}</div></div>}
-                                {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS2}</div></div>}
-                                {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS3}</div></div>}
+                              <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>Best Sectors (from laps)</div>
+                                <div className="expanded-group-grid">
+                                  {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS1}</div></div>}
+                                  {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS2}</div></div>}
+                                  {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS3}</div></div>}
+                                </div>
                               </div>
                             );
                           })()}
@@ -861,11 +1070,16 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
                           {!!s.position && <div className="expanded-item"><div className="expanded-label">Finish Position</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>P{s.position}</div></div>}
 
-                          <ExpandedGroup label="Fuel & Tyres" show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps || !!s.brakeTemps}>
+                          <ExpandedGroup label="Fuel & Tyres" show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps || !!s.brakeTemps || !!s.tyreAgeLaps || !!s.actualTyreCompound || !!s.startingFuelKg || !!s.fuelCapacity || !!s.tyrePressureLive}>
                             {!!s.fuelRemainingLaps && <div className="expanded-item"><div className="expanded-label">Fuel Remaining</div><div className="expanded-value">{s.fuelRemainingLaps.toFixed(1)} laps</div></div>}
                             {!!s.fuelInTank && <div className="expanded-item"><div className="expanded-label">Fuel in Tank</div><div className="expanded-value">{s.fuelInTank.toFixed(1)} kg</div></div>}
+                            {!!s.startingFuelKg && <div className="expanded-item"><div className="expanded-label">Starting Fuel</div><div className="expanded-value">{s.startingFuelKg.toFixed(1)} kg</div></div>}
+                            {!!s.fuelCapacity && <div className="expanded-item"><div className="expanded-label">Fuel Capacity</div><div className="expanded-value">{s.fuelCapacity.toFixed(1)} kg</div></div>}
+                            {!!s.actualTyreCompound && <div className="expanded-item"><div className="expanded-label">Actual Compound</div><div className="expanded-value">{s.actualTyreCompound}</div></div>}
+                            {!!s.tyreAgeLaps && <div className="expanded-item"><div className="expanded-label">Tyre Age</div><div className="expanded-value">{s.tyreAgeLaps} laps</div></div>}
                             {s.tyreWear && <div className="expanded-item"><div className="expanded-label">Avg Tyre Wear</div><div className="expanded-value">{(s.tyreWear.reduce((a, b) => a + b, 0) / s.tyreWear.length).toFixed(1)}%</div></div>}
                             {s.tyreSurfaceTemps && <div className="expanded-item"><div className="expanded-label">Avg Tyre Temp</div><div className="expanded-value">{Math.round(s.tyreSurfaceTemps.reduce((a, b) => a + b, 0) / s.tyreSurfaceTemps.length)}°C</div></div>}
+                            {s.tyrePressureLive && <div className="expanded-item"><div className="expanded-label">Live Tyre Pressure (avg)</div><div className="expanded-value">{(s.tyrePressureLive.reduce((a, b) => a + b, 0) / s.tyrePressureLive.length).toFixed(1)} psi</div></div>}
                             {s.brakeTemps && <div className="expanded-item"><div className="expanded-label">Avg Brake Temp</div><div className="expanded-value">{Math.round(s.brakeTemps.reduce((a, b) => a + b, 0) / s.brakeTemps.length)}°C</div></div>}
                           </ExpandedGroup>
 
@@ -878,7 +1092,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             ))}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Car Setup" show={!!s.setupSnapshot}>
+                          <ExpandedGroup label="Car Setup" show={!!s.setupSnapshot || !!s.liveBrakeBias}>
                             {!!s.setupSnapshot && (
                               <>
                                 <div className="expanded-item"><div className="expanded-label">Wing F/R</div><div className="expanded-value">{s.setupSnapshot.frontWing} / {s.setupSnapshot.rearWing}</div></div>
@@ -891,21 +1105,26 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                                 <div className="expanded-item"><div className="expanded-label">Anti-Roll Bar F/R</div><div className="expanded-value">{s.setupSnapshot.frontAntiRollBar} / {s.setupSnapshot.rearAntiRollBar}</div></div>
                               </>
                             )}
+                            {!!s.liveBrakeBias && <div className="expanded-item"><div className="expanded-label">Live Brake Bias</div><div className="expanded-value">{s.liveBrakeBias}%</div></div>}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Track Conditions" show={!!s.trackTemperature || !!s.airTemperature || !!s.safetyCarStatus || !!s.pitSpeedLimit || !!s.totalLaps}>
+                          <ExpandedGroup label="Track Conditions" show={!!s.trackTemperature || !!s.airTemperature || !!s.safetyCarStatus || !!s.pitSpeedLimit || !!s.totalLaps || s.vehicleFiaFlags != null}>
                             {(!!s.trackTemperature || !!s.airTemperature) && <div className="expanded-item"><div className="expanded-label">Track / Air Temp</div><div className="expanded-value">{s.trackTemperature ?? '—'}° / {s.airTemperature ?? '—'}°</div></div>}
                             {!!s.safetyCarStatus && <div className="expanded-item"><div className="expanded-label">Safety Car</div><div className="expanded-value">{safetyCarLabel(s.safetyCarStatus)}</div></div>}
+                            {s.vehicleFiaFlags != null && s.vehicleFiaFlags > 0 && <div className="expanded-item"><div className="expanded-label">Flag</div><div className="expanded-value" style={{ color: fiaFlagColor(s.vehicleFiaFlags) }}>{fiaFlagLabel(s.vehicleFiaFlags)}</div></div>}
                             {!!s.pitSpeedLimit && <div className="expanded-item"><div className="expanded-label">Pit Speed Limit</div><div className="expanded-value">{s.pitSpeedLimit} km/h</div></div>}
                             {!!s.totalLaps && <div className="expanded-item"><div className="expanded-label">Total Laps</div><div className="expanded-value">{s.totalLaps}</div></div>}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Performance" show={!!s.topSpeedKph || !!s.avgThrottlePct || !!s.avgBrakePct || !!s.maxRpm || !!s.topGear || !!s.drsActivations}>
+                          <ExpandedGroup label="Performance" show={!!s.topSpeedKph || !!s.avgThrottlePct || !!s.avgBrakePct || !!s.maxRpm || !!s.topGear || !!s.drsActivations || !!s.engineTemperature || !!s.engineMaxRpm || !!s.pitStops}>
                             {!!s.topSpeedKph && <div className="expanded-item"><div className="expanded-label">Top Speed</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{Math.round(s.topSpeedKph)} km/h</div></div>}
                             {(!!s.avgThrottlePct || !!s.avgBrakePct) && <div className="expanded-item"><div className="expanded-label">Avg Throttle / Brake</div><div className="expanded-value">{s.avgThrottlePct?.toFixed(0) ?? '—'}% / {s.avgBrakePct?.toFixed(0) ?? '—'}%</div></div>}
-                            {!!s.maxRpm && <div className="expanded-item"><div className="expanded-label">Max RPM</div><div className="expanded-value">{s.maxRpm.toLocaleString()}</div></div>}
+                            {!!s.maxRpm && <div className="expanded-item"><div className="expanded-label">Max RPM Reached</div><div className="expanded-value">{s.maxRpm.toLocaleString()}</div></div>}
+                            {!!s.engineMaxRpm && <div className="expanded-item"><div className="expanded-label">Redline</div><div className="expanded-value">{s.engineMaxRpm.toLocaleString()}</div></div>}
+                            {!!s.engineTemperature && <div className="expanded-item"><div className="expanded-label">Engine Temp</div><div className="expanded-value">{s.engineTemperature}°C</div></div>}
                             {!!s.topGear && <div className="expanded-item"><div className="expanded-label">Top Gear</div><div className="expanded-value">{s.topGear}</div></div>}
                             {!!s.drsActivations && <div className="expanded-item"><div className="expanded-label">DRS Activations</div><div className="expanded-value">{s.drsActivations}</div></div>}
+                            {!!s.pitStops && <div className="expanded-item"><div className="expanded-label">Pit Stops</div><div className="expanded-value">{s.pitStops}</div></div>}
                           </ExpandedGroup>
 
                           <ExpandedGroup label="ERS" show={!!s.ersEnergyStored || !!s.ersDeployedThisLap || !!s.ersDeployMode}>
@@ -914,21 +1133,26 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             {!!s.ersDeployedThisLap && <div className="expanded-item"><div className="expanded-label">Deployed This Lap</div><div className="expanded-value">{(s.ersDeployedThisLap / 1_000_000).toFixed(2)} MJ</div></div>}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Damage" show={!!s.wingDamage && (s.wingDamage.front > 0 || s.wingDamage.rear > 0)}>
+                          <ExpandedGroup label="Damage" show={(!!s.wingDamage && (s.wingDamage.front > 0 || s.wingDamage.rear > 0)) || !!s.floorDamage || !!s.diffuserDamage || !!s.sidepodDamage || !!s.gearBoxDamage || !!s.engineDamage}>
                             {!!s.wingDamage?.front && <div className="expanded-item"><div className="expanded-label">Front Wing</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.wingDamage.front}%</div></div>}
                             {!!s.wingDamage?.rear && <div className="expanded-item"><div className="expanded-label">Rear Wing</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.wingDamage.rear}%</div></div>}
+                            {!!s.floorDamage && <div className="expanded-item"><div className="expanded-label">Floor</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.floorDamage}%</div></div>}
+                            {!!s.diffuserDamage && <div className="expanded-item"><div className="expanded-label">Diffuser</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.diffuserDamage}%</div></div>}
+                            {!!s.sidepodDamage && <div className="expanded-item"><div className="expanded-label">Sidepod</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.sidepodDamage}%</div></div>}
+                            {!!s.gearBoxDamage && <div className="expanded-item"><div className="expanded-label">Gearbox</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.gearBoxDamage}%</div></div>}
+                            {!!s.engineDamage && <div className="expanded-item"><div className="expanded-label">Engine</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.engineDamage}%</div></div>}
                           </ExpandedGroup>
 
                           {s.notes && <div className="expanded-notes"><div className="expanded-label" style={{ marginBottom: 6 }}>Notes</div>{s.notes}</div>}
 
                           {/* Per-lap table */}
                           {s.laps && s.laps.length > 0 && (
-                            <div style={{ width: '100%' }}>
+                            <div style={{ gridColumn: '1 / -1' }}>
                               <LapTable laps={s.laps} onViewTelemetry={setTelemetryLap} />
                             </div>
                           )}
 
-                          <div style={{ marginLeft: 'auto', alignSelf: 'flex-start', paddingTop: 4, display: 'flex', gap: 8 }}>
+                          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 12, marginTop: 4, borderTop: '1px solid var(--border)' }}>
                             {!isGuest && (
                               <button
                                 className="btn btn-secondary"
@@ -997,6 +1221,15 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       {/* ── Lap Telemetry Modal ───────────────────────────────────────────── */}
       {telemetryLap && (
         <LapTelemetryModal lap={telemetryLap} onClose={() => setTelemetryLap(null)} />
+      )}
+
+      {cleanupOpen && (
+        <DataCleanupModal
+          duplicateClusters={dataIssues.duplicateClusters}
+          emptySessions={dataIssues.emptySessions}
+          onClose={() => setCleanupOpen(false)}
+          onDeleteSelected={handleBulkDelete}
+        />
       )}
 
       {/* ── Log Session Modal ─────────────────────────────────────────────── */}

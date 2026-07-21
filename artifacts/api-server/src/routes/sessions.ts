@@ -13,6 +13,22 @@ const router = Router();
 type LapTraceSample = { d: number; speed: number; throttle: number; brake: number; steer: number };
 type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: LapTraceSample[] };
 
+// A well-formed lap trace has at most a few thousand points (F1 25 sends
+// telemetry at 60Hz, downsampled client-side). A companion-app bug can
+// produce traces with duplicated, unbounded segments (e.g. from repeated
+// rewinds) that are large enough to crash the server on insert — clamp
+// defensively so a single bad upload can never take the whole API down.
+const MAX_TRACE_SAMPLES = 3000;
+
+function capTrace(laps: LapRecord[]): LapRecord[] {
+  for (const lap of laps) {
+    if (Array.isArray(lap.trace) && lap.trace.length > MAX_TRACE_SAMPLES) {
+      lap.trace = lap.trace.slice(0, MAX_TRACE_SAMPLES);
+    }
+  }
+  return laps;
+}
+
 function lapToSeconds(lap: string): number {
   if (!lap || !lap.includes(":")) {
     const n = parseFloat(lap);
@@ -132,6 +148,21 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     maxRpm: r.maxRpm ?? null,
     topGear: r.topGear ?? null,
     fuelRemainingLaps: r.fuelRemainingLaps ?? null,
+    actualTyreCompound: r.actualTyreCompound ?? null,
+    tyreAgeLaps: r.tyreAgeLaps ?? null,
+    pitStops: r.pitStops ?? null,
+    fuelCapacity: r.fuelCapacity ?? null,
+    startingFuelKg: r.startingFuelKg ?? null,
+    engineMaxRpm: r.engineMaxRpm ?? null,
+    engineTemperature: r.engineTemperature ?? null,
+    vehicleFiaFlags: r.vehicleFiaFlags ?? null,
+    tyrePressureLive: r.tyrePressureLive ?? null,
+    floorDamage: r.floorDamage ?? null,
+    diffuserDamage: r.diffuserDamage ?? null,
+    sidepodDamage: r.sidepodDamage ?? null,
+    gearBoxDamage: r.gearBoxDamage ?? null,
+    engineDamage: r.engineDamage ?? null,
+    liveBrakeBias: r.liveBrakeBias ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -160,7 +191,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
   }
 
   const data = parsed.data;
-  const incomingLaps = ((data.laps ?? []) as LapRecord[]).filter(
+  const incomingLaps = capTrace((data.laps ?? []) as LapRecord[]).filter(
     l => l.time && l.time.trim() !== ""
   );
 

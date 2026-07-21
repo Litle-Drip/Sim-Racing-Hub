@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { db, sessionsTable, apiKeysTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
@@ -10,6 +10,83 @@ const router = Router();
 
 function hashKey(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
+}
+
+// Hard backstop against a runaway client (a stuck retry loop, a future bug,
+// anything) hammering this endpoint — independent of whether the client
+// behaves correctly. A real driving session uploads once; even someone
+// finishing back-to-back short sessions won't come close to this ceiling.
+// In-memory is fine for this app's single-instance deployment.
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 10;
+const recentRequestsByUser = new Map<string, number[]>();
+
+function isRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  const existing = (recentRequestsByUser.get(userId) ?? []).filter(t => t > cutoff);
+  existing.push(now);
+  recentRequestsByUser.set(userId, existing);
+  return existing.length > RATE_LIMIT_MAX_REQUESTS;
+}
+
+// Periodically drop entries for users with no recent activity so this map
+// can't grow without bound over the server's lifetime.
+setInterval(() => {
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+  for (const [userId, timestamps] of recentRequestsByUser) {
+    if (timestamps.every(t => t <= cutoff)) recentRequestsByUser.delete(userId);
+  }
+}, 5 * 60_000).unref();
+
+// Independent of any client-supplied id: if this exact lap/session already
+// exists for this user within the last few minutes, it's a duplicate upload
+// (a retry loop, a double-launched app, anything) — reject it rather than
+// insert another row. This is the safety net of last resort, since it
+// doesn't trust the client to behave correctly at all.
+const DUPLICATE_WINDOW_MS = 10 * 60_000;
+
+async function findRecentDuplicateSession(params: {
+  userId: string;
+  trackId: string;
+  car: string;
+  type: string;
+  bestLap: string;
+  avgLap: string;
+  worstLap: string;
+}) {
+  const cutoff = new Date(Date.now() - DUPLICATE_WINDOW_MS);
+  const [existing] = await db
+    .select()
+    .from(sessionsTable)
+    .where(and(
+      eq(sessionsTable.userId, params.userId),
+      eq(sessionsTable.trackId, params.trackId),
+      eq(sessionsTable.car, params.car),
+      eq(sessionsTable.type, params.type),
+      eq(sessionsTable.bestLap, params.bestLap),
+      eq(sessionsTable.avgLap, params.avgLap),
+      eq(sessionsTable.worstLap, params.worstLap),
+      gte(sessionsTable.createdAt, cutoff),
+    ))
+    .limit(1);
+  return existing;
+}
+
+// A well-formed lap trace has at most a few thousand points (F1 25 sends
+// telemetry at 60Hz, downsampled client-side). A companion-app bug can
+// produce traces with duplicated, unbounded segments (e.g. from repeated
+// rewinds) that are large enough to crash the server on insert — clamp
+// defensively so a single bad upload can never take the whole API down.
+const MAX_TRACE_SAMPLES = 3000;
+
+function capTrace<T extends { trace?: unknown[] }>(laps: T[]): T[] {
+  for (const lap of laps) {
+    if (Array.isArray(lap.trace) && lap.trace.length > MAX_TRACE_SAMPLES) {
+      lap.trace = lap.trace.slice(0, MAX_TRACE_SAMPLES);
+    }
+  }
+  return laps;
 }
 
 function lapToSeconds(lap: string): number {
@@ -196,6 +273,21 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     maxRpm: r.maxRpm ?? null,
     topGear: r.topGear ?? null,
     fuelRemainingLaps: r.fuelRemainingLaps ?? null,
+    actualTyreCompound: r.actualTyreCompound ?? null,
+    tyreAgeLaps: r.tyreAgeLaps ?? null,
+    pitStops: r.pitStops ?? null,
+    fuelCapacity: r.fuelCapacity ?? null,
+    startingFuelKg: r.startingFuelKg ?? null,
+    engineMaxRpm: r.engineMaxRpm ?? null,
+    engineTemperature: r.engineTemperature ?? null,
+    vehicleFiaFlags: r.vehicleFiaFlags ?? null,
+    tyrePressureLive: r.tyrePressureLive ?? null,
+    floorDamage: r.floorDamage ?? null,
+    diffuserDamage: r.diffuserDamage ?? null,
+    sidepodDamage: r.sidepodDamage ?? null,
+    gearBoxDamage: r.gearBoxDamage ?? null,
+    engineDamage: r.engineDamage ?? null,
+    liveBrakeBias: r.liveBrakeBias ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -207,6 +299,12 @@ router.get("/companion/verify", requireApiKey, (_req: Request, res: Response) =>
 router.post("/companion/session", requireApiKey, async (req: Request, res: Response) => {
   try {
     const userId = (req as ApiKeyRequest).companionUserId;
+
+    if (isRateLimited(userId)) {
+      req.log.warn({ userId }, "companion/session rate limit exceeded");
+      res.status(429).json({ error: "Too many session uploads — please slow down." });
+      return;
+    }
 
     const body = req.body as {
       sessionType?: string;
@@ -259,6 +357,21 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       drsActivations?: number;
       maxRpm?: number;
       topGear?: number;
+      actualTyreCompound?: string;
+      tyreAgeLaps?: number;
+      pitStops?: number;
+      fuelCapacity?: number;
+      startingFuelKg?: number;
+      engineMaxRpm?: number;
+      engineTemperature?: number;
+      vehicleFiaFlags?: number;
+      tyrePressureLive?: [number, number, number, number];
+      floorDamage?: number;
+      diffuserDamage?: number;
+      sidepodDamage?: number;
+      gearBoxDamage?: number;
+      engineDamage?: number;
+      liveBrakeBias?: number;
     };
 
     if (!body.sessionType || !body.track || !body.car) {
@@ -266,7 +379,7 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       return;
     }
 
-    const laps: LapRecord[] = (body.laps ?? []).filter(l => l.time && l.time.trim() !== "");
+    const laps: LapRecord[] = capTrace((body.laps ?? []).filter(l => l.time && l.time.trim() !== ""));
 
     let bestLap = body.lapTime ?? "";
     let avgLap = "";
@@ -292,13 +405,29 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
 
     const sessionId = body.id ?? randomBytes(16).toString("hex");
     const sessionDate = body.date ?? new Date().toISOString().slice(0, 10);
+    const trackId = normalizeTrackId(body.track);
+
+    const duplicate = await findRecentDuplicateSession({
+      userId,
+      trackId,
+      car: body.car,
+      type: body.sessionType,
+      bestLap,
+      avgLap,
+      worstLap,
+    });
+    if (duplicate) {
+      req.log.warn({ userId, duplicateOf: duplicate.id, newId: sessionId }, "companion/session duplicate rejected");
+      res.status(201).json(serializeSession(duplicate));
+      return;
+    }
 
     try {
       await db.insert(sessionsTable).values({
         id: sessionId,
         userId,
         date: sessionDate,
-        trackId: normalizeTrackId(body.track),
+        trackId,
         car: body.car,
         type: body.sessionType,
         bestLap,
@@ -351,6 +480,21 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         drsActivations: body.drsActivations ?? null,
         maxRpm: body.maxRpm ?? null,
         topGear: body.topGear ?? null,
+        actualTyreCompound: body.actualTyreCompound ?? null,
+        tyreAgeLaps: body.tyreAgeLaps ?? null,
+        pitStops: body.pitStops ?? null,
+        fuelCapacity: body.fuelCapacity ?? null,
+        startingFuelKg: body.startingFuelKg ?? null,
+        engineMaxRpm: body.engineMaxRpm ?? null,
+        engineTemperature: body.engineTemperature ?? null,
+        vehicleFiaFlags: body.vehicleFiaFlags ?? null,
+        tyrePressureLive: body.tyrePressureLive ?? null,
+        floorDamage: body.floorDamage ?? null,
+        diffuserDamage: body.diffuserDamage ?? null,
+        sidepodDamage: body.sidepodDamage ?? null,
+        gearBoxDamage: body.gearBoxDamage ?? null,
+        engineDamage: body.engineDamage ?? null,
+        liveBrakeBias: body.liveBrakeBias ?? null,
       });
     } catch (insertErr: unknown) {
       const msg = insertErr instanceof Error ? insertErr.message : String(insertErr);

@@ -586,7 +586,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
       </div>
 
       {/* ── Rank + XP Progress Bar ──────────────────────────────────────── */}
-      <div className="card dash-rank-card" style={{ padding: '14px 20px', marginBottom: 12, border: `1px solid ${getRankColor(rankInfo.rank)}33` }}>
+      <div className="card dash-rank-card" style={{ padding: '14px 20px', marginBottom: 16, border: `1px solid ${getRankColor(rankInfo.rank)}33` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
@@ -627,7 +627,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── Last Session Summary ─────────────────────────────────────────── */}
       {lastSession && (
-        <div className="card" style={{ padding: '14px 20px', marginBottom: 12 }}>
+        <div className="card" style={{ padding: '14px 20px', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
             <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => setPage('sessions')}>View All</button>
@@ -658,7 +658,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
       {nextGoal && (
-        <div className="card dash-next-goal" style={{ padding: '14px 20px', marginBottom: 12, border: '1px solid rgba(0,210,190,0.25)' }}>
+        <div className="card dash-next-goal" style={{ padding: '14px 20px', marginBottom: 16, border: '1px solid rgba(0,210,190,0.25)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
             {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
@@ -721,7 +721,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
       </div>
 
       {/* ── Daily Challenge ─────────────────────────────────────────────── */}
-      <div className="card dash-challenge" style={{ padding: 0, marginBottom: 12, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
+      <div className="card dash-challenge" style={{ padding: 0, marginBottom: 16, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
         <div style={{ background: 'rgba(0,210,190,0.06)', padding: '12px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
@@ -763,7 +763,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── #10 Session Recommendation Engine ──────────────────────────── */}
       {recommendation && (
-        <div className="card dash-stat-hover" style={{ padding: '14px 20px', marginBottom: 12, border: '1px solid rgba(232,0,45,0.2)' }}>
+        <div className="card dash-stat-hover" style={{ padding: '14px 20px', marginBottom: 16, border: '1px solid rgba(232,0,45,0.2)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>Recommended Session</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
             {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
@@ -791,7 +791,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
       {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 20 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
           <div className="perf-snap-grid">
             {perfSnapshot.strongestTrack && (
@@ -841,7 +841,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
           ))}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
         {filteredBadges.map(a => {
           const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
           return (

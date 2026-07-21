@@ -57,4 +57,19 @@ export interface CompanionSessionRequest {
   maxRpm?: number;
   topGear?: number;
   fuelRemainingLaps?: number;
+  actualTyreCompound?: string;
+  tyreAgeLaps?: number;
+  pitStops?: number;
+  fuelCapacity?: number;
+  startingFuelKg?: number;
+  engineMaxRpm?: number;
+  engineTemperature?: number;
+  vehicleFiaFlags?: number;
+  tyrePressureLive?: number[];
+  floorDamage?: number;
+  diffuserDamage?: number;
+  sidepodDamage?: number;
+  gearBoxDamage?: number;
+  engineDamage?: number;
+  liveBrakeBias?: number;
 }

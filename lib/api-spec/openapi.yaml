@@ -912,6 +912,53 @@ components:
         fuelRemainingLaps:
           type: number
           nullable: true
+        actualTyreCompound:
+          type: string
+          nullable: true
+        tyreAgeLaps:
+          type: integer
+          nullable: true
+        pitStops:
+          type: integer
+          nullable: true
+        fuelCapacity:
+          type: number
+          nullable: true
+        startingFuelKg:
+          type: number
+          nullable: true
+        engineMaxRpm:
+          type: integer
+          nullable: true
+        engineTemperature:
+          type: integer
+          nullable: true
+        vehicleFiaFlags:
+          type: integer
+          nullable: true
+        tyrePressureLive:
+          type: array
+          items:
+            type: number
+          nullable: true
+        floorDamage:
+          type: integer
+          nullable: true
+        diffuserDamage:
+          type: integer
+          nullable: true
+        sidepodDamage:
+          type: integer
+          nullable: true
+        gearBoxDamage:
+          type: integer
+          nullable: true
+        engineDamage:
+          type: integer
+          nullable: true
+        liveBrakeBias:
+          type: integer
+          nullable: true
         createdAt:
           type: string
       required:
@@ -1500,6 +1547,38 @@ components:
           type: integer
         fuelRemainingLaps:
           type: number
+        actualTyreCompound:
+          type: string
+        tyreAgeLaps:
+          type: integer
+        pitStops:
+          type: integer
+        fuelCapacity:
+          type: number
+        startingFuelKg:
+          type: number
+        engineMaxRpm:
+          type: integer
+        engineTemperature:
+          type: integer
+        vehicleFiaFlags:
+          type: integer
+        tyrePressureLive:
+          type: array
+          items:
+            type: number
+        floorDamage:
+          type: integer
+        diffuserDamage:
+          type: integer
+        sidepodDamage:
+          type: integer
+        gearBoxDamage:
+          type: integer
+        engineDamage:
+          type: integer
+        liveBrakeBias:
+          type: integer
       required:
         - sessionType
         - track

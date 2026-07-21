@@ -64,5 +64,20 @@ export interface SessionRecord {
   maxRpm?: number | null;
   topGear?: number | null;
   fuelRemainingLaps?: number | null;
+  actualTyreCompound?: string | null;
+  tyreAgeLaps?: number | null;
+  pitStops?: number | null;
+  fuelCapacity?: number | null;
+  startingFuelKg?: number | null;
+  engineMaxRpm?: number | null;
+  engineTemperature?: number | null;
+  vehicleFiaFlags?: number | null;
+  tyrePressureLive?: number[] | null;
+  floorDamage?: number | null;
+  diffuserDamage?: number | null;
+  sidepodDamage?: number | null;
+  gearBoxDamage?: number | null;
+  engineDamage?: number | null;
+  liveBrakeBias?: number | null;
   createdAt: string;
 }

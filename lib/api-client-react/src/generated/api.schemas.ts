@@ -137,6 +137,21 @@ export interface SessionRecord {
   maxRpm?: number | null;
   topGear?: number | null;
   fuelRemainingLaps?: number | null;
+  actualTyreCompound?: string | null;
+  tyreAgeLaps?: number | null;
+  pitStops?: number | null;
+  fuelCapacity?: number | null;
+  startingFuelKg?: number | null;
+  engineMaxRpm?: number | null;
+  engineTemperature?: number | null;
+  vehicleFiaFlags?: number | null;
+  tyrePressureLive?: number[] | null;
+  floorDamage?: number | null;
+  diffuserDamage?: number | null;
+  sidepodDamage?: number | null;
+  gearBoxDamage?: number | null;
+  engineDamage?: number | null;
+  liveBrakeBias?: number | null;
   createdAt: string;
 }
 
@@ -373,6 +388,21 @@ export interface CompanionSessionRequest {
   maxRpm?: number;
   topGear?: number;
   fuelRemainingLaps?: number;
+  actualTyreCompound?: string;
+  tyreAgeLaps?: number;
+  pitStops?: number;
+  fuelCapacity?: number;
+  startingFuelKg?: number;
+  engineMaxRpm?: number;
+  engineTemperature?: number;
+  vehicleFiaFlags?: number;
+  tyrePressureLive?: number[];
+  floorDamage?: number;
+  diffuserDamage?: number;
+  sidepodDamage?: number;
+  gearBoxDamage?: number;
+  engineDamage?: number;
+  liveBrakeBias?: number;
 }
 
 export interface TrackNotesRecord {

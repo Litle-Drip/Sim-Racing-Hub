@@ -11,6 +11,7 @@ export interface PendingUpload {
 }
 
 export interface UploadPayload {
+  id: string;
   sessionType: string;
   track: string;
   car: string;
@@ -53,6 +54,21 @@ export interface UploadPayload {
   maxRpm?: number;
   topGear?: number;
   tyreCompound?: string;
+  actualTyreCompound?: string;
+  tyreAgeLaps?: number;
+  pitStops?: number;
+  fuelCapacity?: number;
+  startingFuelKg?: number;
+  engineMaxRpm?: number;
+  engineTemperature?: number;
+  vehicleFiaFlags?: number;
+  tyrePressureLive?: [number, number, number, number];
+  floorDamage?: number;
+  diffuserDamage?: number;
+  sidepodDamage?: number;
+  gearBoxDamage?: number;
+  engineDamage?: number;
+  liveBrakeBias?: number;
 }
 
 export interface UploadResult {
@@ -71,7 +87,20 @@ function loadPending(): PendingUpload[] {
   const p = pendingPath();
   if (!existsSync(p)) return [];
   try {
-    return JSON.parse(readFileSync(p, "utf-8")) as PendingUpload[];
+    const items = JSON.parse(readFileSync(p, "utf-8")) as PendingUpload[];
+    // Items queued before session ids existed have no payload.id, so the
+    // server can't dedupe them — every retry inserts a brand new row. Give
+    // each a stable id once, here, so from this point on they behave like
+    // any other upload: retried safely, never duplicated.
+    let backfilled = false;
+    for (const item of items) {
+      if (!item.payload.id) {
+        item.payload.id = randomId();
+        backfilled = true;
+      }
+    }
+    if (backfilled) savePending(items);
+    return items;
   } catch {
     return [];
   }
@@ -122,6 +151,7 @@ export class Uploader {
 
   sessionToPayload(session: SessionSnapshot): UploadPayload {
     return {
+      id: session.id,
       sessionType: session.sessionType,
       track: session.track,
       car: session.car,
@@ -164,6 +194,21 @@ export class Uploader {
       maxRpm: session.maxRpm,
       topGear: session.topGear,
       tyreCompound: session.tyreCompound,
+      actualTyreCompound: session.actualTyreCompound,
+      tyreAgeLaps: session.tyreAgeLaps,
+      pitStops: session.pitStops,
+      fuelCapacity: session.fuelCapacity,
+      startingFuelKg: session.startingFuelKg,
+      engineMaxRpm: session.engineMaxRpm,
+      engineTemperature: session.engineTemperature,
+      vehicleFiaFlags: session.vehicleFiaFlags,
+      tyrePressureLive: session.tyrePressureLive,
+      floorDamage: session.floorDamage,
+      diffuserDamage: session.diffuserDamage,
+      sidepodDamage: session.sidepodDamage,
+      gearBoxDamage: session.gearBoxDamage,
+      engineDamage: session.engineDamage,
+      liveBrakeBias: session.liveBrakeBias,
     };
   }
 
@@ -185,10 +230,14 @@ export class Uploader {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(30000),
       });
 
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      // 409 means a prior attempt with this same id already landed server-
+      // side (the request that "timed out" client-side actually succeeded,
+      // or a retry raced an earlier one) — the upload already achieved its
+      // goal, so treat it as success rather than retrying forever.
+      if (!resp.ok && resp.status !== 409) throw new Error(`HTTP ${resp.status}`);
 
       const best = bestLapTime(payload.laps);
       this.onUploadResult?.({
