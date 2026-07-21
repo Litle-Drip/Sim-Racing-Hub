@@ -295,6 +295,11 @@ export class SessionTracker {
   private weather = 0;
   private playerCarIdx = 255;
   private teamId = 253;
+  // True once the player's own car has been observed actually moving —
+  // guards against resolving car/team identity from Participants data
+  // seen while still in the garage / program-select screen (see
+  // handleParticipantsPacket).
+  private seenOnTrack = false;
 
   private currentLapNum = 0;
   private pendingLap: LapState | null = null;
@@ -477,6 +482,13 @@ export class SessionTracker {
   handleParticipantsPacket(data: { m_playerCarIndex?: number; m_participants?: Array<{ m_teamId?: number }> }): void {
     this.lastPacketTime = Date.now();
     if (data.m_playerCarIndex !== undefined) this.playerCarIdx = data.m_playerCarIndex;
+    // Garage/program-select screens (choosing a Practice program, watching a
+    // teammate, etc.) can transmit Participants data before the player's own
+    // car is actually the one being driven — seen live as m_playerCarIndex
+    // pointing at an unrelated grid slot (idx 21 of 22) whose team then got
+    // latched in for the rest of the session. Car identity is only
+    // meaningful once the player's own car is confirmed moving on track.
+    if (!this.seenOnTrack) return;
     if (data.m_participants && this.playerCarIdx < data.m_participants.length) {
       const raw = data.m_participants[this.playerCarIdx]?.m_teamId ?? 253;
       if (raw !== this.teamId) {
@@ -636,7 +648,10 @@ export class SessionTracker {
     const car = data.m_carTelemetryData[playerIdx];
     if (!car) return;
 
-    if (car.m_speed !== undefined) this.lastSpeed = car.m_speed;
+    if (car.m_speed !== undefined) {
+      this.lastSpeed = car.m_speed;
+      if (car.m_speed > 0) this.seenOnTrack = true;
+    }
     if (car.m_throttle !== undefined) this.lastThrottle = car.m_throttle;
     if (car.m_brake !== undefined) this.lastBrake = car.m_brake;
     if (car.m_gear !== undefined) this.lastGear = car.m_gear;
@@ -861,6 +876,7 @@ export class SessionTracker {
   // from every Session packet, including the one that triggers this reset,
   // so they self-correct without needing to be zeroed here).
   private resetTelemetryState(): void {
+    this.seenOnTrack = false;
     this.lastTyreCompound = 0;
     this.lastFuelRemaining = 0;
     this.lastTractionControl = 0;
