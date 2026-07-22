@@ -519,6 +519,138 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 /* =========================================================
+   LANDING PAGE
+   ========================================================= */
+
+.landing-page {
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.landing-nav-bar {
+  padding: 20px 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.landing-hero {
+  padding: 72px 48px 60px;
+  max-width: 1000px;
+}
+
+.landing-hero-headline {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 6.5vw, 80px);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.0;
+  color: var(--white);
+  text-transform: uppercase;
+  margin-bottom: 28px;
+}
+
+.landing-hero-headline .accent {
+  color: var(--red);
+}
+
+.landing-hero-sub {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--gray-light);
+  line-height: 1.75;
+  max-width: 500px;
+  margin-bottom: 8px;
+}
+
+.landing-hero-platform {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--gray);
+  margin-bottom: 40px;
+  letter-spacing: 0.04em;
+}
+
+.landing-cta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.landing-cta-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.landing-features {
+  padding: 0 48px 56px;
+  max-width: 1200px;
+}
+
+.landing-section-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin-bottom: 24px;
+}
+
+.landing-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--red);
+  padding: 24px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.landing-card:hover {
+  border-color: rgba(232,0,45,0.35);
+  box-shadow: 0 4px 28px rgba(0,0,0,0.5);
+}
+
+.landing-card-icon {
+  font-size: 20px;
+  margin-bottom: 14px;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.landing-card-title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--white);
+  margin-bottom: 8px;
+}
+
+.landing-card-desc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--gray-mid);
+  line-height: 1.65;
+}
+
+.landing-browse {
+  padding: 0 48px 52px;
+}
+
+.landing-footer {
+  padding: 22px 48px;
+  border-top: 1px solid var(--border);
+}
+
+/* =========================================================
    BUTTONS
    ========================================================= */
 
@@ -546,6 +678,7 @@ table { border-collapse: collapse; width: 100%; }
 
 .btn-primary:hover {
   background: #c5002a;
+  box-shadow: 0 0 18px rgba(232,0,45,0.38);
 }
 
 .btn-secondary {
@@ -2344,4 +2477,66 @@ table { border-collapse: collapse; width: 100%; }
 .engineer-data-pill--ready {
   border-color: rgba(0,210,190,0.35);
   background: rgba(0,210,190,0.06);
+}
+
+/* =========================================================
+   LANDING PAGE — MOBILE
+   ========================================================= */
+
+@media (max-width: 767px) {
+  .landing-nav-bar {
+    padding: 16px 20px;
+  }
+
+  .landing-hero {
+    padding: 48px 20px 40px;
+  }
+
+  .landing-hero-headline {
+    font-size: clamp(32px, 11vw, 56px);
+    margin-bottom: 20px;
+  }
+
+  .landing-hero-sub {
+    font-size: 15px;
+    max-width: 100%;
+  }
+
+  .landing-hero-platform {
+    margin-bottom: 32px;
+  }
+
+  .landing-cta-group {
+    align-items: stretch;
+  }
+
+  .landing-cta-group .btn {
+    min-width: 0 !important;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .landing-cta-row {
+    flex-direction: column;
+  }
+
+  .landing-features {
+    padding: 0 20px 40px;
+  }
+
+  .landing-features > div[style] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .landing-card {
+    padding: 18px;
+  }
+
+  .landing-browse {
+    padding: 0 20px 40px;
+  }
+
+  .landing-footer {
+    padding: 18px 20px;
+  }
 }

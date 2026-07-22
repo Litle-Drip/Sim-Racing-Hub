@@ -156,84 +156,82 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
   ];
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)' }}>
-      {/* Hero */}
-      <div style={{ padding: '80px 24px 60px', textAlign: 'center', maxWidth: 720, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 24 }}>
-          <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
-            <div style={{ width: 6, height: 12, background: 'var(--red)' }} />
-            <div style={{ width: 6, height: 20, background: 'var(--red)' }} />
-            <div style={{ width: 6, height: 28, background: 'var(--red)' }} />
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.12em', color: 'var(--white)', margin: 0 }}>
-            F1 SIM HUB
-          </h1>
+    <div className="landing-page dot-grid">
+      {/* Top bar */}
+      <div className="landing-nav-bar">
+        <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+          <div style={{ width: 4, height: 10, background: 'var(--red)' }} />
+          <div style={{ width: 4, height: 16, background: 'var(--red)' }} />
+          <div style={{ width: 4, height: 22, background: 'var(--red)' }} />
         </div>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.16em', color: 'var(--white)', textTransform: 'uppercase' }}>
+          F1 Sim Hub
+        </span>
+      </div>
 
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 16, lineHeight: 1.4 }}>
-          Your personal F1 sim racing companion
-        </h2>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--gray-light)', marginBottom: 8, lineHeight: 1.7, maxWidth: 560, margin: '0 auto 8px' }}>
+      {/* Hero */}
+      <div className="landing-hero">
+        <h1 className="landing-hero-headline">
+          Your Personal<br />
+          F1 Sim <span className="accent">Racing</span><br />
+          Companion
+        </h1>
+        <p className="landing-hero-sub">
           Log sessions, track your PBs, build and share setups, and master every circuit on the F1 25 calendar.
         </p>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', marginBottom: 36, lineHeight: 1.6 }}>
+        <p className="landing-hero-platform">
           For F1 25 on Xbox, PlayStation, and PC — wheel or controller.
         </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <button className="btn btn-primary" style={{ minWidth: 280, fontSize: 16, padding: '16px 28px' }} onClick={onGuest}>
-            Continue as Guest — No Sign Up Required
+        <div className="landing-cta-group">
+          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={onGuest}>
+            Continue as Guest — No Sign Up Required →
           </button>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" style={{ minWidth: 140, fontSize: 13 }} onClick={() => setLocation('/sign-up')}>
+          <div className="landing-cta-row">
+            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setLocation('/sign-up')}>
               Create Free Account
             </button>
-            <button className="btn btn-secondary" style={{ minWidth: 140, fontSize: 13 }} onClick={() => setLocation('/sign-in')}>
+            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setLocation('/sign-in')}>
               Sign In
             </button>
           </div>
         </div>
       </div>
 
-      {/* What You Get */}
-      <div style={{ padding: '48px 24px', maxWidth: 840, margin: '0 auto' }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gray-mid)', textAlign: 'center', marginBottom: 32 }}>
-          Everything you need to get faster
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
+      {/* Feature Cards */}
+      <div className="landing-features">
+        <div className="landing-section-label">Everything you need to get faster</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
           {features.map(f => (
-            <div key={f.title} className="card" style={{ padding: '20px', textAlign: 'left' }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>{f.icon}</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 6 }}>{f.title}</div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', lineHeight: 1.6 }}>{f.desc}</div>
+            <div key={f.title} className="landing-card">
+              <div className="landing-card-icon">{f.icon}</div>
+              <div className="landing-card-title">{f.title}</div>
+              <div className="landing-card-desc">{f.desc}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Public Links */}
-      <div style={{ padding: '32px 24px 48px', maxWidth: 840, margin: '0 auto', textAlign: 'center' }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 20 }}>
-          Browse without an account
-        </h3>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/setups')}>
+      {/* Browse Links */}
+      <div className="landing-browse">
+        <div className="landing-section-label">Browse without an account</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/setups')}>
             Community Setups
           </button>
-          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/tracks')}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/tracks')}>
             Circuit Guide
           </button>
-          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/leaderboard')}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/leaderboard')}>
             Leaderboard
           </button>
-          <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLocation('/download')}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/download')}>
             ↓ Download Companion App
           </button>
         </div>
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '24px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+      <div className="landing-footer">
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
           F1 Sim Hub — Built for the sim racing community. Not affiliated with Formula 1 or Codemasters.
         </p>
