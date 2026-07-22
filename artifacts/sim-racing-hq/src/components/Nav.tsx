@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones, Trophy } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -93,9 +93,12 @@ export default function Nav({ page, setPage }: NavProps) {
       <nav className={`nav-sidebar${open ? ' nav-sidebar--open' : ''}`}>
         <div className="nav-logo">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div className="nav-logo-title">F1 Sim Hub</div>
-              <div className="nav-logo-sub">Driver Dashboard</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Trophy size={18} style={{ color: 'var(--red)', flexShrink: 0 }} />
+              <div>
+                <div className="nav-logo-title">F1 Sim Hub</div>
+                <div className="nav-logo-sub">Driver Dashboard</div>
+              </div>
             </div>
             <button
               className="nav-close"
