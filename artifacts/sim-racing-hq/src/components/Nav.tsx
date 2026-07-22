@@ -3,7 +3,7 @@ import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Men
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { calculateStreak, calculateRank, getRankColor } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, estimateSeatTimeMinutes } from '../lib/engagement';
 
 interface NavProps {
   page: string;
@@ -35,10 +35,7 @@ export default function Nav({ page, setPage }: NavProps) {
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
 
-  const seatTimeHours = useMemo(() => {
-    const mins: Record<string, number> = { Practice: 30, Qualifying: 20, Race: 60, Hotlap: 15, 'Time Trial': 20 };
-    return Math.floor(sessions.reduce((a, s) => a + (mins[s.type] ?? 25), 0) / 60);
-  }, [sessions]);
+  const seatTimeHours = useMemo(() => Math.floor(estimateSeatTimeMinutes(sessions) / 60), [sessions]);
   const favTrack = useMemo(() => {
     if (sessions.length === 0) return null;
     const counts: Record<string, number> = {};

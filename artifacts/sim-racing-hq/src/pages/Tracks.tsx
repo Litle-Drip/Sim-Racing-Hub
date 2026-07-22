@@ -14,7 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CornerNote, SessionRecord, TrackDifficultyRecord } from '@workspace/api-client-react';
-import { lapToSeconds } from '../lib/storage';
+import { lapToSeconds, FOCUS_SESSION_KEY } from '../lib/storage';
 import { trackConsistency, TYRE_GUIDES } from '../lib/engagement';
 import { CIRCUIT_SCHOOL } from '../data/circuitSchool';
 
@@ -481,17 +481,26 @@ function TrackDetail({
 
       <div className="track-stats-row">
         {[
-          { label: 'PB Time', value: bestLap || '—', mono: true, sub: pbCar },
+          { label: 'PB Time', value: bestLap || '—', mono: true, sub: pbCar, onClick: pbSession ? () => {
+              sessionStorage.setItem(FOCUS_SESSION_KEY, pbSession.id);
+              window.dispatchEvent(new CustomEvent('nav', { detail: 'sessions' }));
+            } : undefined },
           { label: 'Best S1', value: bestS1 || '—', mono: true },
           { label: 'Best S2', value: bestS2 || '—', mono: true },
           { label: 'Best S3', value: bestS3 || '—', mono: true },
           { label: 'Consistency', value: consistency !== null ? `${consistency.toFixed(1)}%` : '—', mono: true },
           { label: 'Sessions', value: String(trackSessions.length), mono: false },
           { label: 'Last Driven', value: lastDriven || 'Never', mono: false },
-        ].map(({ label, value, mono, sub }) => (
-          <div key={label} className="track-stat">
+        ].map(({ label, value, mono, sub, onClick }) => (
+          <div
+            key={label}
+            className="track-stat"
+            onClick={onClick}
+            title={onClick ? 'View this session' : undefined}
+            style={onClick ? { cursor: 'pointer' } : undefined}
+          >
             <div className="track-stat-label">{label}</div>
-            <div className={`track-stat-value${!mono || value === '—' || value === 'Never' ? ' gray' : ''}`}>{value}</div>
+            <div className={`track-stat-value${!mono || value === '—' || value === 'Never' ? ' gray' : ''}`} style={onClick ? { textDecoration: 'underline', textUnderlineOffset: 3 } : undefined}>{value}</div>
             {sub && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{sub}</div>}
           </div>
         ))}

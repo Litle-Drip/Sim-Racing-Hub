@@ -55,6 +55,35 @@ export function trackConsistency(sessions: SessionRecord[], trackId: string): nu
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
+// ─── Seat Time ───────────────────────────────────────────────────────────────
+// Flat per-type minutes are only a fallback for sessions with no logged lap
+// data — whenever real lap times (or an avg lap x total laps) are available,
+// use those instead of guessing.
+
+const SESSION_TYPE_MINUTES: Record<string, number> = {
+  Practice: 30, Qualifying: 20, Race: 60, Hotlap: 15, 'Time Trial': 20,
+};
+
+export function estimateSessionMinutes(session: SessionRecord): number {
+  const lapSeconds: number[] = (session.laps ?? [])
+    .map((l: { time: string }) => lapToSeconds(l.time))
+    .filter((t: number): t is number => isFinite(t) && t > 0);
+  if (lapSeconds.length > 0) {
+    return lapSeconds.reduce((a: number, b: number) => a + b, 0) / 60;
+  }
+
+  const avg = lapToSeconds(session.avgLap ?? '');
+  if (isFinite(avg) && avg > 0 && session.totalLaps) {
+    return (avg * session.totalLaps) / 60;
+  }
+
+  return SESSION_TYPE_MINUTES[session.type] ?? 25;
+}
+
+export function estimateSeatTimeMinutes(sessions: SessionRecord[]): number {
+  return sessions.reduce((acc, s) => acc + estimateSessionMinutes(s), 0);
+}
+
 // ─── Driver Rank ─────────────────────────────────────────────────────────────
 
 export type DriverRank = 'Rookie' | 'Amateur' | 'Intermediate' | 'Expert' | 'Elite' | 'Pro';
