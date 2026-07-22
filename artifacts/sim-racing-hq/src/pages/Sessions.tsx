@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity, AlertTriangle, Timer, Trophy, CheckCircle2, Map } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -554,6 +554,22 @@ function computeGuestPBs(sessions: SessionRecord[]): SessionRecord[] {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+function SessionStatCard({ label, value, valueColor = 'var(--white)', icon }: { label: string; value: string; valueColor?: string; icon: React.ReactNode }) {
+  return (
+    <div className="stat-card" style={{ overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', bottom: -8, right: -8, width: 80, height: 80, opacity: 0.07, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {icon}
+      </div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 32, fontWeight: 700, color: valueColor, lineHeight: 1 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const qc = useQueryClient();
   const { data: apiSessions = [], isLoading: apiLoading } = useGetSessions(
@@ -575,6 +591,20 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const sessions: SessionRecord[] = isGuest ? guestSessions : (apiSessions as SessionRecord[]);
   const isLoading = isGuest ? false : apiLoading;
+
+  const statBestLap = useMemo(() => {
+    const withLap = sessions.filter(s => s.bestLap && s.bestLap.trim() !== '');
+    if (withLap.length === 0) return null;
+    return withLap.reduce((best, s) => secsFromLap(s.bestLap) < secsFromLap(best.bestLap) ? s : best);
+  }, [sessions]);
+
+  const statAvgConsistency = useMemo(() => {
+    const vals = sessions.map(s => sessionConsistency(s)).filter((v): v is number => v !== null);
+    if (vals.length === 0) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }, [sessions]);
+
+  const statTracksCovered = useMemo(() => new Set(sessions.map(s => s.trackId)).size, [sessions]);
 
   const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -926,6 +956,32 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
           </button>
         </div>
       </div>
+
+      {sessions.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+          <SessionStatCard
+            label="Total Sessions"
+            value={String(sessions.length)}
+            icon={<Timer style={{ width: '100%', height: '100%' }} />}
+          />
+          <SessionStatCard
+            label={statBestLap ? `Best Lap (${F1_TRACKS.find(t => t.id === statBestLap.trackId)?.short ?? statBestLap.trackId})` : 'Best Lap'}
+            value={statBestLap?.bestLap || '—'}
+            valueColor="var(--teal)"
+            icon={<Trophy style={{ width: '100%', height: '100%' }} />}
+          />
+          <SessionStatCard
+            label="Avg Consistency"
+            value={statAvgConsistency !== null ? `${statAvgConsistency.toFixed(1)}%` : '—'}
+            icon={<CheckCircle2 style={{ width: '100%', height: '100%' }} />}
+          />
+          <SessionStatCard
+            label="Tracks Covered"
+            value={`${statTracksCovered}/24`}
+            icon={<Map style={{ width: '100%', height: '100%' }} />}
+          />
+        </div>
+      )}
 
       {isGuest && (
         <div style={{ background: 'rgba(0,210,190,0.07)', border: '1px solid rgba(0,210,190,0.22)', borderRadius: 4, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
