@@ -958,7 +958,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       </div>
 
       {sessions.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+        <div className="stat-grid" style={{ marginBottom: 28 }}>
           <SessionStatCard
             label="Total Sessions"
             value={String(sessions.length)}
