@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser, useAuth } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { setAuthTokenGetter, createSession as apiCreateSessionRaw, getGetSessionsQueryKey } from '@workspace/api-client-react';
@@ -77,11 +77,11 @@ const clerkAppearance = {
   },
   elements: {
     rootBox: 'w-full flex justify-center',
-    cardBox: 'rounded-none w-[440px] max-w-full overflow-hidden',
-    card: '!shadow-none !border !border-[#2A2A2A] !bg-[#111111] !rounded-none',
+    cardBox: 'rounded-none w-[440px] max-w-full overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.55)]',
+    card: '!shadow-none !border !border-[#2A2A2A] !border-t-2 !border-t-[#E8002D] !bg-[#111111] !rounded-none !px-8 !py-8',
     footer: '!shadow-none !border-0 !bg-[#111111] !rounded-none',
-    headerTitle: { color: '#F0F0F0', fontWeight: '700' },
-    headerSubtitle: { color: '#BBBBBB' },
+    headerTitle: { color: '#F0F0F0', fontWeight: '700', fontSize: '22px' },
+    headerSubtitle: { color: '#BBBBBB', fontSize: '14px' },
     socialButtonsBlockButtonText: { color: '#E8E8E8', fontWeight: '600' },
     socialButtonsBlockButtonArrow: { color: '#E8E8E8' },
     formFieldLabel: { color: '#C8C8C8' },
@@ -91,8 +91,8 @@ const clerkAppearance = {
     identityPreviewEditButton: { color: '#E8002D' },
     formFieldSuccessText: { color: '#39B54A' },
     alertText: { color: '#F0F0F0' },
-    logoBox: 'mb-2',
-    logoImage: 'h-10',
+    logoBox: 'mb-4',
+    logoImage: 'h-12',
     socialButtons: 'grid grid-cols-2 gap-2',
     socialButtonsBlockButton: { backgroundColor: '#232323', border: '1px solid #3A3A3A', minHeight: '48px' },
     socialButtonsProviderIcon: { width: '20px', height: '20px' },
@@ -107,41 +107,55 @@ const clerkAppearance = {
   },
 };
 
-function SignInPage() {
+function AuthPageShell({ children }: { children: ReactNode }) {
   return (
-    <div style={{
+    <div className="dot-grid" style={{
       minHeight: '100dvh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       background: 'var(--bg)',
       padding: '16px',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 560,
+        height: 560,
+        background: 'radial-gradient(circle, var(--red-glow) 0%, transparent 70%)',
+        opacity: 0.45,
+        pointerEvents: 'none',
+      }} />
+      <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
+    </div>
+  );
+}
+
+function SignInPage() {
+  return (
+    <AuthPageShell>
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
       />
-    </div>
+    </AuthPageShell>
   );
 }
 
 function SignUpPage() {
   return (
-    <div style={{
-      minHeight: '100dvh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg)',
-      padding: '16px',
-    }}>
+    <AuthPageShell>
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
       />
-    </div>
+    </AuthPageShell>
   );
 }
 
