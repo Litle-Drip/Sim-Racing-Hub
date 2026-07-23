@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity, AlertTriangle, Timer, Trophy, CheckCircle2, Map } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, Activity, AlertTriangle, Timer, Trophy, CheckCircle2, Map, Fuel, Disc, Settings2, Thermometer, Gauge, BatteryCharging } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -139,13 +139,17 @@ function fiaFlagColor(flag: number): string {
   return FIA_FLAG_COLORS[flag] ?? 'var(--gray-light)';
 }
 
-function ExpandedGroup({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
+function ExpandedGroup({ label, show, icon: Icon, defaultOpen, children }: { label: string; show: boolean; icon: React.ComponentType<{ size?: number }>; defaultOpen?: boolean; children: React.ReactNode }) {
   if (!show) return null;
   return (
-    <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>{label}</div>
+    <details className="expanded-group" open={defaultOpen} style={{ gridColumn: '1 / -1' }}>
+      <summary className="expanded-group-summary">
+        <Icon size={13} />
+        <span>{label}</span>
+        <ChevronDown size={14} className="expanded-group-chevron" />
+      </summary>
       <div className="expanded-group-grid">{children}</div>
-    </div>
+    </details>
   );
 }
 
@@ -1057,7 +1061,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data-table sessions-table">
+          <table className="data-table sessions-table data-table--stack">
             <thead>
               <tr>
                 <th>Date</th>
@@ -1145,7 +1149,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
                           {!!s.position && <div className="expanded-item"><div className="expanded-label">Finish Position</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>P{s.position}</div></div>}
 
-                          <ExpandedGroup label="Fuel & Tyres" show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps || !!s.brakeTemps || !!s.tyreAgeLaps || !!s.actualTyreCompound || !!s.startingFuelKg || !!s.fuelCapacity || !!s.tyrePressureLive}>
+                          <ExpandedGroup label="Fuel & Tyres" icon={Fuel} defaultOpen show={!!s.fuelRemainingLaps || !!s.fuelInTank || !!s.tyreWear || !!s.tyreSurfaceTemps || !!s.brakeTemps || !!s.tyreAgeLaps || !!s.actualTyreCompound || !!s.startingFuelKg || !!s.fuelCapacity || !!s.tyrePressureLive}>
                             {!!s.fuelRemainingLaps && <div className="expanded-item"><div className="expanded-label">Fuel Remaining</div><div className="expanded-value">{s.fuelRemainingLaps.toFixed(1)} laps</div></div>}
                             {!!s.fuelInTank && <div className="expanded-item"><div className="expanded-label">Fuel in Tank</div><div className="expanded-value">{s.fuelInTank.toFixed(1)} kg</div></div>}
                             {!!s.startingFuelKg && <div className="expanded-item"><div className="expanded-label">Starting Fuel</div><div className="expanded-value">{s.startingFuelKg.toFixed(1)} kg</div></div>}
@@ -1158,7 +1162,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             {s.brakeTemps && <div className="expanded-item"><div className="expanded-label">Avg Brake Temp</div><div className="expanded-value">{Math.round(s.brakeTemps.reduce((a, b) => a + b, 0) / s.brakeTemps.length)}°C</div></div>}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Tyre Stints" show={!!s.tyreStints && s.tyreStints.length > 0}>
+                          <ExpandedGroup label="Tyre Stints" icon={Disc} defaultOpen show={!!s.tyreStints && s.tyreStints.length > 0}>
                             {s.tyreStints?.map((stint, i) => (
                               <div key={i} className="expanded-item">
                                 <div className="expanded-label">Stint {i + 1}</div>
@@ -1167,7 +1171,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             ))}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Car Setup" show={!!s.setupSnapshot || !!s.liveBrakeBias}>
+                          <ExpandedGroup label="Car Setup" icon={Settings2} defaultOpen show={!!s.setupSnapshot || !!s.liveBrakeBias}>
                             {!!s.setupSnapshot && (
                               <>
                                 <div className="expanded-item"><div className="expanded-label">Wing F/R</div><div className="expanded-value">{s.setupSnapshot.frontWing} / {s.setupSnapshot.rearWing}</div></div>
@@ -1183,7 +1187,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             {!!s.liveBrakeBias && <div className="expanded-item"><div className="expanded-label">Live Brake Bias</div><div className="expanded-value">{s.liveBrakeBias}%</div></div>}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Track Conditions" show={!!s.trackTemperature || !!s.airTemperature || !!s.safetyCarStatus || !!s.pitSpeedLimit || !!s.totalLaps || s.vehicleFiaFlags != null}>
+                          <ExpandedGroup label="Track Conditions" icon={Thermometer} show={!!s.trackTemperature || !!s.airTemperature || !!s.safetyCarStatus || !!s.pitSpeedLimit || !!s.totalLaps || s.vehicleFiaFlags != null}>
                             {(!!s.trackTemperature || !!s.airTemperature) && <div className="expanded-item"><div className="expanded-label">Track / Air Temp</div><div className="expanded-value">{s.trackTemperature ?? '—'}° / {s.airTemperature ?? '—'}°</div></div>}
                             {!!s.safetyCarStatus && <div className="expanded-item"><div className="expanded-label">Safety Car</div><div className="expanded-value">{safetyCarLabel(s.safetyCarStatus)}</div></div>}
                             {s.vehicleFiaFlags != null && s.vehicleFiaFlags > 0 && <div className="expanded-item"><div className="expanded-label">Flag</div><div className="expanded-value" style={{ color: fiaFlagColor(s.vehicleFiaFlags) }}>{fiaFlagLabel(s.vehicleFiaFlags)}</div></div>}
@@ -1191,7 +1195,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             {!!s.totalLaps && <div className="expanded-item"><div className="expanded-label">Total Laps</div><div className="expanded-value">{s.totalLaps}</div></div>}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Performance" show={!!s.topSpeedKph || !!s.avgThrottlePct || !!s.avgBrakePct || !!s.maxRpm || !!s.topGear || !!s.drsActivations || !!s.engineTemperature || !!s.engineMaxRpm || !!s.pitStops}>
+                          <ExpandedGroup label="Performance" icon={Gauge} show={!!s.topSpeedKph || !!s.avgThrottlePct || !!s.avgBrakePct || !!s.maxRpm || !!s.topGear || !!s.drsActivations || !!s.engineTemperature || !!s.engineMaxRpm || !!s.pitStops}>
                             {!!s.topSpeedKph && <div className="expanded-item"><div className="expanded-label">Top Speed</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{Math.round(s.topSpeedKph)} km/h</div></div>}
                             {(!!s.avgThrottlePct || !!s.avgBrakePct) && <div className="expanded-item"><div className="expanded-label">Avg Throttle / Brake</div><div className="expanded-value">{s.avgThrottlePct?.toFixed(0) ?? '—'}% / {s.avgBrakePct?.toFixed(0) ?? '—'}%</div></div>}
                             {!!s.maxRpm && <div className="expanded-item"><div className="expanded-label">Max RPM Reached</div><div className="expanded-value">{s.maxRpm.toLocaleString()}</div></div>}
@@ -1202,13 +1206,13 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                             {!!s.pitStops && <div className="expanded-item"><div className="expanded-label">Pit Stops</div><div className="expanded-value">{s.pitStops}</div></div>}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="ERS" show={!!s.ersEnergyStored || !!s.ersDeployedThisLap || !!s.ersDeployMode}>
+                          <ExpandedGroup label="ERS" icon={BatteryCharging} show={!!s.ersEnergyStored || !!s.ersDeployedThisLap || !!s.ersDeployMode}>
                             {!!s.ersDeployMode && <div className="expanded-item"><div className="expanded-label">Deploy Mode</div><div className="expanded-value">{ersModeLabel(s.ersDeployMode)}</div></div>}
                             {!!s.ersEnergyStored && <div className="expanded-item"><div className="expanded-label">Energy Stored</div><div className="expanded-value">{(s.ersEnergyStored / 1_000_000).toFixed(2)} MJ</div></div>}
                             {!!s.ersDeployedThisLap && <div className="expanded-item"><div className="expanded-label">Deployed This Lap</div><div className="expanded-value">{(s.ersDeployedThisLap / 1_000_000).toFixed(2)} MJ</div></div>}
                           </ExpandedGroup>
 
-                          <ExpandedGroup label="Damage" show={(!!s.wingDamage && (s.wingDamage.front > 0 || s.wingDamage.rear > 0)) || !!s.floorDamage || !!s.diffuserDamage || !!s.sidepodDamage || !!s.gearBoxDamage || !!s.engineDamage}>
+                          <ExpandedGroup label="Damage" icon={AlertTriangle} show={(!!s.wingDamage && (s.wingDamage.front > 0 || s.wingDamage.rear > 0)) || !!s.floorDamage || !!s.diffuserDamage || !!s.sidepodDamage || !!s.gearBoxDamage || !!s.engineDamage}>
                             {!!s.wingDamage?.front && <div className="expanded-item"><div className="expanded-label">Front Wing</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.wingDamage.front}%</div></div>}
                             {!!s.wingDamage?.rear && <div className="expanded-item"><div className="expanded-label">Rear Wing</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.wingDamage.rear}%</div></div>}
                             {!!s.floorDamage && <div className="expanded-item"><div className="expanded-label">Floor</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.floorDamage}%</div></div>}
