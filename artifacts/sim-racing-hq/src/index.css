@@ -2586,6 +2586,11 @@ table { border-collapse: collapse; width: 100%; }
     min-width: 0 !important;
     width: 100%;
     justify-content: center;
+    white-space: normal !important;
+    text-align: center;
+    padding: 14px 16px !important;
+    font-size: 12px !important;
+    line-height: 1.4;
   }
 
   .landing-cta-row {
