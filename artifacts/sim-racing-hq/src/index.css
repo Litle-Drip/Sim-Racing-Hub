@@ -305,13 +305,25 @@ table { border-collapse: collapse; width: 100%; }
   color: var(--red);
 }
 
-/* Hamburger — hidden on desktop */
-.nav-hamburger {
+/* Mobile top bar — hidden on desktop. A full-width solid strip so that
+   content scrolling underneath disappears behind a clean edge instead of
+   peeking out beside a small floating button. */
+.mobile-topbar {
   display: none;
   position: fixed;
-  top: calc(14px + var(--service-banner-height));
-  left: 14px;
+  top: var(--service-banner-height);
+  left: 0;
+  right: 0;
+  height: 52px;
   z-index: 200;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  padding: 0 14px;
+}
+
+.nav-hamburger {
+  display: none;
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--gray-light);
@@ -363,6 +375,10 @@ table { border-collapse: collapse; width: 100%; }
 
   .app-layout {
     overflow-x: hidden;
+  }
+
+  .mobile-topbar {
+    display: flex;
   }
 
   .nav-hamburger {
@@ -1046,6 +1062,55 @@ table { border-collapse: collapse; width: 100%; }
   gap: 14px 16px;
 }
 
+/* Each telemetry group (Fuel & Tyres, Car Setup, ERS, Damage, …) renders as
+   its own shaded, collapsible card instead of one continuous list — so a
+   session with lots of telemetry reads as distinct chunks, not a wall of
+   near-identical gray text. */
+.expanded-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 14px;
+}
+
+.expanded-group[open] {
+  padding-bottom: 14px;
+}
+
+.expanded-group-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray-light);
+  list-style: none;
+}
+
+.expanded-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.expanded-group-summary svg:first-child {
+  color: var(--teal);
+  flex-shrink: 0;
+}
+
+.expanded-group-chevron {
+  margin-left: auto;
+  color: var(--gray);
+  transition: transform 0.15s;
+}
+
+.expanded-group[open] .expanded-group-chevron {
+  transform: rotate(180deg);
+}
+
 .expanded-group-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1110,6 +1175,13 @@ table { border-collapse: collapse; width: 100%; }
   font-family: var(--font-body);
   font-size: 11px;
   color: var(--gray-mid);
+}
+
+/* Only the month-labels + grid scroll horizontally — the header/legend
+   above stays put. Scrollbar is thin so it doesn't add visual noise. */
+.heatmap-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .legend-dot {
@@ -2178,10 +2250,10 @@ table { border-collapse: collapse; width: 100%; }
    ========================================================= */
 
 @media (max-width: 767px) {
-  /* Layout: remove sidebar gap and add room for hamburger */
+  /* Layout: remove sidebar gap and add room for the mobile top bar */
   .main-content {
     margin-left: 0;
-    padding-top: 52px;
+    padding-top: calc(52px + var(--service-banner-height));
   }
 
   /* Page padding */
@@ -2214,10 +2286,10 @@ table { border-collapse: collapse; width: 100%; }
     font-size: 26px;
   }
 
-  /* Heatmap: allow horizontal scroll so it doesn't crush */
+  /* Heatmap: horizontal scroll now lives on .heatmap-scroll year-round,
+     just tighten the outer card padding on mobile */
   .heatmap-section {
     padding: 14px;
-    overflow-x: auto;
   }
 
   .heatmap-header {
@@ -2254,21 +2326,21 @@ table { border-collapse: collapse; width: 100%; }
     grid-template-columns: repeat(2, 1fr);
   }
 
-  /* Sessions table: stack into cards instead of horizontally-scrolling
-     columns — a table row's expanded detail panel otherwise renders at
-     desktop width and needs two-directional scrolling to read. */
-  .sessions-table thead {
+  /* Responsive tables (Sessions log + Dashboard Recent Sessions): stack
+     into cards instead of horizontally-scrolling columns — a dense
+     multi-column table otherwise needs sideways scrolling to read. */
+  .data-table--stack thead {
     display: none;
   }
 
-  .sessions-table,
-  .sessions-table tbody,
-  .sessions-table tr {
+  .data-table--stack,
+  .data-table--stack tbody,
+  .data-table--stack tr {
     display: block;
     width: 100%;
   }
 
-  .sessions-table tr:not(.expanded-row) {
+  .data-table--stack tr:not(.expanded-row) {
     display: flex;
     flex-wrap: wrap;
     border: 1px solid var(--border);
@@ -2277,7 +2349,7 @@ table { border-collapse: collapse; width: 100%; }
     padding: 4px 0;
   }
 
-  .sessions-table tr:not(.expanded-row) td {
+  .data-table--stack tr:not(.expanded-row) td {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -2286,7 +2358,7 @@ table { border-collapse: collapse; width: 100%; }
     box-sizing: border-box;
   }
 
-  .sessions-table tr:not(.expanded-row) td[data-label]:not([data-label=""])::before {
+  .data-table--stack tr:not(.expanded-row) td[data-label]:not([data-label=""])::before {
     content: attr(data-label);
     font-family: var(--font-display);
     font-size: 9px;
@@ -2296,7 +2368,7 @@ table { border-collapse: collapse; width: 100%; }
     color: var(--gray);
   }
 
-  .sessions-table tr:not(.expanded-row) td:last-child {
+  .data-table--stack tr:not(.expanded-row) td:last-child {
     flex: 1 1 100%;
     flex-direction: row;
     border-top: 1px solid var(--border);

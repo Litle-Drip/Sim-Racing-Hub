@@ -72,13 +72,15 @@ export default function Nav({ page, setPage }: NavProps) {
 
   return (
     <>
-      <button
-        className="nav-hamburger"
-        aria-label="Open navigation"
-        onClick={() => setOpen(true)}
-      >
-        <Menu size={20} />
-      </button>
+      <div className="mobile-topbar">
+        <button
+          className="nav-hamburger"
+          aria-label="Open navigation"
+          onClick={() => setOpen(true)}
+        >
+          <Menu size={20} />
+        </button>
+      </div>
 
       {open && (
         <div
