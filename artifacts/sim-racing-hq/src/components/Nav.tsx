@@ -111,9 +111,11 @@ export default function Nav({ page, setPage }: NavProps) {
             const isLocked = !user && authRequired;
             return (
               <li key={id}>
-                <div
+                <button
+                  type="button"
                   className={`nav-link${page === id ? ' active' : ''}${isLocked ? ' nav-link--locked' : ''}`}
                   onClick={() => navigate(id)}
+                  aria-current={page === id ? 'page' : undefined}
                   title={isLocked ? 'Sign in required' : undefined}
                   style={isLocked ? { opacity: 0.45 } : undefined}
                 >
@@ -122,14 +124,20 @@ export default function Nav({ page, setPage }: NavProps) {
                   {isLocked && (
                     <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--gray)' }}>🔒</span>
                   )}
-                </div>
+                </button>
               </li>
             );
           })}
         </ul>
 
         {/* Profile Card */}
-        <div className="nav-profile-card" onClick={() => navigate('account')} style={{ cursor: 'pointer' }}>
+        <button
+          type="button"
+          className="nav-profile-card"
+          onClick={() => navigate('account')}
+          aria-label={`Account — ${displayName}, ${rankInfo.rank}`}
+          style={{ cursor: 'pointer', textAlign: 'left', width: '100%' }}
+        >
           <div className="nav-profile-avatar-ring">
             <svg viewBox="0 0 36 36">
               <circle cx="18" cy="18" r="15" fill="none" stroke="var(--border)" strokeWidth="2" />
@@ -154,7 +162,7 @@ export default function Nav({ page, setPage }: NavProps) {
               {favTrack && <span style={{ display: 'block' }}>Fav: {favTrack}</span>}
             </div>
           </div>
-        </div>
+        </button>
 
         <div style={{
           padding: '6px 20px 14px',

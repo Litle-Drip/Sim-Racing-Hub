@@ -21,6 +21,8 @@ export function Toast({ message, onDone, duration = 3000, variant = 'success' }:
 
   return (
     <div
+      role={isError ? 'alert' : 'status'}
+      aria-live={isError ? 'assertive' : 'polite'}
       style={{
         position: 'fixed',
         bottom: 28,

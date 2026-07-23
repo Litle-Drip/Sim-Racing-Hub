@@ -109,6 +109,51 @@ a { color: inherit; text-decoration: none; }
 
 table { border-collapse: collapse; width: 100%; }
 
+/* Keyboard-only focus ring — visible for keyboard/AT users, absent for mouse.
+   The teal brand accent reads clearly on the near-black UI. Inputs keep their
+   existing red border-bottom; this outline is additive for keyboard focus. */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* Suppress the outline for pointer interactions so only keyboard focus shows. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip-to-content link — hidden until focused, then pinned top-left. */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 12px;
+  z-index: 10000;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border-radius: 0;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
 /* =========================================================
    LAYOUT
    ========================================================= */
@@ -175,6 +220,8 @@ table { border-collapse: collapse; width: 100%; }
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  text-align: left;
   padding: 12px 20px;
   cursor: pointer;
   font-family: var(--font-display);
@@ -2538,5 +2585,33 @@ table { border-collapse: collapse; width: 100%; }
 
   .landing-footer {
     padding: 18px 20px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   Respect the user's prefers-reduced-motion setting: stop the
+   looping/entrance animations and collapse transitions so the
+   UI is static for motion-sensitive users. (WCAG 2.3.3)
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .dash-rank-card,
+  .dash-badge.near,
+  .dash-fade-in,
+  .dash-cta-pulse,
+  .engineer-live-dot,
+  .engineer-typing-dot,
+  .engineer-cursor {
+    animation: none !important;
   }
 }

@@ -540,8 +540,9 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
 
   return (
     <div className="app-layout">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <Nav page={page} setPage={handleSetPage} />
-      <main className="main-content">
+      <main id="main-content" className="main-content">
         {renderPage()}
       </main>
       {showNudge && (
