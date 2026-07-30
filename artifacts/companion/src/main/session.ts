@@ -554,7 +554,7 @@ export class SessionTracker {
             lap: this.pendingLap.lapNum,
             time: msToLapTime(lastLapMs),
             s1, s2, s3,
-            tires: TYRE_NAMES[this.lastTyreCompound] ?? "Unknown",
+            tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
             penalty: penalties > 0 ? `${penalties}s` : "",
             trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
           };
@@ -977,7 +977,7 @@ export class SessionTracker {
       drsActivations: this.drsActivations || undefined,
       maxRpm: this.maxRpm || undefined,
       topGear: this.topGear || undefined,
-      tyreCompound: this.lastTyreCompound > 0 ? TYRE_NAMES[this.lastTyreCompound] : undefined,
+      tyreCompound: this.lastTyreCompound > 0 ? (TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`) : undefined,
       actualTyreCompound: this.lastActualTyreCompound > 0 ? (TYRE_ACTUAL_NAMES[this.lastActualTyreCompound] ?? `C${this.lastActualTyreCompound}`) : undefined,
       tyreAgeLaps: this.lastTyreAgeLaps || undefined,
       pitStops: this.lastPitStops || undefined,
