@@ -15,6 +15,7 @@ import {
 } from '../lib/engagement';
 import type { DriverRank } from '../lib/engagement';
 import { SessionDetailModal } from '../components/SessionDetail';
+import { Toast } from '../components/Toast';
 
 // Companion-app uploads and older imports use a wider variety of raw session
 // type strings than the SESSION_TYPES a driver picks from in the log form
@@ -34,10 +35,11 @@ function normalizeSessionType(raw: string): string {
 
 export default function Account({ setPage }: { setPage?: (p: string) => void }) {
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut, openUserProfile } = useClerk();
   const { data: sessions = [] } = useGetSessions();
   const { data: setups = [] } = useGetSetups();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const [toast, setToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
   const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
 
   const displayName = user?.firstName ?? user?.username ?? 'Driver';
@@ -365,7 +367,7 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
       )}
 
       {/* Public Profile Link */}
-      {user?.username && (
+      {user?.username ? (
         <div className="card" style={{ padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Public Profile</div>
@@ -376,10 +378,22 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
             style={{ fontSize: 11, padding: '5px 14px' }}
             onClick={() => {
               const url = `${window.location.origin}${basePath}/driver/${user.username}`;
-              navigator.clipboard.writeText(url).catch(() => {});
+              navigator.clipboard.writeText(url)
+                .then(() => setToast({ message: 'Link copied ✓' }))
+                .catch(() => setToast({ message: "Couldn't copy — copy it from the address bar instead.", variant: 'error' }));
             }}
           >
             Copy Link
+          </button>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Public Profile</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>Set a username to get a shareable profile page.</div>
+          </div>
+          <button className="btn btn-secondary" style={{ fontSize: 11, padding: '5px 14px' }} onClick={() => openUserProfile()}>
+            Set Username
           </button>
         </div>
       )}
@@ -391,7 +405,7 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
           <button
             className="btn btn-secondary"
             style={{ fontSize: 12 }}
-            onClick={() => user?.update && window.open('https://accounts.f1simhub.com/user', '_blank')}
+            onClick={() => openUserProfile()}
           >
             Manage Account
           </button>
@@ -407,6 +421,9 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
 
       {detailSession && (
         <SessionDetailModal session={detailSession} onClose={() => setDetailSession(null)} />
+      )}
+      {toast && (
+        <Toast message={toast.message} variant={toast.variant} onDone={() => setToast(null)} />
       )}
     </div>
   );
