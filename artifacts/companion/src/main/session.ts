@@ -227,6 +227,9 @@ const TYRE_ACTUAL_NAMES: Record<number, string> = {
 // sighting, only add entries here that have actually been observed —
 // guessing the rest mislabels drivers as a different team entirely
 // (this is exactly what caused a Mercedes car to show as "Ferrari '26").
+// An unmapped id falls through to `Team ${id}` (see flushSession) rather
+// than a guessed name, so an unconfirmed team shows up as a visible,
+// greppable anomaly instead of silently mislabeling as some other team.
 const TEAM_NAMES: Record<number, string> = {
   0: "Mercedes",
   1: "Ferrari",
@@ -936,7 +939,7 @@ export class SessionTracker {
       sessionUID: this.sessionUID!,
       sessionType: SESSION_TYPES[this.sessionType] ?? "Unknown",
       track: TRACK_NAMES[this.trackId] ?? `Track ${this.trackId}`,
-      car: TEAM_NAMES[this.teamId] ?? "My Team",
+      car: TEAM_NAMES[this.teamId] ?? `Team ${this.teamId}`,
       weather: WEATHER_NAMES[this.weather] ?? "Clear",
       laps: [...this.validLaps],
       fuelRemaining: this.lastFuelRemaining,
