@@ -24,7 +24,7 @@ import { SessionDetailModal } from '../components/SessionDetail';
 function normalizeSessionType(raw: string): string {
   const t = (raw || '').trim().toLowerCase();
   if (!t || t === 'unknown') return 'Other';
-  if (t.startsWith('practice')) return 'Practice';
+  if (t.includes('practice')) return 'Practice';
   if (t.startsWith('osq') || t.includes('shootout') || t.startsWith('qualifying')) return 'Qualifying';
   if (t.startsWith('race')) return 'Race';
   if (t.startsWith('hotlap')) return 'Hotlap';
@@ -267,7 +267,11 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
           <div className="card" style={{ padding: '16px 20px' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 10 }}>Session Types</div>
             {typeBreakdown.map(([type, count]) => (
-              <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontFamily: 'var(--font-body)', fontSize: 12 }}>
+              <div
+                key={type}
+                style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontFamily: 'var(--font-body)', fontSize: 12 }}
+                title={type === 'Other' ? 'Sessions with missing or unrecognized session-type data' : undefined}
+              >
                 <span style={{ color: 'var(--gray-light)' }}>{type}</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--white)' }}>{count}</span>
               </div>
