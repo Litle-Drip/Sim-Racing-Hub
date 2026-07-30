@@ -3,7 +3,8 @@ import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Men
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { calculateStreak, calculateRank, getRankColor, estimateSeatTimeMinutes } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, getRankProgress, estimateSeatTimeMinutes } from '../lib/engagement';
+import { useUnits } from '../lib/units';
 
 interface NavProps {
   page: string;
@@ -31,6 +32,7 @@ export default function Nav({ page, setPage }: NavProps) {
   const { data: sessions = [] } = useGetSessions();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
+  const { system, setSystem } = useUnits();
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
@@ -60,13 +62,7 @@ export default function Nav({ page, setPage }: NavProps) {
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
 
   // Rank progress for ring
-  const rankTiers = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'] as const;
-  const currentTierIdx = rankTiers.indexOf(rankInfo.rank as typeof rankTiers[number]);
-  const thresholds = [0, 30, 100, 200, 350, 500];
-  const nextTier = currentTierIdx < rankTiers.length - 1 ? rankTiers[currentTierIdx + 1] : null;
-  const progressToNext = nextTier
-    ? Math.max(0, Math.min(100, ((rankInfo.points - thresholds[currentTierIdx]) / (thresholds[currentTierIdx + 1] - thresholds[currentTierIdx])) * 100))
-    : 100;
+  const { pct: progressToNext } = getRankProgress(rankInfo);
   const ringCircum = 2 * Math.PI * 15;
   const ringOffset = ringCircum - (progressToNext / 100) * ringCircum;
 
@@ -161,6 +157,25 @@ export default function Nav({ page, setPage }: NavProps) {
         <div style={{
           padding: '6px 20px 14px',
         }}>
+          <div
+            className="units-toggle"
+            role="group"
+            aria-label="Unit system"
+            title="Switch speed/temperature units"
+          >
+            <button
+              className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
+              onClick={() => setSystem('us')}
+            >
+              🇺🇸 US <span className="units-toggle-sub">mph · °F</span>
+            </button>
+            <button
+              className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
+              onClick={() => setSystem('uk')}
+            >
+              🇬🇧 UK <span className="units-toggle-sub">mph · °C</span>
+            </button>
+          </div>
           <button
             onClick={toggleTheme}
             className="nav-footer-btn"

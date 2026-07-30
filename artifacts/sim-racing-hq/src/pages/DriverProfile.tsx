@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
-import { getRankColor } from '../lib/engagement';
+import { getRankColor, resolveRankTier } from '../lib/engagement';
 import type { RankInfo, Achievement } from '../lib/engagement';
 
 interface DriverPB {
@@ -54,26 +54,18 @@ export default function DriverProfile({ username }: { username: string }) {
   const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
   const trackFlag = (id: string) => F1_TRACKS.find(t => t.id === id)?.flag || '';
 
-  // Rank computed directly from aggregate public data — no synthetic session padding.
-  const RANK_TIERS = [
-    { rank: 'Pro' as const, min: 500 },
-    { rank: 'Elite' as const, min: 350 },
-    { rank: 'Expert' as const, min: 200 },
-    { rank: 'Intermediate' as const, min: 100 },
-    { rank: 'Amateur' as const, min: 30 },
-    { rank: 'Rookie' as const, min: 0 },
-  ];
-
+  // Rank computed directly from aggregate public data — no synthetic session
+  // padding, and no consistency-bonus term since that needs per-session avg
+  // lap data the public API doesn't return. Tier thresholds still come from
+  // the same RANK_TIERS as the authenticated Account/Dashboard/Nav so a
+  // driver's public rank never disagrees with what they see signed in.
   const rankInfo = useMemo((): RankInfo | null => {
     if (!driver) return null;
-    let points = Math.min(driver.sessions, 100);
+    let points = Math.min(driver.sessions, 150);
     points += driver.tracks * 5;
     points += driver.pbs.length * 3;
     if (driver.tracks >= 24) points += 50;
-    const tier = RANK_TIERS.find(t => points >= t.min) ?? RANK_TIERS[RANK_TIERS.length - 1];
-    const nextIdx = RANK_TIERS.indexOf(tier) - 1;
-    const next = nextIdx >= 0 ? RANK_TIERS[nextIdx] : null;
-    return { rank: tier.rank, points, nextRank: next?.rank ?? null, pointsToNext: next ? next.min - points : 0 };
+    return resolveRankTier(points);
   }, [driver]);
 
   // Achievements computed from known public aggregate data only (no fabricated sessions).

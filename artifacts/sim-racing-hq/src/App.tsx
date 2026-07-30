@@ -7,6 +7,7 @@ import { dark } from '@clerk/themes';
 import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
+import { UnitsProvider } from './lib/units';
 import Nav from './components/Nav';
 import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
@@ -549,7 +550,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'engineer': return <RaceEngineer />;
       case 'community': return <Community />;
       case 'companion': return <Companion />;
-      case 'account': return <Account />;
+      case 'account': return <Account setPage={handleSetPage} />;
       default: return <Dashboard setPage={handleSetPage} />;
     }
   };
@@ -733,7 +734,9 @@ export default function App() {
   return (
     <WouterRouter base={basePath}>
       <ServiceStatusBanner />
-      <ClerkProviderWithRoutes />
+      <UnitsProvider>
+        <ClerkProviderWithRoutes />
+      </UnitsProvider>
     </WouterRouter>
   );
 }

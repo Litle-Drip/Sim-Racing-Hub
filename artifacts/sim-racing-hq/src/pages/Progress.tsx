@@ -10,6 +10,7 @@ import { lapTimeDelta, sessionConsistency } from '../lib/engagement';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { EmptyState } from '../components/EmptyState';
 import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { useUnits } from '../lib/units';
 
 function formatLapTime(seconds: number): string {
   if (!isFinite(seconds) || seconds === 0) return '—';
@@ -47,6 +48,7 @@ function LapTooltip({ active, payload, label }: TooltipProps) {
 
 export default function Progress({ setPage }: { setPage?: (p: string) => void }) {
   const { data: allSessions = [] } = useGetSessions();
+  const { formatSpeed, formatTemp, convertSpeed, speedUnit } = useUnits();
   const [filterTrack, setFilterTrack] = useState(() => sessionStorage.getItem('progress-track') || '');
   const [filterCar, setFilterCar] = useState('');
 
@@ -90,6 +92,22 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
       });
   }, [filtered]);
 
+  const progressSummary = useMemo(() => {
+    if (progressionData.length < 2) return null;
+    const first = progressionData[0];
+    const currentPB = Math.min(...progressionData.map(d => d.lapSeconds));
+    const improvement = first.lapSeconds - currentPB;
+    const pbCount = progressionData.filter(d => d.isPB).length;
+    return {
+      firstLap: first.lapFormatted,
+      firstDate: first.date,
+      currentPB: formatLapTime(currentPB),
+      improvement,
+      sessions: progressionData.length,
+      pbCount,
+    };
+  }, [progressionData]);
+
   const varianceData = useMemo(() => {
     return filtered
       .filter(s => s.bestLap && s.bestLap.trim() !== '')
@@ -106,6 +124,10 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
       .filter(s => s.topSpeedKph && s.topSpeedKph > 0)
       .map(s => ({ date: s.date, topSpeedKph: s.topSpeedKph ?? 0 }));
   }, [filtered]);
+
+  const topSpeedChartData = useMemo(() => (
+    topSpeedData.map(d => ({ date: d.date, speed: convertSpeed(d.topSpeedKph) }))
+  ), [topSpeedData, convertSpeed]);
 
   const telemetryStats = useMemo(() => {
     const avgOf = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
@@ -176,12 +198,12 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
     ? Math.max(...varianceData.map(d => d.worst ?? d.best)) + 2
     : 100;
 
-  const minTopSpeedY = topSpeedData.length > 0
-    ? Math.min(...topSpeedData.map(d => d.topSpeedKph)) - 5
+  const minTopSpeedY = topSpeedChartData.length > 0
+    ? Math.min(...topSpeedChartData.map(d => d.speed)) - (speedUnit === 'mph' ? 3 : 5)
     : 0;
-  const maxTopSpeedY = topSpeedData.length > 0
-    ? Math.max(...topSpeedData.map(d => d.topSpeedKph)) + 5
-    : 350;
+  const maxTopSpeedY = topSpeedChartData.length > 0
+    ? Math.max(...topSpeedChartData.map(d => d.speed)) + (speedUnit === 'mph' ? 3 : 5)
+    : convertSpeed(350);
 
   return (
     <div className="page">
@@ -219,6 +241,28 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
 
       <div className="chart-section">
         <div className="section-title">PB Progression</div>
+        {progressSummary && (
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Current PB</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--teal)', fontWeight: 700, marginTop: 2 }}>{progressSummary.currentPB}</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Improved Since {progressSummary.firstDate}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: progressSummary.improvement > 0 ? 'var(--teal)' : 'var(--gray-mid)', fontWeight: 700, marginTop: 2 }}>
+                {progressSummary.improvement > 0 ? `-${progressSummary.improvement.toFixed(3)}s` : '—'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Sessions Logged</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--white)', fontWeight: 700, marginTop: 2 }}>{progressSummary.sessions}</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>PBs Set</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#FFF200', fontWeight: 700, marginTop: 2 }}>{progressSummary.pbCount}</div>
+            </div>
+          </div>
+        )}
         {!filterTrack ? (
           <div className="empty-state">
             <div className="empty-state-title">Select a Track to See PB Progression</div>
@@ -335,7 +379,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
       </div>
 
       <div className="chart-section">
-        <div className="section-title">Top Speed Progression</div>
+        <div className="section-title">Top Speed Progression{topSpeedData.length > 0 ? ` (${speedUnit})` : ''}</div>
         {!filterTrack ? (
           <div className="empty-state">
             <div className="empty-state-title">Select a Track</div>
@@ -348,7 +392,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={topSpeedData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
+            <LineChart data={topSpeedChartData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
               <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
@@ -367,10 +411,10 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
               <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
                 <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#00D2BE' }}>{Math.round(payload[0].value as number)} km/h</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#00D2BE' }}>{Math.round(payload[0].value as number)} {speedUnit}</div>
                 </div>
               ) : null} />
-              <Line type="monotone" dataKey="topSpeedKph" name="Top Speed" stroke="#00D2BE" strokeWidth={2} dot={{ r: 3, fill: '#00D2BE' }} />
+              <Line type="monotone" dataKey="speed" name="Top Speed" stroke="#00D2BE" strokeWidth={2} dot={{ r: 4, fill: '#00D2BE' }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -384,7 +428,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
             {telemetryStats.topSpeed > 0 && (
               <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Speed</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#00D2BE', fontWeight: 700 }}>{Math.round(telemetryStats.topSpeed)} km/h</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#00D2BE', fontWeight: 700 }}>{formatSpeed(telemetryStats.topSpeed)}</div>
               </div>
             )}
             {telemetryStats.avgTyreWear > 0 && (
@@ -396,7 +440,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
             {telemetryStats.avgTyreTemp > 0 && (
               <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Temp</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{Math.round(telemetryStats.avgTyreTemp)}°C</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{formatTemp(telemetryStats.avgTyreTemp)}</div>
               </div>
             )}
             {telemetryStats.totalDrs > 0 && (
@@ -426,7 +470,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
             {(telemetryStats.avgTrackTemp !== 0 || telemetryStats.avgAirTemp !== 0) && (
               <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Track / Air Temp</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{Math.round(telemetryStats.avgTrackTemp)}° / {Math.round(telemetryStats.avgAirTemp)}°</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{formatTemp(telemetryStats.avgTrackTemp)} / {formatTemp(telemetryStats.avgAirTemp)}</div>
               </div>
             )}
           </div>
