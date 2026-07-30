@@ -227,6 +227,9 @@ const TYRE_ACTUAL_NAMES: Record<number, string> = {
 // sighting, only add entries here that have actually been observed —
 // guessing the rest mislabels drivers as a different team entirely
 // (this is exactly what caused a Mercedes car to show as "Ferrari '26").
+// An unmapped id falls through to `Team ${id}` (see flushSession) rather
+// than a guessed name, so an unconfirmed team shows up as a visible,
+// greppable anomaly instead of silently mislabeling as some other team.
 const TEAM_NAMES: Record<number, string> = {
   0: "Mercedes",
   1: "Ferrari",
@@ -551,7 +554,7 @@ export class SessionTracker {
             lap: this.pendingLap.lapNum,
             time: msToLapTime(lastLapMs),
             s1, s2, s3,
-            tires: TYRE_NAMES[this.lastTyreCompound] ?? "Unknown",
+            tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
             penalty: penalties > 0 ? `${penalties}s` : "",
             trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
           };
@@ -936,7 +939,7 @@ export class SessionTracker {
       sessionUID: this.sessionUID!,
       sessionType: SESSION_TYPES[this.sessionType] ?? "Unknown",
       track: TRACK_NAMES[this.trackId] ?? `Track ${this.trackId}`,
-      car: TEAM_NAMES[this.teamId] ?? "My Team",
+      car: TEAM_NAMES[this.teamId] ?? `Team ${this.teamId}`,
       weather: WEATHER_NAMES[this.weather] ?? "Clear",
       laps: [...this.validLaps],
       fuelRemaining: this.lastFuelRemaining,
@@ -974,7 +977,7 @@ export class SessionTracker {
       drsActivations: this.drsActivations || undefined,
       maxRpm: this.maxRpm || undefined,
       topGear: this.topGear || undefined,
-      tyreCompound: this.lastTyreCompound > 0 ? TYRE_NAMES[this.lastTyreCompound] : undefined,
+      tyreCompound: this.lastTyreCompound > 0 ? (TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`) : undefined,
       actualTyreCompound: this.lastActualTyreCompound > 0 ? (TYRE_ACTUAL_NAMES[this.lastActualTyreCompound] ?? `C${this.lastActualTyreCompound}`) : undefined,
       tyreAgeLaps: this.lastTyreAgeLaps || undefined,
       pitStops: this.lastPitStops || undefined,
