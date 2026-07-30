@@ -99,8 +99,13 @@ export function estimateSeatTimeMinutes(sessions: SessionRecord[]): number {
 }
 
 // ─── Driver Rank ─────────────────────────────────────────────────────────────
+//
+// Single source of truth for rank tiers, thresholds, and colors — Nav,
+// Dashboard, and Account all read RANK_TIERS/getRankColor instead of keeping
+// their own copies, so a tier list change (like adding Legend/World
+// Champion below) can't silently drift out of sync between screens.
 
-export type DriverRank = 'Rookie' | 'Amateur' | 'Intermediate' | 'Expert' | 'Elite' | 'Pro';
+export type DriverRank = 'Rookie' | 'Amateur' | 'Intermediate' | 'Expert' | 'Elite' | 'Pro' | 'Legend' | 'World Champion';
 
 export interface RankInfo {
   rank: DriverRank;
@@ -109,13 +114,19 @@ export interface RankInfo {
   pointsToNext: number;
 }
 
-const RANK_THRESHOLDS: { rank: DriverRank; min: number }[] = [
-  { rank: 'Pro', min: 500 },
-  { rank: 'Elite', min: 350 },
-  { rank: 'Expert', min: 200 },
-  { rank: 'Intermediate', min: 100 },
-  { rank: 'Amateur', min: 30 },
+// Ascending order — the last entry is the ceiling. Pro (500) was previously
+// the top tier, which meant any driver with a few hundred logged sessions
+// maxed out and stopped seeing rank progress entirely. Legend and World
+// Champion give long-term players somewhere left to climb.
+export const RANK_TIERS: { rank: DriverRank; min: number }[] = [
   { rank: 'Rookie', min: 0 },
+  { rank: 'Amateur', min: 30 },
+  { rank: 'Intermediate', min: 100 },
+  { rank: 'Expert', min: 200 },
+  { rank: 'Elite', min: 350 },
+  { rank: 'Pro', min: 500 },
+  { rank: 'Legend', min: 800 },
+  { rank: 'World Champion', min: 1300 },
 ];
 
 const RANK_COLORS: Record<DriverRank, string> = {
@@ -125,37 +136,71 @@ const RANK_COLORS: Record<DriverRank, string> = {
   Expert: '#9C27B0',
   Elite: '#FF9800',
   Pro: '#E8002D',
+  Legend: '#FFD700',
+  'World Champion': '#00E5FF',
 };
 
 export function getRankColor(rank: DriverRank): string {
   return RANK_COLORS[rank];
 }
 
+/** Progress toward the next tier, derived the same way everywhere a rank progress bar is drawn. */
+export function getRankProgress(info: RankInfo): { currentMin: number; nextMin: number | null; pct: number } {
+  const currentTierIdx = RANK_TIERS.findIndex(t => t.rank === info.rank);
+  const currentMin = RANK_TIERS[currentTierIdx]?.min ?? 0;
+  const nextMin = info.nextRank ? RANK_TIERS.find(t => t.rank === info.nextRank)?.min ?? null : null;
+  const pct = nextMin !== null
+    ? Math.max(0, Math.min(100, ((info.points - currentMin) / (nextMin - currentMin)) * 100))
+    : 100;
+  return { currentMin, nextMin, pct };
+}
+
 export function calculateRank(sessions: SessionRecord[]): RankInfo {
   let points = 0;
-  // Sessions logged (1pt each, max 100)
-  points += Math.min(sessions.length, 100);
+  // Sessions logged (1pt each, max 150 — long-term activity keeps counting
+  // for longer before this term caps out).
+  points += Math.min(sessions.length, 150);
   // Tracks practiced (5pts each)
   const tracks = new Set(sessions.map(s => s.trackId));
   points += tracks.size * 5;
-  // PBs set (3pts each)
+  // PBs set (3pts each) — naturally self-limiting, since you can only PB
+  // once per track/car combination, so this is left uncapped.
   points += sessions.filter(s => s.isPB).length * 3;
-  // Consistency bonus: sessions with >96% consistency get 2pts each
-  sessions.forEach(s => {
+  // Consistency bonus: sessions with >96% consistency are worth 2pts each,
+  // capped at 20 qualifying sessions (40pts) so grinding easy hotlaps can't
+  // dwarf the session-count, track-coverage, and PB terms above — those
+  // reflect real breadth of play, this is meant as a bonus, not the driver.
+  const consistentSessions = sessions.filter(s => {
     const c = sessionConsistency(s);
-    if (c !== null && c > 96) points += 2;
-  });
+    return c !== null && c > 96;
+  }).length;
+  points += Math.min(consistentSessions, 20) * 2;
   // All 24 tracks bonus
   if (tracks.size >= 24) points += 50;
 
-  const tier = RANK_THRESHOLDS.find(t => points >= t.min) || RANK_THRESHOLDS[RANK_THRESHOLDS.length - 1];
-  const nextTierIdx = RANK_THRESHOLDS.indexOf(tier) - 1;
-  const nextTier = nextTierIdx >= 0 ? RANK_THRESHOLDS[nextTierIdx] : null;
+  return resolveRankTier(points);
+}
+
+/**
+ * Looks up which tier a raw point total falls into against RANK_TIERS.
+ * Split out from calculateRank so callers that can't build a full
+ * SessionRecord[] (e.g. the public driver profile, which only gets
+ * aggregate counts back from the API) still resolve rank against the same
+ * tier list instead of keeping their own copy that can drift out of sync.
+ */
+export function resolveRankTier(points: number): RankInfo {
+  let tier = RANK_TIERS[0];
+  for (const t of RANK_TIERS) {
+    if (points >= t.min) tier = t;
+    else break;
+  }
+  const tierIdx = RANK_TIERS.indexOf(tier);
+  const nextTier = tierIdx < RANK_TIERS.length - 1 ? RANK_TIERS[tierIdx + 1] : null;
 
   return {
     rank: tier.rank,
     points,
-    nextRank: nextTier?.rank || null,
+    nextRank: nextTier?.rank ?? null,
     pointsToNext: nextTier ? nextTier.min - points : 0,
   };
 }

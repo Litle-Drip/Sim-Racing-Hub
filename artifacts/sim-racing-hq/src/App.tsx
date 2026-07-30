@@ -550,7 +550,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'engineer': return <RaceEngineer />;
       case 'community': return <Community />;
       case 'companion': return <Companion />;
-      case 'account': return <Account />;
+      case 'account': return <Account setPage={handleSetPage} />;
       default: return <Dashboard setPage={handleSetPage} />;
     }
   };

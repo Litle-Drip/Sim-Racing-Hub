@@ -3,7 +3,7 @@ import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Men
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { calculateStreak, calculateRank, getRankColor, estimateSeatTimeMinutes } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, getRankProgress, estimateSeatTimeMinutes } from '../lib/engagement';
 import { useUnits } from '../lib/units';
 
 interface NavProps {
@@ -62,13 +62,7 @@ export default function Nav({ page, setPage }: NavProps) {
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
 
   // Rank progress for ring
-  const rankTiers = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'] as const;
-  const currentTierIdx = rankTiers.indexOf(rankInfo.rank as typeof rankTiers[number]);
-  const thresholds = [0, 30, 100, 200, 350, 500];
-  const nextTier = currentTierIdx < rankTiers.length - 1 ? rankTiers[currentTierIdx + 1] : null;
-  const progressToNext = nextTier
-    ? Math.max(0, Math.min(100, ((rankInfo.points - thresholds[currentTierIdx]) / (thresholds[currentTierIdx + 1] - thresholds[currentTierIdx])) * 100))
-    : 100;
+  const { pct: progressToNext } = getRankProgress(rankInfo);
   const ringCircum = 2 * Math.PI * 15;
   const ringOffset = ringCircum - (progressToNext / 100) * ringCircum;
 

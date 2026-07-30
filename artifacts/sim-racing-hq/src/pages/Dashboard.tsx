@@ -4,7 +4,7 @@ import type { SessionRecord } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
-import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, getRankProgress, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
 import { SessionDetailModal } from '../components/SessionDetail';
 
@@ -459,12 +459,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const userName = capitalize(rawName);
 
   // Rank progress bar
-  const rankTiers: DriverRank[] = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'];
-  const currentTierIdx = rankTiers.indexOf(rankInfo.rank);
   const nextTier = rankInfo.nextRank;
-  const progressToNext = nextTier
-    ? Math.max(0, Math.min(100, ((rankInfo.points - (currentTierIdx > 0 ? [0, 30, 100, 200, 350, 500][currentTierIdx] : 0)) / (rankInfo.pointsToNext + rankInfo.points - (currentTierIdx > 0 ? [0, 30, 100, 200, 350, 500][currentTierIdx] : 0))) * 100))
-    : 100;
+  const { pct: progressToNext } = getRankProgress(rankInfo);
 
   // #6 Next Goal
   const nextGoal = useMemo(() => {
