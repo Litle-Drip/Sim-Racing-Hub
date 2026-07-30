@@ -17,6 +17,7 @@ import type { CornerNote, SessionRecord, TrackDifficultyRecord } from '@workspac
 import { lapToSeconds } from '../lib/storage';
 import { trackConsistency, TYRE_GUIDES } from '../lib/engagement';
 import { CIRCUIT_SCHOOL } from '../data/circuitSchool';
+import { SessionDetailModal } from '../components/SessionDetail';
 
 const DIFFICULTY_LABELS = ['', 'Easy', 'Moderate', 'Tricky', 'Hard', 'Brutal'];
 
@@ -360,6 +361,7 @@ function TrackDetail({
   const qc = useQueryClient();
   const allSessions = sessions;
   const trackSessions = allSessions.filter(s => s.trackId === track.id);
+  const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
 
   const { data: trackNotesData } = useGetTrackNotes(track.id);
   const [notesToast, setNotesToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
@@ -606,7 +608,7 @@ function TrackDetail({
             </thead>
             <tbody>
               {[...trackSessions].sort((a,b) => b.date.localeCompare(a.date)).map(s => (
-                <tr key={s.id}>
+                <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => setDetailSession(s)} title="Click to view full session details">
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
                   <td>{s.car}</td>
                   <td>
@@ -620,6 +622,10 @@ function TrackDetail({
             </tbody>
           </table>
         </div>
+      )}
+
+      {detailSession && (
+        <SessionDetailModal session={detailSession} onClose={() => setDetailSession(null)} />
       )}
     </div>
   );

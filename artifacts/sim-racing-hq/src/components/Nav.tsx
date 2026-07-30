@@ -4,6 +4,7 @@ import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { calculateStreak, calculateRank, getRankColor } from '../lib/engagement';
+import { useUnits } from '../lib/units';
 
 interface NavProps {
   page: string;
@@ -31,6 +32,7 @@ export default function Nav({ page, setPage }: NavProps) {
   const { data: sessions = [] } = useGetSessions();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
+  const { system, setSystem } = useUnits();
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
@@ -159,6 +161,25 @@ export default function Nav({ page, setPage }: NavProps) {
         <div style={{
           padding: '6px 20px 14px',
         }}>
+          <div
+            className="units-toggle"
+            role="group"
+            aria-label="Unit system"
+            title="Switch speed/temperature units"
+          >
+            <button
+              className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
+              onClick={() => setSystem('us')}
+            >
+              🇺🇸 US <span className="units-toggle-sub">mph · °F</span>
+            </button>
+            <button
+              className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
+              onClick={() => setSystem('uk')}
+            >
+              🇬🇧 UK <span className="units-toggle-sub">mph · °C</span>
+            </button>
+          </div>
           <button
             onClick={toggleTheme}
             className="nav-footer-btn"

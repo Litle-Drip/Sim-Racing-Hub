@@ -12,6 +12,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES, getTypeBadgeClass } from '../data/f1Tracks';
+import { getDailyChallenge } from '../lib/engagement';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -206,7 +207,7 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
 
 export default function Community() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'setups' | 'sessions' | 'leaderboard'>('leaderboard');
+  const [tab, setTab] = useState<'setups' | 'sessions' | 'leaderboard' | 'challenges'>('leaderboard');
   const [filterTrack, setFilterTrack] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
@@ -312,41 +313,17 @@ export default function Community() {
     return { track, entries: challengeSessions, week };
   }, [sessions]);
 
+  const daily = useMemo(() => {
+    const today = getDailyChallenge();
+    const entries = sessions
+      .filter(s => s.trackId === today.track.id && s.car === today.car && s.date === today.date && s.bestLap && s.bestLap.trim() !== '')
+      .sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap))
+      .slice(0, 10);
+    return { ...today, entries };
+  }, [sessions]);
+
   return (
     <div className="page">
-      {/* Weekly Challenge */}
-      <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden', border: '1px solid rgba(232,0,45,0.3)' }}>
-        <div style={{ background: 'rgba(232,0,45,0.08)', padding: '14px 20px', borderBottom: '1px solid rgba(232,0,45,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)' }}>Weekly Challenge</span>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
-              {challenge.track.flag} Fastest Lap at {challenge.track.name}
-            </div>
-          </div>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-            Share a session at {challenge.track.short} to compete
-          </span>
-        </div>
-        {challenge.entries.length > 0 ? (
-          <div style={{ padding: '12px 20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {challenge.entries.map((s, i) => (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
-                  <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
-                  <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
-                  <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: '16px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-            No times submitted yet — be the first to set the pace!
-          </div>
-        )}
-      </div>
-
       <div className="page-header">
         <h1 className="page-title">Community</h1>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
@@ -354,13 +331,15 @@ export default function Community() {
             ? `${setups.length} shared setup${setups.length !== 1 ? 's' : ''}`
             : tab === 'sessions'
             ? `${sessions.length} shared session${sessions.length !== 1 ? 's' : ''}`
+            : tab === 'challenges'
+            ? `${daily.entries.length + challenge.entries.length} challenge entr${daily.entries.length + challenge.entries.length !== 1 ? 'ies' : 'y'}`
             : `${leaderboard.length} track${leaderboard.length !== 1 ? 's' : ''}`}
         </div>
       </div>
 
       {/* Tab switcher */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
-        {(['leaderboard', 'sessions', 'setups'] as const).map(t => (
+        {(['leaderboard', 'sessions', 'setups', 'challenges'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -378,7 +357,7 @@ export default function Community() {
               marginBottom: -1,
             }}
           >
-            {t === 'setups' ? 'Setups' : t === 'sessions' ? 'Sessions' : 'Leaderboard'}
+            {t === 'setups' ? 'Setups' : t === 'sessions' ? 'Sessions' : t === 'challenges' ? 'Challenges' : 'Leaderboard'}
           </button>
         ))}
       </div>
@@ -557,6 +536,76 @@ export default function Community() {
               </table>
             </div>
           )}
+        </>
+      )}
+
+      {tab === 'challenges' && (
+        <>
+          {/* Daily Challenge */}
+          <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
+            <div style={{ background: 'rgba(0,210,190,0.06)', padding: '14px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
+                  {daily.track.flag} {daily.track.name} — {daily.car}
+                </div>
+              </div>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+                Log today's session on Sessions → Start Challenge to compete
+              </span>
+            </div>
+            {daily.entries.length > 0 ? (
+              <div style={{ padding: '12px 20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {daily.entries.map((s, i) => (
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
+                      <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
+                      <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
+                      <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '16px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+                No times submitted today yet — be the first on the board.
+              </div>
+            )}
+          </div>
+
+          {/* Weekly Challenge */}
+          <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden', border: '1px solid rgba(232,0,45,0.3)' }}>
+            <div style={{ background: 'rgba(232,0,45,0.08)', padding: '14px 20px', borderBottom: '1px solid rgba(232,0,45,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)' }}>Weekly Challenge</span>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
+                  {challenge.track.flag} Fastest Lap at {challenge.track.name}
+                </div>
+              </div>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+                Share a session at {challenge.track.short} to compete
+              </span>
+            </div>
+            {challenge.entries.length > 0 ? (
+              <div style={{ padding: '12px 20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {challenge.entries.map((s, i) => (
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
+                      <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
+                      <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
+                      <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '16px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+                No times submitted yet — be the first to set the pace!
+              </div>
+            )}
+          </div>
         </>
       )}
 

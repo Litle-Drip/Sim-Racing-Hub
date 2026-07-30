@@ -4,8 +4,9 @@ import type { SessionRecord } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
-import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
+import { SessionDetailModal } from '../components/SessionDetail';
 
 const DIFF_COLORS: Record<string, string> = {
   Easy: '#4CAF50',
@@ -174,6 +175,14 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const { data: communitySessions = [] } = useGetCommunitySessions();
   const { user } = useUser();
   const [badgeTab, setBadgeTab] = useState('Skill');
+  const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
+
+  const startChallenge = () => {
+    try {
+      sessionStorage.setItem(PENDING_CHALLENGE_KEY, JSON.stringify({ trackId: daily.track.id, car: daily.car }));
+    } catch { /* ignore — Sessions page will just open the blank form */ }
+    setPage('sessions');
+  };
 
   const totalSessions = sessions.length;
   const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
@@ -627,10 +636,15 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── Last Session Summary ─────────────────────────────────────────── */}
       {lastSession && (
-        <div className="card" style={{ padding: '14px 20px', marginBottom: 16 }}>
+        <div
+          className="card dash-stat-hover"
+          style={{ padding: '14px 20px', marginBottom: 16, cursor: 'pointer' }}
+          onClick={() => setDetailSession(lastSession)}
+          title="Click to view full session details"
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
-            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => setPage('sessions')}>View All</button>
+            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div>
@@ -755,7 +769,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         )}
         <div style={{ padding: '8px 20px 12px', borderTop: '1px solid rgba(0,210,190,0.1)', textAlign: 'center' }}>
-          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={() => setPage('sessions')}>
+          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={startChallenge}>
             Start Challenge
           </button>
         </div>
@@ -957,7 +971,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
             </thead>
             <tbody>
               {recentWithDelta.map(s => (
-                <tr key={s.id}>
+                <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => setDetailSession(s)} title="Click to view full session details">
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
                   <td>{trackName(s.trackId)}</td>
                   <td style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
@@ -1038,6 +1052,10 @@ export default function Dashboard({ setPage }: DashboardProps) {
             ))}
           </div>
         </>
+      )}
+
+      {detailSession && (
+        <SessionDetailModal session={detailSession} onClose={() => setDetailSession(null)} />
       )}
     </div>
   );

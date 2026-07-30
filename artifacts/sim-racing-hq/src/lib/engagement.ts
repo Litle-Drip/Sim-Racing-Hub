@@ -6,9 +6,13 @@ import { lapToSeconds } from './storage';
 
 export type ChallengeDifficulty = 'Easy' | 'Medium' | 'Hard';
 
-export function getDailyChallenge() {
-  const today = new Date();
-  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+/** sessionStorage key used to hand off the Daily Challenge's track/car from
+ * the Dashboard's "Start Challenge" button to the Sessions page's log form —
+ * page switches in this app are plain state changes with no route params. */
+export const PENDING_CHALLENGE_KEY = 'f1simhub-pending-challenge';
+
+export function getDailyChallenge(forDate: Date = new Date()) {
+  const dayOfYear = Math.floor((forDate.getTime() - new Date(forDate.getFullYear(), 0, 0).getTime()) / 86400000);
   const trackIdx = dayOfYear % F1_TRACKS.length;
   const carIdx = Math.floor(dayOfYear / F1_TRACKS.length) % F1_25_CARS.length;
   const track = F1_TRACKS[trackIdx];
@@ -16,7 +20,17 @@ export function getDailyChallenge() {
   const easyTracks = ['monza', 'red_bull_ring', 'albert_park', 'bahrain'];
   const difficulty: ChallengeDifficulty = hardTracks.includes(track.id) ? 'Hard' : easyTracks.includes(track.id) ? 'Easy' : 'Medium';
   const xpReward = difficulty === 'Hard' ? 30 : difficulty === 'Medium' ? 20 : 10;
-  return { track, car: F1_25_CARS[carIdx], date: today.toISOString().slice(0, 10), difficulty, xpReward };
+  return { track, car: F1_25_CARS[carIdx], date: forDate.toISOString().slice(0, 10), difficulty, xpReward };
+}
+
+/** Whether a logged session happens to match that day's Daily Challenge (same track + car, on the challenge's date). */
+export function isDailyChallengeSession(session: Pick<SessionRecord, 'trackId' | 'car' | 'date'>): boolean {
+  if (!session.date) return false;
+  // Parsing as UTC noon avoids the date rolling back a day in negative-offset timezones.
+  const d = new Date(`${session.date}T12:00:00`);
+  if (isNaN(d.getTime())) return false;
+  const challenge = getDailyChallenge(d);
+  return session.trackId === challenge.track.id && session.car === challenge.car;
 }
 
 // ─── Streak ──────────────────────────────────────────────────────────────────
