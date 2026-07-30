@@ -91,6 +91,23 @@ jobs:
         with:
           name: companion-macos
           path: dist
+
+      # softprops/action-gh-release can only update a release if exactly one
+      # exists for the tag. Stale/duplicate releases (e.g. an orphaned draft
+      # left behind by an interrupted run) make it fail with
+      # "Validation Failed: already_exists" on tag_name when finalizing.
+      # Clear out anything already sitting on this tag before creating fresh.
+      - name: Remove stale releases for tag "main"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases" --paginate \
+            | jq -r '.[] | select(.tag_name == "main") | .id' \
+            | while read -r id; do
+                echo "Deleting stale release id $id"
+                gh api -X DELETE "repos/${{ github.repository }}/releases/$id"
+              done
+
       - name: Upload to GitHub release tagged "main"
         uses: softprops/action-gh-release@v2
         with:

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, FileText, Trash2, Share2, X, Flag, AlertTriangle, Timer, Trophy, CheckCircle2, Map } from 'lucide-react';
 import { Toast } from '../components/Toast';
 import { EmptyState } from '../components/EmptyState';
 import {
@@ -19,11 +19,11 @@ import { findDataIssues } from '../lib/dataCleanup';
 import {
   secsFromLap,
   validLaps,
-  LapTable,
   LapTelemetryModal,
   SessionDetailFields,
   type LapEntry,
 } from '../components/SessionDetail';
+import { FOCUS_SESSION_KEY } from '../lib/storage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -360,6 +360,22 @@ function computeGuestPBs(sessions: SessionRecord[]): SessionRecord[] {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+function SessionStatCard({ label, value, valueColor = 'var(--white)', icon }: { label: string; value: string; valueColor?: string; icon: React.ReactNode }) {
+  return (
+    <div className="stat-card" style={{ overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', bottom: -8, right: -8, width: 80, height: 80, opacity: 0.07, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {icon}
+      </div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 32, fontWeight: 700, color: valueColor, lineHeight: 1 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const qc = useQueryClient();
   const { data: apiSessions = [], isLoading: apiLoading } = useGetSessions(
@@ -381,6 +397,20 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const sessions: SessionRecord[] = isGuest ? guestSessions : (apiSessions as SessionRecord[]);
   const isLoading = isGuest ? false : apiLoading;
+
+  const statBestLap = useMemo(() => {
+    const withLap = sessions.filter(s => s.bestLap && s.bestLap.trim() !== '');
+    if (withLap.length === 0) return null;
+    return withLap.reduce((best, s) => secsFromLap(s.bestLap) < secsFromLap(best.bestLap) ? s : best);
+  }, [sessions]);
+
+  const statAvgConsistency = useMemo(() => {
+    const vals = sessions.map(s => sessionConsistency(s)).filter((v): v is number => v !== null);
+    if (vals.length === 0) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }, [sessions]);
+
+  const statTracksCovered = useMemo(() => new Set(sessions.map(s => s.trackId)).size, [sessions]);
 
   const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -565,6 +595,24 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const mostRecentId = useMemo(() => {
     if (sessions.length === 0) return null;
     return [...sessions].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0].id;
+  }, [sessions]);
+
+  // Jump-to-session handoff from other pages (e.g. Tracks' PB tile) — clear
+  // any active filters so the target session is guaranteed visible, expand
+  // its row, and scroll it into view.
+  useEffect(() => {
+    const focusId = sessionStorage.getItem(FOCUS_SESSION_KEY);
+    if (!focusId || sessions.length === 0) return;
+    sessionStorage.removeItem(FOCUS_SESSION_KEY);
+    if (!sessions.some(s => s.id === focusId)) return;
+    setFilterTrack('');
+    setFilterType('');
+    setFilterCar('');
+    setFilterConditions('');
+    setExpanded(focusId);
+    setTimeout(() => {
+      document.getElementById(`session-row-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
   }, [sessions]);
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -753,6 +801,32 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       </div>
 
+      {sessions.length > 0 && (
+        <div className="stat-grid" style={{ marginBottom: 28 }}>
+          <SessionStatCard
+            label="Total Sessions"
+            value={String(sessions.length)}
+            icon={<Timer style={{ width: '100%', height: '100%' }} />}
+          />
+          <SessionStatCard
+            label={statBestLap ? `Best Lap (${F1_TRACKS.find(t => t.id === statBestLap.trackId)?.short ?? statBestLap.trackId})` : 'Best Lap'}
+            value={statBestLap?.bestLap || '—'}
+            valueColor="var(--teal)"
+            icon={<Trophy style={{ width: '100%', height: '100%' }} />}
+          />
+          <SessionStatCard
+            label="Avg Consistency"
+            value={statAvgConsistency !== null ? `${statAvgConsistency.toFixed(1)}%` : '—'}
+            icon={<CheckCircle2 style={{ width: '100%', height: '100%' }} />}
+          />
+          <SessionStatCard
+            label="Tracks Covered"
+            value={`${statTracksCovered}/24`}
+            icon={<Map style={{ width: '100%', height: '100%' }} />}
+          />
+        </div>
+      )}
+
       {isGuest && (
         <div style={{ background: 'rgba(0,210,190,0.07)', border: '1px solid rgba(0,210,190,0.22)', borderRadius: 4, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
@@ -808,7 +882,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data-table sessions-table">
+          <table className="data-table sessions-table data-table--stack">
             <thead>
               <tr>
                 <th>Date</th>
@@ -828,7 +902,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
             <tbody>
               {filtered.map(s => (
                 <React.Fragment key={s.id}>
-                  <tr onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
+                  <tr id={`session-row-${s.id}`} onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
                     <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                       {s.date}
                       {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 10, marginTop: 1 }}>{localTimeStr(s.createdAt)}</div>}

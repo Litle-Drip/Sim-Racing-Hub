@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones, Trophy } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { calculateStreak, calculateRank, getRankColor } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, estimateSeatTimeMinutes } from '../lib/engagement';
 import { useUnits } from '../lib/units';
 
 interface NavProps {
@@ -37,10 +37,7 @@ export default function Nav({ page, setPage }: NavProps) {
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
 
-  const seatTimeHours = useMemo(() => {
-    const mins: Record<string, number> = { Practice: 30, Qualifying: 20, Race: 60, Hotlap: 15, 'Time Trial': 20 };
-    return Math.floor(sessions.reduce((a, s) => a + (mins[s.type] ?? 25), 0) / 60);
-  }, [sessions]);
+  const seatTimeHours = useMemo(() => Math.floor(estimateSeatTimeMinutes(sessions) / 60), [sessions]);
   const favTrack = useMemo(() => {
     if (sessions.length === 0) return null;
     const counts: Record<string, number> = {};
@@ -77,13 +74,15 @@ export default function Nav({ page, setPage }: NavProps) {
 
   return (
     <>
-      <button
-        className="nav-hamburger"
-        aria-label="Open navigation"
-        onClick={() => setOpen(true)}
-      >
-        <Menu size={20} />
-      </button>
+      <div className="mobile-topbar">
+        <button
+          className="nav-hamburger"
+          aria-label="Open navigation"
+          onClick={() => setOpen(true)}
+        >
+          <Menu size={20} />
+        </button>
+      </div>
 
       {open && (
         <div
@@ -95,9 +94,12 @@ export default function Nav({ page, setPage }: NavProps) {
       <nav className={`nav-sidebar${open ? ' nav-sidebar--open' : ''}`}>
         <div className="nav-logo">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div className="nav-logo-title">F1 Sim Hub</div>
-              <div className="nav-logo-sub">Driver Dashboard</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Trophy size={18} style={{ color: 'var(--red)', flexShrink: 0 }} />
+              <div>
+                <div className="nav-logo-title">F1 Sim Hub</div>
+                <div className="nav-logo-sub">Driver Dashboard</div>
+              </div>
             </div>
             <button
               className="nav-close"

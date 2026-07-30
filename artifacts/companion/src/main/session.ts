@@ -213,11 +213,20 @@ const TYRE_ACTUAL_NAMES: Record<number, string> = {
 };
 
 // Base ids confirmed against the current F1 25 team roster (AlphaTauri
-// rebranded to RB, Alfa Romeo rebranded to Sauber). F1 25's "2026 Season
-// Pack" adds alternate-livery variants of each team at a fixed offset from
-// its base id — 185 for '24 retro liveries, 220 for 2026-spec concept
-// liveries — confirmed live via a diagnostic log showing raw m_teamId=228
-// (=8+220) for a McLaren car driven in the 2026 content.
+// rebranded to RB, Alfa Romeo rebranded to Sauber). The '24 retro-livery
+// block (185-194) is a genuine fixed +185-per-team offset, confirmed
+// working across many sessions.
+//
+// The 2026-content block is NOT a uniform offset — that was wrongly
+// inferred from a single McLaren sighting (228 = 8 + 220) and then
+// extrapolated to the rest of the roster. A second data point disproved
+// it: Red Bull (base id 2) came back as raw 232, not 222. Likely cause is
+// the 2026 season adding an 11th team (Cadillac), which shifts the whole
+// block's internal ordering away from the old base-id order. Until each
+// team's real 2026 id is independently confirmed via a diagnostic log
+// sighting, only add entries here that have actually been observed —
+// guessing the rest mislabels drivers as a different team entirely
+// (this is exactly what caused a Mercedes car to show as "Ferrari '26").
 const TEAM_NAMES: Record<number, string> = {
   0: "Mercedes",
   1: "Ferrari",
@@ -241,16 +250,8 @@ const TEAM_NAMES: Record<number, string> = {
   192: "Haas '24",
   193: "McLaren '24",
   194: "Sauber '24",
-  220: "Mercedes '26",
-  221: "Ferrari '26",
-  222: "Red Bull Racing '26",
-  223: "Williams '26",
-  224: "Aston Martin '26",
-  225: "Alpine '26",
-  226: "RB '26",
-  227: "Haas '26",
-  228: "McLaren '26",
-  229: "Sauber '26",
+  228: "McLaren '26", // confirmed live, 2026-07-21
+  232: "Red Bull Racing '26", // confirmed live, 2026-07-21
   253: "My Team",
 };
 
@@ -294,6 +295,11 @@ export class SessionTracker {
   private weather = 0;
   private playerCarIdx = 255;
   private teamId = 253;
+  // True once the player's own car has been observed actually moving —
+  // guards against resolving car/team identity from Participants data
+  // seen while still in the garage / program-select screen (see
+  // handleParticipantsPacket).
+  private seenOnTrack = false;
 
   private currentLapNum = 0;
   private pendingLap: LapState | null = null;
@@ -476,6 +482,13 @@ export class SessionTracker {
   handleParticipantsPacket(data: { m_playerCarIndex?: number; m_participants?: Array<{ m_teamId?: number }> }): void {
     this.lastPacketTime = Date.now();
     if (data.m_playerCarIndex !== undefined) this.playerCarIdx = data.m_playerCarIndex;
+    // Garage/program-select screens (choosing a Practice program, watching a
+    // teammate, etc.) can transmit Participants data before the player's own
+    // car is actually the one being driven — seen live as m_playerCarIndex
+    // pointing at an unrelated grid slot (idx 21 of 22) whose team then got
+    // latched in for the rest of the session. Car identity is only
+    // meaningful once the player's own car is confirmed moving on track.
+    if (!this.seenOnTrack) return;
     if (data.m_participants && this.playerCarIdx < data.m_participants.length) {
       const raw = data.m_participants[this.playerCarIdx]?.m_teamId ?? 253;
       if (raw !== this.teamId) {
@@ -635,7 +648,10 @@ export class SessionTracker {
     const car = data.m_carTelemetryData[playerIdx];
     if (!car) return;
 
-    if (car.m_speed !== undefined) this.lastSpeed = car.m_speed;
+    if (car.m_speed !== undefined) {
+      this.lastSpeed = car.m_speed;
+      if (car.m_speed > 0) this.seenOnTrack = true;
+    }
     if (car.m_throttle !== undefined) this.lastThrottle = car.m_throttle;
     if (car.m_brake !== undefined) this.lastBrake = car.m_brake;
     if (car.m_gear !== undefined) this.lastGear = car.m_gear;
@@ -860,6 +876,7 @@ export class SessionTracker {
   // from every Session packet, including the one that triggers this reset,
   // so they self-correct without needing to be zeroed here).
   private resetTelemetryState(): void {
+    this.seenOnTrack = false;
     this.lastTyreCompound = 0;
     this.lastFuelRemaining = 0;
     this.lastTractionControl = 0;
