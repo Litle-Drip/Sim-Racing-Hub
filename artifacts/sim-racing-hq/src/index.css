@@ -1754,7 +1754,9 @@ table { border-collapse: collapse; width: 100%; }
 }
 
 .setup-card-header {
-  padding: 16px 20px;
+  /* Extra right padding keeps the tag badge clear of the absolutely
+     positioned selection checkbox (top:14/right:14, ~30px wide zone). */
+  padding: 16px 40px 16px 20px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: flex-start;
@@ -1814,6 +1816,7 @@ table { border-collapse: collapse; width: 100%; }
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

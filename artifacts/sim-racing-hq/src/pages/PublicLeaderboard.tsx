@@ -77,7 +77,7 @@ export default function PublicLeaderboard({ onBack }: { onBack?: () => void }) {
                       <tr key={s.id}>
                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: idx === 0 ? 'var(--teal)' : 'var(--gray-mid)' }}>{idx + 1}</td>
                         <td><span className={idx === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span></td>
-                        <td style={{ fontFamily: 'var(--font-body)' }}>{s.authorName}</td>
+                        <td style={{ fontFamily: 'var(--font-body)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{s.authorName}</td>
                         <td>{s.car}</td>
                         <td>{s.platform || '—'}</td>
                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
