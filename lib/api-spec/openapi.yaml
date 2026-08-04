@@ -22,6 +22,8 @@ tags:
     description: Community setup sharing operations
   - name: companion
     description: Companion app API key and session upload
+  - name: rivalChallenges
+    description: Head-to-head time trial / race challenge operations
 paths:
   /healthz:
     get:
@@ -491,6 +493,119 @@ paths:
           $ref: "#/components/responses/NotFound"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /rival-challenges:
+    get:
+      operationId: getRivalChallenges
+      tags: [rivalChallenges]
+      summary: Get all rival challenges the current user sent or received
+      responses:
+        "200":
+          description: List of rival challenges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RivalChallengeRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createRivalChallenge
+      tags: [rivalChallenges]
+      summary: Challenge another user to beat one of your sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRivalChallengeRequest"
+      responses:
+        "201":
+          description: Rival challenge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RivalChallengeRecord"
+        "400":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rival-challenges/lookup-user:
+    get:
+      operationId: lookupRivalChallengeUser
+      tags: [rivalChallenges]
+      summary: Look up a user by username to challenge them
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RivalChallengeUserLookup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rival-challenges/{id}:
+    delete:
+      operationId: cancelRivalChallenge
+      tags: [rivalChallenges]
+      summary: Cancel a pending rival challenge you created
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Rival challenge cancelled
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rival-challenges/{id}/attempt:
+    post:
+      operationId: submitRivalChallengeAttempt
+      tags: [rivalChallenges]
+      summary: Submit your session as your attempt at a rival challenge
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitRivalChallengeAttemptRequest"
+      responses:
+        "200":
+          description: Attempt submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RivalChallengeRecord"
+        "400":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /track-notes/{trackId}:
     get:
@@ -1662,6 +1777,131 @@ components:
         - linearity
         - steeringRange
         - notes
+
+    RivalChallengeParticipant:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        isMe:
+          type: boolean
+      required:
+        - userId
+        - name
+        - isMe
+
+    RivalChallengeSessionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        bestLap:
+          type: string
+        avgLap:
+          type: string
+        s1:
+          type: string
+        s2:
+          type: string
+        s3:
+          type: string
+        raceTimeSeconds:
+          type: number
+          nullable: true
+      required:
+        - id
+        - date
+        - bestLap
+        - avgLap
+        - s1
+        - s2
+        - s3
+
+    RivalChallengeRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        trackId:
+          type: string
+        car:
+          type: string
+        lapCount:
+          type: integer
+        message:
+          type: string
+        createdAt:
+          type: string
+        completedAt:
+          type: string
+          nullable: true
+        creator:
+          $ref: "#/components/schemas/RivalChallengeParticipant"
+        opponent:
+          $ref: "#/components/schemas/RivalChallengeParticipant"
+        creatorSession:
+          $ref: "#/components/schemas/RivalChallengeSessionSummary"
+        opponentSession:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/RivalChallengeSessionSummary"
+        winnerUserId:
+          type: string
+          nullable: true
+      required:
+        - id
+        - status
+        - trackId
+        - car
+        - lapCount
+        - message
+        - createdAt
+        - creator
+        - opponent
+        - creatorSession
+
+    CreateRivalChallengeRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        opponentUsername:
+          type: string
+        lapCount:
+          type: integer
+        message:
+          type: string
+      required:
+        - sessionId
+        - opponentUsername
+
+    SubmitRivalChallengeAttemptRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+      required:
+        - sessionId
+
+    RivalChallengeUserLookup:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+      required:
+        - userId
+        - name
 
     CreateHardwareRequest:
       type: object

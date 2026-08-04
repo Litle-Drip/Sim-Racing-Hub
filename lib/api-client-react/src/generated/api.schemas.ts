@@ -434,6 +434,56 @@ export interface HardwareRecord {
   notes: string;
 }
 
+export interface RivalChallengeParticipant {
+  userId: string;
+  name: string;
+  isMe: boolean;
+}
+
+export interface RivalChallengeSessionSummary {
+  id: string;
+  date: string;
+  bestLap: string;
+  avgLap: string;
+  s1: string;
+  s2: string;
+  s3: string;
+  raceTimeSeconds?: number | null;
+}
+
+export interface RivalChallengeRecord {
+  id: string;
+  status: string;
+  trackId: string;
+  car: string;
+  lapCount: number;
+  message: string;
+  createdAt: string;
+  completedAt?: string | null;
+  creator: RivalChallengeParticipant;
+  opponent: RivalChallengeParticipant;
+  creatorSession: RivalChallengeSessionSummary;
+  opponentSession?: RivalChallengeSessionSummary | null;
+  winnerUserId?: string | null;
+}
+
+export interface CreateRivalChallengeRequest {
+  sessionId: string;
+  opponentUsername: string;
+  lapCount?: number;
+  message?: string;
+}
+
+export interface SubmitRivalChallengeAttemptRequest {
+  sessionId: string;
+}
+
+export interface RivalChallengeUserLookup {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+}
+
 export interface CreateHardwareRequest {
   id: string;
   label: string;
@@ -471,5 +521,9 @@ trackId?: string;
 car?: string;
 tag?: string;
 gameVersion?: string;
+};
+
+export type LookupRivalChallengeUserParams = {
+username: string;
 };
 
