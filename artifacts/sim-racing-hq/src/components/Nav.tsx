@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones, Trophy } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { calculateStreak, calculateRank, getRankColor } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, getRankProgress, estimateSeatTimeMinutes } from '../lib/engagement';
+import { useUnits } from '../lib/units';
 
 interface NavProps {
   page: string;
@@ -31,14 +32,12 @@ export default function Nav({ page, setPage }: NavProps) {
   const { data: sessions = [] } = useGetSessions();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
+  const { system, setSystem } = useUnits();
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
 
-  const seatTimeHours = useMemo(() => {
-    const mins: Record<string, number> = { Practice: 30, Qualifying: 20, Race: 60, Hotlap: 15, 'Time Trial': 20 };
-    return Math.floor(sessions.reduce((a, s) => a + (mins[s.type] ?? 25), 0) / 60);
-  }, [sessions]);
+  const seatTimeHours = useMemo(() => Math.floor(estimateSeatTimeMinutes(sessions) / 60), [sessions]);
   const favTrack = useMemo(() => {
     if (sessions.length === 0) return null;
     const counts: Record<string, number> = {};
@@ -63,25 +62,21 @@ export default function Nav({ page, setPage }: NavProps) {
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
 
   // Rank progress for ring
-  const rankTiers = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'] as const;
-  const currentTierIdx = rankTiers.indexOf(rankInfo.rank as typeof rankTiers[number]);
-  const thresholds = [0, 30, 100, 200, 350, 500];
-  const nextTier = currentTierIdx < rankTiers.length - 1 ? rankTiers[currentTierIdx + 1] : null;
-  const progressToNext = nextTier
-    ? Math.max(0, Math.min(100, ((rankInfo.points - thresholds[currentTierIdx]) / (thresholds[currentTierIdx + 1] - thresholds[currentTierIdx])) * 100))
-    : 100;
+  const { pct: progressToNext } = getRankProgress(rankInfo);
   const ringCircum = 2 * Math.PI * 15;
   const ringOffset = ringCircum - (progressToNext / 100) * ringCircum;
 
   return (
     <>
-      <button
-        className="nav-hamburger"
-        aria-label="Open navigation"
-        onClick={() => setOpen(true)}
-      >
-        <Menu size={20} />
-      </button>
+      <div className="mobile-topbar">
+        <button
+          className="nav-hamburger"
+          aria-label="Open navigation"
+          onClick={() => setOpen(true)}
+        >
+          <Menu size={20} />
+        </button>
+      </div>
 
       {open && (
         <div
@@ -93,9 +88,12 @@ export default function Nav({ page, setPage }: NavProps) {
       <nav className={`nav-sidebar${open ? ' nav-sidebar--open' : ''}`}>
         <div className="nav-logo">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div className="nav-logo-title">F1 Sim Hub</div>
-              <div className="nav-logo-sub">Driver Dashboard</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Trophy size={18} style={{ color: 'var(--red)', flexShrink: 0 }} />
+              <div>
+                <div className="nav-logo-title">F1 Sim Hub</div>
+                <div className="nav-logo-sub">Driver Dashboard</div>
+              </div>
             </div>
             <button
               className="nav-close"
@@ -159,6 +157,25 @@ export default function Nav({ page, setPage }: NavProps) {
         <div style={{
           padding: '6px 20px 14px',
         }}>
+          <div
+            className="units-toggle"
+            role="group"
+            aria-label="Unit system"
+            title="Switch speed/temperature units"
+          >
+            <button
+              className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
+              onClick={() => setSystem('us')}
+            >
+              🇺🇸 US <span className="units-toggle-sub">mph · °F</span>
+            </button>
+            <button
+              className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
+              onClick={() => setSystem('uk')}
+            >
+              🇬🇧 UK <span className="units-toggle-sub">mph · °C</span>
+            </button>
+          </div>
           <button
             onClick={toggleTheme}
             className="nav-footer-btn"

@@ -4,8 +4,9 @@ import type { SessionRecord } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
-import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, getRankProgress, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
+import { SessionDetailModal } from '../components/SessionDetail';
 
 const DIFF_COLORS: Record<string, string> = {
   Easy: '#4CAF50',
@@ -174,6 +175,14 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const { data: communitySessions = [] } = useGetCommunitySessions();
   const { user } = useUser();
   const [badgeTab, setBadgeTab] = useState('Skill');
+  const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
+
+  const startChallenge = () => {
+    try {
+      sessionStorage.setItem(PENDING_CHALLENGE_KEY, JSON.stringify({ trackId: daily.track.id, car: daily.car }));
+    } catch { /* ignore — Sessions page will just open the blank form */ }
+    setPage('sessions');
+  };
 
   const totalSessions = sessions.length;
   const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
@@ -420,7 +429,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
     const weekStr = weekAgo.toISOString().slice(0, 10);
     const weekSessions = sessions.filter(s => s.date >= weekStr);
     const pbs = weekSessions.filter(s => s.isPB).length;
-    const totalMinutes = weekSessions.length * 10;
+    const totalMinutes = Math.round(estimateSeatTimeMinutes(weekSessions));
     return { sessions: weekSessions.length, pbs, seatTime: totalMinutes };
   }, [sessions]);
 
@@ -429,7 +438,15 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
   const heatmapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (heatmapRef.current) heatmapRef.current.scrollLeft = heatmapRef.current.scrollWidth;
+    const el = heatmapRef.current;
+    if (!el) return;
+    // Snap to the most recent whole day-column (10px cell + 3px gap = 13px
+    // stride) so the leftmost visible column is never sliced mid-cell —
+    // scrolling to raw scrollWidth can land on a fractional offset that
+    // clips the first visible month label.
+    const COLUMN_STRIDE = 13;
+    const max = el.scrollWidth - el.clientWidth;
+    el.scrollLeft = Math.floor(max / COLUMN_STRIDE) * COLUMN_STRIDE;
   }, [cells]);
 
   const trackName = (id: string) => {
@@ -442,12 +459,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const userName = capitalize(rawName);
 
   // Rank progress bar
-  const rankTiers: DriverRank[] = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'];
-  const currentTierIdx = rankTiers.indexOf(rankInfo.rank);
   const nextTier = rankInfo.nextRank;
-  const progressToNext = nextTier
-    ? Math.max(0, Math.min(100, ((rankInfo.points - (currentTierIdx > 0 ? [0, 30, 100, 200, 350, 500][currentTierIdx] : 0)) / (rankInfo.pointsToNext + rankInfo.points - (currentTierIdx > 0 ? [0, 30, 100, 200, 350, 500][currentTierIdx] : 0))) * 100))
-    : 100;
+  const { pct: progressToNext } = getRankProgress(rankInfo);
 
   // #6 Next Goal
   const nextGoal = useMemo(() => {
@@ -627,10 +640,15 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── Last Session Summary ─────────────────────────────────────────── */}
       {lastSession && (
-        <div className="card" style={{ padding: '14px 20px', marginBottom: 16 }}>
+        <div
+          className="card dash-stat-hover"
+          style={{ padding: '14px 20px', marginBottom: 16, cursor: 'pointer' }}
+          onClick={() => setDetailSession(lastSession)}
+          title="Click to view full session details"
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
-            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => setPage('sessions')}>View All</button>
+            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div>
@@ -755,7 +773,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         )}
         <div style={{ padding: '8px 20px 12px', borderTop: '1px solid rgba(0,210,190,0.1)', textAlign: 'center' }}>
-          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={() => setPage('sessions')}>
+          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={startChallenge}>
             Start Challenge
           </button>
         </div>
@@ -874,7 +892,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
           <span>~<strong style={{ color: 'var(--white)' }}>{weeklySummary.seatTime}</strong> min</span>
         </div>
       </div>
-      <div className="heatmap-section" ref={heatmapRef}>
+      <div className="heatmap-section">
         <div className="heatmap-header">
           <div className="heatmap-legend">
             <span className="legend-dot" style={{ background: '#1E1E1E', border: '1px solid #333' }} />
@@ -886,43 +904,45 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
-          {monthLabels.map(({ label, col }, idx) => {
-            const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
-            const spanWidth = (nextCol - col) * 13;
-            return (
-              <div key={`${label}-${col}`} style={{ width: spanWidth, flexShrink: 0, overflow: 'hidden' }}>
-                <span style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 11,
-                  color: 'var(--gray)',
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  whiteSpace: 'nowrap',
-                }}>{label}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="heatmap-grid">
-          <div className="heatmap-day-labels">
-            {['', 'M', '', 'W', '', 'F', ''].map((d, i) => (
-              <div key={i} className="heatmap-day-label">{d}</div>
-            ))}
+        <div className="heatmap-scroll" ref={heatmapRef}>
+          <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
+            {monthLabels.map(({ label, col }, idx) => {
+              const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
+              const spanWidth = (nextCol - col) * 13;
+              return (
+                <div key={`${label}-${col}`} style={{ width: spanWidth, flexShrink: 0, overflow: 'hidden' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 11,
+                    color: 'var(--gray)',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    whiteSpace: 'nowrap',
+                  }}>{label}</span>
+                </div>
+              );
+            })}
           </div>
-          <div className="heatmap-cols">
-            {cells.map((col, ci) => (
-              <div key={ci} className="heatmap-col">
-                {col.map((cell, di) => (
-                  <div
-                    key={di}
-                    className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}`}
-                    title={buildHeatmapTooltip(cell)}
-                  />
-                ))}
-              </div>
-            ))}
+
+          <div className="heatmap-grid">
+            <div className="heatmap-day-labels">
+              {['', 'M', '', 'W', '', 'F', ''].map((d, i) => (
+                <div key={i} className="heatmap-day-label">{d}</div>
+              ))}
+            </div>
+            <div className="heatmap-cols">
+              {cells.map((col, ci) => (
+                <div key={ci} className="heatmap-col">
+                  {col.map((cell, di) => (
+                    <div
+                      key={di}
+                      className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}`}
+                      title={buildHeatmapTooltip(cell)}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -942,7 +962,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table data-table--stack">
             <thead>
               <tr>
                 <th>Date</th>
@@ -957,15 +977,15 @@ export default function Dashboard({ setPage }: DashboardProps) {
             </thead>
             <tbody>
               {recentWithDelta.map(s => (
-                <tr key={s.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
-                  <td>{trackName(s.trackId)}</td>
-                  <td style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
-                  <td>
+                <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => setDetailSession(s)} title="Click to view full session details">
+                  <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
+                  <td data-label="Track">{trackName(s.trackId)}</td>
+                  <td data-label="Car" style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
+                  <td data-label="Best Lap">
                     <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                     {s.isPB && <span className="pb-badge">★ PB</span>}
                   </td>
-                  <td>
+                  <td data-label="Δ PB">
                     {s.delta !== null && s.delta !== 0 ? (
                       <span style={{
                         fontFamily: 'var(--font-mono)',
@@ -978,7 +998,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
                       <span style={{ color: 'var(--gray)', fontSize: 11 }}>—</span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Consistency">
                     {s.consistency !== null ? (
                       <span style={{
                         fontFamily: 'var(--font-mono)',
@@ -991,8 +1011,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
                       <span style={{ color: 'var(--gray)' }}>—</span>
                     )}
                   </td>
-                  <td><span className={`badge ${(['badge-practice', 'badge-qualifying', 'badge-race', 'badge-hotlap', 'badge-hotlap'] as const)[['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'].indexOf(s.type)] || 'badge-practice'}`}>{s.type}</span></td>
-                  <td>
+                  <td data-label="Type"><span className={`badge ${(['badge-practice', 'badge-qualifying', 'badge-race', 'badge-hotlap', 'badge-hotlap'] as const)[['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'].indexOf(s.type)] || 'badge-practice'}`}>{s.type}</span></td>
+                  <td data-label="Rating">
                     <div className="mini-bars-cell">
                       <MiniBar value={Math.min(5, Math.round(s.rating * 1))} label="Pace" />
                       <MiniBar value={s.consistency !== null ? Math.min(5, Math.round(s.consistency / 20)) : 0} label="Clean" />
@@ -1038,6 +1058,10 @@ export default function Dashboard({ setPage }: DashboardProps) {
             ))}
           </div>
         </>
+      )}
+
+      {detailSession && (
+        <SessionDetailModal session={detailSession} onClose={() => setDetailSession(null)} />
       )}
     </div>
   );

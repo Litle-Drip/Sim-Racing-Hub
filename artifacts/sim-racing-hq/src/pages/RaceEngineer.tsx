@@ -78,7 +78,12 @@ export default function RaceEngineer() {
               tires: s.tires || null,
               notes: s.notes || null,
               isPB: s.isPB ?? false,
-              laps: s.laps && s.laps.length > 0 ? s.laps : null,
+              // Strip the per-sample telemetry trace — the engineer only
+              // needs lap/sector/tyre/penalty per lap, and traces (up to
+              // 3000 points per lap) bloat the request enough to fail.
+              laps: s.laps && s.laps.length > 0
+                ? s.laps.map(l => ({ lap: l.lap, time: l.time, s1: l.s1, s2: l.s2, s3: l.s3, tires: l.tires, penalty: l.penalty }))
+                : null,
             })),
           },
         }),
