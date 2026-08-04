@@ -16,6 +16,7 @@ import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
 import RaceEngineer from './pages/RaceEngineer';
+import Rivals from './pages/Rivals';
 import Community from './pages/Community';
 import PublicSetups from './pages/PublicSetups';
 import PublicTracks from './pages/PublicTracks';
@@ -257,7 +258,7 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'rivals'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -329,6 +330,7 @@ const PAGE_LABELS: Record<string, string> = {
   hardware: 'Hardware Vault',
   progress: 'PB Progression',
   engineer: 'Race Engineer',
+  rivals: 'Rivals',
 };
 
 const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
@@ -365,6 +367,13 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'AI coaching built from your actual session data',
       'Get specific, data-driven feedback after every debrief',
       'Ask follow-up questions about your pace and consistency',
+    ],
+  },
+  rivals: {
+    bullets: [
+      'Challenge a friend to beat one of your lap times or races',
+      'Race async — no need to be online at the same time',
+      'See a side-by-side comparison the moment they submit their attempt',
     ],
   },
 };
@@ -457,7 +466,7 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
 }
 
 const SHORTCUTS: Record<string, string> = {
-  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', c: 'community', x: 'companion', a: 'account',
+  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', r: 'rivals', c: 'community', x: 'companion', a: 'account',
 };
 
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
@@ -548,6 +557,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
       case 'engineer': return <RaceEngineer />;
+      case 'rivals': return <Rivals />;
       case 'community': return <Community />;
       case 'companion': return <Companion />;
       case 'account': return <Account setPage={handleSetPage} />;

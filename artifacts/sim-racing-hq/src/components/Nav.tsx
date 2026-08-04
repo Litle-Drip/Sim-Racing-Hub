@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones, Trophy } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones, Trophy, Swords } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
-import { useGetSessions } from '@workspace/api-client-react';
+import { useGetSessions, useGetRivalChallenges } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { calculateStreak, calculateRank, getRankColor, getRankProgress, estimateSeatTimeMinutes } from '../lib/engagement';
 import { useUnits } from '../lib/units';
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { id: 'setups', label: 'Setups', Icon: Settings2, authRequired: true },
   { id: 'hardware', label: 'Hardware', Icon: Cpu, authRequired: true },
   { id: 'engineer', label: 'Race Engineer', Icon: Headphones, authRequired: true },
+  { id: 'rivals', label: 'Rivals', Icon: Swords, authRequired: true },
   { id: 'companion', label: 'Companion', Icon: Zap, authRequired: true },
   { id: 'community', label: 'Community', Icon: Users, authRequired: false },
   { id: 'account', label: 'Account', Icon: User, authRequired: true },
@@ -30,6 +31,11 @@ export default function Nav({ page, setPage }: NavProps) {
   const { signOut } = useClerk();
   const { user } = useUser();
   const { data: sessions = [] } = useGetSessions();
+  const { data: rivalChallenges = [] } = useGetRivalChallenges();
+  const pendingRivalChallenges = useMemo(
+    () => rivalChallenges.filter(c => c.status === 'pending' && c.opponent.isMe).length,
+    [rivalChallenges],
+  );
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
   const { system, setSystem } = useUnits();
@@ -117,6 +123,15 @@ export default function Nav({ page, setPage }: NavProps) {
                 >
                   <Icon className="nav-icon" size={16} />
                   {label}
+                  {id === 'rivals' && !isLocked && pendingRivalChallenges > 0 && (
+                    <span style={{
+                      marginLeft: 'auto', minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
+                      background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                    }}>
+                      {pendingRivalChallenges}
+                    </span>
+                  )}
                   {isLocked && (
                     <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--gray)' }}>🔒</span>
                   )}
