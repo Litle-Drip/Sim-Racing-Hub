@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones, Trophy, Swords } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones, Trophy, Swords, Lock, Flame } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions, useGetRivalChallenges } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -98,7 +98,7 @@ export default function Nav({ page, setPage }: NavProps) {
               <Trophy size={18} style={{ color: 'var(--red)', flexShrink: 0 }} />
               <div>
                 <div className="nav-logo-title">F1 Sim Hub</div>
-                <div className="nav-logo-sub">Driver Dashboard</div>
+                <div className="nav-logo-sub">Telemetry &amp; Performance</div>
               </div>
             </div>
             <button
@@ -115,11 +115,13 @@ export default function Nav({ page, setPage }: NavProps) {
             const isLocked = !user && authRequired;
             return (
               <li key={id}>
-                <div
+                <button
+                  type="button"
                   className={`nav-link${page === id ? ' active' : ''}${isLocked ? ' nav-link--locked' : ''}`}
                   onClick={() => navigate(id)}
                   title={isLocked ? 'Sign in required' : undefined}
-                  style={isLocked ? { opacity: 0.45 } : undefined}
+                  aria-current={page === id ? 'page' : undefined}
+                  style={isLocked ? { opacity: 0.55 } : undefined}
                 >
                   <Icon className="nav-icon" size={16} />
                   {label}
@@ -132,10 +134,8 @@ export default function Nav({ page, setPage }: NavProps) {
                       {pendingRivalChallenges}
                     </span>
                   )}
-                  {isLocked && (
-                    <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--gray)' }}>🔒</span>
-                  )}
-                </div>
+                  {isLocked && <Lock className="nav-lock" size={12} aria-label="Sign in required" />}
+                </button>
               </li>
             );
           })}
@@ -160,7 +160,10 @@ export default function Nav({ page, setPage }: NavProps) {
               {rankInfo.rank}
             </div>
             {streak > 0 && (
-              <div className="nav-profile-streak">🔥 {streak} day streak</div>
+              <div className="nav-profile-streak">
+                <Flame size={11} aria-hidden="true" />
+                {streak} day streak
+              </div>
             )}
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--gray)', marginTop: 1, lineHeight: 1.3 }}>
               {seatTimeHours > 0 && <span>{seatTimeHours}h seat time</span>}
@@ -182,13 +185,13 @@ export default function Nav({ page, setPage }: NavProps) {
               className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
               onClick={() => setSystem('us')}
             >
-              🇺🇸 US <span className="units-toggle-sub">mph · °F</span>
+              US <span className="units-toggle-sub">mph · °F</span>
             </button>
             <button
               className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
               onClick={() => setSystem('uk')}
             >
-              🇬🇧 UK <span className="units-toggle-sub">mph · °C</span>
+              UK <span className="units-toggle-sub">mph · °C</span>
             </button>
           </div>
           <button

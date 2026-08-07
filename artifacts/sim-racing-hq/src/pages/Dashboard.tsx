@@ -895,7 +895,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
       <div className="heatmap-section">
         <div className="heatmap-header">
           <div className="heatmap-legend">
-            <span className="legend-dot" style={{ background: '#1E1E1E', border: '1px solid #333' }} />
+            <span className="legend-dot" style={{ background: 'var(--border)', border: '1px solid var(--border-accent)' }} />
             <span style={{ fontSize: 10 }}>None</span>
             <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.35)' }} />
             <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.6)' }} />

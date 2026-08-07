@@ -110,7 +110,7 @@ export function LapTable({ laps: rawLaps, onViewTelemetry }: { laps: SessionReco
           {laps.map((l, i) => {
             const isFastest = i === fastestIdx && laps.length > 1;
             return (
-              <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isFastest ? 'rgba(0,210,190,0.07)' : undefined }}>
+              <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: isFastest ? 'rgba(0,210,190,0.07)' : undefined }}>
                 <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.lap}</td>
                 <td style={{ padding: '5px 8px', color: isFastest ? 'var(--teal)' : 'var(--white)', fontWeight: isFastest ? 700 : 400 }}>{l.time || '—'}</td>
                 <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s1 || '—'}</td>
