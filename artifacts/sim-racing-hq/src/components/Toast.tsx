@@ -37,7 +37,7 @@ export function Toast({ message, onDone, duration = 3000, variant = 'success' }:
         fontSize: 13,
         letterSpacing: '0.07em',
         color: isError ? 'var(--red)' : 'var(--teal)',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.55)',
+        boxShadow: 'var(--shadow-pop)',
         opacity: fading ? 0 : 1,
         transition: 'opacity 0.3s ease',
         pointerEvents: 'none',

@@ -268,7 +268,7 @@ function LapRow({
   defaultTires: string;
 }) {
   return (
-    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+    <tr style={{ borderBottom: '1px solid var(--border)' }}>
       <td style={{ padding: '4px 6px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-mid)', textAlign: 'center', minWidth: 32 }}>{index + 1}</td>
       {(['time', 's1', 's2', 's3'] as const).map(field => (
         <td key={field} style={{ padding: '2px 4px' }}>
