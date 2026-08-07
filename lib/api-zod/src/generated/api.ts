@@ -654,6 +654,140 @@ export const UploadCompanionSessionBody = zod.object({
 
 
 /**
+ * @summary Get all rival challenges the current user sent or received
+ */
+export const GetRivalChallengesResponseItem = zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "lapCount": zod.number(),
+  "message": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "creator": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "opponent": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "creatorSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}),
+  "opponentSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}).nullish(),
+  "winnerUserId": zod.string().nullish()
+})
+export const GetRivalChallengesResponse = zod.array(GetRivalChallengesResponseItem)
+
+
+/**
+ * @summary Challenge another user to beat one of your sessions
+ */
+export const CreateRivalChallengeBody = zod.object({
+  "sessionId": zod.string(),
+  "opponentUsername": zod.string(),
+  "lapCount": zod.coerce.number().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Look up a user by username to challenge them
+ */
+export const LookupRivalChallengeUserQueryParams = zod.object({
+  "username": zod.coerce.string()
+})
+
+export const LookupRivalChallengeUserResponse = zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "avatarUrl": zod.string().nullish()
+})
+
+
+/**
+ * @summary Cancel a pending rival challenge you created
+ */
+export const CancelRivalChallengeParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Submit your session as your attempt at a rival challenge
+ */
+export const SubmitRivalChallengeAttemptParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const SubmitRivalChallengeAttemptBody = zod.object({
+  "sessionId": zod.string()
+})
+
+export const SubmitRivalChallengeAttemptResponse = zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "lapCount": zod.number(),
+  "message": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "creator": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "opponent": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "creatorSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}),
+  "opponentSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}).nullish(),
+  "winnerUserId": zod.string().nullish()
+})
+
+
+/**
  * @summary Get track notes for a specific track
  */
 export const GetTrackNotesParams = zod.object({

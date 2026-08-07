@@ -185,3 +185,26 @@ export const hardwareSettingsTable = pgTable("hardware_settings", {
 
 export type DbHardwareSetting = typeof hardwareSettingsTable.$inferSelect;
 export type InsertDbHardwareSetting = typeof hardwareSettingsTable.$inferInsert;
+
+// A rival challenge pairs one of the creator's existing sessions (the
+// target to beat) with an opponent, identified by Clerk user id. The
+// opponent later attaches one of their own sessions as their attempt.
+// lapCount === 1 means "beat this best lap" (Time Trial); lapCount > 1
+// means "beat this total time across N laps" (race).
+export const rivalChallengesTable = pgTable("rival_challenges", {
+  id: text("id").primaryKey(),
+  creatorId: text("creator_id").notNull(),
+  opponentId: text("opponent_id").notNull(),
+  trackId: text("track_id").notNull(),
+  car: text("car").notNull(),
+  lapCount: integer("lap_count").notNull().default(1),
+  message: text("message").notNull().default(""),
+  creatorSessionId: text("creator_session_id").notNull(),
+  opponentSessionId: text("opponent_session_id"),
+  status: text("status").notNull().default("pending"), // pending | completed | cancelled
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export type DbRivalChallenge = typeof rivalChallengesTable.$inferSelect;
+export type InsertDbRivalChallenge = typeof rivalChallengesTable.$inferInsert;

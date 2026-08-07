@@ -7,6 +7,7 @@ import trackDifficultyRouter from "./trackDifficulty";
 import hardwareRouter from "./hardware";
 import communityRouter from "./community";
 import companionRouter from "./companion";
+import rivalChallengesRouter from "./rivalChallenges";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(trackDifficultyRouter);
 router.use(hardwareRouter);
 router.use(communityRouter);
 router.use(companionRouter);
+router.use(rivalChallengesRouter);
 
 export default router;
