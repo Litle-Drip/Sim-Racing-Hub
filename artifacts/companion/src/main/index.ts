@@ -283,9 +283,9 @@ function createTrayIcon(): Electron.NativeImage {
       const cx = Math.abs(x - 7.5);
       const cy = Math.abs(y - 7.5);
       const inCircle = Math.sqrt(cx * cx + cy * cy) <= 7;
-      rgba[i + 0] = 0;
-      rgba[i + 1] = 212;
-      rgba[i + 2] = 177;
+      rgba[i + 0] = 232;
+      rgba[i + 1] = 0;
+      rgba[i + 2] = 45;
       rgba[i + 3] = inCircle ? 255 : 0;
     }
   }
