@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import WindowControls from "../components/WindowControls";
+import { theme } from "../theme";
 
 interface SettingsData {
   apiKey: string;
@@ -32,15 +33,15 @@ function Toggle({
         justifyContent: "space-between",
         alignItems: "center",
         padding: "14px 20px",
-        borderBottom: "1px solid #1e1e1e",
+        borderBottom: `1px solid ${theme.border}`,
         cursor: "pointer",
       }}
       onClick={() => onChange(!checked)}
     >
       <div>
-        <div style={{ fontSize: 13, color: "#e5e5e5" }}>{label}</div>
+        <div style={{ fontSize: 13, color: theme.white }}>{label}</div>
         {description && (
-          <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{description}</div>
+          <div style={{ fontSize: 11, color: theme.gray, marginTop: 2 }}>{description}</div>
         )}
       </div>
       <div
@@ -48,7 +49,7 @@ function Toggle({
           width: 36,
           height: 20,
           borderRadius: 10,
-          background: checked ? "#00d4b1" : "#2a2a2a",
+          background: checked ? theme.teal : theme.borderAccent,
           position: "relative",
           transition: "background 0.15s",
           flexShrink: 0,
@@ -101,13 +102,13 @@ export default function Settings({ onBack }: Props): React.ReactElement {
   if (!settings) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
-        <div style={{ color: "#555" }}>Loading…</div>
+        <div style={{ color: theme.gray }}>Loading…</div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#0f0f0f" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: theme.bg }}>
       {/* Header */}
       <div
         style={{
@@ -115,7 +116,7 @@ export default function Settings({ onBack }: Props): React.ReactElement {
           alignItems: "center",
           gap: 12,
           padding: "14px 12px 14px 20px",
-          borderBottom: "1px solid #1e1e1e",
+          borderBottom: `1px solid ${theme.border}`,
           WebkitAppRegion: "drag",
         } as React.CSSProperties}
       >
@@ -123,7 +124,7 @@ export default function Settings({ onBack }: Props): React.ReactElement {
           onClick={onBack}
           style={{
             background: "none",
-            color: "#666",
+            color: theme.gray,
             fontSize: 18,
             lineHeight: 1,
             WebkitAppRegion: "no-drag",
@@ -131,9 +132,9 @@ export default function Settings({ onBack }: Props): React.ReactElement {
         >
           ←
         </button>
-        <span style={{ fontWeight: 600, fontSize: 15, color: "#fff" }}>Settings</span>
+        <span style={{ fontWeight: 600, fontSize: 15, color: theme.white }}>Settings</span>
         {saved && (
-          <span style={{ marginLeft: "auto", marginRight: 4, fontSize: 12, color: "#00d4b1" }}>
+          <span style={{ marginLeft: "auto", marginRight: 4, fontSize: 12, color: theme.teal }}>
             Saved ✓
           </span>
         )}
@@ -142,10 +143,10 @@ export default function Settings({ onBack }: Props): React.ReactElement {
 
       <div style={{ flex: 1, overflowY: "auto" }}>
         {/* API Key section */}
-        <div style={{ padding: "14px 20px 8px", fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
+        <div style={{ padding: "14px 20px 8px", fontSize: 11, color: theme.gray, textTransform: "uppercase", letterSpacing: 1 }}>
           API Key
         </div>
-        <div style={{ padding: "0 20px 14px", borderBottom: "1px solid #1e1e1e" }}>
+        <div style={{ padding: "0 20px 14px", borderBottom: `1px solid ${theme.border}` }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input
               type={showKey ? "text" : "password"}
@@ -155,10 +156,10 @@ export default function Settings({ onBack }: Props): React.ReactElement {
               style={{
                 flex: 1,
                 padding: "10px 12px",
-                background: "#1a1a1a",
-                border: "1px solid #2a2a2a",
+                background: theme.bgElevated,
+                border: `1px solid ${theme.borderAccent}`,
                 borderRadius: 7,
-                color: "#e5e5e5",
+                color: theme.white,
                 fontSize: 12,
                 letterSpacing: settings.apiKey && !showKey ? 2 : 0,
               }}
@@ -167,10 +168,10 @@ export default function Settings({ onBack }: Props): React.ReactElement {
               onClick={() => setShowKey(!showKey)}
               style={{
                 padding: "10px 12px",
-                background: "#1a1a1a",
-                border: "1px solid #2a2a2a",
+                background: theme.bgElevated,
+                border: `1px solid ${theme.borderAccent}`,
                 borderRadius: 7,
-                color: "#666",
+                color: theme.gray,
                 fontSize: 12,
               }}
             >
@@ -183,8 +184,8 @@ export default function Settings({ onBack }: Props): React.ReactElement {
               style={{
                 flex: 1,
                 padding: "8px",
-                background: "#00d4b1",
-                color: "#000",
+                background: theme.red,
+                color: "#fff",
                 borderRadius: 7,
                 fontWeight: 600,
                 fontSize: 12,
@@ -199,20 +200,20 @@ export default function Settings({ onBack }: Props): React.ReactElement {
               }}
               style={{
                 padding: "8px 14px",
-                background: "#1e1e1e",
-                color: "#666",
+                background: theme.bgElevated,
+                color: theme.gray,
                 borderRadius: 7,
                 fontSize: 12,
-                border: "1px solid #2a2a2a",
+                border: `1px solid ${theme.borderAccent}`,
               }}
             >
               Clear
             </button>
           </div>
-          <p style={{ fontSize: 11, color: "#444", marginTop: 8 }}>
+          <p style={{ fontSize: 11, color: theme.gray, marginTop: 8 }}>
             Get your key at{" "}
             <span
-              style={{ color: "#00d4b1", cursor: "pointer" }}
+              style={{ color: theme.teal, cursor: "pointer" }}
               onClick={() => window.companion.openF1SimHub()}
             >
               f1simhub.com/companion
@@ -221,11 +222,11 @@ export default function Settings({ onBack }: Props): React.ReactElement {
         </div>
 
         {/* UDP Port */}
-        <div style={{ padding: "14px 20px 8px", fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
+        <div style={{ padding: "14px 20px 8px", fontSize: 11, color: theme.gray, textTransform: "uppercase", letterSpacing: 1 }}>
           Connection
         </div>
-        <div style={{ padding: "0 20px 14px", borderBottom: "1px solid #1e1e1e" }}>
-          <div style={{ fontSize: 13, color: "#999", marginBottom: 8 }}>UDP Port</div>
+        <div style={{ padding: "0 20px 14px", borderBottom: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: 13, color: theme.gray, marginBottom: 8 }}>UDP Port</div>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               type="number"
@@ -236,10 +237,10 @@ export default function Settings({ onBack }: Props): React.ReactElement {
               style={{
                 flex: 1,
                 padding: "10px 12px",
-                background: "#1a1a1a",
-                border: "1px solid #2a2a2a",
+                background: theme.bgElevated,
+                border: `1px solid ${theme.borderAccent}`,
                 borderRadius: 7,
-                color: "#e5e5e5",
+                color: theme.white,
                 fontSize: 13,
               }}
             />
@@ -252,21 +253,21 @@ export default function Settings({ onBack }: Props): React.ReactElement {
               }}
               style={{
                 padding: "10px 16px",
-                background: "#1a1a1a",
-                border: "1px solid #2a2a2a",
+                background: theme.bgElevated,
+                border: `1px solid ${theme.borderAccent}`,
                 borderRadius: 7,
-                color: "#e5e5e5",
+                color: theme.white,
                 fontSize: 12,
               }}
             >
               Apply
             </button>
           </div>
-          <p style={{ fontSize: 11, color: "#444", marginTop: 6 }}>Default: 20777. Must match F1 25 settings.</p>
+          <p style={{ fontSize: 11, color: theme.gray, marginTop: 6 }}>Default: 20777. Must match F1 25 settings.</p>
         </div>
 
         {/* Behaviour toggles */}
-        <div style={{ padding: "14px 20px 8px", fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>
+        <div style={{ padding: "14px 20px 8px", fontSize: 11, color: theme.gray, textTransform: "uppercase", letterSpacing: 1 }}>
           Behaviour
         </div>
         <Toggle
@@ -283,16 +284,16 @@ export default function Settings({ onBack }: Props): React.ReactElement {
         />
 
         {/* Logs */}
-        <div style={{ padding: "14px 20px", borderTop: "1px solid #1e1e1e", marginTop: 4, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ padding: "14px 20px", borderTop: `1px solid ${theme.border}`, marginTop: 4, display: "flex", flexDirection: "column", gap: 8 }}>
           <button
             onClick={() => window.companion.openLogFile()}
             style={{
               width: "100%",
               padding: "10px",
-              background: "#1a1a1a",
-              border: "1px solid #2a2a2a",
+              background: theme.bgElevated,
+              border: `1px solid ${theme.borderAccent}`,
               borderRadius: 8,
-              color: "#666",
+              color: theme.gray,
               fontSize: 13,
             }}
           >
@@ -303,10 +304,10 @@ export default function Settings({ onBack }: Props): React.ReactElement {
             style={{
               width: "100%",
               padding: "10px",
-              background: "#1a1a1a",
-              border: "1px solid #2a2a2a",
+              background: theme.bgElevated,
+              border: `1px solid ${theme.borderAccent}`,
               borderRadius: 8,
-              color: "#555",
+              color: theme.gray,
               fontSize: 12,
             }}
           >
@@ -317,7 +318,7 @@ export default function Settings({ onBack }: Props): React.ReactElement {
         {/* Version footer */}
         {version && (
           <div style={{ padding: "8px 20px 16px", textAlign: "center" }}>
-            <span style={{ fontSize: 10, color: "#333", fontFamily: "monospace" }}>
+            <span style={{ fontSize: 10, color: theme.gray, fontFamily: "monospace" }}>
               v{version}
             </span>
           </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import WindowControls from "../components/WindowControls";
 import LogoMark from "../components/LogoMark";
+import { theme } from "../theme";
 
 interface Props {
   onComplete: () => void;
@@ -18,7 +19,7 @@ function StepIndicator({ current, total }: { current: Step; total: number }): Re
             width: i + 1 === current ? 20 : 6,
             height: 6,
             borderRadius: 3,
-            background: i + 1 <= current ? "#00d4b1" : "#2a2a2a",
+            background: i + 1 <= current ? theme.red : theme.borderAccent,
             transition: "all 0.2s",
           }}
         />
@@ -84,7 +85,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        background: "#0f0f0f",
+        background: theme.bg,
       }}
     >
       {/* Drag region */}
@@ -103,20 +104,20 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
       {/* Logo */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
         <LogoMark size={32} />
-        <span style={{ fontWeight: 600, fontSize: 16, color: "#fff" }}>F1SimHub Companion</span>
+        <span style={{ fontWeight: 600, fontSize: 16, color: theme.white }}>F1SimHub Companion</span>
       </div>
 
       <StepIndicator current={step} total={3} />
 
       {step === 1 && (
         <>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
             Paste your API Key
           </h2>
-          <p style={{ color: "#666", fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
             Get your key from{" "}
             <span
-              style={{ color: "#00d4b1", cursor: "pointer" }}
+              style={{ color: theme.teal, cursor: "pointer" }}
               onClick={() => window.companion.openF1SimHub()}
             >
               f1simhub.com/companion
@@ -132,17 +133,17 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
             style={{
               width: "100%",
               padding: "12px 14px",
-              background: "#1a1a1a",
-              border: "1px solid #2a2a2a",
+              background: theme.bgElevated,
+              border: `1px solid ${theme.borderAccent}`,
               borderRadius: 8,
-              color: "#e5e5e5",
+              color: theme.white,
               fontSize: 13,
               letterSpacing: 2,
               marginBottom: 8,
             }}
           />
           {verifyError && (
-            <p style={{ color: "#f87171", fontSize: 12, marginBottom: 12 }}>{verifyError}</p>
+            <p style={{ color: theme.red, fontSize: 12, marginBottom: 12 }}>{verifyError}</p>
           )}
           <button
             onClick={handleVerifyKey}
@@ -150,8 +151,8 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
             style={{
               width: "100%",
               padding: "12px",
-              background: verifying ? "#1a1a1a" : "#00d4b1",
-              color: verifying ? "#555" : "#000",
+              background: verifying ? theme.bgElevated : theme.red,
+              color: verifying ? theme.gray : "#fff",
               borderRadius: 8,
               fontWeight: 600,
               fontSize: 14,
@@ -166,16 +167,16 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
 
       {step === 2 && (
         <>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
             Configure F1 25
           </h2>
-          <p style={{ color: "#666", fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
-            In F1 25, go to <strong style={{ color: "#ccc" }}>Settings → Telemetry Settings</strong> and set:
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+            In F1 25, go to <strong style={{ color: theme.grayLight }}>Settings → Telemetry Settings</strong> and set:
           </p>
           <div
             style={{
-              background: "#141414",
-              border: "1px solid #1e1e1e",
+              background: theme.bgElevated,
+              border: `1px solid ${theme.border}`,
               borderRadius: 10,
               overflow: "hidden",
               marginBottom: 20,
@@ -195,13 +196,13 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                   display: "flex",
                   justifyContent: "space-between",
                   padding: "10px 16px",
-                  borderBottom: "1px solid #1e1e1e",
+                  borderBottom: `1px solid ${theme.border}`,
                 }}
               >
-                <span style={{ color: "#888", fontSize: 12 }}>{label}</span>
+                <span style={{ color: theme.gray, fontSize: 12 }}>{label}</span>
                 <span
                   style={{
-                    color: value === "On" || value === "20777" ? "#00d4b1" : "#e5e5e5",
+                    color: value === "On" || value === "20777" ? theme.teal : theme.white,
                     fontWeight: 500,
                     fontSize: 12,
                   }}
@@ -213,12 +214,12 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
           </div>
           <div
             style={{
-              background: "#0d1a16",
-              border: "1px solid #0a3028",
+              background: theme.tealDim,
+              border: `1px solid ${theme.tealBorder}`,
               borderRadius: 8,
               padding: "10px 14px",
               fontSize: 12,
-              color: "#00d4b1",
+              color: theme.teal,
               marginBottom: 24,
             }}
           >
@@ -229,8 +230,8 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
             style={{
               width: "100%",
               padding: "12px",
-              background: "#00d4b1",
-              color: "#000",
+              background: theme.red,
+              color: "#fff",
               borderRadius: 8,
               fontWeight: 600,
               fontSize: 14,
@@ -243,10 +244,10 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
 
       {step === 3 && (
         <>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
             Waiting for first packet
           </h2>
-          <p style={{ color: "#666", fontSize: 13, marginBottom: 28, lineHeight: 1.6 }}>
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 28, lineHeight: 1.6 }}>
             Start F1 25 and load into a session. The companion will detect the connection automatically.
           </p>
           <div
@@ -266,12 +267,12 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                     width: 56,
                     height: 56,
                     borderRadius: "50%",
-                    border: "3px solid #1e1e1e",
-                    borderTopColor: "#00d4b1",
+                    border: `3px solid ${theme.border}`,
+                    borderTopColor: theme.teal,
                     animation: "spin 1s linear infinite",
                   }}
                 />
-                <p style={{ color: "#555", fontSize: 13 }}>Listening on port 20777…</p>
+                <p style={{ color: theme.gray, fontSize: 13 }}>Listening on port 20777…</p>
               </>
             ) : (
               <>
@@ -280,8 +281,8 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                     width: 56,
                     height: 56,
                     borderRadius: "50%",
-                    background: "#0d1a16",
-                    border: "3px solid #00d4b1",
+                    background: theme.tealDim,
+                    border: `3px solid ${theme.teal}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -290,7 +291,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                 >
                   ✓
                 </div>
-                <p style={{ color: "#00d4b1", fontSize: 14, fontWeight: 600 }}>
+                <p style={{ color: theme.teal, fontSize: 14, fontWeight: 600 }}>
                   Connected — Setup complete!
                 </p>
               </>
@@ -301,12 +302,12 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
             style={{
               width: "100%",
               padding: "12px",
-              background: "#1a1a1a",
-              color: "#666",
+              background: theme.bgElevated,
+              color: theme.gray,
               borderRadius: 8,
               fontWeight: 500,
               fontSize: 13,
-              border: "1px solid #2a2a2a",
+              border: `1px solid ${theme.borderAccent}`,
             }}
           >
             Skip — I'll test later

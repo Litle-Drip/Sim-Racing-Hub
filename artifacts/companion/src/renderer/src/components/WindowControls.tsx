@@ -1,3 +1,5 @@
+import { theme } from "../theme";
+
 export default function WindowControls(): React.ReactElement {
   const buttonStyle: React.CSSProperties = {
     WebkitAppRegion: "no-drag",
@@ -5,7 +7,7 @@ export default function WindowControls(): React.ReactElement {
     height: 22,
     borderRadius: 5,
     background: "transparent",
-    color: "#777",
+    color: theme.gray,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -19,7 +21,7 @@ export default function WindowControls(): React.ReactElement {
         onClick={() => window.companion.minimizeWindow()}
         title="Minimize"
         style={buttonStyle}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "#2a2a2a")}
+        onMouseEnter={(e) => (e.currentTarget.style.background = theme.borderAccent)}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         −
@@ -28,7 +30,7 @@ export default function WindowControls(): React.ReactElement {
         onClick={() => window.companion.closeWindow()}
         title="Close"
         style={buttonStyle}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "#e5484d")}
+        onMouseEnter={(e) => (e.currentTarget.style.background = theme.red)}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         ✕
