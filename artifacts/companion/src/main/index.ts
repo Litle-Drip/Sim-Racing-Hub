@@ -249,7 +249,7 @@ function createWindow(): BrowserWindow {
     resizable: false,
     frame: false,
     title: "F1SimHub Companion",
-    backgroundColor: "#0f0f0f",
+    backgroundColor: "#080808",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,

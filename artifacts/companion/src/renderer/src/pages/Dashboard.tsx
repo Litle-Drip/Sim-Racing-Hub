@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import WindowControls from "../components/WindowControls";
 import LogoMark from "../components/LogoMark";
+import { theme } from "../theme";
 
 interface Status {
   signedIn: boolean;
@@ -31,16 +32,16 @@ function StatusRow({
         justifyContent: "space-between",
         alignItems: "center",
         padding: "14px 20px",
-        borderBottom: "1px solid #1e1e1e",
+        borderBottom: `1px solid ${theme.border}`,
       }}
     >
-      <span style={{ color: "#999", fontSize: 13 }}>{label}</span>
+      <span style={{ color: theme.gray, fontSize: 13 }}>{label}</span>
       <span
         style={{
           display: "flex",
           alignItems: "center",
           gap: 7,
-          color: ok ? "#00d4b1" : "#555",
+          color: ok ? theme.teal : theme.gray,
           fontWeight: 500,
           fontSize: 13,
         }}
@@ -50,7 +51,7 @@ function StatusRow({
             width: 7,
             height: 7,
             borderRadius: "50%",
-            background: ok ? "#00d4b1" : "#333",
+            background: ok ? theme.teal : theme.borderAccent,
             flexShrink: 0,
           }}
         />
@@ -87,13 +88,15 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
     ? `${status.lastUpload.track} — ${status.lastUpload.lapTime} (${formatAgo(status.lastUpload.at)})`
     : "—";
 
+  const sessionActive = !!status.currentSession;
+
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        background: "#0f0f0f",
+        background: theme.bg,
       }}
     >
       {/* Header */}
@@ -102,34 +105,67 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
           display: "flex",
           alignItems: "center",
           padding: "14px 12px 14px 20px",
-          borderBottom: "1px solid #1e1e1e",
+          borderBottom: `1px solid ${theme.border}`,
           WebkitAppRegion: "drag",
         } as React.CSSProperties}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
           <LogoMark />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", letterSpacing: -0.3 }}>
-              F1SimHub Companion
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: "#6e6e6e",
-                marginTop: 1,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {status.currentSession
-                ? `Session active — ${status.currentSession.lapCount} lap${status.currentSession.lapCount !== 1 ? "s" : ""} on ${status.currentSession.track}`
-                : "Waiting for session…"}
-            </div>
+          <div
+            style={{
+              fontWeight: 600,
+              fontSize: 15,
+              color: theme.white,
+              letterSpacing: -0.3,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            F1SimHub Companion
           </div>
         </div>
-        <WindowControls />
+
+        <div
+          style={{ marginLeft: 10, flexShrink: 0, display: "flex", alignItems: "center", gap: 10 } as React.CSSProperties}
+        >
+          <div
+            title={
+              status.currentSession
+                ? `${status.currentSession.lapCount} lap${status.currentSession.lapCount !== 1 ? "s" : ""} on ${status.currentSession.track}`
+                : undefined
+            }
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "6px 12px",
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 0.2,
+              whiteSpace: "nowrap",
+              background: sessionActive ? theme.tealDim : theme.bgElevated,
+              border: `1px solid ${sessionActive ? theme.tealBorder : theme.borderAccent}`,
+              color: sessionActive ? theme.teal : theme.grayLight,
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: sessionActive ? theme.teal : theme.gray,
+                flexShrink: 0,
+                animation: sessionActive ? "livePulse 1.6s ease-in-out infinite" : undefined,
+              }}
+            />
+            {sessionActive ? "Session active" : "Waiting for session"}
+          </div>
+          <WindowControls />
+        </div>
       </div>
+      <style>{`@keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
 
       {/* Status rows */}
       <div style={{ flex: 1 }}>
@@ -158,12 +194,12 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
             style={{
               margin: "0 20px",
               padding: "10px 14px",
-              background: "#1a1200",
-              border: "1px solid #3a2a00",
+              background: theme.yellowDim,
+              border: `1px solid ${theme.yellowBorder}`,
               borderRadius: 8,
               marginTop: 12,
               fontSize: 12,
-              color: "#f59e0b",
+              color: theme.yellow,
             }}
           >
             ⚠ {status.pendingUploads} pending upload{status.pendingUploads > 1 ? "s" : ""} — will retry automatically
@@ -175,7 +211,7 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
       <div
         style={{
           padding: "16px 20px",
-          borderTop: "1px solid #1e1e1e",
+          borderTop: `1px solid ${theme.border}`,
           display: "flex",
           gap: 10,
         }}
@@ -185,8 +221,8 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
           style={{
             flex: 1,
             padding: "10px 16px",
-            background: "#00d4b1",
-            color: "#000",
+            background: theme.red,
+            color: "#fff",
             borderRadius: 8,
             fontWeight: 600,
             fontSize: 13,
@@ -199,12 +235,12 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
           onClick={onOpenSettings}
           style={{
             padding: "10px 16px",
-            background: "#1a1a1a",
-            color: "#999",
+            background: theme.bgElevated,
+            color: theme.gray,
             borderRadius: 8,
             fontWeight: 500,
             fontSize: 13,
-            border: "1px solid #2a2a2a",
+            border: `1px solid ${theme.borderAccent}`,
           }}
         >
           Settings
