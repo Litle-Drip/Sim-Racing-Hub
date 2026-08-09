@@ -231,7 +231,11 @@ ipcMain.handle("get-local-ips", () => {
 
 ipcMain.handle("open-f1simhub", () => shell.openExternal("https://f1simhub.com"));
 ipcMain.handle("open-log-file", () => shell.openPath(getLogFilePath()));
-ipcMain.handle("open-releases-page", () => shell.openExternal("https://github.com/f1simhub/companion/releases/latest"));
+// Not /releases/latest — that endpoint specifically excludes prereleases,
+// and the companion build is always published as one (see
+// companion-release.yml), so it would 404. The plain releases list sorts
+// newest-first regardless of prerelease status and actually finds it.
+ipcMain.handle("open-releases-page", () => shell.openExternal("https://github.com/Litle-Drip/Sim-Racing-Hub/releases"));
 
 ipcMain.handle("force-flush", async () => {
   tracker.forceFlush();

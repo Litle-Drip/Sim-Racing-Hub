@@ -32,6 +32,14 @@ jobs:
         run: pnpm install --no-frozen-lockfile
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      # electron-updater compares this version against the running app's to
+      # decide whether an update exists — package.json was previously
+      # pinned at 0.0.1 forever, so every build looked identical to a
+      # client checking for updates. run_number always increases, is
+      # already unique per build, and needs no manual bump step.
+      - name: Set build version
+        shell: bash
+        run: node -e "const fs=require('fs');const p='artifacts/companion/package.json';const j=JSON.parse(fs.readFileSync(p,'utf-8'));j.version='0.0.${{ github.run_number }}';fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');"
       - name: Build companion
         run: pnpm --filter @workspace/companion run build
       - name: Package companion
@@ -42,7 +50,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: companion-windows
-          path: artifacts/companion/dist/*.exe
+          path: |
+            artifacts/companion/dist/*.exe
+            artifacts/companion/dist/latest.yml
+            artifacts/companion/dist/*.blockmap
           if-no-files-found: error
 
   build-macos:
@@ -61,6 +72,13 @@ jobs:
         run: pnpm install --no-frozen-lockfile
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      # Kept in sync with the Windows build's version (see its "Set build
+      # version" step) purely so app.getVersion() shown in the UI matches
+      # across platforms for the same release — macOS doesn't check for
+      # updates itself yet (unsigned build, see setupAutoUpdater).
+      - name: Set build version
+        shell: bash
+        run: node -e "const fs=require('fs');const p='artifacts/companion/package.json';const j=JSON.parse(fs.readFileSync(p,'utf-8'));j.version='0.0.${{ github.run_number }}';fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');"
       - name: Build companion
         run: pnpm --filter @workspace/companion run build
       - name: Package companion
@@ -107,6 +125,21 @@ jobs:
                 echo "Deleting stale release id $id"
                 gh api -X DELETE "repos/${{ github.repository }}/releases/$id"
               done
+
+      # softprops/action-gh-release only sets a tag's target commit when
+      # *creating* the tag — since "main" already exists from the previous
+      # run, it stays pointed at whichever commit it was FIRST created at,
+      # forever, even though the step above already deleted and recreated
+      # the release object itself. That leaves the release page showing a
+      # stale/wrong commit reference while the binaries underneath are
+      # actually fresh (this cost real time to debug: the workflow run for
+      # a given push always builds from that push's checkout — the tag's
+      # displayed commit just lied about it). Delete the tag ref too so it
+      # gets recreated at the commit that triggered this run.
+      - name: Move tag "main" to this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/main" || true
 
       - name: Upload to GitHub release tagged "main"
         uses: softprops/action-gh-release@v2
