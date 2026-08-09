@@ -166,21 +166,21 @@ function TelemetryTraceChart({
       </div>
       <ResponsiveContainer width="100%" height={140}>
         <LineChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-          <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
+          <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
           <XAxis
             dataKey="d"
             type="number"
             domain={['dataMin', 'dataMax']}
-            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
-            axisLine={{ stroke: '#1E1E1E' }}
+            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+            axisLine={{ stroke: 'var(--border)' }}
             tickLine={false}
             tickFormatter={v => `${v}m`}
             tickCount={6}
           />
           <YAxis
             domain={domain ?? ['auto', 'auto']}
-            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
-            axisLine={{ stroke: '#1E1E1E' }}
+            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+            axisLine={{ stroke: 'var(--border)' }}
             tickLine={false}
             width={36}
           />

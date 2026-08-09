@@ -410,7 +410,10 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     return vals.reduce((a, b) => a + b, 0) / vals.length;
   }, [sessions]);
 
-  const statTracksCovered = useMemo(() => new Set(sessions.map(s => s.trackId)).size, [sessions]);
+  const statTracksCovered = useMemo(
+    () => new Set(sessions.map(s => s.trackId).filter(id => F1_TRACKS.some(t => t.id === id))).size,
+    [sessions]
+  );
 
   const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -821,7 +824,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
           />
           <SessionStatCard
             label="Tracks Covered"
-            value={`${statTracksCovered}/24`}
+            value={`${statTracksCovered}/${F1_TRACKS.length}`}
             icon={<Map style={{ width: '100%', height: '100%' }} />}
           />
         </div>
@@ -903,7 +906,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               {filtered.map(s => (
                 <React.Fragment key={s.id}>
                   <tr id={`session-row-${s.id}`} onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
-                    <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                    <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {s.date}
                       {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 10, marginTop: 1 }}>{localTimeStr(s.createdAt)}</div>}
                     </td>
@@ -914,7 +917,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           title="Completed the Daily Challenge for this date"
                           style={{ marginLeft: 6, fontSize: 10, fontFamily: 'var(--font-display)', letterSpacing: '0.04em', color: 'var(--teal)', border: '1px solid rgba(0,210,190,0.4)', borderRadius: 2, padding: '1px 5px', textTransform: 'uppercase' }}
                         >
-                          🏁 Challenge
+                          Challenge
                         </span>
                       )}
                     </td>
@@ -930,15 +933,17 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     <td data-label="Tires" style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
                     <td data-label="Conditions" style={{ color: 'var(--gray-light)', fontSize: 12 }}>
                       {s.conditions || '—'}
-                      {s.timeOfDay ? <span style={{ color: 'var(--gray-mid)', marginLeft: 4 }}>· {s.timeOfDay}</span> : null}
+                      {s.timeOfDay && s.timeOfDay !== '00:00' ? <span style={{ color: 'var(--gray-mid)', marginLeft: 4 }}>· {s.timeOfDay}</span> : null}
                     </td>
                     <td data-label="Rating"><RatingDots rating={s.rating} /></td>
-                    <td data-label="" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {s.id === mostRecentId && <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>MOST RECENT</span>}
-                      {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
-                      {validLaps(s.laps).length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{validLaps(s.laps).length}L</span>}
-                      {s.notes && <FileText size={13} style={{ color: 'var(--gray)', verticalAlign: 'middle' }} />}
-                      {expanded === s.id ? <ChevronUp size={13} style={{ color: 'var(--gray-mid)', marginLeft: 4 }} /> : <ChevronDown size={13} style={{ color: 'var(--gray-mid)', marginLeft: 4 }} />}
+                    <td data-label="">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, whiteSpace: 'nowrap' }}>
+                        {s.id === mostRecentId && <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>NEW</span>}
+                        {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
+                        {validLaps(s.laps).length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{validLaps(s.laps).length}L</span>}
+                        {s.notes && <FileText size={13} style={{ color: 'var(--gray)', verticalAlign: 'middle' }} />}
+                        {expanded === s.id ? <ChevronUp size={13} style={{ color: 'var(--gray-mid)' }} /> : <ChevronDown size={13} style={{ color: 'var(--gray-mid)' }} />}
+                      </div>
                     </td>
                   </tr>
                   {expanded === s.id && (
