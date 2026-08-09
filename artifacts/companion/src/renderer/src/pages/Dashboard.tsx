@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import WindowControls from "../components/WindowControls";
+import LogoMark from "../components/LogoMark";
 
 interface Status {
   signedIn: boolean;
@@ -106,23 +107,7 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
         } as React.CSSProperties}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              background: "linear-gradient(135deg, #00d4b1 0%, #007aff 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 14,
-              fontWeight: 700,
-              color: "#fff",
-              flexShrink: 0,
-            }}
-          >
-            F1
-          </div>
+          <LogoMark />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", letterSpacing: -0.3 }}>
               F1SimHub Companion
