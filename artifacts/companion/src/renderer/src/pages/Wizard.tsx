@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import WindowControls from "../components/WindowControls";
 
 interface Props {
   onComplete: () => void;
@@ -83,9 +84,21 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
         flexDirection: "column",
         height: "100vh",
         background: "#0f0f0f",
-        padding: "32px 24px",
       }}
     >
+      {/* Drag region */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "8px 8px 8px 0",
+          WebkitAppRegion: "drag",
+        } as React.CSSProperties}
+      >
+        <WindowControls />
+      </div>
+
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "8px 24px 32px" }}>
       {/* Logo */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
         <div
@@ -315,6 +328,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
         </>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
     </div>
   );
 }
