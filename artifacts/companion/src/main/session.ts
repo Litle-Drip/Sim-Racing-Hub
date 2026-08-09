@@ -547,21 +547,33 @@ export class SessionTracker {
         lastLapMs !== this.lastRecordedLapMs
       ) {
         if (!this.pendingLap.invalid) {
-          const s1 = msToLapTime(this.pendingLap.s1Ms);
-          const s2 = msToLapTime(this.pendingLap.s2Ms);
-          const s3 = msToLapTime(Math.max(0, lastLapMs - this.pendingLap.s1Ms - this.pendingLap.s2Ms));
-          const record: LapRecord = {
-            lap: this.pendingLap.lapNum,
-            time: msToLapTime(lastLapMs),
-            s1, s2, s3,
-            tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
-            penalty: penalties > 0 ? `${penalties}s` : "",
-            trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
-          };
-          this.validLaps.push(record);
-          this.lastRecordedLapMs = lastLapMs;
-          this.onLapComplete?.(record);
-          this.onStatusChange?.();
+          if (this.validLaps.some(l => l.lap === this.pendingLap!.lapNum)) {
+            // A flashback that re-crosses the start/finish line can regress
+            // m_currentLapNum back into the rewind branch below and then
+            // cross forward again, re-completing a lap number already
+            // recorded. m_lastLapTimeInMS often gets recomputed to a value a
+            // few ms off from the original rather than exactly matching, so
+            // the lastLapMs equality check above alone doesn't catch it —
+            // guard on lap number too, since a lap number can only ever be
+            // completed once.
+            console.log(`[Lap] #${this.pendingLap.lapNum} duplicate (already recorded) — skipped`);
+          } else {
+            const s1 = msToLapTime(this.pendingLap.s1Ms);
+            const s2 = msToLapTime(this.pendingLap.s2Ms);
+            const s3 = msToLapTime(Math.max(0, lastLapMs - this.pendingLap.s1Ms - this.pendingLap.s2Ms));
+            const record: LapRecord = {
+              lap: this.pendingLap.lapNum,
+              time: msToLapTime(lastLapMs),
+              s1, s2, s3,
+              tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
+              penalty: penalties > 0 ? `${penalties}s` : "",
+              trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
+            };
+            this.validLaps.push(record);
+            this.lastRecordedLapMs = lastLapMs;
+            this.onLapComplete?.(record);
+            this.onStatusChange?.();
+          }
         } else {
           // Invalid laps (track limits, cutting a corner, etc.) are
           // deliberately excluded from validLaps/the uploaded session —
