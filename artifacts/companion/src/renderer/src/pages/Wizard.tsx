@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import WindowControls from "../components/WindowControls";
+import LogoMark from "../components/LogoMark";
 
 interface Props {
   onComplete: () => void;
@@ -101,22 +102,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "8px 24px 32px" }}>
       {/* Logo */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: "linear-gradient(135deg, #00d4b1 0%, #007aff 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 14,
-            fontWeight: 700,
-            color: "#fff",
-          }}
-        >
-          F1
-        </div>
+        <LogoMark size={32} />
         <span style={{ fontWeight: 600, fontSize: 16, color: "#fff" }}>F1SimHub Companion</span>
       </div>
 
