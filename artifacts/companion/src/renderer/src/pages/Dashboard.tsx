@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import WindowControls from "../components/WindowControls";
 import LogoMark from "../components/LogoMark";
+import Button from "../components/Button";
+import { IconLock, IconGamepad, IconActivity, IconCloudUpload } from "../components/Icons";
 import { theme } from "../theme";
 
 interface Status {
@@ -17,13 +19,17 @@ interface Props {
 }
 
 function StatusRow({
+  icon,
   label,
   value,
   ok,
+  action,
 }: {
+  icon: React.ReactNode;
   label: string;
   value: string;
   ok: boolean;
+  action?: { label: string; onClick: () => void };
 }): React.ReactElement {
   return (
     <div
@@ -35,28 +41,49 @@ function StatusRow({
         borderBottom: `1px solid ${theme.border}`,
       }}
     >
-      <span style={{ color: theme.gray, fontSize: 13 }}>{label}</span>
-      <span
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          color: ok ? theme.teal : theme.gray,
-          fontWeight: 500,
-          fontSize: 13,
-        }}
-      >
+      <span style={{ display: "flex", alignItems: "center", gap: 9, color: theme.gray, fontSize: 13 }}>
+        <span style={{ color: theme.gray, display: "flex", flexShrink: 0 }}>{icon}</span>
+        {label}
+      </span>
+      {action ? (
+        <button
+          onClick={action.onClick}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: 0,
+            color: theme.red,
+            fontWeight: 600,
+            fontSize: 12.5,
+            background: "transparent",
+          }}
+        >
+          {action.label} →
+        </button>
+      ) : (
         <span
           style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            background: ok ? theme.teal : theme.borderAccent,
-            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            color: ok ? theme.teal : theme.gray,
+            fontWeight: 500,
+            fontSize: 13,
           }}
-        />
-        {value}
-      </span>
+        >
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: ok ? theme.teal : theme.borderAccent,
+              flexShrink: 0,
+            }}
+          />
+          {value}
+        </span>
+      )}
     </div>
   );
 }
@@ -170,21 +197,26 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
       {/* Status rows */}
       <div style={{ flex: 1 }}>
         <StatusRow
+          icon={<IconLock size={15} />}
           label="Signed In"
           value={status.signedIn ? "API key active" : "No API key"}
           ok={status.signedIn}
+          action={status.signedIn ? undefined : { label: "Add key", onClick: onOpenSettings }}
         />
         <StatusRow
+          icon={<IconGamepad size={15} />}
           label="Game Connected"
           value={status.gameConnected ? "F1 25 detected" : "Waiting…"}
           ok={status.gameConnected}
         />
         <StatusRow
+          icon={<IconActivity size={15} />}
           label="Telemetry Receiving"
           value={status.telemetryReceiving ? "Live data" : "No packets"}
           ok={status.telemetryReceiving}
         />
         <StatusRow
+          icon={<IconCloudUpload size={15} />}
           label="Last Upload"
           value={lastUploadLabel}
           ok={!!status.lastUpload}
@@ -216,35 +248,16 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
           gap: 10,
         }}
       >
-        <button
+        <Button
+          variant="primary"
           onClick={() => window.companion.openF1SimHub()}
-          style={{
-            flex: 1,
-            padding: "10px 16px",
-            background: theme.red,
-            color: "#fff",
-            borderRadius: 8,
-            fontWeight: 600,
-            fontSize: 13,
-            letterSpacing: -0.2,
-          }}
+          style={{ flex: 1, letterSpacing: -0.2 }}
         >
           Open F1SimHub ↗
-        </button>
-        <button
-          onClick={onOpenSettings}
-          style={{
-            padding: "10px 16px",
-            background: theme.bgElevated,
-            color: theme.gray,
-            borderRadius: 8,
-            fontWeight: 500,
-            fontSize: 13,
-            border: `1px solid ${theme.borderAccent}`,
-          }}
-        >
+        </Button>
+        <Button variant="secondary" onClick={onOpenSettings}>
           Settings
-        </button>
+        </Button>
       </div>
     </div>
   );

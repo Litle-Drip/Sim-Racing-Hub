@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import WindowControls from "../components/WindowControls";
 import LogoMark from "../components/LogoMark";
+import Button from "../components/Button";
+import { IconCopy, IconCheck } from "../components/Icons";
 import { theme } from "../theme";
 
 interface Props {
@@ -35,6 +37,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
   const [verifyError, setVerifyError] = useState("");
   const [localIPs, setLocalIPs] = useState<string[]>([]);
   const [waitingForPacket, setWaitingForPacket] = useState(false);
+  const [copiedIP, setCopiedIP] = useState(false);
 
   useEffect(() => {
     if (step === 2) {
@@ -56,6 +59,13 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
     }
     return undefined;
   }, [step, onComplete]);
+
+  function handleCopyIP(ip: string): void {
+    navigator.clipboard.writeText(ip).then(() => {
+      setCopiedIP(true);
+      setTimeout(() => setCopiedIP(false), 1500);
+    });
+  }
 
   async function handleVerifyKey(): Promise<void> {
     if (!apiKey.trim()) {
@@ -145,23 +155,14 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
           {verifyError && (
             <p style={{ color: theme.red, fontSize: 12, marginBottom: 12 }}>{verifyError}</p>
           )}
-          <button
+          <Button
+            variant="primary"
             onClick={handleVerifyKey}
             disabled={verifying}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: verifying ? theme.bgElevated : theme.red,
-              color: verifying ? theme.gray : "#fff",
-              borderRadius: 8,
-              fontWeight: 600,
-              fontSize: 14,
-              marginTop: 8,
-              transition: "background 0.15s",
-            }}
+            style={{ width: "100%", padding: "12px", fontSize: 14, marginTop: 8 }}
           >
             {verifying ? "Verifying…" : "Verify & Continue →"}
-          </button>
+          </Button>
         </>
       )}
 
@@ -195,20 +196,49 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
+                  alignItems: "center",
                   padding: "10px 16px",
                   borderBottom: `1px solid ${theme.border}`,
                 }}
               >
                 <span style={{ color: theme.gray, fontSize: 12 }}>{label}</span>
-                <span
-                  style={{
-                    color: value === "On" || value === "20777" ? theme.teal : theme.white,
-                    fontWeight: 500,
-                    fontSize: 12,
-                  }}
-                >
-                  {value}
-                </span>
+                {label === "UDP IP Address" && localIPs[0] ? (
+                  <button
+                    onClick={() => handleCopyIP(localIPs[0])}
+                    title="Copy to clipboard"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: 0,
+                      background: "transparent",
+                      color: copiedIP ? theme.teal : theme.white,
+                      fontWeight: 500,
+                      fontSize: 12,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    {copiedIP ? (
+                      <>
+                        <IconCheck size={12} /> Copied
+                      </>
+                    ) : (
+                      <>
+                        {value} <IconCopy size={12} color={theme.gray} />
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <span
+                    style={{
+                      color: value === "On" || value === "20777" ? theme.teal : theme.white,
+                      fontWeight: 500,
+                      fontSize: 12,
+                    }}
+                  >
+                    {value}
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -225,20 +255,9 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
           >
             💡 To find your IP: open Command Prompt and type <code>ipconfig</code> (Windows) or Terminal → <code>ifconfig</code> (macOS). Look for IPv4 / inet.
           </div>
-          <button
-            onClick={() => setStep(3)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: theme.red,
-              color: "#fff",
-              borderRadius: 8,
-              fontWeight: 600,
-              fontSize: 14,
-            }}
-          >
+          <Button variant="primary" onClick={() => setStep(3)} style={{ width: "100%", padding: "12px", fontSize: 14 }}>
             Done — Continue →
-          </button>
+          </Button>
         </>
       )}
 
@@ -297,21 +316,9 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
               </>
             )}
           </div>
-          <button
-            onClick={onComplete}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: theme.bgElevated,
-              color: theme.gray,
-              borderRadius: 8,
-              fontWeight: 500,
-              fontSize: 13,
-              border: `1px solid ${theme.borderAccent}`,
-            }}
-          >
+          <Button variant="secondary" onClick={onComplete} style={{ width: "100%", padding: "12px" }}>
             Skip — I'll test later
-          </button>
+          </Button>
         </>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
