@@ -7,6 +7,7 @@ import { lapToSeconds } from '../lib/storage';
 import { calculateStreak, calculateRank, getRankColor, getRankProgress, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
 import { SessionDetailModal } from '../components/SessionDetail';
+import { Flame, Trophy } from 'lucide-react';
 
 const DIFF_COLORS: Record<string, string> = {
   Easy: '#4CAF50',
@@ -606,8 +607,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
               {rankInfo.rank}
             </span>
             {streak > 0 && (
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: '#FF9800' }}>
-                🔥 {streak} day streak
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: '#FF9800' }}>
+                <Flame size={13} aria-hidden="true" /> {streak} day streak
               </span>
             )}
           </div>
@@ -665,8 +666,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
             {lastSession.bestLap && (
               <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: lastSession.isPB ? '#FFF200' : 'var(--teal)', fontWeight: 700 }}>
-                  {lastSession.bestLap}{lastSession.isPB ? ' 🏆' : ''}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 18, color: lastSession.isPB ? 'var(--yellow)' : 'var(--teal)', fontWeight: 700 }}>
+                  {lastSession.bestLap}{lastSession.isPB && <Trophy size={15} aria-label="Personal best" />}
                 </div>
               </div>
             )}

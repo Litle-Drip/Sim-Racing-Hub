@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useUser, useClerk } from '@clerk/react';
+import { Flame } from 'lucide-react';
 import { useGetSessions, useGetSetups } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -133,7 +134,9 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
       });
   }, [sessions]);
 
-  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short ?? id;
+  // Older imports can carry circuit ids the current track list doesn't know
+  // (e.g. "track_42"); show a readable placeholder rather than the raw id.
+  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short ?? 'Unknown circuit';
   const trackFlag = (id: string) => F1_TRACKS.find(t => t.id === id)?.flag ?? '';
 
   return (
@@ -171,8 +174,8 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
                 {rankInfo.rank}
               </span>
               {streak > 0 && (
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 12, color: '#FF9800' }}>
-                  🔥 {streak} day streak
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 12, color: '#FF9800' }}>
+                  <Flame size={12} aria-hidden="true" /> {streak} day streak
                 </span>
               )}
             </div>
@@ -183,8 +186,8 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
         {rankInfo.nextRank && (
           <div style={{ marginTop: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: getRankColor(rankInfo.rank) }}>{rankInfo.rank}</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: getRankColor(rankInfo.nextRank as DriverRank) }}>{rankInfo.nextRank}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--gray-light)' }}>{rankInfo.rank}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--gray-light)' }}>{rankInfo.nextRank}</span>
             </div>
             <div className="xp-bar-bg">
               <div className="xp-bar-fill" style={{ width: `${progressPct}%`, background: getRankColor(rankInfo.rank) }} />
