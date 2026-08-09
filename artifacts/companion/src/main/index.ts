@@ -140,6 +140,13 @@ uploader.onUploadResult = (result: UploadResult) => {
   if (result.ok) {
     lastUpload = { track: result.track, lapTime: result.lapTime, at: result.at };
     tray?.setToolTip(`F1SimHub — Last: ${result.track} ${result.lapTime}`);
+  } else {
+    // Failed uploads were previously silent — nothing in the log file
+    // explained why an item stayed stuck in the pending queue, so a
+    // permanent failure (bad auth, rejected payload) was indistinguishable
+    // from a transient one (network blip, cold server) just waiting on
+    // the next retry.
+    console.error(`[Upload] Failed for ${result.track}: ${result.error}`);
   }
   pushStatus();
 };

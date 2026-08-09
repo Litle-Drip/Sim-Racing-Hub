@@ -562,6 +562,12 @@ export class SessionTracker {
           this.lastRecordedLapMs = lastLapMs;
           this.onLapComplete?.(record);
           this.onStatusChange?.();
+        } else {
+          // Invalid laps (track limits, cutting a corner, etc.) are
+          // deliberately excluded from validLaps/the uploaded session —
+          // logged so a driven-lap-count vs. recorded-lap-count mismatch
+          // is traceable instead of looking like a dropped/lost lap.
+          console.log(`[Lap] #${this.pendingLap.lapNum} invalid — excluded from session`);
         }
       }
       this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid, trace: [] };
