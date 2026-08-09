@@ -939,7 +939,45 @@ export class SessionTracker {
     this.lastLiveBrakeBias = 0;
   }
 
+  // Live lap completion (handleLapPacket) only finalizes a lap once it sees
+  // telemetry for the NEXT lap starting — that never happens for the final
+  // lap of a race, since there's no lap after the checkered flag to trigger
+  // it. The Session History packet is the game's own authoritative lap-by-
+  // lap record and keeps updating independently of that live tracking, so
+  // use it here to backfill any trailing lap(s) it has that live tracking
+  // never got a chance to close out. Only ever adds laps that are already
+  // fully complete in the official record — never touches one already
+  // captured live.
+  private reconcileFromLapHistory(): void {
+    if (this.lastLapHistory.length === 0) return;
+    const recordedLapNums = new Set(this.validLaps.map(l => l.lap));
+    let recovered = 0;
+    for (const entry of this.lastLapHistory) {
+      if (entry.lapTimeMs <= 0) continue;
+      if (recordedLapNums.has(entry.lap)) continue;
+      if (!entry.valid) {
+        console.log(`[Lap] #${entry.lap} invalid — excluded from session (from session history)`);
+        continue;
+      }
+      this.validLaps.push({
+        lap: entry.lap,
+        time: msToLapTime(entry.lapTimeMs),
+        s1: msToLapTime(entry.sector1Ms),
+        s2: msToLapTime(entry.sector2Ms),
+        s3: msToLapTime(entry.sector3Ms),
+        tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
+        penalty: "",
+      });
+      recovered++;
+      console.log(`[Lap] #${entry.lap} ${msToLapTime(entry.lapTimeMs)} recovered from session history (missed by live tracking)`);
+    }
+    if (recovered > 0) this.validLaps.sort((a, b) => a.lap - b.lap);
+  }
+
   private flushSession(): void {
+    console.log(`[Session] Flushing with ${this.validLaps.length} live-tracked lap(s), session history knows of ${this.lastLapHistory.length} lap(s)`);
+    this.reconcileFromLapHistory();
+
     const snap: SessionSnapshot = {
       id: randomFlushId(),
       sessionUID: this.sessionUID!,
