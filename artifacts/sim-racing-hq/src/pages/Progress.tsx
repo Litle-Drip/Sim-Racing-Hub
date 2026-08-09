@@ -19,6 +19,20 @@ function formatLapTime(seconds: number): string {
   return `${mins}:${parseFloat(secs) < 10 ? '0' : ''}${secs}`;
 }
 
+// Charts plot one point per session, so a busy track yields far more dates
+// than fit across the axis. Show month-day only and let Recharts drop ticks
+// that would collide.
+function formatDateTick(date: string): string {
+  const parts = date.split('-');
+  return parts.length === 3 ? `${parts[1]}/${parts[2]}` : date;
+}
+
+const DATE_AXIS_PROPS = {
+  tickFormatter: formatDateTick,
+  interval: 'preserveStartEnd' as const,
+  minTickGap: 28,
+};
+
 function formatAxisTick(seconds: number): string {
   if (!isFinite(seconds) || seconds === 0) return '';
   const mins = Math.floor(seconds / 60);
@@ -182,7 +196,9 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
     return Object.values(pbMap).sort((a, b) => a.trackId.localeCompare(b.trackId));
   }, [allSessions]);
 
-  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
+  // Older imports can carry circuit ids the current track list doesn't know
+  // (e.g. "track_42"); show a readable placeholder rather than the raw id.
+  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || 'Unknown circuit';
 
   const minY = progressionData.length > 0
     ? Math.min(...progressionData.map(d => d.lapSeconds)) - 2
@@ -259,7 +275,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
             </div>
             <div>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>PBs Set</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#FFF200', fontWeight: 700, marginTop: 2 }}>{progressSummary.pbCount}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--yellow)', fontWeight: 700, marginTop: 2 }}>{progressSummary.pbCount}</div>
             </div>
           </div>
         )}
@@ -276,18 +292,19 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={progressionData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
+              <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
-                axisLine={{ stroke: '#1E1E1E' }}
+                {...DATE_AXIS_PROPS}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
                 tickLine={false}
               />
               <YAxis
                 domain={[minY, maxY]}
                 tickFormatter={formatAxisTick}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
-                axisLine={{ stroke: '#1E1E1E' }}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
                 tickLine={false}
                 width={56}
               />
@@ -295,13 +312,13 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
               <Line
                 type="monotone"
                 dataKey="lapSeconds"
-                stroke="#00D2BE"
+                stroke="var(--teal)"
                 strokeWidth={2}
                 dot={({ cx, cy, payload }: { cx: number; cy: number; payload: { isPB: boolean } }) =>
                   payload.isPB ? (
-                    <circle key={`pb-${cx}`} cx={cx} cy={cy} r={5} fill="#FFF200" stroke="#FFF200" strokeWidth={0} />
+                    <circle key={`pb-${cx}`} cx={cx} cy={cy} r={5} fill="var(--yellow)" stroke="var(--yellow)" strokeWidth={0} />
                   ) : (
-                    <circle key={`dot-${cx}`} cx={cx} cy={cy} r={3} fill="#00D2BE" stroke="#00D2BE" strokeWidth={0} />
+                    <circle key={`dot-${cx}`} cx={cx} cy={cy} r={3} fill="var(--teal)" stroke="var(--teal)" strokeWidth={0} />
                   )
                 }
                 name="Best Lap"
@@ -312,11 +329,11 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         {progressionData.length > 0 && (
           <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 20, height: 2, background: '#00D2BE', display: 'inline-block' }} />
+              <span style={{ width: 20, height: 2, background: 'var(--teal)', display: 'inline-block' }} />
               Best Lap
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#FFF200', display: 'inline-block' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--yellow)', display: 'inline-block' }} />
               New PB
             </div>
           </div>
@@ -338,32 +355,33 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={varianceData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
+              <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
-                axisLine={{ stroke: '#1E1E1E' }}
+                {...DATE_AXIS_PROPS}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
                 tickLine={false}
               />
               <YAxis
                 domain={[minVarianceY, maxVarianceY]}
                 tickFormatter={formatAxisTick}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
-                axisLine={{ stroke: '#1E1E1E' }}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
                 tickLine={false}
                 width={56}
               />
               <Tooltip content={<LapTooltip />} />
               <Line type="monotone" dataKey="worst" name="Worst" stroke="rgba(232,0,45,0.6)" strokeWidth={1.5} dot={{ r: 3, fill: 'rgba(232,0,45,0.6)' }} />
               <Line type="monotone" dataKey="avg" name="Average" stroke="#555555" strokeWidth={1.5} dot={{ r: 3, fill: '#555555' }} />
-              <Line type="monotone" dataKey="best" name="Best" stroke="#00D2BE" strokeWidth={2} dot={{ r: 3, fill: '#00D2BE' }} />
+              <Line type="monotone" dataKey="best" name="Best" stroke="var(--teal)" strokeWidth={2} dot={{ r: 3, fill: 'var(--teal)' }} />
             </LineChart>
           </ResponsiveContainer>
         )}
         {filterTrack && varianceData.length > 0 && (
           <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 20, height: 2, background: '#00D2BE', display: 'inline-block' }} />
+              <span style={{ width: 20, height: 2, background: 'var(--teal)', display: 'inline-block' }} />
               Best
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
@@ -393,28 +411,29 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={topSpeedChartData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
+              <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
-                axisLine={{ stroke: '#1E1E1E' }}
+                {...DATE_AXIS_PROPS}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
                 tickLine={false}
               />
               <YAxis
                 domain={[minTopSpeedY, maxTopSpeedY]}
                 tickFormatter={v => `${Math.round(v)}`}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
-                axisLine={{ stroke: '#1E1E1E' }}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
                 tickLine={false}
                 width={40}
               />
               <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
                 <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#00D2BE' }}>{Math.round(payload[0].value as number)} {speedUnit}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>{Math.round(payload[0].value as number)} {speedUnit}</div>
                 </div>
               ) : null} />
-              <Line type="monotone" dataKey="speed" name="Top Speed" stroke="#00D2BE" strokeWidth={2} dot={{ r: 4, fill: '#00D2BE' }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="speed" name="Top Speed" stroke="var(--teal)" strokeWidth={2} dot={{ r: 4, fill: 'var(--teal)' }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -428,7 +447,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
             {telemetryStats.topSpeed > 0 && (
               <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Speed</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#00D2BE', fontWeight: 700 }}>{formatSpeed(telemetryStats.topSpeed)}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--teal)', fontWeight: 700 }}>{formatSpeed(telemetryStats.topSpeed)}</div>
               </div>
             )}
             {telemetryStats.avgTyreWear > 0 && (
@@ -546,7 +565,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={consistencyData} margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="date" tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} />
+                <XAxis dataKey="date" {...DATE_AXIS_PROPS} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} />
                 <YAxis domain={[90, 100]} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} tickFormatter={v => `${v}%`} />
                 <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
                   <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>

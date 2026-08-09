@@ -109,8 +109,8 @@ export default function DriverProfile({ username }: { username: string }) {
             {driver.username.charAt(0).toUpperCase()}
           </div>
         )}
-        <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: 'var(--white)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: 'var(--white)', margin: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
             {driver.username}
             {rankInfo && (
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
@@ -232,7 +232,7 @@ export default function DriverProfile({ username }: { username: string }) {
       {/* Shareable URL */}
       <div style={{ marginTop: 32, textAlign: 'center', padding: '16px 0', borderTop: '1px solid var(--border)' }}>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-          Share this profile: <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>f1simhub.com/driver/{driver.username}</span>
+          Share this profile: <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>f1simhub.com/driver/{driver.username}</span>
         </div>
       </div>
     </div>

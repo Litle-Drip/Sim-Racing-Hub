@@ -208,6 +208,9 @@ function setupAutoUpdater(): void {
   setInterval(check, 4 * 60 * 60 * 1000);
 }
 
+ipcMain.handle("window-minimize", () => mainWindow?.minimize());
+ipcMain.handle("window-close", () => mainWindow?.close());
+
 ipcMain.handle("get-version", () => app.getVersion());
 ipcMain.handle("get-status", () => buildStatus());
 ipcMain.handle("get-settings", () => ({
@@ -282,8 +285,9 @@ function createWindow(): BrowserWindow {
     width: 440,
     height: 560,
     resizable: false,
+    frame: false,
     title: "F1SimHub Companion",
-    backgroundColor: "#0f0f0f",
+    backgroundColor: "#080808",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,

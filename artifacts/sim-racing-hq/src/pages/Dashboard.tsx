@@ -7,6 +7,7 @@ import { lapToSeconds } from '../lib/storage';
 import { calculateStreak, calculateRank, getRankColor, getRankProgress, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
 import { SessionDetailModal } from '../components/SessionDetail';
+import { Flame, Trophy } from 'lucide-react';
 
 const DIFF_COLORS: Record<string, string> = {
   Easy: '#4CAF50',
@@ -598,100 +599,43 @@ export default function Dashboard({ setPage }: DashboardProps) {
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('community')}>Community</button>
       </div>
 
-      {/* ── Rank + XP Progress Bar ──────────────────────────────────────── */}
-      <div className="card dash-rank-card" style={{ padding: '14px 20px', marginBottom: 16, border: `1px solid ${getRankColor(rankInfo.rank)}33` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
-              {rankInfo.rank}
-            </span>
-            {streak > 0 && (
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: '#FF9800' }}>
-                🔥 {streak} day streak
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              {rankInfo.points} XP
-            </span>
-            {earnedCount > 0 && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
-                {earnedCount}/{achievements.length} badges
-              </span>
-            )}
-          </div>
+      {/* ── Achievements (tabbed by category) ──────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
+        <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {BADGE_CATEGORIES.map(cat => (
+            <button
+              key={cat.label}
+              onClick={() => setBadgeTab(cat.label)}
+              className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
-        {nextTier && (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{rankInfo.rank}</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: getRankColor(nextTier as DriverRank) }}>{nextTier}</span>
-            </div>
-            <div className="xp-bar-bg">
-              <div className="xp-bar-fill" style={{ width: `${progressToNext}%`, background: getRankColor(rankInfo.rank) }} />
-            </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2, textAlign: 'right' }}>
-              {rankInfo.pointsToNext} XP to {nextTier}
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* ── Last Session Summary ─────────────────────────────────────────── */}
-      {lastSession && (
-        <div
-          className="card dash-stat-hover"
-          style={{ padding: '14px 20px', marginBottom: 16, cursor: 'pointer' }}
-          onClick={() => setDetailSession(lastSession)}
-          title="Click to view full session details"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
-            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)' }}>
-                {F1_TRACKS.find(t => t.id === lastSession.trackId)?.flag} {trackName(lastSession.trackId)}
-              </div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
-                {lastSession.car} · {lastSession.type} · {lastSession.date}
-                {lastSession.createdAt && !isNaN(new Date(lastSession.createdAt).getTime()) && (
-                  <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
+        {filteredBadges.map(a => {
+          const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
+          return (
+            <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
+              title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
+              <span className="dash-badge-icon">{a.icon}</span>
+              <div className="dash-badge-info">
+                <span className="dash-badge-name">{a.name}</span>
+                {!a.earned && a.target > 1 && (
+                  <div className="dash-badge-progress">
+                    <div className="dash-badge-bar">
+                      <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
+                    </div>
+                    <span className="dash-badge-count">{a.progress}/{a.target}</span>
+                  </div>
                 )}
               </div>
             </div>
-            {lastSession.bestLap && (
-              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: lastSession.isPB ? '#FFF200' : 'var(--teal)', fontWeight: 700 }}>
-                  {lastSession.bestLap}{lastSession.isPB ? ' 🏆' : ''}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
-      {nextGoal && (
-        <div className="card dash-next-goal" style={{ padding: '14px 20px', marginBottom: 16, border: '1px solid rgba(0,210,190,0.25)' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
-            {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
-            {nextGoal.badge && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
-            )}
-            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
-              Start Attempt
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* ── Stat Cards with micro-context ───────────────────────────────── */}
       <div className="stat-grid">
@@ -737,6 +681,203 @@ export default function Dashboard({ setPage }: DashboardProps) {
           <div className="stat-micro stat-cta" onClick={e => { e.stopPropagation(); setPage('setups'); }}>Create Setup →</div>
         </div>
       </div>
+
+      {/* ── Last Session Summary ─────────────────────────────────────────── */}
+      {lastSession && (
+        <div
+          className="card dash-stat-hover"
+          style={{ padding: '14px 20px', marginBottom: 16, cursor: 'pointer' }}
+          onClick={() => setDetailSession(lastSession)}
+          title="Click to view full session details"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
+            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)' }}>
+                {F1_TRACKS.find(t => t.id === lastSession.trackId)?.flag} {trackName(lastSession.trackId)}
+              </div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
+                {lastSession.car} · {lastSession.type} · {lastSession.date}
+                {lastSession.createdAt && !isNaN(new Date(lastSession.createdAt).getTime()) && (
+                  <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
+                )}
+              </div>
+            </div>
+            {lastSession.bestLap && (
+              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 18, color: lastSession.isPB ? 'var(--yellow)' : 'var(--teal)', fontWeight: 700 }}>
+                  {lastSession.bestLap}{lastSession.isPB && <Trophy size={15} aria-label="Personal best" />}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
+      {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
+          <div className="perf-snap-grid">
+            {perfSnapshot.strongestTrack && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Strongest Track</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.strongestTrack}</div>
+                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
+              </div>
+            )}
+            {perfSnapshot.weakestTrack && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Needs Work</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.weakestTrack}</div>
+                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
+              </div>
+            )}
+            {perfSnapshot.bestSector && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Sector</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
+              </div>
+            )}
+            {perfSnapshot.worstSector && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: '#FF9800', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Activity Heatmap (with rich tooltips + weekly summary) ──────── */}
+      {/* #polish: tightened spacing before heatmap */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+        <div className="section-title" style={{ marginBottom: 0 }}>Activity — Last 365 Days</div>
+        <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>
+          <span>This week: <strong style={{ color: 'var(--white)' }}>{weeklySummary.sessions}</strong> sessions</span>
+          <span><strong style={{ color: 'var(--teal)' }}>{weeklySummary.pbs}</strong> PBs</span>
+          <span>~<strong style={{ color: 'var(--white)' }}>{weeklySummary.seatTime}</strong> min</span>
+        </div>
+      </div>
+      <div className="heatmap-section">
+        <div className="heatmap-header">
+          <div className="heatmap-legend">
+            <span className="legend-dot" style={{ background: 'var(--border)', border: '1px solid var(--border-accent)' }} />
+            <span style={{ fontSize: 10 }}>None</span>
+            <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.35)' }} />
+            <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.6)' }} />
+            <span className="legend-dot" style={{ background: '#E8002D' }} />
+            <span style={{ fontSize: 10 }}>Active</span>
+          </div>
+        </div>
+
+        <div className="heatmap-scroll" ref={heatmapRef}>
+          <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
+            {monthLabels.map(({ label, col }, idx) => {
+              const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
+              const spanWidth = (nextCol - col) * 13;
+              return (
+                <div key={`${label}-${col}`} style={{ width: spanWidth, flexShrink: 0, overflow: 'hidden' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 11,
+                    color: 'var(--gray)',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    whiteSpace: 'nowrap',
+                  }}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="heatmap-grid">
+            <div className="heatmap-day-labels">
+              {['', 'M', '', 'W', '', 'F', ''].map((d, i) => (
+                <div key={i} className="heatmap-day-label">{d}</div>
+              ))}
+            </div>
+            <div className="heatmap-cols">
+              {cells.map((col, ci) => (
+                <div key={ci} className="heatmap-col">
+                  {col.map((cell, di) => (
+                    <div
+                      key={di}
+                      className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}`}
+                      title={buildHeatmapTooltip(cell)}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Rank + XP Progress Bar ──────────────────────────────────────── */}
+      <div className="card dash-rank-card" style={{ padding: '14px 20px', marginTop: 16, marginBottom: 16, border: `1px solid ${getRankColor(rankInfo.rank)}33` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
+              {rankInfo.rank}
+            </span>
+            {streak > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: '#FF9800' }}>
+                <Flame size={13} aria-hidden="true" /> {streak} day streak
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              {rankInfo.points} XP
+            </span>
+            {earnedCount > 0 && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
+                {earnedCount}/{achievements.length} badges
+              </span>
+            )}
+          </div>
+        </div>
+        {nextTier && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{rankInfo.rank}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: getRankColor(nextTier as DriverRank) }}>{nextTier}</span>
+            </div>
+            <div className="xp-bar-bg">
+              <div className="xp-bar-fill" style={{ width: `${progressToNext}%`, background: getRankColor(rankInfo.rank) }} />
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2, textAlign: 'right' }}>
+              {rankInfo.pointsToNext} XP to {nextTier}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
+      {nextGoal && (
+        <div className="card dash-next-goal" style={{ padding: '14px 20px', marginBottom: 16, border: '1px solid rgba(0,210,190,0.25)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
+            {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
+            {nextGoal.badge && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
+            )}
+            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+              Start Attempt
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Daily Challenge ─────────────────────────────────────────────── */}
       <div className="card dash-challenge" style={{ padding: 0, marginBottom: 16, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
@@ -806,146 +947,6 @@ export default function Dashboard({ setPage }: DashboardProps) {
           </div>
         </div>
       )}
-
-      {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
-      {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
-          <div className="perf-snap-grid">
-            {perfSnapshot.strongestTrack && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Strongest Track</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.strongestTrack}</div>
-                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
-              </div>
-            )}
-            {perfSnapshot.weakestTrack && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Needs Work</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.weakestTrack}</div>
-                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
-              </div>
-            )}
-            {perfSnapshot.bestSector && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Sector</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
-              </div>
-            )}
-            {perfSnapshot.worstSector && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: '#FF9800', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Achievements (tabbed by category) ──────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {BADGE_CATEGORIES.map(cat => (
-            <button
-              key={cat.label}
-              onClick={() => setBadgeTab(cat.label)}
-              className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
-        {filteredBadges.map(a => {
-          const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
-          return (
-            <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
-              title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
-              <span className="dash-badge-icon">{a.icon}</span>
-              <div className="dash-badge-info">
-                <span className="dash-badge-name">{a.name}</span>
-                {!a.earned && a.target > 1 && (
-                  <div className="dash-badge-progress">
-                    <div className="dash-badge-bar">
-                      <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
-                    </div>
-                    <span className="dash-badge-count">{a.progress}/{a.target}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Activity Heatmap (with rich tooltips + weekly summary) ──────── */}
-      {/* #polish: tightened spacing before heatmap */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>Activity — Last 365 Days</div>
-        <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>
-          <span>This week: <strong style={{ color: 'var(--white)' }}>{weeklySummary.sessions}</strong> sessions</span>
-          <span><strong style={{ color: 'var(--teal)' }}>{weeklySummary.pbs}</strong> PBs</span>
-          <span>~<strong style={{ color: 'var(--white)' }}>{weeklySummary.seatTime}</strong> min</span>
-        </div>
-      </div>
-      <div className="heatmap-section">
-        <div className="heatmap-header">
-          <div className="heatmap-legend">
-            <span className="legend-dot" style={{ background: '#1E1E1E', border: '1px solid #333' }} />
-            <span style={{ fontSize: 10 }}>None</span>
-            <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.35)' }} />
-            <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.6)' }} />
-            <span className="legend-dot" style={{ background: '#E8002D' }} />
-            <span style={{ fontSize: 10 }}>Active</span>
-          </div>
-        </div>
-
-        <div className="heatmap-scroll" ref={heatmapRef}>
-          <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
-            {monthLabels.map(({ label, col }, idx) => {
-              const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
-              const spanWidth = (nextCol - col) * 13;
-              return (
-                <div key={`${label}-${col}`} style={{ width: spanWidth, flexShrink: 0, overflow: 'hidden' }}>
-                  <span style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 11,
-                    color: 'var(--gray)',
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
-                    whiteSpace: 'nowrap',
-                  }}>{label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="heatmap-grid">
-            <div className="heatmap-day-labels">
-              {['', 'M', '', 'W', '', 'F', ''].map((d, i) => (
-                <div key={i} className="heatmap-day-label">{d}</div>
-              ))}
-            </div>
-            <div className="heatmap-cols">
-              {cells.map((col, ci) => (
-                <div key={ci} className="heatmap-col">
-                  {col.map((cell, di) => (
-                    <div
-                      key={di}
-                      className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}`}
-                      title={buildHeatmapTooltip(cell)}
-                    />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ── Recent Sessions (enhanced table with mini bars) ─────────────── */}
       {/* #polish: tightened spacing between heatmap and sessions */}

@@ -72,9 +72,8 @@ function DifficultyRating({
               width: 14,
               height: 14,
               borderRadius: '50%',
-              background: i <= display ? 'var(--red)' : 'var(--border)',
-              opacity: i <= display ? (0.4 + (i * 0.15)) : 0.5,
-              transition: 'background 0.15s, opacity 0.15s',
+              background: i <= display ? 'var(--red)' : 'var(--border-accent)',
+              transition: 'background 0.15s',
             }}
           />
         ))}
@@ -133,9 +132,8 @@ function CardDifficultyDots({
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background: i <= display ? 'var(--red)' : 'var(--border)',
-              opacity: i <= display ? (0.45 + i * 0.11) : 0.35,
-              transition: 'background 0.12s, opacity 0.12s',
+              background: i <= display ? 'var(--red)' : 'var(--border-accent)',
+              transition: 'background 0.12s',
             }}
           />
         ))}

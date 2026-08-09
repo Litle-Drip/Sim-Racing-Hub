@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import WindowControls from "../components/WindowControls";
+import LogoMark from "../components/LogoMark";
+import Button from "../components/Button";
+import { IconCopy, IconCheck } from "../components/Icons";
+import { theme } from "../theme";
 
 interface Props {
   onComplete: () => void;
@@ -16,7 +21,7 @@ function StepIndicator({ current, total }: { current: Step; total: number }): Re
             width: i + 1 === current ? 20 : 6,
             height: 6,
             borderRadius: 3,
-            background: i + 1 <= current ? "#00d4b1" : "#2a2a2a",
+            background: i + 1 <= current ? theme.red : theme.borderAccent,
             transition: "all 0.2s",
           }}
         />
@@ -32,6 +37,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
   const [verifyError, setVerifyError] = useState("");
   const [localIPs, setLocalIPs] = useState<string[]>([]);
   const [waitingForPacket, setWaitingForPacket] = useState(false);
+  const [copiedIP, setCopiedIP] = useState(false);
 
   useEffect(() => {
     if (step === 2) {
@@ -53,6 +59,13 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
     }
     return undefined;
   }, [step, onComplete]);
+
+  function handleCopyIP(ip: string): void {
+    navigator.clipboard.writeText(ip).then(() => {
+      setCopiedIP(true);
+      setTimeout(() => setCopiedIP(false), 1500);
+    });
+  }
 
   async function handleVerifyKey(): Promise<void> {
     if (!apiKey.trim()) {
@@ -82,42 +95,39 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        background: "#0f0f0f",
-        padding: "32px 24px",
+        background: theme.bg,
       }}
     >
+      {/* Drag region */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "8px 8px 8px 0",
+          WebkitAppRegion: "drag",
+        } as React.CSSProperties}
+      >
+        <WindowControls />
+      </div>
+
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "8px 24px 32px" }}>
       {/* Logo */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: "linear-gradient(135deg, #00d4b1 0%, #007aff 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 14,
-            fontWeight: 700,
-            color: "#fff",
-          }}
-        >
-          F1
-        </div>
-        <span style={{ fontWeight: 600, fontSize: 16, color: "#fff" }}>F1SimHub Companion</span>
+        <LogoMark size={32} />
+        <span style={{ fontWeight: 600, fontSize: 16, color: theme.white }}>F1SimHub Companion</span>
       </div>
 
       <StepIndicator current={step} total={3} />
 
       {step === 1 && (
         <>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
             Paste your API Key
           </h2>
-          <p style={{ color: "#666", fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
             Get your key from{" "}
             <span
-              style={{ color: "#00d4b1", cursor: "pointer" }}
+              style={{ color: theme.teal, cursor: "pointer" }}
               onClick={() => window.companion.openF1SimHub()}
             >
               f1simhub.com/companion
@@ -133,50 +143,41 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
             style={{
               width: "100%",
               padding: "12px 14px",
-              background: "#1a1a1a",
-              border: "1px solid #2a2a2a",
+              background: theme.bgElevated,
+              border: `1px solid ${theme.borderAccent}`,
               borderRadius: 8,
-              color: "#e5e5e5",
+              color: theme.white,
               fontSize: 13,
               letterSpacing: 2,
               marginBottom: 8,
             }}
           />
           {verifyError && (
-            <p style={{ color: "#f87171", fontSize: 12, marginBottom: 12 }}>{verifyError}</p>
+            <p style={{ color: theme.red, fontSize: 12, marginBottom: 12 }}>{verifyError}</p>
           )}
-          <button
+          <Button
+            variant="primary"
             onClick={handleVerifyKey}
             disabled={verifying}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: verifying ? "#1a1a1a" : "#00d4b1",
-              color: verifying ? "#555" : "#000",
-              borderRadius: 8,
-              fontWeight: 600,
-              fontSize: 14,
-              marginTop: 8,
-              transition: "background 0.15s",
-            }}
+            style={{ width: "100%", padding: "12px", fontSize: 14, marginTop: 8 }}
           >
             {verifying ? "Verifying…" : "Verify & Continue →"}
-          </button>
+          </Button>
         </>
       )}
 
       {step === 2 && (
         <>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
             Configure F1 25
           </h2>
-          <p style={{ color: "#666", fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
-            In F1 25, go to <strong style={{ color: "#ccc" }}>Settings → Telemetry Settings</strong> and set:
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+            In F1 25, go to <strong style={{ color: theme.grayLight }}>Settings → Telemetry Settings</strong> and set:
           </p>
           <div
             style={{
-              background: "#141414",
-              border: "1px solid #1e1e1e",
+              background: theme.bgElevated,
+              border: `1px solid ${theme.border}`,
               borderRadius: 10,
               overflow: "hidden",
               marginBottom: 20,
@@ -195,59 +196,77 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
+                  alignItems: "center",
                   padding: "10px 16px",
-                  borderBottom: "1px solid #1e1e1e",
+                  borderBottom: `1px solid ${theme.border}`,
                 }}
               >
-                <span style={{ color: "#888", fontSize: 12 }}>{label}</span>
-                <span
-                  style={{
-                    color: value === "On" || value === "20777" ? "#00d4b1" : "#e5e5e5",
-                    fontWeight: 500,
-                    fontSize: 12,
-                  }}
-                >
-                  {value}
-                </span>
+                <span style={{ color: theme.gray, fontSize: 12 }}>{label}</span>
+                {label === "UDP IP Address" && localIPs[0] ? (
+                  <button
+                    onClick={() => handleCopyIP(localIPs[0])}
+                    title="Copy to clipboard"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: 0,
+                      background: "transparent",
+                      color: copiedIP ? theme.teal : theme.white,
+                      fontWeight: 500,
+                      fontSize: 12,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    {copiedIP ? (
+                      <>
+                        <IconCheck size={12} /> Copied
+                      </>
+                    ) : (
+                      <>
+                        {value} <IconCopy size={12} color={theme.gray} />
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <span
+                    style={{
+                      color: value === "On" || value === "20777" ? theme.teal : theme.white,
+                      fontWeight: 500,
+                      fontSize: 12,
+                    }}
+                  >
+                    {value}
+                  </span>
+                )}
               </div>
             ))}
           </div>
           <div
             style={{
-              background: "#0d1a16",
-              border: "1px solid #0a3028",
+              background: theme.tealDim,
+              border: `1px solid ${theme.tealBorder}`,
               borderRadius: 8,
               padding: "10px 14px",
               fontSize: 12,
-              color: "#00d4b1",
+              color: theme.teal,
               marginBottom: 24,
             }}
           >
             💡 To find your IP: open Command Prompt and type <code>ipconfig</code> (Windows) or Terminal → <code>ifconfig</code> (macOS). Look for IPv4 / inet.
           </div>
-          <button
-            onClick={() => setStep(3)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: "#00d4b1",
-              color: "#000",
-              borderRadius: 8,
-              fontWeight: 600,
-              fontSize: 14,
-            }}
-          >
+          <Button variant="primary" onClick={() => setStep(3)} style={{ width: "100%", padding: "12px", fontSize: 14 }}>
             Done — Continue →
-          </button>
+          </Button>
         </>
       )}
 
       {step === 3 && (
         <>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
             Waiting for first packet
           </h2>
-          <p style={{ color: "#666", fontSize: 13, marginBottom: 28, lineHeight: 1.6 }}>
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 28, lineHeight: 1.6 }}>
             Start F1 25 and load into a session. The companion will detect the connection automatically.
           </p>
           <div
@@ -267,12 +286,12 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                     width: 56,
                     height: 56,
                     borderRadius: "50%",
-                    border: "3px solid #1e1e1e",
-                    borderTopColor: "#00d4b1",
+                    border: `3px solid ${theme.border}`,
+                    borderTopColor: theme.teal,
                     animation: "spin 1s linear infinite",
                   }}
                 />
-                <p style={{ color: "#555", fontSize: 13 }}>Listening on port 20777…</p>
+                <p style={{ color: theme.gray, fontSize: 13 }}>Listening on port 20777…</p>
               </>
             ) : (
               <>
@@ -281,8 +300,8 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                     width: 56,
                     height: 56,
                     borderRadius: "50%",
-                    background: "#0d1a16",
-                    border: "3px solid #00d4b1",
+                    background: theme.tealDim,
+                    border: `3px solid ${theme.teal}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -291,30 +310,19 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                 >
                   ✓
                 </div>
-                <p style={{ color: "#00d4b1", fontSize: 14, fontWeight: 600 }}>
+                <p style={{ color: theme.teal, fontSize: 14, fontWeight: 600 }}>
                   Connected — Setup complete!
                 </p>
               </>
             )}
           </div>
-          <button
-            onClick={onComplete}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: "#1a1a1a",
-              color: "#666",
-              borderRadius: 8,
-              fontWeight: 500,
-              fontSize: 13,
-              border: "1px solid #2a2a2a",
-            }}
-          >
+          <Button variant="secondary" onClick={onComplete} style={{ width: "100%", padding: "12px" }}>
             Skip — I'll test later
-          </button>
+          </Button>
         </>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
     </div>
   );
 }

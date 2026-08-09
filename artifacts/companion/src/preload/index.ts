@@ -19,6 +19,8 @@ export interface CompanionSettings {
 }
 
 export interface CompanionAPI {
+  minimizeWindow(): Promise<void>;
+  closeWindow(): Promise<void>;
   getVersion(): Promise<string>;
   getStatus(): Promise<CompanionStatus>;
   getSettings(): Promise<CompanionSettings>;
@@ -33,6 +35,8 @@ export interface CompanionAPI {
 }
 
 const api: CompanionAPI = {
+  minimizeWindow: () => ipcRenderer.invoke("window-minimize"),
+  closeWindow: () => ipcRenderer.invoke("window-close"),
   getVersion: () => ipcRenderer.invoke("get-version"),
   getStatus: () => ipcRenderer.invoke("get-status"),
   getSettings: () => ipcRenderer.invoke("get-settings"),

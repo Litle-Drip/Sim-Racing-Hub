@@ -4,6 +4,7 @@ import { publishableKeyFromHost } from '@clerk/react/internal';
 import { setAuthTokenGetter, createSession as apiCreateSessionRaw, getGetSessionsQueryKey } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { dark } from '@clerk/themes';
+import { ClipboardList, Settings2, TrendingUp, Map, Users, Trophy } from 'lucide-react';
 import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
@@ -16,6 +17,7 @@ import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
 import RaceEngineer from './pages/RaceEngineer';
+import Rivals from './pages/Rivals';
 import Community from './pages/Community';
 import PublicSetups from './pages/PublicSetups';
 import PublicTracks from './pages/PublicTracks';
@@ -164,12 +166,12 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
   const [, setLocation] = useLocation();
 
   const features = [
-    { icon: '🏁', title: 'Session Log', desc: 'Track every practice, qualifying, and race. Log lap times, tires, weather, and conditions in 30 seconds.' },
-    { icon: '⚙️', title: 'Setup Vault', desc: 'Save and share car setups per track. Tag by game version so nothing goes stale after a patch.' },
-    { icon: '📊', title: 'PB Progression', desc: 'See your personal bests across every circuit. Variance charts show your consistency improving over time.' },
-    { icon: '🗺️', title: 'Track Bible', desc: 'All 24 circuits with real corner names, gear suggestions, braking points, and your personal notes.' },
-    { icon: '👥', title: 'Community', desc: 'Browse shared setups and sessions. Rate setups, filter by car and track, and see how you compare.' },
-    { icon: '🏆', title: 'Leaderboard', desc: 'Fastest lap times per circuit from the community. Compete and see your name on the board.' },
+    { Icon: ClipboardList, title: 'Session Log', desc: 'Track every practice, qualifying, and race. Log lap times, tires, weather, and conditions in 30 seconds.' },
+    { Icon: Settings2, title: 'Setup Vault', desc: 'Save and share car setups per track. Tag by game version so nothing goes stale after a patch.' },
+    { Icon: TrendingUp, title: 'PB Progression', desc: 'See your personal bests across every circuit. Variance charts show your consistency improving over time.' },
+    { Icon: Map, title: 'Track Bible', desc: 'All 24 circuits with real corner names, gear suggestions, braking points, and your personal notes.' },
+    { Icon: Users, title: 'Community', desc: 'Browse shared setups and sessions. Rate setups, filter by car and track, and see how you compare.' },
+    { Icon: Trophy, title: 'Leaderboard', desc: 'Fastest lap times per circuit from the community. Compete and see your name on the board.' },
   ];
 
   return (
@@ -217,10 +219,10 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
       {/* Feature Cards */}
       <div className="landing-features">
         <div className="landing-section-label">Everything you need to get faster</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+        <div className="landing-feature-grid">
           {features.map(f => (
             <div key={f.title} className="landing-card">
-              <div className="landing-card-icon">{f.icon}</div>
+              <div className="landing-card-icon"><f.Icon size={18} aria-hidden="true" /></div>
               <div className="landing-card-title">{f.title}</div>
               <div className="landing-card-desc">{f.desc}</div>
             </div>
@@ -257,7 +259,7 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'rivals'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -329,6 +331,7 @@ const PAGE_LABELS: Record<string, string> = {
   hardware: 'Hardware Vault',
   progress: 'PB Progression',
   engineer: 'Race Engineer',
+  rivals: 'Rivals',
 };
 
 const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
@@ -365,6 +368,13 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'AI coaching built from your actual session data',
       'Get specific, data-driven feedback after every debrief',
       'Ask follow-up questions about your pace and consistency',
+    ],
+  },
+  rivals: {
+    bullets: [
+      'Challenge a friend to beat one of your lap times or races',
+      'Race async — no need to be online at the same time',
+      'See a side-by-side comparison the moment they submit their attempt',
     ],
   },
 };
@@ -417,8 +427,9 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
       bottom: 0,
       left: 0,
       right: 0,
-      background: 'rgba(10,10,10,0.97)',
-      borderTop: '1px solid rgba(0,210,190,0.30)',
+      background: 'var(--bg-card)',
+      borderTop: '1px solid var(--teal)',
+      boxShadow: 'var(--shadow-pop)',
       padding: '14px 24px',
       display: 'flex',
       alignItems: 'center',
@@ -457,7 +468,7 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
 }
 
 const SHORTCUTS: Record<string, string> = {
-  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', c: 'community', x: 'companion', a: 'account',
+  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', r: 'rivals', c: 'community', x: 'companion', a: 'account',
 };
 
 function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
@@ -548,6 +559,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
       case 'engineer': return <RaceEngineer />;
+      case 'rivals': return <Rivals />;
       case 'community': return <Community />;
       case 'companion': return <Companion />;
       case 'account': return <Account setPage={handleSetPage} />;
@@ -570,7 +582,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
 
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowShortcuts(false)}>
+        <div style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowShortcuts(false)}>
           <div className="card" style={{ padding: '24px 32px', maxWidth: 360, width: '90%' }} onClick={e => e.stopPropagation()}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.1em', color: 'var(--white)', marginBottom: 16, textTransform: 'uppercase' }}>Keyboard Shortcuts</div>
             {Object.entries(SHORTCUTS).map(([key, dest]) => (
