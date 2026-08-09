@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import WindowControls from "../components/WindowControls";
 
 interface SettingsData {
   apiKey: string;
@@ -113,7 +114,7 @@ export default function Settings({ onBack }: Props): React.ReactElement {
           display: "flex",
           alignItems: "center",
           gap: 12,
-          padding: "16px 20px",
+          padding: "14px 12px 14px 20px",
           borderBottom: "1px solid #1e1e1e",
           WebkitAppRegion: "drag",
         } as React.CSSProperties}
@@ -131,7 +132,12 @@ export default function Settings({ onBack }: Props): React.ReactElement {
           ←
         </button>
         <span style={{ fontWeight: 600, fontSize: 15, color: "#fff" }}>Settings</span>
-        {saved && <span style={{ marginLeft: "auto", fontSize: 12, color: "#00d4b1" }}>Saved ✓</span>}
+        {saved && (
+          <span style={{ marginLeft: "auto", marginRight: 4, fontSize: 12, color: "#00d4b1" }}>
+            Saved ✓
+          </span>
+        )}
+        <WindowControls />
       </div>
 
       <div style={{ flex: 1, overflowY: "auto" }}>

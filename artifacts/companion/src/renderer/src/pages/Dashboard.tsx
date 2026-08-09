@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import WindowControls from "../components/WindowControls";
 
 interface Status {
   signedIn: boolean;
@@ -97,12 +98,14 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
       {/* Header */}
       <div
         style={{
-          padding: "20px 20px 16px",
+          display: "flex",
+          alignItems: "center",
+          padding: "14px 12px 14px 20px",
           borderBottom: "1px solid #1e1e1e",
           WebkitAppRegion: "drag",
         } as React.CSSProperties}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
           <div
             style={{
               width: 28,
@@ -115,21 +118,32 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
               fontSize: 14,
               fontWeight: 700,
               color: "#fff",
+              flexShrink: 0,
             }}
           >
             F1
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", letterSpacing: -0.3 }}>
               F1SimHub Companion
             </div>
-            <div style={{ fontSize: 11, color: "#555", marginTop: 1 }}>
+            <div
+              style={{
+                fontSize: 11,
+                color: "#6e6e6e",
+                marginTop: 1,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
               {status.currentSession
                 ? `Session active — ${status.currentSession.lapCount} lap${status.currentSession.lapCount !== 1 ? "s" : ""} on ${status.currentSession.track}`
                 : "Waiting for session…"}
             </div>
           </div>
         </div>
+        <WindowControls />
       </div>
 
       {/* Status rows */}

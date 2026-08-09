@@ -174,6 +174,9 @@ function startGameWatchdog(): void {
   }, 3000);
 }
 
+ipcMain.handle("window-minimize", () => mainWindow?.minimize());
+ipcMain.handle("window-close", () => mainWindow?.close());
+
 ipcMain.handle("get-version", () => app.getVersion());
 ipcMain.handle("get-status", () => buildStatus());
 ipcMain.handle("get-settings", () => ({
@@ -244,6 +247,7 @@ function createWindow(): BrowserWindow {
     width: 440,
     height: 560,
     resizable: false,
+    frame: false,
     title: "F1SimHub Companion",
     backgroundColor: "#0f0f0f",
     webPreferences: {
