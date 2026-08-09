@@ -10,6 +10,7 @@ import {
 import { join } from "path";
 import { networkInterfaces, tmpdir } from "os";
 import { mkdirSync, createWriteStream, type WriteStream } from "fs";
+import { autoUpdater } from "electron-updater";
 import { store } from "./store";
 import { UdpListener } from "./udp";
 import { SessionTracker } from "./session";
@@ -66,6 +67,8 @@ let lastUpload: LastUpload | null = null;
 let gameConnected = false;
 let telemetryReceiving = false;
 let gameCheckInterval: ReturnType<typeof setInterval> | null = null;
+let updateReady = false;
+let refreshTrayMenu: (() => void) | null = null;
 
 function pushStatus(): void {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -172,6 +175,37 @@ function startGameWatchdog(): void {
     }
     if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving) pushStatus();
   }, 3000);
+}
+
+// Windows-only for now: Squirrel.Mac (electron-updater's macOS mechanism)
+// verifies update signatures against the app's code-signing identity, and
+// the Mac build is currently unsigned (see PROJECT.md) — enabling it there
+// would just fail every check. Feed URL/version metadata come from
+// app-update.yml, generated at build time from electron-builder.json5's
+// `publish` config, so there's nothing to configure here beyond gating.
+function setupAutoUpdater(): void {
+  if (process.platform !== "win32") return;
+  if (!app.isPackaged) return; // no installed app to update when running from source
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => console.log("[AutoUpdate] Checking for update"));
+  autoUpdater.on("update-available", (info) => console.log(`[AutoUpdate] Update available: ${info.version}`));
+  autoUpdater.on("update-not-available", () => console.log("[AutoUpdate] Already up to date"));
+  autoUpdater.on("error", (err) => console.error("[AutoUpdate] Error:", err));
+  autoUpdater.on("download-progress", (p) => console.log(`[AutoUpdate] Downloading: ${Math.round(p.percent)}%`));
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log(`[AutoUpdate] Update ${info.version} downloaded — will install on quit`);
+    updateReady = true;
+    refreshTrayMenu?.();
+  });
+
+  const check = (): void => {
+    autoUpdater.checkForUpdates().catch(err => console.error("[AutoUpdate] Check failed:", err));
+  };
+  check();
+  setInterval(check, 4 * 60 * 60 * 1000);
 }
 
 ipcMain.handle("get-version", () => app.getVersion());
@@ -306,6 +340,12 @@ function createTray(): Tray {
         { label: "Open F1SimHub Companion", click: () => mainWindow?.show() },
         { label: lastUploadLabel, enabled: false },
         { type: "separator" },
+        ...(updateReady
+          ? [
+              { label: "Restart to Update", click: () => autoUpdater.quitAndInstall() },
+              { type: "separator" as const },
+            ]
+          : []),
         { label: "Quit", click: () => app.quit() },
       ])
     );
@@ -313,6 +353,7 @@ function createTray(): Tray {
 
   t.on("double-click", () => mainWindow?.show());
   updateMenu();
+  refreshTrayMenu = updateMenu;
 
   const originalOnResult = uploader.onUploadResult;
   uploader.onUploadResult = (result) => {
@@ -354,6 +395,7 @@ if (!gotSingleInstanceLock) {
     uploader.flushPending().catch(() => {});
     uploader.startRetryLoop(60_000);
     startGameWatchdog();
+    setupAutoUpdater();
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
