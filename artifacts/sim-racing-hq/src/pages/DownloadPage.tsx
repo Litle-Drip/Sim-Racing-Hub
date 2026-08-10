@@ -1,4 +1,5 @@
 import { useLocation } from 'wouter';
+import Footer from '../components/Footer';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -234,12 +235,7 @@ export default function DownloadPage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: '24px 0 8px', textAlign: 'center' }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
-            F1 Sim Hub — Built for the sim racing community. Not affiliated with Formula 1 or Codemasters.
-          </p>
-        </div>
+        <Footer />
       </div>
     </div>
   );

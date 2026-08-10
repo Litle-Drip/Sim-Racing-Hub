@@ -4,12 +4,13 @@ import { publishableKeyFromHost } from '@clerk/react/internal';
 import { setAuthTokenGetter, createSession as apiCreateSessionRaw, getGetSessionsQueryKey } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { dark } from '@clerk/themes';
-import { ClipboardList, Settings2, TrendingUp, Map, Users, Trophy } from 'lucide-react';
+import { Settings2, Map, Trophy, Activity, Bot, LayoutDashboard } from 'lucide-react';
 import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { UnitsProvider } from './lib/units';
 import Nav from './components/Nav';
+import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
 import Tracks from './pages/Tracks';
@@ -165,13 +166,58 @@ function SignUpPage() {
 function LandingPage({ onGuest }: { onGuest?: () => void }) {
   const [, setLocation] = useLocation();
 
-  const features = [
-    { Icon: ClipboardList, title: 'Session Log', desc: 'Track every practice, qualifying, and race. Log lap times, tires, weather, and conditions in 30 seconds.' },
-    { Icon: Settings2, title: 'Setup Vault', desc: 'Save and share car setups per track. Tag by game version so nothing goes stale after a patch.' },
-    { Icon: TrendingUp, title: 'PB Progression', desc: 'See your personal bests across every circuit. Variance charts show your consistency improving over time.' },
-    { Icon: Map, title: 'Track Bible', desc: 'All 24 circuits with real corner names, gear suggestions, braking points, and your personal notes.' },
-    { Icon: Users, title: 'Community', desc: 'Browse shared setups and sessions. Rate setups, filter by car and track, and see how you compare.' },
-    { Icon: Trophy, title: 'Leaderboard', desc: 'Fastest lap times per circuit from the community. Compete and see your name on the board.' },
+  const featureCategories = [
+    {
+      Icon: Activity,
+      title: 'Session & Performance Tracking',
+      items: [
+        { title: 'Companion App Auto-Logging', desc: 'Free desktop app reads live F1 25 telemetry and uploads sessions automatically.' },
+        { title: 'Quick Log', desc: "Manually log a session's results in seconds." },
+        { title: 'Session History', desc: 'Searchable log of every session with automatic PB detection.' },
+        { title: 'Progress Dashboard', desc: 'Activity heatmap plus stats on sessions, tracks, and PBs.' },
+        { title: 'Progress Analytics', desc: 'PB progression charts and lap-time consistency graphs.' },
+      ],
+    },
+    {
+      Icon: Map,
+      title: 'Track Knowledge',
+      items: [
+        { title: 'Track Bible', desc: 'All 24 F1 circuits with your stats and autosaving corner-by-corner notes.' },
+      ],
+    },
+    {
+      Icon: Settings2,
+      title: 'Setup & Hardware',
+      items: [
+        { title: 'Setup Vault', desc: 'Save, organize, and compare car setups side-by-side.' },
+        { title: 'Hardware Vault', desc: 'Store your wheel, pedal, and FFB hardware profiles.' },
+      ],
+    },
+    {
+      Icon: Bot,
+      title: 'AI Coaching',
+      items: [
+        { title: 'AI Race Engineer', desc: 'Chat assistant that analyzes your sessions and coaches you — 3 free messages.' },
+      ],
+    },
+    {
+      Icon: Trophy,
+      title: 'Community & Competition',
+      items: [
+        { title: 'Community Hub', desc: 'Browse and import setups and sessions shared by other users.' },
+        { title: 'Public Leaderboards', desc: 'Compare lap times against the community, per track.' },
+        { title: 'Rivals & Challenges', desc: 'Challenge players head-to-head to beat a lap time.' },
+        { title: 'Driver Profiles', desc: 'Public pages showing your PBs, achievements, and recent sessions.' },
+        { title: 'Achievements', desc: 'Badges and milestones for consistency and progress.' },
+      ],
+    },
+    {
+      Icon: LayoutDashboard,
+      title: 'Account',
+      items: [
+        { title: 'Account Dashboard', desc: 'Setups, PBs, and achievement progress, synced across devices.' },
+      ],
+    },
   ];
 
   return (
@@ -196,7 +242,7 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
           Companion
         </h1>
         <p className="landing-hero-sub">
-          Log sessions, track your PBs, build and share setups, and master every circuit on the F1 25 calendar.
+          Everything you need to log sessions, chase PBs, and master every circuit — all in one place.
         </p>
         <p className="landing-hero-platform">
           For F1 25 on Xbox, PlayStation, and PC — wheel or controller.
@@ -216,15 +262,24 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
         </div>
       </div>
 
-      {/* Feature Cards */}
+      {/* Feature Categories */}
       <div className="landing-features">
-        <div className="landing-section-label">Everything you need to get faster</div>
-        <div className="landing-feature-grid">
-          {features.map(f => (
-            <div key={f.title} className="landing-card">
-              <div className="landing-card-icon"><f.Icon size={18} aria-hidden="true" /></div>
-              <div className="landing-card-title">{f.title}</div>
-              <div className="landing-card-desc">{f.desc}</div>
+        <div className="landing-section-label">Everything you get, live today</div>
+        <div className="landing-feature-categories">
+          {featureCategories.map(cat => (
+            <div key={cat.title} className="landing-feature-category">
+              <div className="landing-feature-category-title">
+                <cat.Icon size={16} aria-hidden="true" />
+                {cat.title}
+              </div>
+              <ul className="landing-feature-list">
+                {cat.items.map(item => (
+                  <li key={item.title} className="landing-feature-item">
+                    <span className="landing-feature-item-title">{item.title}</span>
+                    <span className="landing-feature-item-desc"> — {item.desc}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
@@ -249,11 +304,8 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="landing-footer">
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
-          F1 Sim Hub — Built for the sim racing community. Not affiliated with Formula 1 or Codemasters.
-        </p>
+        <Footer />
       </div>
     </div>
   );
