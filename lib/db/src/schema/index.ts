@@ -158,7 +158,9 @@ export const trackNotesTable = pgTable("track_notes", {
   trackId: text("track_id").notNull(),
   corners: jsonb("corners").notNull().default([]),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => [
+  unique("track_notes_uniq").on(t.userId, t.trackId),
+]);
 
 export type DbTrackNotes = typeof trackNotesTable.$inferSelect;
 export type InsertDbTrackNotes = typeof trackNotesTable.$inferInsert;

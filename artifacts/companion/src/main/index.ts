@@ -185,7 +185,7 @@ function startGameWatchdog(): void {
     if (receiving && !wasConnected) console.log("[Watchdog] Game connected");
     if (!receiving && wasConnected) {
       console.log("[Watchdog] Game disconnected — flushing session");
-      tracker.forceFlush();
+      void tracker.forceFlush();
     }
     if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving) pushStatus();
   }, 3000);
@@ -289,7 +289,7 @@ ipcMain.handle("open-log-file", () => shell.openPath(getLogFilePath()));
 ipcMain.handle("open-releases-page", () => shell.openExternal("https://github.com/Litle-Drip/Sim-Racing-Hub/releases"));
 
 ipcMain.handle("force-flush", async () => {
-  tracker.forceFlush();
+  await tracker.forceFlush();
   await uploader.flushPending();
   pushStatus();
 });
@@ -429,9 +429,27 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", async () => {
-  if (gameCheckInterval) clearInterval(gameCheckInterval);
-  uploader.stopRetryLoop();
-  tracker.forceFlush();
-  await udp.stop();
+// Electron does not wait on async "before-quit" listeners, so without this
+// guard the process could tear down mid-flush and silently drop the final
+// session of a race (e.g. a user quitting right after finishing). Instead,
+// defer the actual quit until the flush/upload work has settled, then quit
+// again — the `quitting` flag makes the second quit() go through instead of
+// re-entering this handler.
+let quitting = false;
+app.on("before-quit", (event) => {
+  if (quitting) return;
+  event.preventDefault();
+  quitting = true;
+  void (async () => {
+    if (gameCheckInterval) clearInterval(gameCheckInterval);
+    uploader.stopRetryLoop();
+    try {
+      await tracker.forceFlush();
+      await uploader.flushPending();
+    } catch (err) {
+      console.error("[Quit] Flush before quit failed:", err);
+    }
+    await udp.stop();
+    app.quit();
+  })();
 });

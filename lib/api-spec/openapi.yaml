@@ -755,6 +755,7 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         number:
           type: integer
         name:
@@ -815,6 +816,7 @@ components:
           type: string
         trace:
           type: array
+          maxItems: 3500
           nullable: true
           items:
             $ref: "#/components/schemas/LapTraceSample"
@@ -942,6 +944,7 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         trackId:
@@ -974,6 +977,7 @@ components:
           type: integer
         notes:
           type: string
+          maxLength: 5000
         isPB:
           type: boolean
         penalty:
@@ -998,6 +1002,7 @@ components:
           nullable: true
         laps:
           type: array
+          maxItems: 150
           nullable: true
           items:
             $ref: "#/components/schemas/LapRecord"
@@ -1166,6 +1171,7 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         trackId:
@@ -1198,6 +1204,7 @@ components:
           type: integer
         notes:
           type: string
+          maxLength: 5000
         penalty:
           type: string
         timeOfDay:
@@ -1210,6 +1217,7 @@ components:
           type: string
         laps:
           type: array
+          maxItems: 150
           items:
             $ref: "#/components/schemas/LapRecord"
         position:
@@ -1271,6 +1279,7 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         trackId:
@@ -1330,8 +1339,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         car:
           type: string
         trackId:
@@ -1366,6 +1377,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
         isPublic:
           type: boolean
         sharedAt:
@@ -1400,8 +1412,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         car:
           type: string
         trackId:
@@ -1436,6 +1450,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
         authorName:
           type: string
         isOwn:
@@ -1512,8 +1527,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         car:
           type: string
         trackId:
@@ -1548,6 +1565,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
         gameVersion:
           type: string
       required:
@@ -1649,16 +1667,19 @@ components:
           type: string
         laps:
           type: array
+          maxItems: 150
           items:
             $ref: "#/components/schemas/LapRecord"
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         position:
           type: string
         notes:
           type: string
+          maxLength: 5000
         rating:
           type: integer
         penalty:
@@ -1767,10 +1788,12 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         trackId:
           type: string
         corners:
           type: array
+          maxItems: 60
           items:
             $ref: "#/components/schemas/CornerNote"
       required:
@@ -1783,8 +1806,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         corners:
           type: array
+          maxItems: 60
           items:
             $ref: "#/components/schemas/CornerNote"
       required:
@@ -1796,8 +1821,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         peripheralType:
           type: string
         brand:
@@ -1824,6 +1851,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
       required:
         - id
         - label
@@ -1860,6 +1888,7 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         bestLap:
@@ -1889,6 +1918,7 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         status:
           type: string
         trackId:
@@ -1996,8 +2026,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         peripheralType:
           type: string
         brand:
@@ -2024,6 +2056,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
       required:
         - id
         - label

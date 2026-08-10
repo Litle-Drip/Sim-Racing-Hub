@@ -40,6 +40,11 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
+if (!process.env.CORS_ORIGINS && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "CORS_ORIGINS must be set in production — refusing to start with an open (reflect-any-origin) CORS policy.",
+  );
+}
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
   : undefined;
@@ -54,13 +59,21 @@ app.use(helmet());
 // Companion session uploads include per-lap speed/throttle/brake/steer
 // traces (capped server-side at MAX_TRACE_SAMPLES per lap in
 // routes/companion.ts's capTrace) which can run several MB for a
-// multi-lap session — well over the old 1mb ceiling. That cap runs inside
+// multi-lap session — well over the default ceiling. That cap runs inside
 // the route handler, downstream of this body parser, so an oversized
 // request never reached it: express rejected the body outright with a 413
 // before capTrace got a chance to trim it. Raised with headroom above the
 // worst case (3000 samples/lap * a long race's lap count) so legitimate
-// sessions aren't rejected before the server-side cap can even run.
-app.use(express.json({ limit: "20mb" }));
+// sessions aren't rejected before the server-side cap can even run. Scoped
+// to just that route so every other endpoint keeps a small default ceiling.
+const companionSessionJson = express.json({ limit: "20mb" });
+const defaultJson = express.json({ limit: "1mb" });
+app.use((req, res, next) => {
+  if (req.path === "/api/companion/session") {
+    return companionSessionJson(req, res, next);
+  }
+  return defaultJson(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
 
 app.set("trust proxy", 1);
@@ -114,5 +127,14 @@ if (existsSync(webAppDir)) {
 } else {
   logger.warn({ webAppDir }, "Web app build not found — API-only mode");
 }
+
+// Final safety net for errors thrown outside a route's own try/catch
+// (e.g. malformed-JSON body-parser errors) so they never fall through to
+// Express's default handler, which can leak stack traces.
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  req.log?.error({ err }, "Unhandled error");
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Internal server error" });
+});
 
 export default app;

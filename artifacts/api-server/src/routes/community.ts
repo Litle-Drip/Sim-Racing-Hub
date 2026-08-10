@@ -344,7 +344,14 @@ router.get("/community/sessions", async (req, res) => {
     } else if (sort === "rating") {
       mapped.sort((a, b) => b.rating - a.rating);
     } else {
-      mapped.sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap));
+      mapped.sort((a, b) => {
+        const at = lapToSeconds(a.bestLap);
+        const bt = lapToSeconds(b.bestLap);
+        // Infinity - Infinity is NaN, which corrupts Array.sort's ordering;
+        // treat two sessions with no usable best lap as equal.
+        if (at === bt) return 0;
+        return at - bt;
+      });
     }
 
     res.json(mapped);

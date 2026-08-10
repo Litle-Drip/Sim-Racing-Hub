@@ -408,7 +408,7 @@ export class SessionTracker {
   private telemetrySampleCounter = 0;
   private static readonly TRACE_SAMPLE_EVERY = 3;
 
-  onSessionComplete: ((session: SessionSnapshot) => void) | null = null;
+  onSessionComplete: ((session: SessionSnapshot) => void | Promise<void>) | null = null;
   onLapComplete: ((lap: LapRecord) => void) | null = null;
   onStatusChange: (() => void) | null = null;
 
@@ -479,7 +479,7 @@ export class SessionTracker {
     const isMenuState = sessionType === 0 || uid === "0";
 
     if (uid !== this.sessionUID) {
-      if (this.sessionUID !== null && this.validLaps.length > 0) this.flushSession();
+      if (this.sessionUID !== null && this.validLaps.length > 0) void this.flushSession();
       if (!isMenuState) {
         this.sessionUID = uid;
         this.sessionType = sessionType;
@@ -500,7 +500,7 @@ export class SessionTracker {
       }
     } else if (this.sessionUID !== null && isMenuState) {
       if (this.validLaps.length > 0) {
-        this.flushSession();
+        void this.flushSession();
       } else {
         this.sessionUID = null;
         this.validLaps = [];
@@ -515,7 +515,7 @@ export class SessionTracker {
       this.sessionType !== 0 &&
       sessionType !== 0
     ) {
-      if (this.validLaps.length > 0) this.flushSession();
+      if (this.validLaps.length > 0) void this.flushSession();
       this.sessionType = sessionType;
       this.validLaps = [];
       this.pendingLap = null;
@@ -921,10 +921,16 @@ export class SessionTracker {
     }
   }
 
-  forceFlush(): void {
+  // Returns a promise that resolves once the flushed session has been handed
+  // off to onSessionComplete (and, per its own implementation, uploaded or
+  // queued) — callers that need to guarantee the flush landed before the
+  // process exits (e.g. app quit) can await this instead of firing and
+  // forgetting it.
+  forceFlush(): Promise<void> {
     if (this.sessionUID && this.validLaps.length > 0) {
-      this.flushSession();
+      return this.flushSession();
     }
+    return Promise.resolve();
   }
 
   private buildAssistsString(): string {
@@ -1031,7 +1037,7 @@ export class SessionTracker {
     if (recovered > 0) this.validLaps.sort((a, b) => a.lap - b.lap);
   }
 
-  private flushSession(): void {
+  private async flushSession(): Promise<void> {
     console.log(`[Session] Flushing with ${this.validLaps.length} live-tracked lap(s), session history knows of ${this.lastLapHistory.length} lap(s)`);
     this.reconcileFromLapHistory();
 
@@ -1101,6 +1107,6 @@ export class SessionTracker {
     this.pendingLap = null;
     this.lastPosition = 0;
     this.resetTelemetryState();
-    this.onSessionComplete?.(snap);
+    await this.onSessionComplete?.(snap);
   }
 }

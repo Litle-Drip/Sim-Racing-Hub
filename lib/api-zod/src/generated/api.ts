@@ -21,7 +21,7 @@ export const HealthCheckResponse = zod.object({
  * @summary Get all sessions for current user
  */
 export const GetSessionsResponseItem = zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "date": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -37,7 +37,7 @@ export const GetSessionsResponseItem = zod.object({
   "conditions": zod.string(),
   "assists": zod.string(),
   "rating": zod.number(),
-  "notes": zod.string(),
+  "notes": zod.string().max(5000),
   "isPB": zod.boolean(),
   "penalty": zod.string().nullish(),
   "gameVersion": zod.string().nullish(),
@@ -146,7 +146,7 @@ export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
  * @summary Create a new session
  */
 export const CreateSessionBody = zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "date": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -162,7 +162,7 @@ export const CreateSessionBody = zod.object({
   "conditions": zod.string(),
   "assists": zod.string(),
   "rating": zod.coerce.number(),
-  "notes": zod.string(),
+  "notes": zod.string().max(5000),
   "penalty": zod.string().optional(),
   "timeOfDay": zod.string().optional(),
   "gameVersion": zod.string().optional(),
@@ -225,8 +225,8 @@ export const ShareSessionResponse = zod.object({
  * @summary Get all setups for current user
  */
 export const GetSetupsResponseItem = zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
+  "id": zod.string().max(200),
+  "label": zod.string().max(100),
   "car": zod.string(),
   "trackId": zod.string(),
   "tag": zod.string(),
@@ -243,7 +243,7 @@ export const GetSetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string(),
+  "notes": zod.string().max(5000),
   "isPublic": zod.boolean().optional(),
   "sharedAt": zod.string().nullish(),
   "gameVersion": zod.string().nullish()
@@ -255,8 +255,8 @@ export const GetSetupsResponse = zod.array(GetSetupsResponseItem)
  * @summary Create a new setup
  */
 export const CreateSetupBody = zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
+  "id": zod.string().max(200),
+  "label": zod.string().max(100),
   "car": zod.string(),
   "trackId": zod.string(),
   "tag": zod.string().optional(),
@@ -273,7 +273,7 @@ export const CreateSetupBody = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string(),
+  "notes": zod.string().max(5000),
   "gameVersion": zod.string().optional()
 })
 
@@ -307,7 +307,7 @@ export const GetCommunitySessionsQueryParams = zod.object({
 })
 
 export const GetCommunitySessionsResponseItem = zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "date": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -340,8 +340,8 @@ export const GetCommunitySetupsQueryParams = zod.object({
 })
 
 export const GetCommunitySetupsResponseItem = zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
+  "id": zod.string().max(200),
+  "label": zod.string().max(100),
   "car": zod.string(),
   "trackId": zod.string(),
   "tag": zod.string(),
@@ -358,7 +358,7 @@ export const GetCommunitySetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string(),
+  "notes": zod.string().max(5000),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
@@ -377,8 +377,8 @@ export const GetCommunitySetupParams = zod.object({
 })
 
 export const GetCommunitySetupResponse = zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
+  "id": zod.string().max(200),
+  "label": zod.string().max(100),
   "car": zod.string(),
   "trackId": zod.string(),
   "tag": zod.string(),
@@ -395,7 +395,7 @@ export const GetCommunitySetupResponse = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string(),
+  "notes": zod.string().max(5000),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
@@ -438,8 +438,8 @@ export const ImportSetupParams = zod.object({
  * @summary Get all hardware profiles for current user
  */
 export const GetHardwareResponseItem = zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
+  "id": zod.string().max(200),
+  "label": zod.string().max(100),
   "peripheralType": zod.string(),
   "brand": zod.string(),
   "model": zod.string(),
@@ -452,7 +452,7 @@ export const GetHardwareResponseItem = zod.object({
   "friction": zod.string(),
   "linearity": zod.string(),
   "steeringRange": zod.string(),
-  "notes": zod.string()
+  "notes": zod.string().max(5000)
 })
 export const GetHardwareResponse = zod.array(GetHardwareResponseItem)
 
@@ -461,8 +461,8 @@ export const GetHardwareResponse = zod.array(GetHardwareResponseItem)
  * @summary Create a new hardware profile
  */
 export const CreateHardwareBody = zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
+  "id": zod.string().max(200),
+  "label": zod.string().max(100),
   "peripheralType": zod.string(),
   "brand": zod.string(),
   "model": zod.string(),
@@ -475,7 +475,7 @@ export const CreateHardwareBody = zod.object({
   "friction": zod.string(),
   "linearity": zod.string(),
   "steeringRange": zod.string(),
-  "notes": zod.string()
+  "notes": zod.string().max(5000)
 })
 
 
@@ -572,10 +572,10 @@ export const UploadCompanionSessionBody = zod.object({
   "steer": zod.coerce.number()
 })).nullish()
 })).optional(),
-  "id": zod.string().optional(),
+  "id": zod.string().max(200).optional(),
   "date": zod.string().optional(),
   "position": zod.string().optional(),
-  "notes": zod.string().optional(),
+  "notes": zod.string().max(5000).optional(),
   "rating": zod.coerce.number().optional(),
   "penalty": zod.string().optional(),
   "trackTemperature": zod.coerce.number().optional(),
@@ -657,7 +657,7 @@ export const UploadCompanionSessionBody = zod.object({
  * @summary Get all rival challenges the current user sent or received
  */
 export const GetRivalChallengesResponseItem = zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "status": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -676,7 +676,7 @@ export const GetRivalChallengesResponseItem = zod.object({
   "isMe": zod.boolean()
 }),
   "creatorSession": zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "date": zod.string(),
   "bestLap": zod.string(),
   "avgLap": zod.string(),
@@ -686,7 +686,7 @@ export const GetRivalChallengesResponseItem = zod.object({
   "raceTimeSeconds": zod.number().nullish()
 }),
   "opponentSession": zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "date": zod.string(),
   "bestLap": zod.string(),
   "avgLap": zod.string(),
@@ -745,7 +745,7 @@ export const SubmitRivalChallengeAttemptBody = zod.object({
 })
 
 export const SubmitRivalChallengeAttemptResponse = zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "status": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -764,7 +764,7 @@ export const SubmitRivalChallengeAttemptResponse = zod.object({
   "isMe": zod.boolean()
 }),
   "creatorSession": zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "date": zod.string(),
   "bestLap": zod.string(),
   "avgLap": zod.string(),
@@ -774,7 +774,7 @@ export const SubmitRivalChallengeAttemptResponse = zod.object({
   "raceTimeSeconds": zod.number().nullish()
 }),
   "opponentSession": zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "date": zod.string(),
   "bestLap": zod.string(),
   "avgLap": zod.string(),
@@ -834,10 +834,10 @@ export const GetTrackNotesParams = zod.object({
 })
 
 export const GetTrackNotesResponse = zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "trackId": zod.string(),
   "corners": zod.array(zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "number": zod.number(),
   "name": zod.string(),
   "gear": zod.string(),
@@ -856,9 +856,9 @@ export const UpsertTrackNotesParams = zod.object({
 })
 
 export const UpsertTrackNotesBody = zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "corners": zod.array(zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "number": zod.coerce.number(),
   "name": zod.string(),
   "gear": zod.string(),
@@ -869,10 +869,10 @@ export const UpsertTrackNotesBody = zod.object({
 })
 
 export const UpsertTrackNotesResponse = zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "trackId": zod.string(),
   "corners": zod.array(zod.object({
-  "id": zod.string(),
+  "id": zod.string().max(200),
   "number": zod.number(),
   "name": zod.string(),
   "gear": zod.string(),

@@ -42,9 +42,13 @@ function lapToSeconds(lap: string): number {
 }
 
 function secondsToLap(s: number): string {
-  const m = Math.floor(s / 60);
-  const rem = s - m * 60;
-  return `${m}:${rem.toFixed(3).padStart(6, "0")}`;
+  // Round to whole milliseconds first so floor/toFixed can't disagree at a
+  // minute boundary (e.g. 119.99958 -> floor(1.999..)=1 but toFixed(3)
+  // rounds the remainder up to "60.000", producing "1:60.000").
+  const totalMs = Math.round(s * 1000);
+  const m = Math.floor(totalMs / 60000);
+  const remSec = (totalMs - m * 60000) / 1000;
+  return `${m}:${remSec.toFixed(3).padStart(6, "0")}`;
 }
 
 function isFasterLap(a: string, b: string): boolean {
