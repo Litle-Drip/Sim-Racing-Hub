@@ -40,14 +40,22 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
+// Known production origins (see PROJECT.md) — used as a safe fallback when
+// CORS_ORIGINS isn't set, instead of either crashing the process or falling
+// back to reflect-any-origin. Set CORS_ORIGINS explicitly in the deploy
+// environment to override this.
+const DEFAULT_PRODUCTION_ORIGINS = ["https://www.f1simhub.com", "https://f1simhub.com"];
+
 if (!process.env.CORS_ORIGINS && process.env.NODE_ENV === "production") {
-  throw new Error(
-    "CORS_ORIGINS must be set in production — refusing to start with an open (reflect-any-origin) CORS policy.",
+  logger.warn(
+    "CORS_ORIGINS is not set — falling back to the default production origins. Set CORS_ORIGINS explicitly to override.",
   );
 }
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
-  : undefined;
+  : process.env.NODE_ENV === "production"
+    ? DEFAULT_PRODUCTION_ORIGINS
+    : undefined;
 
 app.use(
   cors({
