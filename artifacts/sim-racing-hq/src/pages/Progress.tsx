@@ -216,11 +216,13 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
     ? Math.max(...varianceData.map(d => d.worst ?? d.best)) + 2
     : 100;
 
+  // Both regional unit presets display speed in mph, so the chart padding
+  // only ever needs the mph value.
   const minTopSpeedY = topSpeedChartData.length > 0
-    ? Math.min(...topSpeedChartData.map(d => d.speed)) - (speedUnit === 'mph' ? 3 : 5)
+    ? Math.min(...topSpeedChartData.map(d => d.speed)) - 3
     : 0;
   const maxTopSpeedY = topSpeedChartData.length > 0
-    ? Math.max(...topSpeedChartData.map(d => d.speed)) + (speedUnit === 'mph' ? 3 : 5)
+    ? Math.max(...topSpeedChartData.map(d => d.speed)) + 3
     : convertSpeed(350);
 
   return (

@@ -287,6 +287,42 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
+    // Bound request size: the free-tier gate above only limits message *count*
+    // over time, not the size of any single request. Without these caps a
+    // single allowed request could still carry megabytes of content/sessions.
+    const MAX_MESSAGES = 40;
+    const MAX_CONTENT_CHARS = 4000;
+    const MAX_SESSIONS = 500;
+    const MAX_LAPS_PER_SESSION = 150;
+
+    if (messages.length > MAX_MESSAGES) {
+      return new Response(JSON.stringify({ error: "Too many messages in conversation." }), {
+        status: 400,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    if (messages.some((m) => typeof m.content !== "string" || m.content.length > MAX_CONTENT_CHARS)) {
+      return new Response(JSON.stringify({ error: "Message content too long." }), {
+        status: 400,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    const sessions = userData?.sessions;
+    if (sessions !== undefined) {
+      if (!Array.isArray(sessions) || sessions.length > MAX_SESSIONS) {
+        return new Response(JSON.stringify({ error: "Too much session data." }), {
+          status: 400,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      if (sessions.some((s) => Array.isArray(s.laps) && s.laps.length > MAX_LAPS_PER_SESSION)) {
+        return new Response(JSON.stringify({ error: "Too much lap data in a session." }), {
+          status: 400,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const stream = await client.messages.stream({

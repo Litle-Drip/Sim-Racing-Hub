@@ -135,7 +135,10 @@ function bestLapTime(laps: LapRecord[]): string {
 export class Uploader {
   private pending: PendingUpload[] = [];
   private apiKey = "";
-  private apiBaseUrl = "https://f1simhub.com/api";
+  // Must stay in sync with store.ts's default — the non-www f1simhub.com
+  // domain redirects and drops POST bodies/auth headers in the process (see
+  // PROJECT.md), so it must never be used as an upload target.
+  private apiBaseUrl = "https://sim-racing-hub.onrender.com/api";
   private retryTimer: ReturnType<typeof setInterval> | null = null;
 
   onUploadResult: ((result: UploadResult) => void) | null = null;
@@ -217,9 +220,9 @@ export class Uploader {
     await this.uploadPayload(payload);
   }
 
-  async uploadPayload(payload: UploadPayload): Promise<void> {
+  async uploadPayload(payload: UploadPayload, existing?: PendingUpload): Promise<void> {
     if (!this.apiKey) {
-      this.queuePending(payload);
+      this.queuePending(payload, existing);
       return;
     }
     try {
@@ -255,17 +258,14 @@ export class Uploader {
         at: new Date().toISOString(),
         error: errMsg,
       });
-      this.queuePending(payload);
+      this.queuePending(payload, existing);
     }
   }
 
-  private queuePending(payload: UploadPayload): void {
-    const item: PendingUpload = {
-      id: randomId(),
-      payload,
-      attemptCount: 0,
-      createdAt: new Date().toISOString(),
-    };
+  private queuePending(payload: UploadPayload, existing?: PendingUpload): void {
+    const item: PendingUpload = existing
+      ? { ...existing, payload, attemptCount: existing.attemptCount + 1 }
+      : { id: randomId(), payload, attemptCount: 0, createdAt: new Date().toISOString() };
     this.pending.push(item);
     savePending(this.pending);
   }
@@ -274,11 +274,14 @@ export class Uploader {
     if (!this.apiKey || this.pending.length === 0) return;
 
     const toRetry = [...this.pending];
-    this.pending = [];
-    savePending(this.pending);
-
     for (const item of toRetry) {
-      await this.uploadPayload(item.payload);
+      // Remove and persist just this one item right before attempting it —
+      // not the whole queue up front — so a crash/quit mid-loop only risks
+      // the single in-flight item instead of every item still waiting its
+      // turn (which would otherwise already be gone from disk, unsent).
+      this.pending = this.pending.filter((p) => p.id !== item.id);
+      savePending(this.pending);
+      await this.uploadPayload(item.payload, item);
     }
   }
 

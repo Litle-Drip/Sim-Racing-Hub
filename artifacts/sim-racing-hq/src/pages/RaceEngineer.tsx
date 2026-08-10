@@ -183,6 +183,7 @@ export default function RaceEngineer() {
       if (res.status === 403) {
         setLocked(true);
         setMessages(messages);
+        setInput(trimmed);
         queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
         return;
       }
@@ -257,7 +258,13 @@ export default function RaceEngineer() {
         )}
       </div>
 
-      {locked ? (
+      {!historyLoaded ? (
+        // Wait for the persisted debrief to load before deciding whether to
+        // show the "Ready for Debrief" empty state — otherwise a returning
+        // user briefly sees (and can click into) the empty state before
+        // their restored chat history snaps in.
+        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }} />
+      ) : locked ? (
         <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
           <Lock size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 10, textTransform: 'uppercase' }}>
@@ -269,6 +276,7 @@ export default function RaceEngineer() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <input
               type="password"
+              aria-label="Unlock password"
               placeholder="Unlock password"
               value={unlockPassword}
               onChange={e => setUnlockPassword(e.target.value)}
@@ -375,6 +383,7 @@ export default function RaceEngineer() {
             <input
               ref={inputRef}
               type="text"
+              aria-label="Message your race engineer"
               placeholder="Ask your engineer anything…"
               value={input}
               onChange={e => setInput(e.target.value)}

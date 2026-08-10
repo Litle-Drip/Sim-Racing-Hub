@@ -47,34 +47,18 @@ router.put("/track-difficulty/:trackId", requireAuth, async (req, res) => {
       return;
     }
 
-    const [existing] = await db
-      .select()
-      .from(trackDifficultyTable)
-      .where(
-        and(
-          eq(trackDifficultyTable.userId, userId),
-          eq(trackDifficultyTable.trackId, trackId)
-        )
-      );
-
-    if (existing) {
-      await db
-        .update(trackDifficultyTable)
-        .set({ rating, updatedAt: new Date() })
-        .where(
-          and(
-            eq(trackDifficultyTable.userId, userId),
-            eq(trackDifficultyTable.trackId, trackId)
-          )
-        );
-    } else {
-      await db.insert(trackDifficultyTable).values({
+    await db
+      .insert(trackDifficultyTable)
+      .values({
         id: crypto.randomUUID(),
         userId,
         trackId,
         rating,
+      })
+      .onConflictDoUpdate({
+        target: [trackDifficultyTable.userId, trackDifficultyTable.trackId],
+        set: { rating, updatedAt: new Date() },
       });
-    }
 
     res.json({ trackId, rating });
   } catch (err) {
