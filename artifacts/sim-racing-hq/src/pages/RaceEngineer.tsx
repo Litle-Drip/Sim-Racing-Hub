@@ -9,6 +9,30 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 
+const HISTORY_STORAGE_PREFIX = 'f1simhub-engineer-history-';
+const MAX_STORED_MESSAGES = 50;
+
+type EngineerMessage = { role: 'user' | 'assistant'; content: string };
+
+function loadHistory(userId: string): { messages: EngineerMessage[]; started: boolean } {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_PREFIX + userId);
+    if (!raw) return { messages: [], started: false };
+    const messages = JSON.parse(raw) as EngineerMessage[];
+    return { messages, started: messages.length > 0 };
+  } catch {
+    return { messages: [], started: false };
+  }
+}
+
+function saveHistory(userId: string, messages: EngineerMessage[]) {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_PREFIX + userId, JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)));
+  } catch {
+    // Storage full or unavailable — history just won't persist this session.
+  }
+}
+
 const QUICK_QUESTIONS = [
   'Where am I losing the most time?',
   'What should I work on tonight?',
@@ -35,14 +59,16 @@ function SpeakerLabel({ role }: { role: 'assistant' | 'user' }) {
 }
 
 export default function RaceEngineer() {
-  const { user } = useUser();
+  const { user, isLoaded: userLoaded } = useUser();
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const { data: sessions = [] } = useGetSessions();
   const { data: usage } = useGetEngineerUsage();
   const unlockMutation = useUnlockEngineerUsage();
 
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const userId = user?.id ?? 'guest';
+
+  const [messages, setMessages] = useState<EngineerMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');
@@ -50,8 +76,24 @@ export default function RaceEngineer() {
   const [locked, setLocked] = useState(false);
   const [unlockPassword, setUnlockPassword] = useState('');
   const [unlockError, setUnlockError] = useState('');
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Restore the driver's last debrief for this account once Clerk has
+  // resolved who's signed in, so a reload or revisit picks up where they left off.
+  useEffect(() => {
+    if (!userLoaded) return;
+    const { messages: restored, started: restoredStarted } = loadHistory(userId);
+    setMessages(restored);
+    setStarted(restoredStarted);
+    setHistoryLoaded(true);
+  }, [userLoaded, userId]);
+
+  useEffect(() => {
+    if (!historyLoaded) return;
+    saveHistory(userId, messages);
+  }, [historyLoaded, userId, messages]);
 
   useEffect(() => {
     if (usage && !usage.allowed) setLocked(true);
@@ -181,6 +223,7 @@ export default function RaceEngineer() {
       setMessages([]);
       setStreamingText('');
       setStarted(false);
+      saveHistory(userId, []);
     }
   };
 
