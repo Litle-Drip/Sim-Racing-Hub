@@ -66,6 +66,10 @@ interface LastUpload {
 let lastUpload: LastUpload | null = null;
 let gameConnected = false;
 let telemetryReceiving = false;
+// Set when udp.ts drops packets from a game whose UDP format it hasn't
+// verified offsets for (see udp.ts SUPPORTED_FORMATS) — surfaced in status
+// so the UI can say so instead of silently showing "Waiting…" forever.
+let unsupportedFormat: number | null = null;
 let gameCheckInterval: ReturnType<typeof setInterval> | null = null;
 let updateReady = false;
 let refreshTrayMenu: (() => void) | null = null;
@@ -85,12 +89,22 @@ function buildStatus() {
       ? { lapCount: tracker.currentLapCount, track: tracker.trackName }
       : null,
     pendingUploads: uploader.pendingCount,
+    detectedGame: tracker.gameVersion,
+    unsupportedFormat,
   };
 }
 
 function wireUdp(): void {
   udp.on("session", (data) => {
+    unsupportedFormat = null;
     tracker.handleSessionPacket(data as Parameters<typeof tracker.handleSessionPacket>[0]);
+  });
+  udp.on("unsupportedFormat", (format: number) => {
+    console.warn(
+      `[UDP] Unsupported game/packet format ${format} — ignoring its packets so telemetry isn't silently corrupted. Supported: F1 24, F1 25, F1 26.`
+    );
+    unsupportedFormat = format;
+    pushStatus();
   });
   udp.on("lapData", (data) => {
     tracker.handleLapPacket(data as Parameters<typeof tracker.handleLapPacket>[0]);

@@ -181,6 +181,26 @@ const SESSION_TYPES: Record<number, string> = {
   18: "Time Trial",
 };
 
+// F1 24's own session-type enum (pre-dates the F1 25 sprint-weekend shift
+// above). Confirmed against F1 24's own UDP spec
+// (github.com/MacManley/f1-24-udp): Race = 10, Time Trial = 13.
+const SESSION_TYPES_F1_24: Record<number, string> = {
+  0: "Unknown",
+  1: "Practice 1",
+  2: "Practice 2",
+  3: "Practice 3",
+  4: "Short Practice",
+  5: "Q1",
+  6: "Q2",
+  7: "Q3",
+  8: "Short Q",
+  9: "OSQ",
+  10: "Race",
+  11: "Race 2",
+  12: "Race 3",
+  13: "Time Trial",
+};
+
 const WEATHER_NAMES: Record<number, string> = {
   0: "Clear",
   1: "Light Cloud",
@@ -294,6 +314,12 @@ interface LapState {
 export class SessionTracker {
   private sessionUID: string | null = null;
   private sessionType = 0;
+  // Set from each Session packet's m_packetFormat (2024/2025/2026). Drives
+  // both the session-type name lookup (the enum shifted in F1 25, see
+  // SESSION_TYPES_F1_24 above) and the gameVersion label on upload — udp.ts
+  // already refuses to parse any format outside this set, so by the time a
+  // session packet reaches here the format is one we've verified offsets for.
+  private packetFormat: number | null = null;
   private trackId = -1;
   private weather = 0;
   private playerCarIdx = 255;
@@ -398,11 +424,28 @@ export class SessionTracker {
     return TRACK_NAMES[this.trackId] ?? `Track ${this.trackId}`;
   }
 
+  // null until the first Session packet of a supported format arrives.
+  get gameVersion(): string | null {
+    switch (this.packetFormat) {
+      case 2024: return "F1 24";
+      case 2025: return "F1 25";
+      case 2026: return "F1 26";
+      case null: return null;
+      default: return `F1 ${this.packetFormat % 100}`;
+    }
+  }
+
+  private sessionTypeName(type: number): string {
+    const table = this.packetFormat === 2024 ? SESSION_TYPES_F1_24 : SESSION_TYPES;
+    return table[type] ?? "Unknown";
+  }
+
   get timeSinceLastPacket(): number {
     return this.lastPacketTime > 0 ? Date.now() - this.lastPacketTime : Infinity;
   }
 
   handleSessionPacket(data: {
+    m_packetFormat?: number;
     m_sessionUID?: string | number | bigint;
     m_sessionType?: number;
     m_trackId?: number;
@@ -416,6 +459,8 @@ export class SessionTracker {
     m_timeOfDay?: number;
   }): void {
     this.lastPacketTime = Date.now();
+
+    if (data.m_packetFormat !== undefined) this.packetFormat = data.m_packetFormat;
 
     const uid = String(data.m_sessionUID ?? "0");
     const sessionType = data.m_sessionType ?? 0;
@@ -993,7 +1038,7 @@ export class SessionTracker {
     const snap: SessionSnapshot = {
       id: randomFlushId(),
       sessionUID: this.sessionUID!,
-      sessionType: SESSION_TYPES[this.sessionType] ?? "Unknown",
+      sessionType: this.sessionTypeName(this.sessionType),
       track: TRACK_NAMES[this.trackId] ?? `Track ${this.trackId}`,
       car: TEAM_NAMES[this.teamId] ?? `Team ${this.teamId}`,
       weather: WEATHER_NAMES[this.weather] ?? "Clear",
@@ -1002,7 +1047,7 @@ export class SessionTracker {
       aiDifficulty: this.lastAiDifficulty,
       position: this.lastPosition,
       assists: this.buildAssistsString(),
-      gameVersion: "F1 25",
+      gameVersion: this.gameVersion ?? "F1 25",
       trackTemperature: this.lastTrackTemperature || undefined,
       airTemperature: this.lastAirTemperature || undefined,
       totalLaps: this.lastTotalLaps || undefined,

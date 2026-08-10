@@ -1,11 +1,23 @@
 import { EventEmitter } from "events";
 import * as dgram from "dgram";
 
-// F1 25 UDP spec constants
+// F1 24/25/26 UDP spec constants. The header's m_packetFormat field (the
+// 4-digit game year, e.g. 2024) is checked against this allowlist before any
+// packet is parsed — an unrecognized format is dropped rather than parsed
+// with a possibly-wrong offset table. Struct layouts are close but not
+// identical year to year; blindly parsing an unverified format produces
+// silently wrong values (garbled lap times, wrong team, etc.), not a crash,
+// so refusing unknown formats is the only way to catch that instead of
+// uploading corrupted sessions.
+const SUPPORTED_FORMATS = new Set([2024, 2025, 2026]);
+
 const HEADER_SIZE = 29;
 const NUM_CARS = 22;
 
-// Per-car struct sizes (bytes) — derived from packed F1 25 spec
+// Per-car struct sizes (bytes) — derived from the packed F1 25/26 spec.
+// Confirmed byte-for-byte identical to F1 24 for every packet EXCEPT
+// CarDamageData, ParticipantData and FinalClassificationData (F1 24 sizes
+// below), and the tail of the Session packet (see parseSession).
 const LAP_DATA_SIZE = 57;
 const CAR_STATUS_SIZE = 55;
 const CAR_TELEMETRY_SIZE = 60;
@@ -13,6 +25,22 @@ const CAR_SETUP_SIZE = 50;
 const CAR_DAMAGE_SIZE = 46;
 const PARTICIPANT_SIZE = 57;
 const FINAL_CLASS_SIZE = 46;
+
+// F1 24 struct sizes for the packets that differ from F1 25/26, confirmed
+// against F1 24's own UDP spec (github.com/MacManley/f1-24-udp).
+const CAR_DAMAGE_SIZE_2024 = 42;
+const PARTICIPANT_SIZE_2024 = 60;
+const FINAL_CLASS_SIZE_2024 = 45;
+
+function carDamageSize(format: number): number {
+  return format === 2024 ? CAR_DAMAGE_SIZE_2024 : CAR_DAMAGE_SIZE;
+}
+function participantSize(format: number): number {
+  return format === 2024 ? PARTICIPANT_SIZE_2024 : PARTICIPANT_SIZE;
+}
+function finalClassSize(format: number): number {
+  return format === 2024 ? FINAL_CLASS_SIZE_2024 : FINAL_CLASS_SIZE;
+}
 
 // Session History sizes
 const LAP_HISTORY_SIZE = 14;
@@ -23,6 +51,9 @@ export class UdpListener extends EventEmitter {
   private port: number;
   private _isRunning = false;
   private _lastPacketAt = 0;
+  // Formats we've already warned about, so a stream of packets from an
+  // unsupported game logs (and emits) once instead of flooding per-packet.
+  private warnedFormats = new Set<number>();
 
   constructor(port = 20777) {
     super();
@@ -84,26 +115,43 @@ export class UdpListener extends EventEmitter {
   private handlePacket(buf: Buffer): void {
     if (buf.length < HEADER_SIZE) return;
 
+    const packetFormat = buf.readUInt16LE(0);
+    if (!SUPPORTED_FORMATS.has(packetFormat)) {
+      if (!this.warnedFormats.has(packetFormat)) {
+        this.warnedFormats.add(packetFormat);
+        this.emit("unsupportedFormat", packetFormat);
+      }
+      return;
+    }
+
     const packetId = buf.readUInt8(6);
     const sessionUID = buf.readBigUInt64LE(7).toString();
     const playerCarIndex = buf.readUInt8(27);
 
     switch (packetId) {
-      case 1: this.parseSession(buf, sessionUID); break;
+      case 1: this.parseSession(buf, sessionUID, packetFormat); break;
       case 2: this.parseLapData(buf); break;
-      case 4: this.parseParticipants(buf, playerCarIndex); break;
+      case 4: this.parseParticipants(buf, playerCarIndex, packetFormat); break;
       case 5: this.parseCarSetup(buf); break;
       case 6: this.parseCarTelemetry(buf); break;
       case 7: this.parseCarStatus(buf); break;
-      case 8: this.parseFinalClassification(buf); break;
-      case 10: this.parseCarDamage(buf); break;
+      case 8: this.parseFinalClassification(buf, packetFormat); break;
+      case 10: this.parseCarDamage(buf, packetFormat); break;
       case 11: this.parseSessionHistory(buf, playerCarIndex); break;
     }
   }
 
-  private parseSession(buf: Buffer, sessionUID: string): void {
-    if (buf.length < 606) return;
+  // The Session packet is identical between F1 24 and F1 25/26 up through
+  // m_safetyCarStatus (offset 153) — marshal zones didn't change. Past that,
+  // F1 24's weather forecast array is longer, pushing m_aiDifficulty and
+  // m_timeOfDay to different offsets (669/696 vs 605/632). Confirmed against
+  // F1 24's own UDP spec (github.com/MacManley/f1-24-udp).
+  private parseSession(buf: Buffer, sessionUID: string, format: number): void {
+    const aiDifficultyOffset = format === 2024 ? 669 : 605;
+    const timeOfDayOffset = format === 2024 ? 696 : 632;
+    if (buf.length < aiDifficultyOffset + 1) return;
     this.emit("session", {
+      m_packetFormat: format,
       m_sessionUID: sessionUID,
       m_weather: buf.readUInt8(29),
       m_trackTemperature: buf.readInt8(30),
@@ -113,8 +161,8 @@ export class UdpListener extends EventEmitter {
       m_trackId: buf.readInt8(36),
       m_pitSpeedLimit: buf.readUInt8(42),
       m_safetyCarStatus: buf.readUInt8(153),
-      m_aiDifficulty: buf.readUInt8(605),
-      m_timeOfDay: buf.length >= 636 ? buf.readUInt32LE(632) : undefined,
+      m_aiDifficulty: buf.readUInt8(aiDifficultyOffset),
+      m_timeOfDay: buf.length >= timeOfDayOffset + 4 ? buf.readUInt32LE(timeOfDayOffset) : undefined,
     });
   }
 
@@ -148,12 +196,13 @@ export class UdpListener extends EventEmitter {
     this.emit("lapData", { m_lapData });
   }
 
-  private parseParticipants(buf: Buffer, playerCarIndex: number): void {
-    if (buf.length < HEADER_SIZE + 1 + NUM_CARS * PARTICIPANT_SIZE) return;
+  private parseParticipants(buf: Buffer, playerCarIndex: number, format: number): void {
+    const stride = participantSize(format);
+    if (buf.length < HEADER_SIZE + 1 + NUM_CARS * stride) return;
     const m_numActiveCars = buf.readUInt8(HEADER_SIZE);
     const m_participants = [];
     for (let i = 0; i < NUM_CARS; i++) {
-      const o = HEADER_SIZE + 1 + i * PARTICIPANT_SIZE;
+      const o = HEADER_SIZE + 1 + i * stride;
       const nameStart = o + 7;
       const nameEnd = buf.indexOf(0, nameStart);
       const nameLimit = nameStart + 48;
@@ -261,12 +310,13 @@ export class UdpListener extends EventEmitter {
     this.emit("carStatus", { m_carStatusData });
   }
 
-  private parseFinalClassification(buf: Buffer): void {
-    if (buf.length < HEADER_SIZE + 1 + NUM_CARS * FINAL_CLASS_SIZE) return;
+  private parseFinalClassification(buf: Buffer, format: number): void {
+    const stride = finalClassSize(format);
+    if (buf.length < HEADER_SIZE + 1 + NUM_CARS * stride) return;
     const m_numCars = buf.readUInt8(HEADER_SIZE);
     const m_classificationData = [];
     for (let i = 0; i < NUM_CARS; i++) {
-      const o = HEADER_SIZE + 1 + i * FINAL_CLASS_SIZE;
+      const o = HEADER_SIZE + 1 + i * stride;
       m_classificationData.push({
         m_position: buf.readUInt8(o),
         m_numLaps: buf.readUInt8(o + 1),
@@ -279,11 +329,12 @@ export class UdpListener extends EventEmitter {
     this.emit("finalClassification", { m_numCars, m_classificationData });
   }
 
-  private parseCarDamage(buf: Buffer): void {
-    if (buf.length < HEADER_SIZE + NUM_CARS * CAR_DAMAGE_SIZE) return;
+  private parseCarDamage(buf: Buffer, format: number): void {
+    const stride = carDamageSize(format);
+    if (buf.length < HEADER_SIZE + NUM_CARS * stride) return;
     const m_carDamageData = [];
     for (let i = 0; i < NUM_CARS; i++) {
-      const o = HEADER_SIZE + i * CAR_DAMAGE_SIZE;
+      const o = HEADER_SIZE + i * stride;
       m_carDamageData.push({
         m_tyresWear: [
           buf.readFloatLE(o),
