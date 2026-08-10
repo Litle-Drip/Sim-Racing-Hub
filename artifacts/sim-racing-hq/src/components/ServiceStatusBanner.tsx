@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, type ReactNode } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 const GITHUB_STATUS_URL = 'https://www.githubstatus.com/api/v2/status.json';
 const GITHUB_POLL_INTERVAL_MS = 60_000;
@@ -18,7 +19,7 @@ interface GithubStatus {
 
 const GITHUB_INDICATOR_STYLE: Record<Exclude<Indicator, 'none'>, { bg: string; border: string; label: string }> = {
   minor: { bg: 'rgba(255, 242, 0, 0.12)', border: 'var(--yellow)', label: 'Degraded Performance' },
-  major: { bg: 'rgba(255, 149, 0, 0.14)', border: '#FF9500', label: 'Partial Outage' },
+  major: { bg: 'rgba(255, 152, 0, 0.14)', border: 'var(--amber)', label: 'Partial Outage' },
   critical: { bg: 'var(--red-dim)', border: 'var(--red)', label: 'Major Outage' },
 };
 
@@ -134,8 +135,9 @@ function Banner({ borderColor, bg, label, children }: { borderColor: string; bg:
         backdropFilter: 'blur(8px)',
       }}
     >
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: borderColor, flexShrink: 0 }}>
-        ⚠ {label}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: borderColor, flexShrink: 0 }}>
+        <AlertTriangle size={12} aria-hidden="true" />
+        {label}
       </span>
       <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--white)' }}>
         {children}

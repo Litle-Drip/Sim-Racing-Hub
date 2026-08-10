@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Check, KeyRound } from 'lucide-react';
 import { useAuth } from '@clerk/react';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api';
@@ -33,7 +34,7 @@ function CopyButton({ text }: { text: string }) {
       style={{ fontSize: 11, padding: '4px 12px', flexShrink: 0 }}
       onClick={copy}
     >
-      {copied ? '✓ Copied' : 'Copy'}
+      {copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={12} aria-hidden="true" /> Copied</span> : 'Copy'}
     </button>
   );
 }
@@ -140,8 +141,9 @@ export default function Companion() {
           <>
             {freshKey ? (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--teal)', marginBottom: 8 }}>
-                  ⚡ Your new API key — copy it now, it won't be shown again
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--teal)', marginBottom: 8 }}>
+                  <KeyRound size={12} aria-hidden="true" />
+                  Your new API key — copy it now, it won't be shown again
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <div style={{
@@ -226,7 +228,7 @@ export default function Companion() {
               fontFamily: 'var(--font-display)',
               fontSize: 12,
               letterSpacing: '0.06em',
-              color: 'var(--white)',
+              color: 'var(--on-accent)',
               background: 'var(--red)',
               padding: '8px 16px',
               borderRadius: 3,
@@ -327,7 +329,7 @@ export default function Companion() {
                 justifyContent: 'center',
                 fontFamily: 'var(--font-display)',
                 fontSize: 11,
-                color: 'var(--white)',
+                color: 'var(--on-accent)',
                 fontWeight: 700,
                 marginTop: 1,
               }}>

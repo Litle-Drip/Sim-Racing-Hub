@@ -128,7 +128,7 @@ export default function Nav({ page, setPage }: NavProps) {
                   {id === 'rivals' && !isLocked && pendingRivalChallenges > 0 && (
                     <span style={{
                       marginLeft: 'auto', minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
-                      background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 700,
+                      background: 'var(--red)', color: 'var(--on-accent)', fontSize: 10, fontWeight: 700,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
                     }}>
                       {pendingRivalChallenges}

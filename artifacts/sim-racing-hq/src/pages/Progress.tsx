@@ -271,7 +271,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
             {telemetryStats.avgTyreWear > 0 && (
               <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Wear</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{telemetryStats.avgTyreWear.toFixed(1)}%</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--purple)', fontWeight: 700 }}>{telemetryStats.avgTyreWear.toFixed(1)}%</div>
               </div>
             )}
             {telemetryStats.avgTyreTemp > 0 && (
@@ -348,7 +348,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
                       Sector {key.slice(1)}
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{s.val}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--purple)', fontWeight: 700 }}>{s.val}</div>
                     <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 6 }}>{s.car} · {s.date}</div>
                   </div>
                 );
@@ -476,7 +476,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
               />
               <Tooltip content={<LapTooltip />} />
               <Line type="monotone" dataKey="worst" name="Worst" stroke="rgba(232,0,45,0.6)" strokeWidth={1.5} dot={{ r: 3, fill: 'rgba(232,0,45,0.6)' }} />
-              <Line type="monotone" dataKey="avg" name="Average" stroke="#555555" strokeWidth={1.5} dot={{ r: 3, fill: '#555555' }} />
+              <Line type="monotone" dataKey="avg" name="Average" stroke="var(--chart-neutral)" strokeWidth={1.5} dot={{ r: 3, fill: 'var(--chart-neutral)' }} />
               <Line type="monotone" dataKey="best" name="Best" stroke="var(--teal)" strokeWidth={2} dot={{ r: 3, fill: 'var(--teal)' }} />
             </LineChart>
           </ResponsiveContainer>
@@ -488,7 +488,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
               Best
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 20, height: 2, background: '#555555', display: 'inline-block' }} />
+              <span style={{ width: 20, height: 2, background: 'var(--chart-neutral)', display: 'inline-block' }} />
               Average
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>

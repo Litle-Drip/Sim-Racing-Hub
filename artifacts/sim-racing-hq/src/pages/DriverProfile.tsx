@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Crown, Flag, Globe, Hash, Plane, Radio, Target, Trophy, Wind, Wrench, Zap } from 'lucide-react';
 import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
 import { getRankColor, resolveRankTier } from '../lib/engagement';
 import type { RankInfo, Achievement } from '../lib/engagement';
@@ -51,7 +52,7 @@ export default function DriverProfile({ username }: { username: string }) {
       .catch(e => { setError(e.message); setLoading(false); });
   }, [username]);
 
-  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
+  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || 'Unknown circuit';
   const trackFlag = (id: string) => F1_TRACKS.find(t => t.id === id)?.flag || '';
 
   // Rank computed directly from aggregate public data — no synthetic session
@@ -74,23 +75,23 @@ export default function DriverProfile({ username }: { username: string }) {
     const pbTrackIds = new Set(driver.pbs.map(p => p.trackId));
     const n = driver.sessions;
     return [
-      { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: '🏆', earned: driver.pbs.length > 0, progress: Math.min(driver.pbs.length, 1), target: 1 },
-      { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: '💨', earned: n >= 10, progress: Math.min(n, 10), target: 10 },
-      { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: '🔧', earned: driver.setups >= 10, progress: Math.min(driver.setups, 10), target: 10 },
-      { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: '🌍', earned: driver.tracks >= 24, progress: Math.min(driver.tracks, 24), target: 24 },
-      { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: '🎯', earned: false, progress: 0, target: 1 },
-      { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: '👑', earned: pbTrackIds.has('monaco'), progress: pbTrackIds.has('monaco') ? 1 : 0, target: 1 },
-      { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: '💯', earned: n >= 100, progress: Math.min(n, 100), target: 100 },
-      { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: '✈️', earned: driver.tracks >= 12, progress: Math.min(driver.tracks, 12), target: 12 },
-      { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: '⚡', earned: false, progress: 0, target: 5 },
-      { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: '📡', earned: driver.recentSessions.length > 0, progress: driver.recentSessions.length > 0 ? 1 : 0, target: 1 },
+      { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: Trophy, earned: driver.pbs.length > 0, progress: Math.min(driver.pbs.length, 1), target: 1 },
+      { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: Wind, earned: n >= 10, progress: Math.min(n, 10), target: 10 },
+      { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: Wrench, earned: driver.setups >= 10, progress: Math.min(driver.setups, 10), target: 10 },
+      { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: Globe, earned: driver.tracks >= 24, progress: Math.min(driver.tracks, 24), target: 24 },
+      { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: Target, earned: false, progress: 0, target: 1 },
+      { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: Crown, earned: pbTrackIds.has('monaco'), progress: pbTrackIds.has('monaco') ? 1 : 0, target: 1 },
+      { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: Hash, earned: n >= 100, progress: Math.min(n, 100), target: 100 },
+      { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: Plane, earned: driver.tracks >= 12, progress: Math.min(driver.tracks, 12), target: 12 },
+      { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: Zap, earned: false, progress: 0, target: 5 },
+      { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: Radio, earned: driver.recentSessions.length > 0, progress: driver.recentSessions.length > 0 ? 1 : 0, target: 1 },
     ];
   }, [driver]);
 
   if (loading) return <div className="page" style={{ textAlign: 'center', padding: 60 }}><div style={{ color: 'var(--gray-mid)' }}>Loading...</div></div>;
   if (error || !driver) return (
     <div className="page" style={{ textAlign: 'center', padding: 60 }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>🏁</div>
+      <Flag size={40} aria-hidden="true" style={{ color: 'var(--gray-mid)', marginBottom: 16 }} />
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '0.08em', color: 'var(--white)' }}>Driver Not Found</div>
       <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginTop: 8 }}>The driver "{username}" doesn't exist or hasn't shared any data publicly.</div>
     </div>
@@ -146,15 +147,18 @@ export default function DriverProfile({ username }: { username: string }) {
         <>
           <div className="section-title" style={{ marginTop: 28 }}>Achievements</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {earnedAchievements.map(a => (
+            {earnedAchievements.map(a => {
+              const BadgeIcon = a.icon;
+              return (
               <div key={a.id} title={a.desc} style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '6px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4,
               }}>
-                <span style={{ fontSize: 16 }}>{a.icon}</span>
+                <BadgeIcon size={14} aria-hidden="true" style={{ color: 'var(--red)' }} />
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.06em', color: 'var(--white)' }}>{a.name}</span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

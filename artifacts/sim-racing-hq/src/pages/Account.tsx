@@ -174,7 +174,7 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
                 {rankInfo.rank}
               </span>
               {streak > 0 && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 12, color: '#FF9800' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 12, color: 'var(--amber)' }}>
                   <Flame size={12} aria-hidden="true" /> {streak} day streak
                 </span>
               )}
@@ -302,10 +302,11 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
         {achievements.map(a => {
           const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
+          const BadgeIcon = a.icon;
           return (
             <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
               title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
-              <span className="dash-badge-icon">{a.icon}</span>
+              <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
               <div className="dash-badge-info">
                 <span className="dash-badge-name">{a.name}</span>
                 {!a.earned && a.target > 1 && (
