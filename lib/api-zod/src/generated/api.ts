@@ -788,6 +788,45 @@ export const SubmitRivalChallengeAttemptResponse = zod.object({
 
 
 /**
+ * @summary Get the current user's AI Race Engineer usage status
+ */
+export const GetEngineerUsageResponse = zod.object({
+  "count": zod.number(),
+  "limit": zod.number(),
+  "unlocked": zod.boolean(),
+  "allowed": zod.boolean()
+})
+
+
+/**
+ * Atomically increments the user's message count if they are unlocked or still under the free-tier limit, and reports whether the message is allowed to proceed.
+
+ * @summary Consume one AI Race Engineer message against the free-tier limit
+ */
+export const CheckAndIncrementEngineerUsageResponse = zod.object({
+  "count": zod.number(),
+  "limit": zod.number(),
+  "unlocked": zod.boolean(),
+  "allowed": zod.boolean()
+})
+
+
+/**
+ * @summary Unlock unlimited AI Race Engineer usage with the shared password
+ */
+export const UnlockEngineerUsageBody = zod.object({
+  "password": zod.string()
+})
+
+export const UnlockEngineerUsageResponse = zod.object({
+  "count": zod.number(),
+  "limit": zod.number(),
+  "unlocked": zod.boolean(),
+  "allowed": zod.boolean()
+})
+
+
+/**
  * @summary Get track notes for a specific track
  */
 export const GetTrackNotesParams = zod.object({

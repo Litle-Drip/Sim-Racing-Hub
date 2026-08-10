@@ -478,6 +478,17 @@ export interface SubmitRivalChallengeAttemptRequest {
   sessionId: string;
 }
 
+export interface EngineerUsageStatus {
+  count: number;
+  limit: number;
+  unlocked: boolean;
+  allowed: boolean;
+}
+
+export interface UnlockEngineerUsageRequest {
+  password: string;
+}
+
 export interface RivalChallengeUserLookup {
   userId: string;
   name: string;

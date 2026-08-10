@@ -29,6 +29,8 @@ import type {
   CreateRivalChallengeRequest,
   CreateSessionRequest,
   CreateSetupRequest,
+  EngineerUsageStatus,
+  ErrorResponse,
   GetCommunitySessionsParams,
   GetCommunitySetupsParams,
   HardwareRecord,
@@ -48,6 +50,7 @@ import type {
   TrackDifficultyRecord,
   TrackNotesRecord,
   UnauthorizedResponse,
+  UnlockEngineerUsageRequest,
   UpsertTrackDifficultyRequest,
   UpsertTrackNotesRequest
 } from './api.schemas';
@@ -2134,6 +2137,226 @@ export const useSubmitRivalChallengeAttempt = <TError = ErrorType<NotFoundRespon
         TContext
       > => {
       return useMutation(getSubmitRivalChallengeAttemptMutationOptions(options));
+    }
+
+export const getGetEngineerUsageUrl = () => {
+
+
+
+
+  return `/api/engineer-usage`
+}
+
+/**
+ * @summary Get the current user's AI Race Engineer usage status
+ */
+export const getEngineerUsage = async ( options?: RequestInit): Promise<EngineerUsageStatus> => {
+
+  return customFetch<EngineerUsageStatus>(getGetEngineerUsageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEngineerUsageQueryKey = () => {
+    return [
+    `/api/engineer-usage`
+    ] as const;
+    }
+
+
+export const getGetEngineerUsageQueryOptions = <TData = Awaited<ReturnType<typeof getEngineerUsage>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEngineerUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEngineerUsageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEngineerUsage>>> = ({ signal }) => getEngineerUsage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEngineerUsage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEngineerUsageQueryResult = NonNullable<Awaited<ReturnType<typeof getEngineerUsage>>>
+export type GetEngineerUsageQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get the current user's AI Race Engineer usage status
+ */
+
+export function useGetEngineerUsage<TData = Awaited<ReturnType<typeof getEngineerUsage>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEngineerUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEngineerUsageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCheckAndIncrementEngineerUsageUrl = () => {
+
+
+
+
+  return `/api/engineer-usage/check-and-increment`
+}
+
+/**
+ * Atomically increments the user's message count if they are unlocked or still under the free-tier limit, and reports whether the message is allowed to proceed.
+
+ * @summary Consume one AI Race Engineer message against the free-tier limit
+ */
+export const checkAndIncrementEngineerUsage = async ( options?: RequestInit): Promise<EngineerUsageStatus> => {
+
+  return customFetch<EngineerUsageStatus>(getCheckAndIncrementEngineerUsageUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCheckAndIncrementEngineerUsageMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>, TError,void, TContext> => {
+
+const mutationKey = ['checkAndIncrementEngineerUsage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>, void> = () => {
+
+
+          return  checkAndIncrementEngineerUsage(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckAndIncrementEngineerUsageMutationResult = NonNullable<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>>
+
+    export type CheckAndIncrementEngineerUsageMutationError = ErrorType<UnauthorizedResponse>
+
+    /**
+ * @summary Consume one AI Race Engineer message against the free-tier limit
+ */
+export const useCheckAndIncrementEngineerUsage = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCheckAndIncrementEngineerUsageMutationOptions(options));
+    }
+
+export const getUnlockEngineerUsageUrl = () => {
+
+
+
+
+  return `/api/engineer-usage/unlock`
+}
+
+/**
+ * @summary Unlock unlimited AI Race Engineer usage with the shared password
+ */
+export const unlockEngineerUsage = async (unlockEngineerUsageRequest: UnlockEngineerUsageRequest, options?: RequestInit): Promise<EngineerUsageStatus> => {
+
+  return customFetch<EngineerUsageStatus>(getUnlockEngineerUsageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      unlockEngineerUsageRequest,)
+  }
+);}
+
+
+
+
+export const getUnlockEngineerUsageMutationOptions = <TError = ErrorType<UnauthorizedResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockEngineerUsage>>, TError,{data: BodyType<UnlockEngineerUsageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlockEngineerUsage>>, TError,{data: BodyType<UnlockEngineerUsageRequest>}, TContext> => {
+
+const mutationKey = ['unlockEngineerUsage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlockEngineerUsage>>, {data: BodyType<UnlockEngineerUsageRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  unlockEngineerUsage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlockEngineerUsageMutationResult = NonNullable<Awaited<ReturnType<typeof unlockEngineerUsage>>>
+    export type UnlockEngineerUsageMutationBody = BodyType<UnlockEngineerUsageRequest>
+    export type UnlockEngineerUsageMutationError = ErrorType<UnauthorizedResponse | ErrorResponse>
+
+    /**
+ * @summary Unlock unlimited AI Race Engineer usage with the shared password
+ */
+export const useUnlockEngineerUsage = <TError = ErrorType<UnauthorizedResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockEngineerUsage>>, TError,{data: BodyType<UnlockEngineerUsageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlockEngineerUsage>>,
+        TError,
+        {data: BodyType<UnlockEngineerUsageRequest>},
+        TContext
+      > => {
+      return useMutation(getUnlockEngineerUsageMutationOptions(options));
     }
 
 export const getGetTrackNotesUrl = (trackId: string,) => {

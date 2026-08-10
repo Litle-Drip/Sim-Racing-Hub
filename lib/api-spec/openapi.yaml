@@ -24,6 +24,8 @@ tags:
     description: Companion app API key and session upload
   - name: rivalChallenges
     description: Head-to-head time trial / race challenge operations
+  - name: engineerUsage
+    description: AI Race Engineer free-tier usage limit and unlock
 paths:
   /healthz:
     get:
@@ -606,6 +608,67 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /engineer-usage:
+    get:
+      operationId: getEngineerUsage
+      tags: [engineerUsage]
+      summary: Get the current user's AI Race Engineer usage status
+      responses:
+        "200":
+          description: Usage status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineerUsageStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /engineer-usage/check-and-increment:
+    post:
+      operationId: checkAndIncrementEngineerUsage
+      tags: [engineerUsage]
+      summary: Consume one AI Race Engineer message against the free-tier limit
+      description: >
+        Atomically increments the user's message count if they are unlocked
+        or still under the free-tier limit, and reports whether the message
+        is allowed to proceed.
+      responses:
+        "200":
+          description: Usage status after the attempted increment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineerUsageStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /engineer-usage/unlock:
+    post:
+      operationId: unlockEngineerUsage
+      tags: [engineerUsage]
+      summary: Unlock unlimited AI Race Engineer usage with the shared password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnlockEngineerUsageRequest"
+      responses:
+        "200":
+          description: Unlocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineerUsageStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Incorrect password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /track-notes/{trackId}:
     get:
@@ -1888,6 +1951,31 @@ components:
           type: string
       required:
         - sessionId
+
+    EngineerUsageStatus:
+      type: object
+      properties:
+        count:
+          type: integer
+        limit:
+          type: integer
+        unlocked:
+          type: boolean
+        allowed:
+          type: boolean
+      required:
+        - count
+        - limit
+        - unlocked
+        - allowed
+
+    UnlockEngineerUsageRequest:
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
 
     RivalChallengeUserLookup:
       type: object
