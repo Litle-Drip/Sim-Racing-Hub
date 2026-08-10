@@ -547,21 +547,39 @@ export class SessionTracker {
         lastLapMs !== this.lastRecordedLapMs
       ) {
         if (!this.pendingLap.invalid) {
-          const s1 = msToLapTime(this.pendingLap.s1Ms);
-          const s2 = msToLapTime(this.pendingLap.s2Ms);
-          const s3 = msToLapTime(Math.max(0, lastLapMs - this.pendingLap.s1Ms - this.pendingLap.s2Ms));
-          const record: LapRecord = {
-            lap: this.pendingLap.lapNum,
-            time: msToLapTime(lastLapMs),
-            s1, s2, s3,
-            tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
-            penalty: penalties > 0 ? `${penalties}s` : "",
-            trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
-          };
-          this.validLaps.push(record);
-          this.lastRecordedLapMs = lastLapMs;
-          this.onLapComplete?.(record);
-          this.onStatusChange?.();
+          if (this.validLaps.some(l => l.lap === this.pendingLap!.lapNum)) {
+            // A flashback that re-crosses the start/finish line can regress
+            // m_currentLapNum back into the rewind branch below and then
+            // cross forward again, re-completing a lap number already
+            // recorded. m_lastLapTimeInMS often gets recomputed to a value a
+            // few ms off from the original rather than exactly matching, so
+            // the lastLapMs equality check above alone doesn't catch it —
+            // guard on lap number too, since a lap number can only ever be
+            // completed once.
+            console.log(`[Lap] #${this.pendingLap.lapNum} duplicate (already recorded) — skipped`);
+          } else {
+            const s1 = msToLapTime(this.pendingLap.s1Ms);
+            const s2 = msToLapTime(this.pendingLap.s2Ms);
+            const s3 = msToLapTime(Math.max(0, lastLapMs - this.pendingLap.s1Ms - this.pendingLap.s2Ms));
+            const record: LapRecord = {
+              lap: this.pendingLap.lapNum,
+              time: msToLapTime(lastLapMs),
+              s1, s2, s3,
+              tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
+              penalty: penalties > 0 ? `${penalties}s` : "",
+              trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
+            };
+            this.validLaps.push(record);
+            this.lastRecordedLapMs = lastLapMs;
+            this.onLapComplete?.(record);
+            this.onStatusChange?.();
+          }
+        } else {
+          // Invalid laps (track limits, cutting a corner, etc.) are
+          // deliberately excluded from validLaps/the uploaded session —
+          // logged so a driven-lap-count vs. recorded-lap-count mismatch
+          // is traceable instead of looking like a dropped/lost lap.
+          console.log(`[Lap] #${this.pendingLap.lapNum} invalid — excluded from session`);
         }
       }
       this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid, trace: [] };
@@ -933,7 +951,45 @@ export class SessionTracker {
     this.lastLiveBrakeBias = 0;
   }
 
+  // Live lap completion (handleLapPacket) only finalizes a lap once it sees
+  // telemetry for the NEXT lap starting — that never happens for the final
+  // lap of a race, since there's no lap after the checkered flag to trigger
+  // it. The Session History packet is the game's own authoritative lap-by-
+  // lap record and keeps updating independently of that live tracking, so
+  // use it here to backfill any trailing lap(s) it has that live tracking
+  // never got a chance to close out. Only ever adds laps that are already
+  // fully complete in the official record — never touches one already
+  // captured live.
+  private reconcileFromLapHistory(): void {
+    if (this.lastLapHistory.length === 0) return;
+    const recordedLapNums = new Set(this.validLaps.map(l => l.lap));
+    let recovered = 0;
+    for (const entry of this.lastLapHistory) {
+      if (entry.lapTimeMs <= 0) continue;
+      if (recordedLapNums.has(entry.lap)) continue;
+      if (!entry.valid) {
+        console.log(`[Lap] #${entry.lap} invalid — excluded from session (from session history)`);
+        continue;
+      }
+      this.validLaps.push({
+        lap: entry.lap,
+        time: msToLapTime(entry.lapTimeMs),
+        s1: msToLapTime(entry.sector1Ms),
+        s2: msToLapTime(entry.sector2Ms),
+        s3: msToLapTime(entry.sector3Ms),
+        tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
+        penalty: "",
+      });
+      recovered++;
+      console.log(`[Lap] #${entry.lap} ${msToLapTime(entry.lapTimeMs)} recovered from session history (missed by live tracking)`);
+    }
+    if (recovered > 0) this.validLaps.sort((a, b) => a.lap - b.lap);
+  }
+
   private flushSession(): void {
+    console.log(`[Session] Flushing with ${this.validLaps.length} live-tracked lap(s), session history knows of ${this.lastLapHistory.length} lap(s)`);
+    this.reconcileFromLapHistory();
+
     const snap: SessionSnapshot = {
       id: randomFlushId(),
       sessionUID: this.sessionUID!,

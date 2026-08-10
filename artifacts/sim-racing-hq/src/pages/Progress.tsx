@@ -19,6 +19,20 @@ function formatLapTime(seconds: number): string {
   return `${mins}:${parseFloat(secs) < 10 ? '0' : ''}${secs}`;
 }
 
+// Charts plot one point per session, so a busy track yields far more dates
+// than fit across the axis. Show month-day only and let Recharts drop ticks
+// that would collide.
+function formatDateTick(date: string): string {
+  const parts = date.split('-');
+  return parts.length === 3 ? `${parts[1]}/${parts[2]}` : date;
+}
+
+const DATE_AXIS_PROPS = {
+  tickFormatter: formatDateTick,
+  interval: 'preserveStartEnd' as const,
+  minTickGap: 28,
+};
+
 function formatAxisTick(seconds: number): string {
   if (!isFinite(seconds) || seconds === 0) return '';
   const mins = Math.floor(seconds / 60);
@@ -166,7 +180,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
 
     sessionsSorted.forEach(s => {
       if (!s.bestLap || s.bestLap.trim() === '') return;
-      const key = `${s.trackId}__${s.car}`;
+      const key = s.trackId;
       sessionCounts[key] = (sessionCounts[key] || 0) + 1;
       if (!pbMap[key] || lapToSeconds(s.bestLap) < lapToSeconds(pbMap[key].bestLap)) {
         pbMap[key] = {
@@ -176,13 +190,17 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           date: s.date,
           sessions: sessionCounts[key],
         };
+      } else {
+        pbMap[key].sessions = sessionCounts[key];
       }
     });
 
     return Object.values(pbMap).sort((a, b) => a.trackId.localeCompare(b.trackId));
   }, [allSessions]);
 
-  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
+  // Older imports can carry circuit ids the current track list doesn't know
+  // (e.g. "track_42"); show a readable placeholder rather than the raw id.
+  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || 'Unknown circuit';
 
   const minY = progressionData.length > 0
     ? Math.min(...progressionData.map(d => d.lapSeconds)) - 2
@@ -239,202 +257,21 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         </select>
       </div>
 
-      <div className="chart-section">
-        <div className="section-title">PB Progression</div>
-        {progressSummary && (
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Current PB</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--teal)', fontWeight: 700, marginTop: 2 }}>{progressSummary.currentPB}</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Improved Since {progressSummary.firstDate}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: progressSummary.improvement > 0 ? 'var(--teal)' : 'var(--gray-mid)', fontWeight: 700, marginTop: 2 }}>
-                {progressSummary.improvement > 0 ? `-${progressSummary.improvement.toFixed(3)}s` : '—'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Sessions Logged</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--white)', fontWeight: 700, marginTop: 2 }}>{progressSummary.sessions}</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>PBs Set</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: '#FFF200', fontWeight: 700, marginTop: 2 }}>{progressSummary.pbCount}</div>
-            </div>
-          </div>
-        )}
-        {!filterTrack ? (
-          <div className="empty-state">
-            <div className="empty-state-title">Select a Track to See PB Progression</div>
-            <div className="empty-state-desc">Mixing lap times from different circuits produces a meaningless line. Choose a specific track above to see how your pace has improved over time.</div>
-          </div>
-        ) : progressionData.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-title">No Sessions at This Track Yet</div>
-            <div className="empty-state-desc">Log a session at this circuit to start tracking your progression.</div>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={progressionData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
-                axisLine={{ stroke: '#1E1E1E' }}
-                tickLine={false}
-              />
-              <YAxis
-                domain={[minY, maxY]}
-                tickFormatter={formatAxisTick}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
-                axisLine={{ stroke: '#1E1E1E' }}
-                tickLine={false}
-                width={56}
-              />
-              <Tooltip content={<LapTooltip />} />
-              <Line
-                type="monotone"
-                dataKey="lapSeconds"
-                stroke="#00D2BE"
-                strokeWidth={2}
-                dot={({ cx, cy, payload }: { cx: number; cy: number; payload: { isPB: boolean } }) =>
-                  payload.isPB ? (
-                    <circle key={`pb-${cx}`} cx={cx} cy={cy} r={5} fill="#FFF200" stroke="#FFF200" strokeWidth={0} />
-                  ) : (
-                    <circle key={`dot-${cx}`} cx={cx} cy={cy} r={3} fill="#00D2BE" stroke="#00D2BE" strokeWidth={0} />
-                  )
-                }
-                name="Best Lap"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-        {progressionData.length > 0 && (
-          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 20, height: 2, background: '#00D2BE', display: 'inline-block' }} />
-              Best Lap
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#FFF200', display: 'inline-block' }} />
-              New PB
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="chart-section">
-        <div className="section-title">Lap Time Variance</div>
-        {!filterTrack ? (
-          <div className="empty-state">
-            <div className="empty-state-title">Select a Track</div>
-            <div className="empty-state-desc">Choose a specific track above to see lap time variance.</div>
-          </div>
-        ) : varianceData.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-title">No Data Yet</div>
-            <div className="empty-state-desc">Log sessions with best, avg, and worst laps to see variance.</div>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={varianceData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
-                axisLine={{ stroke: '#1E1E1E' }}
-                tickLine={false}
-              />
-              <YAxis
-                domain={[minVarianceY, maxVarianceY]}
-                tickFormatter={formatAxisTick}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
-                axisLine={{ stroke: '#1E1E1E' }}
-                tickLine={false}
-                width={56}
-              />
-              <Tooltip content={<LapTooltip />} />
-              <Line type="monotone" dataKey="worst" name="Worst" stroke="rgba(232,0,45,0.6)" strokeWidth={1.5} dot={{ r: 3, fill: 'rgba(232,0,45,0.6)' }} />
-              <Line type="monotone" dataKey="avg" name="Average" stroke="#555555" strokeWidth={1.5} dot={{ r: 3, fill: '#555555' }} />
-              <Line type="monotone" dataKey="best" name="Best" stroke="#00D2BE" strokeWidth={2} dot={{ r: 3, fill: '#00D2BE' }} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-        {filterTrack && varianceData.length > 0 && (
-          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 20, height: 2, background: '#00D2BE', display: 'inline-block' }} />
-              Best
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 20, height: 2, background: '#555555', display: 'inline-block' }} />
-              Average
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              <span style={{ width: 20, height: 2, background: 'rgba(232,0,45,0.6)', display: 'inline-block' }} />
-              Worst
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="chart-section">
-        <div className="section-title">Top Speed Progression{topSpeedData.length > 0 ? ` (${speedUnit})` : ''}</div>
-        {!filterTrack ? (
-          <div className="empty-state">
-            <div className="empty-state-title">Select a Track</div>
-            <div className="empty-state-desc">Choose a specific track above to see your top speed trend. Requires the companion app — top speed isn't available for manually logged sessions.</div>
-          </div>
-        ) : topSpeedData.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-title">No Telemetry Data Yet</div>
-            <div className="empty-state-desc">Top speed is captured automatically by the companion app while you drive. Log a session with the companion app running to see this chart.</div>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={topSpeedChartData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-              <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontFamily: 'var(--font-display)', fontSize: 11, fill: '#A8A8A8', letterSpacing: '0.04em' }}
-                axisLine={{ stroke: '#1E1E1E' }}
-                tickLine={false}
-              />
-              <YAxis
-                domain={[minTopSpeedY, maxTopSpeedY]}
-                tickFormatter={v => `${Math.round(v)}`}
-                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: '#A8A8A8' }}
-                axisLine={{ stroke: '#1E1E1E' }}
-                tickLine={false}
-                width={40}
-              />
-              <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
-                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#00D2BE' }}>{Math.round(payload[0].value as number)} {speedUnit}</div>
-                </div>
-              ) : null} />
-              <Line type="monotone" dataKey="speed" name="Top Speed" stroke="#00D2BE" strokeWidth={2} dot={{ r: 4, fill: '#00D2BE' }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-
       {/* Telemetry Insights — companion app data (tyres, temps, DRS, throttle/brake) */}
       {telemetryStats.hasData && (
         <>
-          <div className="section-title" style={{ marginTop: 40 }}>Telemetry Insights{filterTrack ? ` — ${trackName(filterTrack)}` : ''}</div>
+          <div className="section-title">Telemetry Insights{filterTrack ? ` — ${trackName(filterTrack)}` : ''}</div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {telemetryStats.topSpeed > 0 && (
               <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Speed</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#00D2BE', fontWeight: 700 }}>{formatSpeed(telemetryStats.topSpeed)}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--teal)', fontWeight: 700 }}>{formatSpeed(telemetryStats.topSpeed)}</div>
               </div>
             )}
             {telemetryStats.avgTyreWear > 0 && (
               <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Wear</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{telemetryStats.avgTyreWear.toFixed(1)}%</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--purple)', fontWeight: 700 }}>{telemetryStats.avgTyreWear.toFixed(1)}%</div>
               </div>
             )}
             {telemetryStats.avgTyreTemp > 0 && (
@@ -501,7 +338,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         if (!hasSectors) return null;
         return (
           <>
-            <div className="section-title" style={{ marginTop: 40 }}>Best Sectors — {trackName(filterTrack)}</div>
+            <div className="section-title" style={{ marginTop: 24 }}>Best Sectors — {trackName(filterTrack)}</div>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               {(['s1', 's2', 's3'] as const).map(key => {
                 const s = bestSectors[key];
@@ -511,7 +348,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
                       Sector {key.slice(1)}
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{s.val}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--purple)', fontWeight: 700 }}>{s.val}</div>
                     <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 6 }}>{s.car} · {s.date}</div>
                   </div>
                 );
@@ -520,6 +357,190 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           </>
         );
       })()}
+
+      <div className="chart-section" style={{ marginTop: 40 }}>
+        <div className="section-title">PB Progression</div>
+        {progressSummary && (
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Current PB</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--teal)', fontWeight: 700, marginTop: 2 }}>{progressSummary.currentPB}</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Improved Since {progressSummary.firstDate}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: progressSummary.improvement > 0 ? 'var(--teal)' : 'var(--gray-mid)', fontWeight: 700, marginTop: 2 }}>
+                {progressSummary.improvement > 0 ? `-${progressSummary.improvement.toFixed(3)}s` : '—'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Sessions Logged</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--white)', fontWeight: 700, marginTop: 2 }}>{progressSummary.sessions}</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>PBs Set</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--yellow)', fontWeight: 700, marginTop: 2 }}>{progressSummary.pbCount}</div>
+            </div>
+          </div>
+        )}
+        {!filterTrack ? (
+          <div className="empty-state">
+            <div className="empty-state-title">Select a Track to See PB Progression</div>
+            <div className="empty-state-desc">Mixing lap times from different circuits produces a meaningless line. Choose a specific track above to see how your pace has improved over time.</div>
+          </div>
+        ) : progressionData.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-title">No Sessions at This Track Yet</div>
+            <div className="empty-state-desc">Log a session at this circuit to start tracking your progression.</div>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={progressionData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
+              <XAxis
+                dataKey="date"
+                {...DATE_AXIS_PROPS}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={false}
+              />
+              <YAxis
+                domain={[minY, maxY]}
+                tickFormatter={formatAxisTick}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={false}
+                width={56}
+              />
+              <Tooltip content={<LapTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="lapSeconds"
+                stroke="var(--teal)"
+                strokeWidth={2}
+                dot={({ cx, cy, payload }: { cx: number; cy: number; payload: { isPB: boolean } }) =>
+                  payload.isPB ? (
+                    <circle key={`pb-${cx}`} cx={cx} cy={cy} r={5} fill="var(--yellow)" stroke="var(--yellow)" strokeWidth={0} />
+                  ) : (
+                    <circle key={`dot-${cx}`} cx={cx} cy={cy} r={3} fill="var(--teal)" stroke="var(--teal)" strokeWidth={0} />
+                  )
+                }
+                name="Best Lap"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+        {progressionData.length > 0 && (
+          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: 'var(--teal)', display: 'inline-block' }} />
+              Best Lap
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--yellow)', display: 'inline-block' }} />
+              New PB
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="chart-section">
+        <div className="section-title">Lap Time Variance</div>
+        {!filterTrack ? (
+          <div className="empty-state">
+            <div className="empty-state-title">Select a Track</div>
+            <div className="empty-state-desc">Choose a specific track above to see lap time variance.</div>
+          </div>
+        ) : varianceData.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-title">No Data Yet</div>
+            <div className="empty-state-desc">Log sessions with best, avg, and worst laps to see variance.</div>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={varianceData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
+              <XAxis
+                dataKey="date"
+                {...DATE_AXIS_PROPS}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={false}
+              />
+              <YAxis
+                domain={[minVarianceY, maxVarianceY]}
+                tickFormatter={formatAxisTick}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={false}
+                width={56}
+              />
+              <Tooltip content={<LapTooltip />} />
+              <Line type="monotone" dataKey="worst" name="Worst" stroke="rgba(232,0,45,0.6)" strokeWidth={1.5} dot={{ r: 3, fill: 'rgba(232,0,45,0.6)' }} />
+              <Line type="monotone" dataKey="avg" name="Average" stroke="var(--chart-neutral)" strokeWidth={1.5} dot={{ r: 3, fill: 'var(--chart-neutral)' }} />
+              <Line type="monotone" dataKey="best" name="Best" stroke="var(--teal)" strokeWidth={2} dot={{ r: 3, fill: 'var(--teal)' }} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+        {filterTrack && varianceData.length > 0 && (
+          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: 'var(--teal)', display: 'inline-block' }} />
+              Best
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: 'var(--chart-neutral)', display: 'inline-block' }} />
+              Average
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ width: 20, height: 2, background: 'rgba(232,0,45,0.6)', display: 'inline-block' }} />
+              Worst
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="chart-section">
+        <div className="section-title">Top Speed Progression{topSpeedData.length > 0 ? ` (${speedUnit})` : ''}</div>
+        {!filterTrack ? (
+          <div className="empty-state">
+            <div className="empty-state-title">Select a Track</div>
+            <div className="empty-state-desc">Choose a specific track above to see your top speed trend. Requires the companion app — top speed isn't available for manually logged sessions.</div>
+          </div>
+        ) : topSpeedData.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-title">No Telemetry Data Yet</div>
+            <div className="empty-state-desc">Top speed is captured automatically by the companion app while you drive. Log a session with the companion app running to see this chart.</div>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={topSpeedChartData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
+              <XAxis
+                dataKey="date"
+                {...DATE_AXIS_PROPS}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={false}
+              />
+              <YAxis
+                domain={[minTopSpeedY, maxTopSpeedY]}
+                tickFormatter={v => `${Math.round(v)}`}
+                tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={false}
+                width={40}
+              />
+              <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>{Math.round(payload[0].value as number)} {speedUnit}</div>
+                </div>
+              ) : null} />
+              <Line type="monotone" dataKey="speed" name="Top Speed" stroke="var(--teal)" strokeWidth={2} dot={{ r: 4, fill: 'var(--teal)' }} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
 
       {/* Consistency Trend */}
       <div className="section-title" style={{ marginTop: 40 }}>Consistency Score Trend</div>
@@ -546,7 +567,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={consistencyData} margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="date" tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} />
+                <XAxis dataKey="date" {...DATE_AXIS_PROPS} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} />
                 <YAxis domain={[90, 100]} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} tickFormatter={v => `${v}%`} />
                 <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
                   <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>

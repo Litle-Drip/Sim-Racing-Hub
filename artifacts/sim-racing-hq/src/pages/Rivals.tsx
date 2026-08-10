@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Swords, Trophy } from 'lucide-react';
+import { Check, Flag, Swords, Trophy } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useGetRivalChallenges,
@@ -114,8 +114,8 @@ function ChallengeCard({
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop: 10, fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.05em', color: winner ? 'var(--teal)' : 'var(--gray-mid)' }}>
-            {winner ? `🏁 ${winner.name}${winner.isMe ? ' (You)' : ''} wins` : "Couldn't determine a winner from the recorded times"}
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.05em', color: winner ? 'var(--teal)' : 'var(--gray-mid)' }}>
+            {winner ? <><Flag size={13} aria-hidden="true" />{`${winner.name}${winner.isMe ? ' (You)' : ''} wins`}</> : "Couldn't determine a winner from the recorded times"}
           </div>
         </>
       ) : (
@@ -267,8 +267,8 @@ function NewChallengeModal({
                   </button>
                 </div>
                 {opponent && (
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--teal)', marginTop: 6 }}>
-                    ✓ Found {opponent.name}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--teal)', marginTop: 6 }}>
+                    <Check size={13} aria-hidden="true" /> Found {opponent.name}
                   </div>
                 )}
                 {lookupError && (
@@ -452,7 +452,7 @@ export default function Rivals() {
         <NewChallengeModal
           sessions={sessions}
           onClose={() => setShowNew(false)}
-          onCreated={() => { setShowNew(false); invalidate(); setToastVariant('success'); setToast('Challenge sent 🏁'); }}
+          onCreated={() => { setShowNew(false); invalidate(); setToastVariant('success'); setToast('Challenge sent'); }}
           onError={(msg) => { setToastVariant('error'); setToast(msg); }}
         />
       )}
@@ -462,7 +462,7 @@ export default function Rivals() {
           challenge={attemptFor}
           sessions={sessions}
           onClose={() => setAttemptFor(null)}
-          onSubmitted={() => { setAttemptFor(null); invalidate(); setToastVariant('success'); setToast('Attempt submitted ✓'); }}
+          onSubmitted={() => { setAttemptFor(null); invalidate(); setToastVariant('success'); setToast('Attempt submitted'); }}
           onError={(msg) => { setToastVariant('error'); setToast(msg); }}
         />
       )}

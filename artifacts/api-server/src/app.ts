@@ -51,7 +51,16 @@ app.use(
   }),
 );
 app.use(helmet());
-app.use(express.json({ limit: "1mb" }));
+// Companion session uploads include per-lap speed/throttle/brake/steer
+// traces (capped server-side at MAX_TRACE_SAMPLES per lap in
+// routes/companion.ts's capTrace) which can run several MB for a
+// multi-lap session — well over the old 1mb ceiling. That cap runs inside
+// the route handler, downstream of this body parser, so an oversized
+// request never reached it: express rejected the body outright with a 413
+// before capTrace got a chance to trim it. Raised with headroom above the
+// worst case (3000 samples/lap * a long race's lap count) so legitimate
+// sessions aren't rejected before the server-side cap can even run.
+app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.set("trust proxy", 1);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen } from 'lucide-react';
+import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen, CircleDot } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { Toast } from '../components/Toast';
 import { F1_TRACKS, F1Track, CORNER_NAMES, getTypeBadgeClass } from '../data/f1Tracks';
@@ -22,6 +22,7 @@ import { SessionDetailModal } from '../components/SessionDetail';
 const DIFFICULTY_LABELS = ['', 'Easy', 'Moderate', 'Tricky', 'Hard', 'Brutal'];
 
 function RatingDots({ rating }: { rating: number }) {
+  if (!rating) return <span style={{ color: 'var(--gray-mid)' }}>&mdash;</span>;
   return (
     <span className="rating-dots">
       {[1,2,3,4,5].map(i => (
@@ -72,9 +73,8 @@ function DifficultyRating({
               width: 14,
               height: 14,
               borderRadius: '50%',
-              background: i <= display ? 'var(--red)' : 'var(--border)',
-              opacity: i <= display ? (0.4 + (i * 0.15)) : 0.5,
-              transition: 'background 0.15s, opacity 0.15s',
+              background: i <= display ? 'var(--red)' : 'var(--border-accent)',
+              transition: 'background 0.15s',
             }}
           />
         ))}
@@ -133,9 +133,8 @@ function CardDifficultyDots({
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background: i <= display ? 'var(--red)' : 'var(--border)',
-              opacity: i <= display ? (0.45 + i * 0.11) : 0.35,
-              transition: 'background 0.12s, opacity 0.12s',
+              background: i <= display ? 'var(--red)' : 'var(--border-accent)',
+              transition: 'background 0.12s',
             }}
           />
         ))}
@@ -369,7 +368,7 @@ function TrackDetail({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetTrackNotesQueryKey(track.id) });
-        setNotesToast({ message: 'Notes saved ✓' });
+        setNotesToast({ message: 'Notes saved' });
       },
       onError: () => {
         setNotesToast({ message: 'Failed to save notes — tap Retry below.', variant: 'error' });
@@ -512,7 +511,7 @@ function TrackDetail({
       {tyreGuide && (
         <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid var(--border)' }}>
           <div style={{ background: 'var(--bg-elevated)', padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 14 }}>🏎️</span>
+            <CircleDot size={13} aria-hidden="true" style={{ color: 'var(--gray-light)' }} />
             <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>Tyre Strategy Guide</span>
           </div>
           <div style={{ padding: '14px 20px', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontFamily: 'var(--font-body)', fontSize: 12 }}>
@@ -651,13 +650,13 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
   const labelStyle = { fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--teal)', marginBottom: 6, marginTop: 16 };
 
   return (
-    <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.2)' }}>
+    <div className="card card-accent card-accent--teal" style={{ padding: 0, marginBottom: 24, overflow: 'hidden' }}>
       <div
         onClick={() => setExpanded(!expanded)}
-        style={{ background: 'rgba(0,210,190,0.04)', padding: '12px 20px', borderBottom: expanded ? '1px solid rgba(0,210,190,0.15)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        style={{ background: 'var(--bg-elevated)', padding: '12px 20px', borderBottom: expanded ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14 }}>📚</span>
+          <BookOpen size={13} aria-hidden="true" style={{ color: 'var(--teal)' }} />
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)' }}>Circuit School</span>
         </div>
         {expanded ? <ChevronUp size={14} style={{ color: 'var(--gray-mid)' }} /> : <ChevronDown size={14} style={{ color: 'var(--gray-mid)' }} />}
