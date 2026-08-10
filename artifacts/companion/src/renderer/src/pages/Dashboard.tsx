@@ -12,6 +12,8 @@ interface Status {
   lastUpload: { track: string; lapTime: string; at: string } | null;
   currentSession: { lapCount: number; track: string } | null;
   pendingUploads: number;
+  detectedGame: string | null;
+  unsupportedFormat: number | null;
 }
 
 interface Props {
@@ -103,6 +105,8 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
     lastUpload: null,
     currentSession: null,
     pendingUploads: 0,
+    detectedGame: null,
+    unsupportedFormat: null,
   });
 
   useEffect(() => {
@@ -206,8 +210,14 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
         <StatusRow
           icon={<IconGamepad size={15} />}
           label="Game Connected"
-          value={status.gameConnected ? "F1 25 detected" : "Waiting…"}
-          ok={status.gameConnected}
+          value={
+            status.unsupportedFormat
+              ? `Unsupported game (format ${status.unsupportedFormat})`
+              : status.gameConnected
+                ? `${status.detectedGame ?? "F1"} detected`
+                : "Waiting…"
+          }
+          ok={status.gameConnected && !status.unsupportedFormat}
         />
         <StatusRow
           icon={<IconActivity size={15} />}
