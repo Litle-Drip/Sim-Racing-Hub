@@ -70,6 +70,7 @@ function computeFromLaps(laps: FormLap[]) {
 // ─── Badge & display helpers ──────────────────────────────────────────────────
 
 function RatingDots({ rating }: { rating: number }) {
+  if (!rating) return <span style={{ color: 'var(--gray-mid)' }}>&mdash;</span>;
   return (
     <span className="rating-dots">
       {[1,2,3,4,5].map(i => (
@@ -496,7 +497,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         setLockedSummary(new Set());
         setFormErrors({});
         setSaveError('');
-        setToast('Session saved ✓');
+        setToast('Session saved');
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save session. Please try again.';
@@ -704,7 +705,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       setLockedSummary(new Set());
       setFormErrors({});
       setSaveError('');
-      setToast('Session saved ✓');
+      setToast('Session saved');
       return;
     }
 

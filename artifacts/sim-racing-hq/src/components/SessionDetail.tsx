@@ -207,10 +207,10 @@ export function LapTelemetryModal({ lap, onClose }: { lap: LapEntry; onClose: ()
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
-          <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="#00D2BE" unit={` ${speedUnit}`} data={lap.trace ?? []} convert={convertSpeed} />
-          <TelemetryTraceChart dataKey="throttle" label="Throttle" color="#4CAF50" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
-          <TelemetryTraceChart dataKey="brake" label="Brake" color="#E8002D" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
-          <TelemetryTraceChart dataKey="steer" label="Steering" color="#a855f7" unit="%" domain={[-100, 100]} data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="var(--teal)" unit={` ${speedUnit}`} data={lap.trace ?? []} convert={convertSpeed} />
+          <TelemetryTraceChart dataKey="throttle" label="Throttle" color="var(--green)" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="brake" label="Brake" color="var(--red)" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
+          <TelemetryTraceChart dataKey="steer" label="Steering" color="var(--purple)" unit="%" domain={[-100, 100]} data={lap.trace ?? []} />
         </div>
       </div>
     </div>
@@ -244,9 +244,9 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
           <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>Best Sectors (from laps)</div>
             <div className="expanded-group-grid">
-              {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS1}</div></div>}
-              {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS2}</div></div>}
-              {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: '#a855f7' }}>{bestS3}</div></div>}
+              {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>{bestS1}</div></div>}
+              {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>{bestS2}</div></div>}
+              {bestS3 && <div className="expanded-item"><div className="expanded-label">S3</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>{bestS3}</div></div>}
             </div>
           </div>
         );

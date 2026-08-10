@@ -10,9 +10,9 @@ import { SessionDetailModal } from '../components/SessionDetail';
 import { Flame, Trophy } from 'lucide-react';
 
 const DIFF_COLORS: Record<string, string> = {
-  Easy: '#4CAF50',
-  Medium: '#FF9800',
-  Hard: '#E8002D',
+  Easy: 'var(--green)',
+  Medium: 'var(--amber)',
+  Hard: 'var(--red)',
 };
 
 function Sparkline({ data, color = 'var(--red)', width = 48, height = 18 }: { data: number[]; color?: string; width?: number; height?: number }) {
@@ -617,10 +617,11 @@ export default function Dashboard({ setPage }: DashboardProps) {
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
         {filteredBadges.map(a => {
           const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
+          const BadgeIcon = a.icon;
           return (
             <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
               title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
-              <span className="dash-badge-icon">{a.icon}</span>
+              <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
               <div className="dash-badge-info">
                 <span className="dash-badge-name">{a.name}</span>
                 {!a.earned && a.target > 1 && (
@@ -672,7 +673,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
           <div className="stat-label">Personal Bests</div>
           <div className="stat-value"><AnimatedCounter value={pbsSet} /></div>
           {lastPBDaysAgo && <div className="stat-micro">Last PB: {lastPBDaysAgo}</div>}
-          <Sparkline data={pbSparkline} color="#FF9800" />
+          <Sparkline data={pbSparkline} color="var(--amber)" />
         </div>
         <div className="stat-card dash-stat-hover dash-fade-in" onClick={() => setPage('setups')} style={{ cursor: 'pointer' }}>
           <svg className="stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -747,7 +748,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
             {perfSnapshot.worstSector && (
               <div className="card perf-snap-card">
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: '#FF9800', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--amber)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
               </div>
             )}
@@ -772,7 +773,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
             <span style={{ fontSize: 10 }}>None</span>
             <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.35)' }} />
             <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.6)' }} />
-            <span className="legend-dot" style={{ background: '#E8002D' }} />
+            <span className="legend-dot" style={{ background: 'var(--red)' }} />
             <span style={{ fontSize: 10 }}>Active</span>
           </div>
         </div>
@@ -828,7 +829,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
               {rankInfo.rank}
             </span>
             {streak > 0 && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: '#FF9800' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--amber)' }}>
                 <Flame size={13} aria-hidden="true" /> {streak} day streak
               </span>
             )}
@@ -862,7 +863,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
       {nextGoal && (
-        <div className="card dash-next-goal" style={{ padding: '14px 20px', marginBottom: 16, border: '1px solid rgba(0,210,190,0.25)' }}>
+        <div className="card dash-next-goal card-accent card-accent--teal" style={{ padding: '14px 20px', marginBottom: 16 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
             {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
@@ -880,8 +881,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
       )}
 
       {/* ── Daily Challenge ─────────────────────────────────────────────── */}
-      <div className="card dash-challenge" style={{ padding: 0, marginBottom: 16, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
-        <div style={{ background: 'rgba(0,210,190,0.06)', padding: '12px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+      <div className="card dash-challenge card-accent card-accent--teal" style={{ padding: 0, marginBottom: 16, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-elevated)', padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
@@ -913,7 +914,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
             Be first on the board today.
           </div>
         )}
-        <div style={{ padding: '8px 20px 12px', borderTop: '1px solid rgba(0,210,190,0.1)', textAlign: 'center' }}>
+        <div style={{ padding: '8px 20px 12px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
           <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={startChallenge}>
             Start Challenge
           </button>
@@ -922,7 +923,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── #10 Session Recommendation Engine ──────────────────────────── */}
       {recommendation && (
-        <div className="card dash-stat-hover" style={{ padding: '14px 20px', marginBottom: 16, border: '1px solid rgba(232,0,45,0.2)' }}>
+        <div className="card dash-stat-hover card-accent card-accent--red" style={{ padding: '14px 20px', marginBottom: 16 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>Recommended Session</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
             {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
@@ -991,7 +992,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
                       <span style={{
                         fontFamily: 'var(--font-mono)',
                         fontSize: 11,
-                        color: s.delta <= 0 ? 'var(--teal)' : s.delta < 0.5 ? '#FF9800' : 'var(--red)',
+                        color: s.delta <= 0 ? 'var(--teal)' : s.delta < 0.5 ? 'var(--amber)' : 'var(--red)',
                       }}>
                         {s.delta <= 0 ? '—' : `+${s.delta.toFixed(3)}`}
                       </span>

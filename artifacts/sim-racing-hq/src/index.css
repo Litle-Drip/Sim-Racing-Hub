@@ -22,6 +22,12 @@
   --yellow: #FFF200;
   --green: #39B54A;
   --purple: #8b5cf6;
+  /* Amber = "watch this" (mid-tier deltas, weakest sector, streaks); chart-neutral = reference series */
+  --amber: #FF9800;
+  --chart-neutral: #555555;
+  /* Text/icons sitting on a saturated fill (red or teal). --white is the primary
+     text colour and inverts with the theme, so it can't be used there. */
+  --on-accent: #FFFFFF;
   --font-display: 'Orbitron', monospace;
   --font-body: 'Rajdhani', sans-serif;
   --font-mono: 'Space Mono', monospace;
@@ -78,6 +84,8 @@
   --yellow: #8A6A00;
   --green: #24803A;
   --purple: #6d28d9;
+  --amber: #A85B00;
+  --chart-neutral: #8A8A8A;
 
   --surface: #FFFFFF;
   --hover: rgba(0, 0, 0, 0.04);
@@ -197,7 +205,7 @@ summary:focus-visible,
 
 ::selection {
   background: var(--red);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 * {
@@ -442,7 +450,7 @@ summary:focus-visible,
 
 .units-toggle-btn.active {
   background: var(--red);
-  color: var(--white);
+  color: var(--on-accent);
 }
 
 .units-toggle-sub {
@@ -907,7 +915,7 @@ summary:focus-visible,
 
 .btn-primary {
   background: var(--red);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1499,6 +1507,17 @@ summary:focus-visible,
   box-shadow: var(--shadow-card);
 }
 
+/* Accent cards — a single coloured left edge instead of a fully coloured
+   frame, so several promo/insight cards can stack without competing with the
+   data tables for attention. */
+.card-accent {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border-accent);
+}
+
+.card-accent--teal { border-left-color: var(--teal); }
+.card-accent--red { border-left-color: var(--red); }
+
 /* Achievement badges */
 .dash-badge {
   display: flex;
@@ -1508,16 +1527,12 @@ summary:focus-visible,
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  opacity: 0.75;
-  filter: grayscale(100%);
-  transition: opacity 0.2s, filter 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   cursor: default;
   position: relative;
 }
 
 .dash-badge.earned {
-  opacity: 1;
-  filter: none;
   border-color: rgba(232,0,45,0.3);
 }
 
@@ -1526,14 +1541,22 @@ summary:focus-visible,
 }
 
 .dash-badge.near {
-  opacity: 1;
-  filter: none;
   border-color: rgba(0,210,190,0.35);
 }
 
 .dash-badge-icon {
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
+  color: var(--gray-mid);
+}
+
+.dash-badge.earned .dash-badge-icon {
+  color: var(--red);
+}
+
+.dash-badge.near .dash-badge-icon {
+  color: var(--teal);
 }
 
 .dash-badge-info {

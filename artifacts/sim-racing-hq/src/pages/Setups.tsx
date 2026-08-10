@@ -178,7 +178,7 @@ export default function Setups() {
         setForm(defaultForm());
         setFormErrors({});
         setSaveError('');
-        setToast({ message: 'Setup saved ✓' });
+        setToast({ message: 'Setup saved' });
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save setup. Please try again.';
@@ -200,7 +200,7 @@ export default function Setups() {
         qc.invalidateQueries({ queryKey: getGetSetupsQueryKey() });
         const setup = setups.find(s => s.id === variables.id);
         const wasPublic = setup?.isPublic;
-        setToast({ message: wasPublic ? 'Removed from Community ✓' : 'Shared to Community ✓' });
+        setToast({ message: wasPublic ? 'Removed from Community' : 'Shared to Community' });
       },
       onError: () => {
         setToast({ message: 'Failed to update sharing — please try again.', variant: 'error' });

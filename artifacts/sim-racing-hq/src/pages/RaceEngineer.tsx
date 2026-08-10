@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Headphones } from 'lucide-react';
+import { Check, Headphones, User as UserIcon } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 
@@ -11,6 +11,22 @@ const QUICK_QUESTIONS = [
   'What target should I set next session?',
   'Compare my best and worst sessions',
 ];
+
+/** Speaker attribution above each chat bubble — icon + name, mirrored for the driver's own messages. */
+function SpeakerLabel({ role }: { role: 'assistant' | 'user' }) {
+  const Icon = role === 'assistant' ? Headphones : UserIcon;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 5,
+      flexDirection: role === 'user' ? 'row-reverse' : 'row',
+      fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em',
+      color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 5,
+    }}>
+      <Icon size={11} aria-hidden="true" />
+      {role === 'assistant' ? 'Race Engineer' : 'You'}
+    </div>
+  );
+}
 
 export default function RaceEngineer() {
   const { user } = useUser();
@@ -160,7 +176,7 @@ export default function RaceEngineer() {
 
       {!started ? (
         <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
-          <div style={{ fontSize: 44, marginBottom: 16 }}>🎧</div>
+          <Headphones size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 10, textTransform: 'uppercase' }}>
             Ready for Debrief
           </div>
@@ -180,11 +196,11 @@ export default function RaceEngineer() {
             </div>
             <div className={`engineer-data-pill${hasAvgLaps ? ' engineer-data-pill--ready' : ''}`}>
               <div className="field-label">Avg Laps</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: hasAvgLaps ? 'var(--teal)' : 'var(--gray-mid)' }}>{hasAvgLaps ? '✓' : '—'}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: hasAvgLaps ? 'var(--teal)' : 'var(--gray-mid)' }}>{hasAvgLaps ? <Check size={16} aria-label="Available" /> : '—'}</div>
             </div>
             <div className={`engineer-data-pill${hasSectors ? ' engineer-data-pill--ready' : ''}`}>
               <div className="field-label">Sectors</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: hasSectors ? 'var(--teal)' : 'var(--gray-mid)' }}>{hasSectors ? '✓' : '—'}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: hasSectors ? 'var(--teal)' : 'var(--gray-mid)' }}>{hasSectors ? <Check size={16} aria-label="Available" /> : '—'}</div>
             </div>
           </div>
 
@@ -205,9 +221,7 @@ export default function RaceEngineer() {
           <div ref={chatRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
             {messages.map((m, i) => (
               <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 5, textAlign: m.role === 'user' ? 'right' : 'left' }}>
-                  {m.role === 'assistant' ? '🎧 Race Engineer' : '🪖 You'}
-                </div>
+                <SpeakerLabel role={m.role} />
                 <div style={{
                   fontFamily: 'var(--font-body)',
                   fontSize: 14,
@@ -225,9 +239,7 @@ export default function RaceEngineer() {
 
             {loading && !streamingText && (
               <div style={{ alignSelf: 'flex-start' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 5 }}>
-                  🎧 Race Engineer
-                </div>
+                <SpeakerLabel role="assistant" />
                 <div style={{ display: 'flex', gap: 4, padding: '12px 14px', background: 'var(--surface)', borderLeft: '2px solid var(--red)' }}>
                   <span className="engineer-typing-dot" />
                   <span className="engineer-typing-dot" />
@@ -238,9 +250,7 @@ export default function RaceEngineer() {
 
             {loading && streamingText && (
               <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 5 }}>
-                  🎧 Race Engineer
-                </div>
+                <SpeakerLabel role="assistant" />
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.7, color: 'var(--gray-light)', whiteSpace: 'pre-wrap', padding: '10px 14px', background: 'var(--surface)', borderLeft: '2px solid var(--red)' }}>
                   {streamingText}<span className="engineer-cursor" />
                 </div>

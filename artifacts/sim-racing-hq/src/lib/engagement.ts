@@ -1,4 +1,6 @@
 import type { SessionRecord } from '@workspace/api-client-react';
+import type { LucideIcon } from 'lucide-react';
+import { Crown, Globe, Hash, Plane, Radio, Target, Trophy, Wind, Wrench, Zap } from 'lucide-react';
 import { F1_TRACKS, F1_25_CARS } from '../data/f1Tracks';
 import { lapToSeconds } from './storage';
 
@@ -211,7 +213,7 @@ export interface Achievement {
   id: string;
   name: string;
   desc: string;
-  icon: string;
+  icon: LucideIcon;
   earned: boolean;
   progress: number;
   target: number;
@@ -233,16 +235,16 @@ export function calculateAchievements(sessions: SessionRecord[], setupCount: num
   })();
 
   return [
-    { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: '🏆', earned: pbCount > 0, progress: Math.min(pbCount, 1), target: 1 },
-    { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: '💨', earned: sessions.length >= 10, progress: Math.min(sessions.length, 10), target: 10 },
-    { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: '🔧', earned: setupCount >= 10, progress: Math.min(setupCount, 10), target: 10 },
-    { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: '🌍', earned: tracks.size >= 24, progress: Math.min(tracks.size, 24), target: 24 },
-    { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: '🎯', earned: consistentSession, progress: consistentSession ? 1 : 0, target: 1 },
-    { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: '👑', earned: hasMonacoPB, progress: hasMonacoPB ? 1 : 0, target: 1 },
-    { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: '💯', earned: sessions.length >= 100, progress: Math.min(sessions.length, 100), target: 100 },
-    { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: '✈️', earned: tracks.size >= 12, progress: Math.min(tracks.size, 12), target: 12 },
-    { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: '⚡', earned: maxSessionsPerDay >= 5, progress: Math.min(maxSessionsPerDay, 5), target: 5 },
-    { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: '📡', earned: sessions.some(s => s.isPublic), progress: sessions.some(s => s.isPublic) ? 1 : 0, target: 1 },
+    { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: Trophy, earned: pbCount > 0, progress: Math.min(pbCount, 1), target: 1 },
+    { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: Wind, earned: sessions.length >= 10, progress: Math.min(sessions.length, 10), target: 10 },
+    { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: Wrench, earned: setupCount >= 10, progress: Math.min(setupCount, 10), target: 10 },
+    { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: Globe, earned: tracks.size >= 24, progress: Math.min(tracks.size, 24), target: 24 },
+    { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: Target, earned: consistentSession, progress: consistentSession ? 1 : 0, target: 1 },
+    { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: Crown, earned: hasMonacoPB, progress: hasMonacoPB ? 1 : 0, target: 1 },
+    { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: Hash, earned: sessions.length >= 100, progress: Math.min(sessions.length, 100), target: 100 },
+    { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: Plane, earned: tracks.size >= 12, progress: Math.min(tracks.size, 12), target: 12 },
+    { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: Zap, earned: maxSessionsPerDay >= 5, progress: Math.min(maxSessionsPerDay, 5), target: 5 },
+    { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: Radio, earned: sessions.some(s => s.isPublic), progress: sessions.some(s => s.isPublic) ? 1 : 0, target: 1 },
   ];
 }
 

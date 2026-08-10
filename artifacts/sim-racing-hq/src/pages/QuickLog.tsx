@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { useCreateSession, getGetSessionsQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { F1_TRACKS, SESSION_TYPES, F1_25_CARS } from '../data/f1Tracks';
@@ -59,7 +60,7 @@ export default function QuickLog({ onDone }: { onDone: () => void }) {
   if (saved) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 24, gap: 20 }}>
-        <div style={{ fontSize: 48 }}>🏁</div>
+        <CheckCircle2 size={44} aria-hidden="true" style={{ color: 'var(--teal)' }} />
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.08em', color: 'var(--white)' }}>Session Logged!</div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', textAlign: 'center', lineHeight: 1.6 }}>
           {F1_TRACKS.find(t => t.id === trackId)?.flag} {F1_TRACKS.find(t => t.id === trackId)?.short} · {bestLap} · {car}
