@@ -371,7 +371,22 @@ router.get("/community/driver/:username", async (req, res) => {
       return;
     }
 
-    // Look up user by username via Clerk
+    type ClerkUser = {
+      id: string;
+      username?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      created_at?: number;
+      image_url?: string | null;
+    };
+
+    // Look up user by username via Clerk. This filter is an exact,
+    // case-sensitive match, so it misses if the stored username's casing
+    // ever drifted from what's in the URL (e.g. link copied before a
+    // rename, or typed in by hand). Fall back to Clerk's fuzzy `query`
+    // search and pick a case-insensitive exact match from the results
+    // before giving up.
+    let users: ClerkUser[] = [];
     const userResp = await fetch(
       `https://api.clerk.com/v1/users?username[]=${encodeURIComponent(username)}&limit=1`,
       { headers: { Authorization: `Bearer ${secretKey}` } }
@@ -384,14 +399,21 @@ router.get("/community/driver/:username", async (req, res) => {
       res.status(404).json({ error: "Driver not found" });
       return;
     }
-    const users = (await userResp.json()) as Array<{
-      id: string;
-      username?: string | null;
-      first_name?: string | null;
-      last_name?: string | null;
-      created_at?: number;
-      image_url?: string | null;
-    }>;
+    users = (await userResp.json()) as ClerkUser[];
+
+    if (users.length === 0) {
+      const searchResp = await fetch(
+        `https://api.clerk.com/v1/users?query=${encodeURIComponent(username)}&limit=10`,
+        { headers: { Authorization: `Bearer ${secretKey}` } }
+      );
+      if (searchResp.ok) {
+        const candidates = (await searchResp.json()) as ClerkUser[];
+        const match = candidates.find(
+          (u) => u.username && u.username.toLowerCase() === username.toLowerCase(),
+        );
+        if (match) users = [match];
+      }
+    }
 
     if (users.length === 0) {
       res.status(404).json({ error: "Driver not found" });

@@ -180,7 +180,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
 
     sessionsSorted.forEach(s => {
       if (!s.bestLap || s.bestLap.trim() === '') return;
-      const key = `${s.trackId}__${s.car}`;
+      const key = s.trackId;
       sessionCounts[key] = (sessionCounts[key] || 0) + 1;
       if (!pbMap[key] || lapToSeconds(s.bestLap) < lapToSeconds(pbMap[key].bestLap)) {
         pbMap[key] = {
@@ -190,6 +190,8 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           date: s.date,
           sessions: sessionCounts[key],
         };
+      } else {
+        pbMap[key].sessions = sessionCounts[key];
       }
     });
 
@@ -255,7 +257,108 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         </select>
       </div>
 
-      <div className="chart-section">
+      {/* Telemetry Insights — companion app data (tyres, temps, DRS, throttle/brake) */}
+      {telemetryStats.hasData && (
+        <>
+          <div className="section-title">Telemetry Insights{filterTrack ? ` — ${trackName(filterTrack)}` : ''}</div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {telemetryStats.topSpeed > 0 && (
+              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Speed</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--teal)', fontWeight: 700 }}>{formatSpeed(telemetryStats.topSpeed)}</div>
+              </div>
+            )}
+            {telemetryStats.avgTyreWear > 0 && (
+              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Wear</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{telemetryStats.avgTyreWear.toFixed(1)}%</div>
+              </div>
+            )}
+            {telemetryStats.avgTyreTemp > 0 && (
+              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Temp</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{formatTemp(telemetryStats.avgTyreTemp)}</div>
+              </div>
+            )}
+            {telemetryStats.totalDrs > 0 && (
+              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>DRS Activations</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.totalDrs}</div>
+              </div>
+            )}
+            {(telemetryStats.avgThrottle > 0 || telemetryStats.avgBrake > 0) && (
+              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Throttle / Brake</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.avgThrottle.toFixed(0)}% / {telemetryStats.avgBrake.toFixed(0)}%</div>
+              </div>
+            )}
+            {telemetryStats.maxRpm > 0 && (
+              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Max RPM</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.maxRpm.toLocaleString()}</div>
+              </div>
+            )}
+            {telemetryStats.topGear > 0 && (
+              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Gear</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.topGear}</div>
+              </div>
+            )}
+            {(telemetryStats.avgTrackTemp !== 0 || telemetryStats.avgAirTemp !== 0) && (
+              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Track / Air Temp</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{formatTemp(telemetryStats.avgTrackTemp)} / {formatTemp(telemetryStats.avgAirTemp)}</div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Best Sectors per Track */}
+      {filterTrack && (() => {
+        type SectorEntry = { val: string; secs: number; date: string; car: string };
+        const bestSectors: { s1: SectorEntry | null; s2: SectorEntry | null; s3: SectorEntry | null } = { s1: null, s2: null, s3: null };
+        filtered.forEach(s => {
+          const laps = (s.laps ?? []) as Array<{ s1: string; s2: string; s3: string }>;
+          const checkSector = (key: 's1' | 's2' | 's3', val: string) => {
+            if (!val || !val.trim()) return;
+            const secs = parseFloat(val);
+            if (isNaN(secs) || secs <= 0) return;
+            if (!bestSectors[key] || secs < bestSectors[key]!.secs) {
+              bestSectors[key] = { val, secs, date: s.date, car: s.car };
+            }
+          };
+          if (laps.length > 0) {
+            laps.forEach(l => { checkSector('s1', l.s1); checkSector('s2', l.s2); checkSector('s3', l.s3); });
+          } else {
+            checkSector('s1', s.s1); checkSector('s2', s.s2); checkSector('s3', s.s3);
+          }
+        });
+        const hasSectors = bestSectors.s1 || bestSectors.s2 || bestSectors.s3;
+        if (!hasSectors) return null;
+        return (
+          <>
+            <div className="section-title" style={{ marginTop: 24 }}>Best Sectors — {trackName(filterTrack)}</div>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {(['s1', 's2', 's3'] as const).map(key => {
+                const s = bestSectors[key];
+                if (!s) return null;
+                return (
+                  <div key={key} className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
+                      Sector {key.slice(1)}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{s.val}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 6 }}>{s.car} · {s.date}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
+
+      <div className="chart-section" style={{ marginTop: 40 }}>
         <div className="section-title">PB Progression</div>
         {progressSummary && (
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
@@ -438,107 +541,6 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           </ResponsiveContainer>
         )}
       </div>
-
-      {/* Telemetry Insights — companion app data (tyres, temps, DRS, throttle/brake) */}
-      {telemetryStats.hasData && (
-        <>
-          <div className="section-title" style={{ marginTop: 40 }}>Telemetry Insights{filterTrack ? ` — ${trackName(filterTrack)}` : ''}</div>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            {telemetryStats.topSpeed > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Speed</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--teal)', fontWeight: 700 }}>{formatSpeed(telemetryStats.topSpeed)}</div>
-              </div>
-            )}
-            {telemetryStats.avgTyreWear > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Wear</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{telemetryStats.avgTyreWear.toFixed(1)}%</div>
-              </div>
-            )}
-            {telemetryStats.avgTyreTemp > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Temp</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{formatTemp(telemetryStats.avgTyreTemp)}</div>
-              </div>
-            )}
-            {telemetryStats.totalDrs > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>DRS Activations</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.totalDrs}</div>
-              </div>
-            )}
-            {(telemetryStats.avgThrottle > 0 || telemetryStats.avgBrake > 0) && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Throttle / Brake</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.avgThrottle.toFixed(0)}% / {telemetryStats.avgBrake.toFixed(0)}%</div>
-              </div>
-            )}
-            {telemetryStats.maxRpm > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Max RPM</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.maxRpm.toLocaleString()}</div>
-              </div>
-            )}
-            {telemetryStats.topGear > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Gear</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.topGear}</div>
-              </div>
-            )}
-            {(telemetryStats.avgTrackTemp !== 0 || telemetryStats.avgAirTemp !== 0) && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Track / Air Temp</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{formatTemp(telemetryStats.avgTrackTemp)} / {formatTemp(telemetryStats.avgAirTemp)}</div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Best Sectors per Track */}
-      {filterTrack && (() => {
-        type SectorEntry = { val: string; secs: number; date: string; car: string };
-        const bestSectors: { s1: SectorEntry | null; s2: SectorEntry | null; s3: SectorEntry | null } = { s1: null, s2: null, s3: null };
-        filtered.forEach(s => {
-          const laps = (s.laps ?? []) as Array<{ s1: string; s2: string; s3: string }>;
-          const checkSector = (key: 's1' | 's2' | 's3', val: string) => {
-            if (!val || !val.trim()) return;
-            const secs = parseFloat(val);
-            if (isNaN(secs) || secs <= 0) return;
-            if (!bestSectors[key] || secs < bestSectors[key]!.secs) {
-              bestSectors[key] = { val, secs, date: s.date, car: s.car };
-            }
-          };
-          if (laps.length > 0) {
-            laps.forEach(l => { checkSector('s1', l.s1); checkSector('s2', l.s2); checkSector('s3', l.s3); });
-          } else {
-            checkSector('s1', s.s1); checkSector('s2', s.s2); checkSector('s3', s.s3);
-          }
-        });
-        const hasSectors = bestSectors.s1 || bestSectors.s2 || bestSectors.s3;
-        if (!hasSectors) return null;
-        return (
-          <>
-            <div className="section-title" style={{ marginTop: 40 }}>Best Sectors — {trackName(filterTrack)}</div>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              {(['s1', 's2', 's3'] as const).map(key => {
-                const s = bestSectors[key];
-                if (!s) return null;
-                return (
-                  <div key={key} className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
-                      Sector {key.slice(1)}
-                    </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: '#a855f7', fontWeight: 700 }}>{s.val}</div>
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 6 }}>{s.car} · {s.date}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        );
-      })()}
 
       {/* Consistency Trend */}
       <div className="section-title" style={{ marginTop: 40 }}>Consistency Score Trend</div>

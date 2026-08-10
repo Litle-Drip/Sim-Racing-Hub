@@ -35,7 +35,7 @@ function normalizeSessionType(raw: string): string {
 
 export default function Account({ setPage }: { setPage?: (p: string) => void }) {
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut, openUserProfile } = useClerk();
   const { data: sessions = [] } = useGetSessions();
   const { data: setups = [] } = useGetSetups();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -390,7 +390,7 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
           <button
             className="btn btn-secondary"
             style={{ fontSize: 12 }}
-            onClick={() => user?.update && window.open('https://accounts.f1simhub.com/user', '_blank')}
+            onClick={() => openUserProfile()}
           >
             Manage Account
           </button>

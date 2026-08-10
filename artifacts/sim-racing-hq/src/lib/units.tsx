@@ -35,10 +35,41 @@ function celsiusToFahrenheit(c: number): number {
   return c * 9 / 5 + 32;
 }
 
+// Countries that use Fahrenheit day-to-day (the "US" preset here is really
+// "mph + °F"). Everyone else defaults to the "UK" preset (mph + °C), which
+// matches how most drivers on this app already talk about lap telemetry.
+const FAHRENHEIT_REGIONS = new Set(['US', 'BS', 'BZ', 'KY', 'LR', 'PW', 'FM', 'MH']);
+
+// No stored preference yet — guess from the browser's locale region (and, if
+// that's unavailable, its timezone) so a US-based driver sees mph/°F on
+// their very first visit instead of having to find the toggle.
+function guessDefaultSystem(): UnitSystem {
+  if (typeof navigator === 'undefined') return 'uk';
+  const locales = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+  for (const loc of locales) {
+    if (!loc) continue;
+    try {
+      const region = new Intl.Locale(loc).maximize().region;
+      if (region) return FAHRENHEIT_REGIONS.has(region) ? 'us' : 'uk';
+    } catch {
+      // Intl.Locale not supported or locale string malformed — fall through.
+    }
+  }
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz && tz.startsWith('America/') && !['America/Toronto', 'America/Vancouver', 'America/Montreal', 'America/Edmonton', 'America/Winnipeg', 'America/Halifax'].includes(tz)) {
+      return 'us';
+    }
+  } catch {
+    // Intl.DateTimeFormat timezone resolution unavailable.
+  }
+  return 'uk';
+}
+
 export function UnitsProvider({ children }: { children: ReactNode }) {
   const [system, setSystemState] = useState<UnitSystem>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === 'us' || stored === 'uk' ? stored : 'uk';
+    return stored === 'us' || stored === 'uk' ? stored : guessDefaultSystem();
   });
 
   useEffect(() => {
