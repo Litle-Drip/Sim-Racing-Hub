@@ -208,3 +208,16 @@ export const rivalChallengesTable = pgTable("rival_challenges", {
 
 export type DbRivalChallenge = typeof rivalChallengesTable.$inferSelect;
 export type InsertDbRivalChallenge = typeof rivalChallengesTable.$inferInsert;
+
+// Tracks each user's lifetime AI Race Engineer message count so the free
+// tier can be capped. Entering the shared unlock password sets
+// `unlocked`, which removes the cap for that user going forward.
+export const engineerUsageTable = pgTable("engineer_usage", {
+  userId: text("user_id").primaryKey(),
+  messageCount: integer("message_count").notNull().default(0),
+  unlocked: boolean("unlocked").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type DbEngineerUsage = typeof engineerUsageTable.$inferSelect;
+export type InsertDbEngineerUsage = typeof engineerUsageTable.$inferInsert;
