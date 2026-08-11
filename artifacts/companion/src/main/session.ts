@@ -273,6 +273,9 @@ const TEAM_NAMES: Record<number, string> = {
   192: "Haas '24",
   193: "McLaren '24",
   194: "Sauber '24",
+  220: "Mercedes '26", // confirmed live, 2026-08-10
+  221: "Ferrari '26", // confirmed live, 2026-08-10
+  222: "Red Bull Racing '26", // confirmed live, 2026-08-10
   228: "McLaren '26", // confirmed live, 2026-07-21
   232: "Red Bull Racing '26", // confirmed live, 2026-07-21
   253: "My Team",
