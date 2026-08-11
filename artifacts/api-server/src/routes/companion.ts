@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { db, sessionsTable, apiKeysTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
@@ -139,16 +139,30 @@ async function recalcPBsForUser(userId: string) {
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const pbMap: Record<string, string> = {};
 
-  const updates: { id: string; isPB: boolean }[] = sorted.map((s) => {
+  // Only the rows whose isPB flag actually changes need writing — for a
+  // single new upload that's normally just the old PB (now demoted) and the
+  // new one, not every session the user has ever logged. Batching those
+  // into two IN-list updates instead of one UPDATE per row turns a
+  // recalc that used to cost O(session count) round-trips into O(1) for
+  // the common case — this runs on every companion-app upload.
+  const toSetTrue: string[] = [];
+  const toSetFalse: string[] = [];
+
+  for (const s of sorted) {
     const key = normalizeTrackId(s.trackId);
     const currentPB = pbMap[key];
     const isNewPB = isFasterLap(s.bestLap, currentPB ?? "");
     if (isNewPB && s.bestLap && s.bestLap.trim() !== "") pbMap[key] = s.bestLap;
-    return { id: s.id, isPB: isNewPB };
-  });
+    if (isNewPB !== s.isPB) {
+      (isNewPB ? toSetTrue : toSetFalse).push(s.id);
+    }
+  }
 
-  for (const { id, isPB } of updates) {
-    await db.update(sessionsTable).set({ isPB }).where(eq(sessionsTable.id, id as string));
+  if (toSetTrue.length > 0) {
+    await db.update(sessionsTable).set({ isPB: true }).where(inArray(sessionsTable.id, toSetTrue));
+  }
+  if (toSetFalse.length > 0) {
+    await db.update(sessionsTable).set({ isPB: false }).where(inArray(sessionsTable.id, toSetFalse));
   }
 }
 
