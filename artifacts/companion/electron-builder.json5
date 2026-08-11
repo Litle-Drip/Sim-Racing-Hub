@@ -7,6 +7,18 @@
     buildResources: "resources",
     output: "dist"
   },
+  // Feed for electron-updater (Windows only for now — see setupAutoUpdater
+  // in main/index.ts). "generic" rather than the "github" provider
+  // deliberately: the github provider expects each release's git tag to
+  // BE the semver version, but this repo reuses one rolling "main"-tagged
+  // release for every build (see .github/workflows/companion-release.yml).
+  // A fixed download URL under that same tag stays stable across builds,
+  // so electron-updater just needs latest.yml uploaded there each time —
+  // no change to the existing release/tag scheme required.
+  publish: {
+    provider: "generic",
+    url: "https://github.com/Litle-Drip/Sim-Racing-Hub/releases/download/main/"
+  },
   files: [
     "!**/.vscode/*",
     "!src/*",

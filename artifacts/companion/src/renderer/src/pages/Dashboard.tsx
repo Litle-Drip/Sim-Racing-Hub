@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import WindowControls from "../components/WindowControls";
+import LogoMark from "../components/LogoMark";
+import Button from "../components/Button";
+import { IconLock, IconGamepad, IconActivity, IconCloudUpload } from "../components/Icons";
+import { theme } from "../theme";
 
 interface Status {
   signedIn: boolean;
@@ -7,6 +12,8 @@ interface Status {
   lastUpload: { track: string; lapTime: string; at: string } | null;
   currentSession: { lapCount: number; track: string } | null;
   pendingUploads: number;
+  detectedGame: string | null;
+  unsupportedFormat: number | null;
 }
 
 interface Props {
@@ -14,13 +21,17 @@ interface Props {
 }
 
 function StatusRow({
+  icon,
   label,
   value,
   ok,
+  action,
 }: {
+  icon: React.ReactNode;
   label: string;
   value: string;
   ok: boolean;
+  action?: { label: string; onClick: () => void };
 }): React.ReactElement {
   return (
     <div
@@ -29,31 +40,52 @@ function StatusRow({
         justifyContent: "space-between",
         alignItems: "center",
         padding: "14px 20px",
-        borderBottom: "1px solid #1e1e1e",
+        borderBottom: `1px solid ${theme.border}`,
       }}
     >
-      <span style={{ color: "#999", fontSize: 13 }}>{label}</span>
-      <span
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          color: ok ? "#00d4b1" : "#555",
-          fontWeight: 500,
-          fontSize: 13,
-        }}
-      >
+      <span style={{ display: "flex", alignItems: "center", gap: 9, color: theme.gray, fontSize: 13 }}>
+        <span style={{ color: theme.gray, display: "flex", flexShrink: 0 }}>{icon}</span>
+        {label}
+      </span>
+      {action ? (
+        <button
+          onClick={action.onClick}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: 0,
+            color: theme.red,
+            fontWeight: 600,
+            fontSize: 12.5,
+            background: "transparent",
+          }}
+        >
+          {action.label} →
+        </button>
+      ) : (
         <span
           style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            background: ok ? "#00d4b1" : "#333",
-            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            color: ok ? theme.teal : theme.gray,
+            fontWeight: 500,
+            fontSize: 13,
           }}
-        />
-        {value}
-      </span>
+        >
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: ok ? theme.teal : theme.borderAccent,
+              flexShrink: 0,
+            }}
+          />
+          {value}
+        </span>
+      )}
     </div>
   );
 }
@@ -73,6 +105,8 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
     lastUpload: null,
     currentSession: null,
     pendingUploads: 0,
+    detectedGame: null,
+    unsupportedFormat: null,
   });
 
   useEffect(() => {
@@ -85,71 +119,114 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
     ? `${status.lastUpload.track} — ${status.lastUpload.lapTime} (${formatAgo(status.lastUpload.at)})`
     : "—";
 
+  const sessionActive = !!status.currentSession;
+
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        background: "#0f0f0f",
+        background: theme.bg,
       }}
     >
       {/* Header */}
       <div
         style={{
-          padding: "20px 20px 16px",
-          borderBottom: "1px solid #1e1e1e",
+          display: "flex",
+          alignItems: "center",
+          padding: "14px 12px 14px 20px",
+          borderBottom: `1px solid ${theme.border}`,
           WebkitAppRegion: "drag",
         } as React.CSSProperties}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+          <LogoMark />
           <div
             style={{
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              background: "linear-gradient(135deg, #00d4b1 0%, #007aff 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 14,
-              fontWeight: 700,
-              color: "#fff",
+              fontWeight: 600,
+              fontSize: 15,
+              color: theme.white,
+              letterSpacing: -0.3,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
-            F1
-          </div>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", letterSpacing: -0.3 }}>
-              F1SimHub Companion
-            </div>
-            <div style={{ fontSize: 11, color: "#555", marginTop: 1 }}>
-              {status.currentSession
-                ? `Session active — ${status.currentSession.lapCount} lap${status.currentSession.lapCount !== 1 ? "s" : ""} on ${status.currentSession.track}`
-                : "Waiting for session…"}
-            </div>
+            F1SimHub Companion
           </div>
         </div>
+
+        <div
+          style={{ marginLeft: 10, flexShrink: 0, display: "flex", alignItems: "center", gap: 10 } as React.CSSProperties}
+        >
+          <div
+            title={
+              status.currentSession
+                ? `${status.currentSession.lapCount} lap${status.currentSession.lapCount !== 1 ? "s" : ""} on ${status.currentSession.track}`
+                : undefined
+            }
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "6px 12px",
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 0.2,
+              whiteSpace: "nowrap",
+              background: sessionActive ? theme.tealDim : theme.bgElevated,
+              border: `1px solid ${sessionActive ? theme.tealBorder : theme.borderAccent}`,
+              color: sessionActive ? theme.teal : theme.grayLight,
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: sessionActive ? theme.teal : theme.gray,
+                flexShrink: 0,
+                animation: sessionActive ? "livePulse 1.6s ease-in-out infinite" : undefined,
+              }}
+            />
+            {sessionActive ? "Session active" : "Waiting for session"}
+          </div>
+          <WindowControls />
+        </div>
       </div>
+      <style>{`@keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
 
       {/* Status rows */}
       <div style={{ flex: 1 }}>
         <StatusRow
+          icon={<IconLock size={15} />}
           label="Signed In"
           value={status.signedIn ? "API key active" : "No API key"}
           ok={status.signedIn}
+          action={status.signedIn ? undefined : { label: "Add key", onClick: onOpenSettings }}
         />
         <StatusRow
+          icon={<IconGamepad size={15} />}
           label="Game Connected"
-          value={status.gameConnected ? "F1 25 detected" : "Waiting…"}
-          ok={status.gameConnected}
+          value={
+            status.unsupportedFormat
+              ? `Unsupported game (format ${status.unsupportedFormat})`
+              : status.gameConnected
+                ? `${status.detectedGame ?? "F1"} detected`
+                : "Waiting…"
+          }
+          ok={status.gameConnected && !status.unsupportedFormat}
         />
         <StatusRow
+          icon={<IconActivity size={15} />}
           label="Telemetry Receiving"
           value={status.telemetryReceiving ? "Live data" : "No packets"}
           ok={status.telemetryReceiving}
         />
         <StatusRow
+          icon={<IconCloudUpload size={15} />}
           label="Last Upload"
           value={lastUploadLabel}
           ok={!!status.lastUpload}
@@ -159,12 +236,12 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
             style={{
               margin: "0 20px",
               padding: "10px 14px",
-              background: "#1a1200",
-              border: "1px solid #3a2a00",
+              background: theme.yellowDim,
+              border: `1px solid ${theme.yellowBorder}`,
               borderRadius: 8,
               marginTop: 12,
               fontSize: 12,
-              color: "#f59e0b",
+              color: theme.yellow,
             }}
           >
             ⚠ {status.pendingUploads} pending upload{status.pendingUploads > 1 ? "s" : ""} — will retry automatically
@@ -176,40 +253,21 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
       <div
         style={{
           padding: "16px 20px",
-          borderTop: "1px solid #1e1e1e",
+          borderTop: `1px solid ${theme.border}`,
           display: "flex",
           gap: 10,
         }}
       >
-        <button
+        <Button
+          variant="primary"
           onClick={() => window.companion.openF1SimHub()}
-          style={{
-            flex: 1,
-            padding: "10px 16px",
-            background: "#00d4b1",
-            color: "#000",
-            borderRadius: 8,
-            fontWeight: 600,
-            fontSize: 13,
-            letterSpacing: -0.2,
-          }}
+          style={{ flex: 1, letterSpacing: -0.2 }}
         >
           Open F1SimHub ↗
-        </button>
-        <button
-          onClick={onOpenSettings}
-          style={{
-            padding: "10px 16px",
-            background: "#1a1a1a",
-            color: "#999",
-            borderRadius: 8,
-            fontWeight: 500,
-            fontSize: 13,
-            border: "1px solid #2a2a2a",
-          }}
-        >
+        </Button>
+        <Button variant="secondary" onClick={onOpenSettings}>
           Settings
-        </button>
+        </Button>
       </div>
     </div>
   );

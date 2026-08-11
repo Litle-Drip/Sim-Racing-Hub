@@ -23,6 +23,14 @@ export interface CornerNote {
   myNotes: string;
 }
 
+export interface LapTraceSample {
+  d: number;
+  speed: number;
+  throttle: number;
+  brake: number;
+  steer: number;
+}
+
 export interface LapRecord {
   lap: number;
   time: string;
@@ -31,6 +39,49 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  trace?: LapTraceSample[] | null;
+}
+
+export interface WingDamage {
+  front: number;
+  rear: number;
+}
+
+export interface CarSetupSnapshot {
+  frontWing: number;
+  rearWing: number;
+  onThrottle: number;
+  offThrottle: number;
+  frontCamber: number;
+  rearCamber: number;
+  frontToe: number;
+  rearToe: number;
+  frontSuspension: number;
+  rearSuspension: number;
+  frontAntiRollBar: number;
+  rearAntiRollBar: number;
+  frontRideHeight: number;
+  rearRideHeight: number;
+  brakePressure: number;
+  brakeBias: number;
+  frontTyrePressure: number;
+  rearTyrePressure: number;
+}
+
+export interface TyreStintEntry {
+  startLap: number;
+  endLap: number;
+  compound: string;
+  visualCompound: string;
+}
+
+export interface LapHistoryEntry {
+  lap: number;
+  lapTimeMs: number;
+  sector1Ms: number;
+  sector2Ms: number;
+  sector3Ms: number;
+  valid: boolean;
 }
 
 export interface SessionRecord {
@@ -62,6 +113,46 @@ export interface SessionRecord {
   laps?: LapRecord[] | null;
   timeOfDay?: string | null;
   position?: string;
+  trackTemperature?: number | null;
+  airTemperature?: number | null;
+  totalLaps?: number | null;
+  pitSpeedLimit?: number | null;
+  safetyCarStatus?: number | null;
+  fuelInTank?: number | null;
+  ersDeployMode?: number | null;
+  ersEnergyStored?: number | null;
+  ersDeployedThisLap?: number | null;
+  tyreWear?: number[] | null;
+  wingDamage?: WingDamage | null;
+  tyreSurfaceTemps?: number[] | null;
+  brakeTemps?: number[] | null;
+  setupSnapshot?: CarSetupSnapshot | null;
+  tyreStints?: TyreStintEntry[] | null;
+  lapHistory?: LapHistoryEntry[] | null;
+  aiDifficulty?: number | null;
+  topSpeedKph?: number | null;
+  avgThrottlePct?: number | null;
+  avgBrakePct?: number | null;
+  drsActivations?: number | null;
+  maxRpm?: number | null;
+  topGear?: number | null;
+  fuelRemainingLaps?: number | null;
+  actualTyreCompound?: string | null;
+  tyreAgeLaps?: number | null;
+  pitStops?: number | null;
+  fuelCapacity?: number | null;
+  startingFuelKg?: number | null;
+  engineMaxRpm?: number | null;
+  engineTemperature?: number | null;
+  vehicleFiaFlags?: number | null;
+  tyrePressureLive?: number[] | null;
+  floorDamage?: number | null;
+  diffuserDamage?: number | null;
+  sidepodDamage?: number | null;
+  gearBoxDamage?: number | null;
+  engineDamage?: number | null;
+  liveBrakeBias?: number | null;
+  createdAt: string;
 }
 
 export interface CreateSessionRequest {
@@ -89,6 +180,14 @@ export interface CreateSessionRequest {
   inputDevice?: string;
   laps?: LapRecord[];
   position?: string;
+  aiDifficulty?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  fuelRemainingLaps?: number;
 }
 
 export interface ShareSessionRequest {
@@ -263,6 +362,47 @@ export interface CompanionSessionRequest {
   notes?: string;
   rating?: number;
   penalty?: string;
+  trackTemperature?: number;
+  airTemperature?: number;
+  totalLaps?: number;
+  pitSpeedLimit?: number;
+  safetyCarStatus?: number;
+  timeOfDay?: string;
+  fuelInTank?: number;
+  ersDeployMode?: number;
+  ersEnergyStored?: number;
+  ersDeployedThisLap?: number;
+  tyreWear?: number[];
+  frontWingDamage?: number;
+  rearWingDamage?: number;
+  tyreSurfaceTemps?: number[];
+  brakeTemps?: number[];
+  setup?: CarSetupSnapshot;
+  tyreStints?: TyreStintEntry[];
+  lapHistory?: LapHistoryEntry[];
+  aiDifficulty?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  fuelRemainingLaps?: number;
+  actualTyreCompound?: string;
+  tyreAgeLaps?: number;
+  pitStops?: number;
+  fuelCapacity?: number;
+  startingFuelKg?: number;
+  engineMaxRpm?: number;
+  engineTemperature?: number;
+  vehicleFiaFlags?: number;
+  tyrePressureLive?: number[];
+  floorDamage?: number;
+  diffuserDamage?: number;
+  sidepodDamage?: number;
+  gearBoxDamage?: number;
+  engineDamage?: number;
+  liveBrakeBias?: number;
 }
 
 export interface TrackNotesRecord {
@@ -292,6 +432,67 @@ export interface HardwareRecord {
   linearity: string;
   steeringRange: string;
   notes: string;
+}
+
+export interface RivalChallengeParticipant {
+  userId: string;
+  name: string;
+  isMe: boolean;
+}
+
+export interface RivalChallengeSessionSummary {
+  id: string;
+  date: string;
+  bestLap: string;
+  avgLap: string;
+  s1: string;
+  s2: string;
+  s3: string;
+  raceTimeSeconds?: number | null;
+}
+
+export interface RivalChallengeRecord {
+  id: string;
+  status: string;
+  trackId: string;
+  car: string;
+  lapCount: number;
+  message: string;
+  createdAt: string;
+  completedAt?: string | null;
+  creator: RivalChallengeParticipant;
+  opponent: RivalChallengeParticipant;
+  creatorSession: RivalChallengeSessionSummary;
+  opponentSession?: RivalChallengeSessionSummary | null;
+  winnerUserId?: string | null;
+}
+
+export interface CreateRivalChallengeRequest {
+  sessionId: string;
+  opponentUsername: string;
+  lapCount?: number;
+  message?: string;
+}
+
+export interface SubmitRivalChallengeAttemptRequest {
+  sessionId: string;
+}
+
+export interface EngineerUsageStatus {
+  count: number;
+  limit: number;
+  unlocked: boolean;
+  allowed: boolean;
+}
+
+export interface UnlockEngineerUsageRequest {
+  password: string;
+}
+
+export interface RivalChallengeUserLookup {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
 }
 
 export interface CreateHardwareRequest {
@@ -331,5 +532,9 @@ trackId?: string;
 car?: string;
 tag?: string;
 gameVersion?: string;
+};
+
+export type LookupRivalChallengeUserParams = {
+username: string;
 };
 

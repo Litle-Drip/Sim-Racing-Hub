@@ -22,6 +22,10 @@ tags:
     description: Community setup sharing operations
   - name: companion
     description: Companion app API key and session upload
+  - name: rivalChallenges
+    description: Head-to-head time trial / race challenge operations
+  - name: engineerUsage
+    description: AI Race Engineer free-tier usage limit and unlock
 paths:
   /healthz:
     get:
@@ -492,6 +496,180 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /rival-challenges:
+    get:
+      operationId: getRivalChallenges
+      tags: [rivalChallenges]
+      summary: Get all rival challenges the current user sent or received
+      responses:
+        "200":
+          description: List of rival challenges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RivalChallengeRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createRivalChallenge
+      tags: [rivalChallenges]
+      summary: Challenge another user to beat one of your sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRivalChallengeRequest"
+      responses:
+        "201":
+          description: Rival challenge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RivalChallengeRecord"
+        "400":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rival-challenges/lookup-user:
+    get:
+      operationId: lookupRivalChallengeUser
+      tags: [rivalChallenges]
+      summary: Look up a user by username to challenge them
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RivalChallengeUserLookup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rival-challenges/{id}:
+    delete:
+      operationId: cancelRivalChallenge
+      tags: [rivalChallenges]
+      summary: Cancel a pending rival challenge you created
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Rival challenge cancelled
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rival-challenges/{id}/attempt:
+    post:
+      operationId: submitRivalChallengeAttempt
+      tags: [rivalChallenges]
+      summary: Submit your session as your attempt at a rival challenge
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitRivalChallengeAttemptRequest"
+      responses:
+        "200":
+          description: Attempt submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RivalChallengeRecord"
+        "400":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /engineer-usage:
+    get:
+      operationId: getEngineerUsage
+      tags: [engineerUsage]
+      summary: Get the current user's AI Race Engineer usage status
+      responses:
+        "200":
+          description: Usage status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineerUsageStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /engineer-usage/check-and-increment:
+    post:
+      operationId: checkAndIncrementEngineerUsage
+      tags: [engineerUsage]
+      summary: Consume one AI Race Engineer message against the free-tier limit
+      description: >
+        Atomically increments the user's message count if they are unlocked
+        or still under the free-tier limit, and reports whether the message
+        is allowed to proceed.
+      responses:
+        "200":
+          description: Usage status after the attempted increment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineerUsageStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /engineer-usage/unlock:
+    post:
+      operationId: unlockEngineerUsage
+      tags: [engineerUsage]
+      summary: Unlock unlimited AI Race Engineer usage with the shared password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnlockEngineerUsageRequest"
+      responses:
+        "200":
+          description: Unlocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineerUsageStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Incorrect password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /track-notes/{trackId}:
     get:
       operationId: getTrackNotes
@@ -577,6 +755,7 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         number:
           type: integer
         name:
@@ -598,6 +777,26 @@ components:
         - lineNotes
         - myNotes
 
+    LapTraceSample:
+      type: object
+      properties:
+        d:
+          type: number
+        speed:
+          type: number
+        throttle:
+          type: number
+        brake:
+          type: number
+        steer:
+          type: number
+      required:
+        - d
+        - speed
+        - throttle
+        - brake
+        - steer
+
     LapRecord:
       type: object
       properties:
@@ -615,6 +814,12 @@ components:
           type: string
         penalty:
           type: string
+        trace:
+          type: array
+          maxItems: 3500
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapTraceSample"
       required:
         - lap
         - time
@@ -624,11 +829,122 @@ components:
         - tires
         - penalty
 
+    WingDamage:
+      type: object
+      properties:
+        front:
+          type: number
+        rear:
+          type: number
+      required:
+        - front
+        - rear
+
+    CarSetupSnapshot:
+      type: object
+      properties:
+        frontWing:
+          type: number
+        rearWing:
+          type: number
+        onThrottle:
+          type: number
+        offThrottle:
+          type: number
+        frontCamber:
+          type: number
+        rearCamber:
+          type: number
+        frontToe:
+          type: number
+        rearToe:
+          type: number
+        frontSuspension:
+          type: number
+        rearSuspension:
+          type: number
+        frontAntiRollBar:
+          type: number
+        rearAntiRollBar:
+          type: number
+        frontRideHeight:
+          type: number
+        rearRideHeight:
+          type: number
+        brakePressure:
+          type: number
+        brakeBias:
+          type: number
+        frontTyrePressure:
+          type: number
+        rearTyrePressure:
+          type: number
+      required:
+        - frontWing
+        - rearWing
+        - onThrottle
+        - offThrottle
+        - frontCamber
+        - rearCamber
+        - frontToe
+        - rearToe
+        - frontSuspension
+        - rearSuspension
+        - frontAntiRollBar
+        - rearAntiRollBar
+        - frontRideHeight
+        - rearRideHeight
+        - brakePressure
+        - brakeBias
+        - frontTyrePressure
+        - rearTyrePressure
+
+    TyreStintEntry:
+      type: object
+      properties:
+        startLap:
+          type: integer
+        endLap:
+          type: integer
+        compound:
+          type: string
+        visualCompound:
+          type: string
+      required:
+        - startLap
+        - endLap
+        - compound
+        - visualCompound
+
+    LapHistoryEntry:
+      type: object
+      properties:
+        lap:
+          type: integer
+        lapTimeMs:
+          type: integer
+        sector1Ms:
+          type: integer
+        sector2Ms:
+          type: integer
+        sector3Ms:
+          type: integer
+        valid:
+          type: boolean
+      required:
+        - lap
+        - lapTimeMs
+        - sector1Ms
+        - sector2Ms
+        - sector3Ms
+        - valid
+
     SessionRecord:
       type: object
       properties:
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         trackId:
@@ -661,6 +977,7 @@ components:
           type: integer
         notes:
           type: string
+          maxLength: 5000
         isPB:
           type: boolean
         penalty:
@@ -685,6 +1002,7 @@ components:
           nullable: true
         laps:
           type: array
+          maxItems: 150
           nullable: true
           items:
             $ref: "#/components/schemas/LapRecord"
@@ -692,6 +1010,139 @@ components:
           type: string
           nullable: true
         position:
+          type: string
+        trackTemperature:
+          type: integer
+          nullable: true
+        airTemperature:
+          type: integer
+          nullable: true
+        totalLaps:
+          type: integer
+          nullable: true
+        pitSpeedLimit:
+          type: integer
+          nullable: true
+        safetyCarStatus:
+          type: integer
+          nullable: true
+        fuelInTank:
+          type: number
+          nullable: true
+        ersDeployMode:
+          type: integer
+          nullable: true
+        ersEnergyStored:
+          type: number
+          nullable: true
+        ersDeployedThisLap:
+          type: number
+          nullable: true
+        tyreWear:
+          type: array
+          nullable: true
+          items:
+            type: number
+        wingDamage:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/WingDamage"
+        tyreSurfaceTemps:
+          type: array
+          nullable: true
+          items:
+            type: number
+        brakeTemps:
+          type: array
+          nullable: true
+          items:
+            type: number
+        setupSnapshot:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CarSetupSnapshot"
+        tyreStints:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/TyreStintEntry"
+        lapHistory:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/LapHistoryEntry"
+        aiDifficulty:
+          type: integer
+          nullable: true
+        topSpeedKph:
+          type: number
+          nullable: true
+        avgThrottlePct:
+          type: number
+          nullable: true
+        avgBrakePct:
+          type: number
+          nullable: true
+        drsActivations:
+          type: integer
+          nullable: true
+        maxRpm:
+          type: integer
+          nullable: true
+        topGear:
+          type: integer
+          nullable: true
+        fuelRemainingLaps:
+          type: number
+          nullable: true
+        actualTyreCompound:
+          type: string
+          nullable: true
+        tyreAgeLaps:
+          type: integer
+          nullable: true
+        pitStops:
+          type: integer
+          nullable: true
+        fuelCapacity:
+          type: number
+          nullable: true
+        startingFuelKg:
+          type: number
+          nullable: true
+        engineMaxRpm:
+          type: integer
+          nullable: true
+        engineTemperature:
+          type: integer
+          nullable: true
+        vehicleFiaFlags:
+          type: integer
+          nullable: true
+        tyrePressureLive:
+          type: array
+          items:
+            type: number
+          nullable: true
+        floorDamage:
+          type: integer
+          nullable: true
+        diffuserDamage:
+          type: integer
+          nullable: true
+        sidepodDamage:
+          type: integer
+          nullable: true
+        gearBoxDamage:
+          type: integer
+          nullable: true
+        engineDamage:
+          type: integer
+          nullable: true
+        liveBrakeBias:
+          type: integer
+          nullable: true
+        createdAt:
           type: string
       required:
         - id
@@ -713,12 +1164,14 @@ components:
         - notes
         - isPB
         - isPublic
+        - createdAt
 
     CreateSessionRequest:
       type: object
       properties:
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         trackId:
@@ -751,6 +1204,7 @@ components:
           type: integer
         notes:
           type: string
+          maxLength: 5000
         penalty:
           type: string
         timeOfDay:
@@ -763,10 +1217,27 @@ components:
           type: string
         laps:
           type: array
+          maxItems: 150
           items:
             $ref: "#/components/schemas/LapRecord"
         position:
           type: string
+        aiDifficulty:
+          type: integer
+        topSpeedKph:
+          type: number
+        avgThrottlePct:
+          type: number
+        avgBrakePct:
+          type: number
+        drsActivations:
+          type: integer
+        maxRpm:
+          type: integer
+        topGear:
+          type: integer
+        fuelRemainingLaps:
+          type: number
       required:
         - id
         - date
@@ -808,6 +1279,7 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         trackId:
@@ -867,8 +1339,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         car:
           type: string
         trackId:
@@ -903,6 +1377,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
         isPublic:
           type: boolean
         sharedAt:
@@ -937,8 +1412,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         car:
           type: string
         trackId:
@@ -973,6 +1450,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
         authorName:
           type: string
         isOwn:
@@ -1049,8 +1527,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         car:
           type: string
         trackId:
@@ -1085,6 +1565,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
         gameVersion:
           type: string
       required:
@@ -1186,20 +1667,117 @@ components:
           type: string
         laps:
           type: array
+          maxItems: 150
           items:
             $ref: "#/components/schemas/LapRecord"
         id:
           type: string
+          maxLength: 200
         date:
           type: string
         position:
           type: string
         notes:
           type: string
+          maxLength: 5000
         rating:
           type: integer
         penalty:
           type: string
+        trackTemperature:
+          type: integer
+        airTemperature:
+          type: integer
+        totalLaps:
+          type: integer
+        pitSpeedLimit:
+          type: integer
+        safetyCarStatus:
+          type: integer
+        timeOfDay:
+          type: string
+        fuelInTank:
+          type: number
+        ersDeployMode:
+          type: integer
+        ersEnergyStored:
+          type: number
+        ersDeployedThisLap:
+          type: number
+        tyreWear:
+          type: array
+          items:
+            type: number
+        frontWingDamage:
+          type: number
+        rearWingDamage:
+          type: number
+        tyreSurfaceTemps:
+          type: array
+          items:
+            type: number
+        brakeTemps:
+          type: array
+          items:
+            type: number
+        setup:
+          $ref: "#/components/schemas/CarSetupSnapshot"
+        tyreStints:
+          type: array
+          items:
+            $ref: "#/components/schemas/TyreStintEntry"
+        lapHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/LapHistoryEntry"
+        aiDifficulty:
+          type: integer
+        topSpeedKph:
+          type: number
+        avgThrottlePct:
+          type: number
+        avgBrakePct:
+          type: number
+        drsActivations:
+          type: integer
+        maxRpm:
+          type: integer
+        topGear:
+          type: integer
+        fuelRemainingLaps:
+          type: number
+        actualTyreCompound:
+          type: string
+        tyreAgeLaps:
+          type: integer
+        pitStops:
+          type: integer
+        fuelCapacity:
+          type: number
+        startingFuelKg:
+          type: number
+        engineMaxRpm:
+          type: integer
+        engineTemperature:
+          type: integer
+        vehicleFiaFlags:
+          type: integer
+        tyrePressureLive:
+          type: array
+          items:
+            type: number
+        floorDamage:
+          type: integer
+        diffuserDamage:
+          type: integer
+        sidepodDamage:
+          type: integer
+        gearBoxDamage:
+          type: integer
+        engineDamage:
+          type: integer
+        liveBrakeBias:
+          type: integer
       required:
         - sessionType
         - track
@@ -1210,10 +1788,12 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         trackId:
           type: string
         corners:
           type: array
+          maxItems: 60
           items:
             $ref: "#/components/schemas/CornerNote"
       required:
@@ -1226,8 +1806,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         corners:
           type: array
+          maxItems: 60
           items:
             $ref: "#/components/schemas/CornerNote"
       required:
@@ -1239,8 +1821,10 @@ components:
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         peripheralType:
           type: string
         brand:
@@ -1267,6 +1851,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
       required:
         - id
         - label
@@ -1284,13 +1869,167 @@ components:
         - steeringRange
         - notes
 
+    RivalChallengeParticipant:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        isMe:
+          type: boolean
+      required:
+        - userId
+        - name
+        - isMe
+
+    RivalChallengeSessionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 200
+        date:
+          type: string
+        bestLap:
+          type: string
+        avgLap:
+          type: string
+        s1:
+          type: string
+        s2:
+          type: string
+        s3:
+          type: string
+        raceTimeSeconds:
+          type: number
+          nullable: true
+      required:
+        - id
+        - date
+        - bestLap
+        - avgLap
+        - s1
+        - s2
+        - s3
+
+    RivalChallengeRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 200
+        status:
+          type: string
+        trackId:
+          type: string
+        car:
+          type: string
+        lapCount:
+          type: integer
+        message:
+          type: string
+        createdAt:
+          type: string
+        completedAt:
+          type: string
+          nullable: true
+        creator:
+          $ref: "#/components/schemas/RivalChallengeParticipant"
+        opponent:
+          $ref: "#/components/schemas/RivalChallengeParticipant"
+        creatorSession:
+          $ref: "#/components/schemas/RivalChallengeSessionSummary"
+        opponentSession:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/RivalChallengeSessionSummary"
+        winnerUserId:
+          type: string
+          nullable: true
+      required:
+        - id
+        - status
+        - trackId
+        - car
+        - lapCount
+        - message
+        - createdAt
+        - creator
+        - opponent
+        - creatorSession
+
+    CreateRivalChallengeRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        opponentUsername:
+          type: string
+        lapCount:
+          type: integer
+        message:
+          type: string
+      required:
+        - sessionId
+        - opponentUsername
+
+    SubmitRivalChallengeAttemptRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+      required:
+        - sessionId
+
+    EngineerUsageStatus:
+      type: object
+      properties:
+        count:
+          type: integer
+        limit:
+          type: integer
+        unlocked:
+          type: boolean
+        allowed:
+          type: boolean
+      required:
+        - count
+        - limit
+        - unlocked
+        - allowed
+
+    UnlockEngineerUsageRequest:
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
+
+    RivalChallengeUserLookup:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+      required:
+        - userId
+        - name
+
     CreateHardwareRequest:
       type: object
       properties:
         id:
           type: string
+          maxLength: 200
         label:
           type: string
+          maxLength: 100
         peripheralType:
           type: string
         brand:
@@ -1317,6 +2056,7 @@ components:
           type: string
         notes:
           type: string
+          maxLength: 5000
       required:
         - id
         - label

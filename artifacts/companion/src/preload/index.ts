@@ -7,6 +7,8 @@ export interface CompanionStatus {
   lastUpload: { track: string; lapTime: string; at: string } | null;
   currentSession: { lapCount: number; track: string } | null;
   pendingUploads: number;
+  detectedGame: string | null;
+  unsupportedFormat: number | null;
 }
 
 export interface CompanionSettings {
@@ -19,6 +21,8 @@ export interface CompanionSettings {
 }
 
 export interface CompanionAPI {
+  minimizeWindow(): Promise<void>;
+  closeWindow(): Promise<void>;
   getVersion(): Promise<string>;
   getStatus(): Promise<CompanionStatus>;
   getSettings(): Promise<CompanionSettings>;
@@ -33,6 +37,8 @@ export interface CompanionAPI {
 }
 
 const api: CompanionAPI = {
+  minimizeWindow: () => ipcRenderer.invoke("window-minimize"),
+  closeWindow: () => ipcRenderer.invoke("window-close"),
   getVersion: () => ipcRenderer.invoke("get-version"),
   getStatus: () => ipcRenderer.invoke("get-status"),
   getSettings: () => ipcRenderer.invoke("get-settings"),

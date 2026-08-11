@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, avg, count, sql } from "drizzle-orm";
 import { db, setupsTable, setupRatingsTable, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
+import { normalizeTrackId } from "../lib/trackAlias";
 import { getAuth } from "@clerk/express";
 
 function escapeLike(s: string): string {
@@ -320,7 +321,7 @@ router.get("/community/sessions", async (req, res) => {
     const mapped = rows.map((r) => ({
       id: r.id,
       date: r.date,
-      trackId: r.trackId,
+      trackId: normalizeTrackId(r.trackId),
       car: r.car,
       type: r.type,
       bestLap: r.bestLap,
@@ -343,7 +344,14 @@ router.get("/community/sessions", async (req, res) => {
     } else if (sort === "rating") {
       mapped.sort((a, b) => b.rating - a.rating);
     } else {
-      mapped.sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap));
+      mapped.sort((a, b) => {
+        const at = lapToSeconds(a.bestLap);
+        const bt = lapToSeconds(b.bestLap);
+        // Infinity - Infinity is NaN, which corrupts Array.sort's ordering;
+        // treat two sessions with no usable best lap as equal.
+        if (at === bt) return 0;
+        return at - bt;
+      });
     }
 
     res.json(mapped);
@@ -365,27 +373,54 @@ router.get("/community/driver/:username", async (req, res) => {
   try {
     const secretKey = process.env.CLERK_SECRET_KEY;
     if (!secretKey) {
+      req.log.error("CLERK_SECRET_KEY is not configured; cannot resolve driver profiles");
       res.status(404).json({ error: "Driver not found" });
       return;
     }
 
-    // Look up user by username via Clerk
-    const userResp = await fetch(
-      `https://api.clerk.com/v1/users?username[]=${encodeURIComponent(username)}&limit=1`,
-      { headers: { Authorization: `Bearer ${secretKey}` } }
-    );
-    if (!userResp.ok) {
-      res.status(404).json({ error: "Driver not found" });
-      return;
-    }
-    const users = (await userResp.json()) as Array<{
+    type ClerkUser = {
       id: string;
       username?: string | null;
       first_name?: string | null;
       last_name?: string | null;
       created_at?: number;
       image_url?: string | null;
-    }>;
+    };
+
+    // Look up user by username via Clerk. This filter is an exact,
+    // case-sensitive match, so it misses if the stored username's casing
+    // ever drifted from what's in the URL (e.g. link copied before a
+    // rename, or typed in by hand). Fall back to Clerk's fuzzy `query`
+    // search and pick a case-insensitive exact match from the results
+    // before giving up.
+    let users: ClerkUser[] = [];
+    const userResp = await fetch(
+      `https://api.clerk.com/v1/users?username[]=${encodeURIComponent(username)}&limit=1`,
+      { headers: { Authorization: `Bearer ${secretKey}` } }
+    );
+    if (!userResp.ok) {
+      req.log.error(
+        { status: userResp.status, body: await userResp.text().catch(() => "") },
+        "Clerk user lookup failed for driver profile",
+      );
+      res.status(404).json({ error: "Driver not found" });
+      return;
+    }
+    users = (await userResp.json()) as ClerkUser[];
+
+    if (users.length === 0) {
+      const searchResp = await fetch(
+        `https://api.clerk.com/v1/users?query=${encodeURIComponent(username)}&limit=10`,
+        { headers: { Authorization: `Bearer ${secretKey}` } }
+      );
+      if (searchResp.ok) {
+        const candidates = (await searchResp.json()) as ClerkUser[];
+        const match = candidates.find(
+          (u) => u.username && u.username.toLowerCase() === username.toLowerCase(),
+        );
+        if (match) users = [match];
+      }
+    }
 
     if (users.length === 0) {
       res.status(404).json({ error: "Driver not found" });
@@ -412,9 +447,10 @@ router.get("/community/driver/:username", async (req, res) => {
     const pbMap: Record<string, { trackId: string; car: string; bestLap: string; date: string }> = {};
     publicSessions.forEach((s) => {
       if (!s.bestLap || s.bestLap.trim() === "") return;
-      const existing = pbMap[s.trackId];
+      const trackId = normalizeTrackId(s.trackId);
+      const existing = pbMap[trackId];
       if (!existing || lapToSeconds(s.bestLap) < lapToSeconds(existing.bestLap)) {
-        pbMap[s.trackId] = { trackId: s.trackId, car: s.car, bestLap: s.bestLap, date: s.date };
+        pbMap[trackId] = { trackId, car: s.car, bestLap: s.bestLap, date: s.date };
       }
     });
 
@@ -424,7 +460,7 @@ router.get("/community/driver/:username", async (req, res) => {
       avatarUrl: user.image_url ?? null,
       sessions: publicSessions.length,
       setups: publicSetups.length,
-      tracks: new Set(publicSessions.map(s => s.trackId)).size,
+      tracks: new Set(publicSessions.map(s => normalizeTrackId(s.trackId))).size,
       pbs: Object.values(pbMap),
       recentSessions: publicSessions
         .sort((a, b) => b.date.localeCompare(a.date))
@@ -432,7 +468,7 @@ router.get("/community/driver/:username", async (req, res) => {
         .map(s => ({
           id: s.id,
           date: s.date,
-          trackId: s.trackId,
+          trackId: normalizeTrackId(s.trackId),
           car: s.car,
           type: s.type,
           bestLap: s.bestLap,

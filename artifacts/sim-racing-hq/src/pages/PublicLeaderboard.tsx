@@ -27,7 +27,15 @@ export default function PublicLeaderboard({ onBack }: { onBack?: () => void }) {
       .filter(t => byTrack[t.id])
       .map(t => {
         const sorted = byTrack[t.id].sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap));
-        return { track: t, entries: sorted.slice(0, 5) };
+        // Keep only each driver's fastest entry so one prolific driver can't
+        // occupy multiple of the top 5 slots.
+        const seenDrivers = new Set<string>();
+        const deduped = sorted.filter(s => {
+          if (seenDrivers.has(s.authorName)) return false;
+          seenDrivers.add(s.authorName);
+          return true;
+        });
+        return { track: t, entries: deduped.slice(0, 5) };
       });
   }, [sessions]);
 
@@ -77,7 +85,7 @@ export default function PublicLeaderboard({ onBack }: { onBack?: () => void }) {
                       <tr key={s.id}>
                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: idx === 0 ? 'var(--teal)' : 'var(--gray-mid)' }}>{idx + 1}</td>
                         <td><span className={idx === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span></td>
-                        <td style={{ fontFamily: 'var(--font-body)' }}>{s.authorName}</td>
+                        <td style={{ fontFamily: 'var(--font-body)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{s.authorName}</td>
                         <td>{s.car}</td>
                         <td>{s.platform || '—'}</td>
                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>

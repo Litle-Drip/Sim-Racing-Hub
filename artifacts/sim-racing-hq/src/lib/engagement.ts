@@ -1,4 +1,6 @@
 import type { SessionRecord } from '@workspace/api-client-react';
+import type { LucideIcon } from 'lucide-react';
+import { Crown, Globe, Hash, Plane, Radio, Target, Trophy, Wind, Wrench, Zap } from 'lucide-react';
 import { F1_TRACKS, F1_25_CARS } from '../data/f1Tracks';
 import { lapToSeconds } from './storage';
 
@@ -6,9 +8,13 @@ import { lapToSeconds } from './storage';
 
 export type ChallengeDifficulty = 'Easy' | 'Medium' | 'Hard';
 
-export function getDailyChallenge() {
-  const today = new Date();
-  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+/** sessionStorage key used to hand off the Daily Challenge's track/car from
+ * the Dashboard's "Start Challenge" button to the Sessions page's log form —
+ * page switches in this app are plain state changes with no route params. */
+export const PENDING_CHALLENGE_KEY = 'f1simhub-pending-challenge';
+
+export function getDailyChallenge(forDate: Date = new Date()) {
+  const dayOfYear = Math.floor((forDate.getTime() - new Date(forDate.getFullYear(), 0, 0).getTime()) / 86400000);
   const trackIdx = dayOfYear % F1_TRACKS.length;
   const carIdx = Math.floor(dayOfYear / F1_TRACKS.length) % F1_25_CARS.length;
   const track = F1_TRACKS[trackIdx];
@@ -16,7 +22,17 @@ export function getDailyChallenge() {
   const easyTracks = ['monza', 'red_bull_ring', 'albert_park', 'bahrain'];
   const difficulty: ChallengeDifficulty = hardTracks.includes(track.id) ? 'Hard' : easyTracks.includes(track.id) ? 'Easy' : 'Medium';
   const xpReward = difficulty === 'Hard' ? 30 : difficulty === 'Medium' ? 20 : 10;
-  return { track, car: F1_25_CARS[carIdx], date: today.toISOString().slice(0, 10), difficulty, xpReward };
+  return { track, car: F1_25_CARS[carIdx], date: forDate.toISOString().slice(0, 10), difficulty, xpReward };
+}
+
+/** Whether a logged session happens to match that day's Daily Challenge (same track + car, on the challenge's date). */
+export function isDailyChallengeSession(session: Pick<SessionRecord, 'trackId' | 'car' | 'date'>): boolean {
+  if (!session.date) return false;
+  // Parsing as UTC noon avoids the date rolling back a day in negative-offset timezones.
+  const d = new Date(`${session.date}T12:00:00`);
+  if (isNaN(d.getTime())) return false;
+  const challenge = getDailyChallenge(d);
+  return session.trackId === challenge.track.id && session.car === challenge.car;
 }
 
 // ─── Streak ──────────────────────────────────────────────────────────────────
@@ -55,9 +71,43 @@ export function trackConsistency(sessions: SessionRecord[], trackId: string): nu
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
-// ─── Driver Rank ─────────────────────────────────────────────────────────────
+// ─── Seat Time ───────────────────────────────────────────────────────────────
+// Flat per-type minutes are only a fallback for sessions with no logged lap
+// data — whenever real lap times (or an avg lap x total laps) are available,
+// use those instead of guessing.
 
-export type DriverRank = 'Rookie' | 'Amateur' | 'Intermediate' | 'Expert' | 'Elite' | 'Pro';
+const SESSION_TYPE_MINUTES: Record<string, number> = {
+  Practice: 30, Qualifying: 20, Race: 60, Hotlap: 15, 'Time Trial': 20,
+};
+
+export function estimateSessionMinutes(session: SessionRecord): number {
+  const lapSeconds: number[] = (session.laps ?? [])
+    .map((l: { time: string }) => lapToSeconds(l.time))
+    .filter((t: number): t is number => isFinite(t) && t > 0);
+  if (lapSeconds.length > 0) {
+    return lapSeconds.reduce((a: number, b: number) => a + b, 0) / 60;
+  }
+
+  const avg = lapToSeconds(session.avgLap ?? '');
+  if (isFinite(avg) && avg > 0 && session.totalLaps) {
+    return (avg * session.totalLaps) / 60;
+  }
+
+  return SESSION_TYPE_MINUTES[session.type] ?? 25;
+}
+
+export function estimateSeatTimeMinutes(sessions: SessionRecord[]): number {
+  return sessions.reduce((acc, s) => acc + estimateSessionMinutes(s), 0);
+}
+
+// ─── Driver Rank ─────────────────────────────────────────────────────────────
+//
+// Single source of truth for rank tiers, thresholds, and colors — Nav,
+// Dashboard, and Account all read RANK_TIERS/getRankColor instead of keeping
+// their own copies, so a tier list change (like adding Legend/World
+// Champion below) can't silently drift out of sync between screens.
+
+export type DriverRank = 'Rookie' | 'Amateur' | 'Intermediate' | 'Expert' | 'Elite' | 'Pro' | 'Legend' | 'World Champion';
 
 export interface RankInfo {
   rank: DriverRank;
@@ -66,13 +116,19 @@ export interface RankInfo {
   pointsToNext: number;
 }
 
-const RANK_THRESHOLDS: { rank: DriverRank; min: number }[] = [
-  { rank: 'Pro', min: 500 },
-  { rank: 'Elite', min: 350 },
-  { rank: 'Expert', min: 200 },
-  { rank: 'Intermediate', min: 100 },
-  { rank: 'Amateur', min: 30 },
+// Ascending order — the last entry is the ceiling. Pro (500) was previously
+// the top tier, which meant any driver with a few hundred logged sessions
+// maxed out and stopped seeing rank progress entirely. Legend and World
+// Champion give long-term players somewhere left to climb.
+export const RANK_TIERS: { rank: DriverRank; min: number }[] = [
   { rank: 'Rookie', min: 0 },
+  { rank: 'Amateur', min: 30 },
+  { rank: 'Intermediate', min: 100 },
+  { rank: 'Expert', min: 200 },
+  { rank: 'Elite', min: 350 },
+  { rank: 'Pro', min: 500 },
+  { rank: 'Legend', min: 800 },
+  { rank: 'World Champion', min: 1300 },
 ];
 
 const RANK_COLORS: Record<DriverRank, string> = {
@@ -82,37 +138,71 @@ const RANK_COLORS: Record<DriverRank, string> = {
   Expert: '#9C27B0',
   Elite: '#FF9800',
   Pro: '#E8002D',
+  Legend: '#FFD700',
+  'World Champion': '#00E5FF',
 };
 
 export function getRankColor(rank: DriverRank): string {
   return RANK_COLORS[rank];
 }
 
+/** Progress toward the next tier, derived the same way everywhere a rank progress bar is drawn. */
+export function getRankProgress(info: RankInfo): { currentMin: number; nextMin: number | null; pct: number } {
+  const currentTierIdx = RANK_TIERS.findIndex(t => t.rank === info.rank);
+  const currentMin = RANK_TIERS[currentTierIdx]?.min ?? 0;
+  const nextMin = info.nextRank ? RANK_TIERS.find(t => t.rank === info.nextRank)?.min ?? null : null;
+  const pct = nextMin !== null
+    ? Math.max(0, Math.min(100, ((info.points - currentMin) / (nextMin - currentMin)) * 100))
+    : 100;
+  return { currentMin, nextMin, pct };
+}
+
 export function calculateRank(sessions: SessionRecord[]): RankInfo {
   let points = 0;
-  // Sessions logged (1pt each, max 100)
-  points += Math.min(sessions.length, 100);
+  // Sessions logged (1pt each, max 150 — long-term activity keeps counting
+  // for longer before this term caps out).
+  points += Math.min(sessions.length, 150);
   // Tracks practiced (5pts each)
   const tracks = new Set(sessions.map(s => s.trackId));
   points += tracks.size * 5;
-  // PBs set (3pts each)
+  // PBs set (3pts each) — naturally self-limiting, since you can only PB
+  // once per track/car combination, so this is left uncapped.
   points += sessions.filter(s => s.isPB).length * 3;
-  // Consistency bonus: sessions with >96% consistency get 2pts each
-  sessions.forEach(s => {
+  // Consistency bonus: sessions with >96% consistency are worth 2pts each,
+  // capped at 20 qualifying sessions (40pts) so grinding easy hotlaps can't
+  // dwarf the session-count, track-coverage, and PB terms above — those
+  // reflect real breadth of play, this is meant as a bonus, not the driver.
+  const consistentSessions = sessions.filter(s => {
     const c = sessionConsistency(s);
-    if (c !== null && c > 96) points += 2;
-  });
+    return c !== null && c > 96;
+  }).length;
+  points += Math.min(consistentSessions, 20) * 2;
   // All 24 tracks bonus
   if (tracks.size >= 24) points += 50;
 
-  const tier = RANK_THRESHOLDS.find(t => points >= t.min) || RANK_THRESHOLDS[RANK_THRESHOLDS.length - 1];
-  const nextTierIdx = RANK_THRESHOLDS.indexOf(tier) - 1;
-  const nextTier = nextTierIdx >= 0 ? RANK_THRESHOLDS[nextTierIdx] : null;
+  return resolveRankTier(points);
+}
+
+/**
+ * Looks up which tier a raw point total falls into against RANK_TIERS.
+ * Split out from calculateRank so callers that can't build a full
+ * SessionRecord[] (e.g. the public driver profile, which only gets
+ * aggregate counts back from the API) still resolve rank against the same
+ * tier list instead of keeping their own copy that can drift out of sync.
+ */
+export function resolveRankTier(points: number): RankInfo {
+  let tier = RANK_TIERS[0];
+  for (const t of RANK_TIERS) {
+    if (points >= t.min) tier = t;
+    else break;
+  }
+  const tierIdx = RANK_TIERS.indexOf(tier);
+  const nextTier = tierIdx < RANK_TIERS.length - 1 ? RANK_TIERS[tierIdx + 1] : null;
 
   return {
     rank: tier.rank,
     points,
-    nextRank: nextTier?.rank || null,
+    nextRank: nextTier?.rank ?? null,
     pointsToNext: nextTier ? nextTier.min - points : 0,
   };
 }
@@ -123,7 +213,7 @@ export interface Achievement {
   id: string;
   name: string;
   desc: string;
-  icon: string;
+  icon: LucideIcon;
   earned: boolean;
   progress: number;
   target: number;
@@ -145,16 +235,16 @@ export function calculateAchievements(sessions: SessionRecord[], setupCount: num
   })();
 
   return [
-    { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: '🏆', earned: pbCount > 0, progress: Math.min(pbCount, 1), target: 1 },
-    { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: '💨', earned: sessions.length >= 10, progress: Math.min(sessions.length, 10), target: 10 },
-    { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: '🔧', earned: setupCount >= 10, progress: Math.min(setupCount, 10), target: 10 },
-    { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: '🌍', earned: tracks.size >= 24, progress: Math.min(tracks.size, 24), target: 24 },
-    { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: '🎯', earned: consistentSession, progress: consistentSession ? 1 : 0, target: 1 },
-    { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: '👑', earned: hasMonacoPB, progress: hasMonacoPB ? 1 : 0, target: 1 },
-    { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: '💯', earned: sessions.length >= 100, progress: Math.min(sessions.length, 100), target: 100 },
-    { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: '✈️', earned: tracks.size >= 12, progress: Math.min(tracks.size, 12), target: 12 },
-    { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: '⚡', earned: maxSessionsPerDay >= 5, progress: Math.min(maxSessionsPerDay, 5), target: 5 },
-    { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: '📡', earned: sessions.some(s => s.isPublic), progress: sessions.some(s => s.isPublic) ? 1 : 0, target: 1 },
+    { id: 'podium', name: 'Podium', desc: 'Set your first PB at any track', icon: Trophy, earned: pbCount > 0, progress: Math.min(pbCount, 1), target: 1 },
+    { id: 'flat_out', name: 'Flat Out', desc: 'Log 10+ sessions', icon: Wind, earned: sessions.length >= 10, progress: Math.min(sessions.length, 10), target: 10 },
+    { id: 'setup_wizard', name: 'Setup Wizard', desc: 'Save 10 setups', icon: Wrench, earned: setupCount >= 10, progress: Math.min(setupCount, 10), target: 10 },
+    { id: 'circuit_master', name: 'Circuit Master', desc: 'Log sessions at all 24 tracks', icon: Globe, earned: tracks.size >= 24, progress: Math.min(tracks.size, 24), target: 24 },
+    { id: 'consistent', name: 'Consistent', desc: 'Best/worst lap gap under 0.5s in a session', icon: Target, earned: consistentSession, progress: consistentSession ? 1 : 0, target: 1 },
+    { id: 'the_senna', name: 'The Senna', desc: 'Set a PB at Monaco', icon: Crown, earned: hasMonacoPB, progress: hasMonacoPB ? 1 : 0, target: 1 },
+    { id: 'century', name: 'Century', desc: 'Log 100 sessions', icon: Hash, earned: sessions.length >= 100, progress: Math.min(sessions.length, 100), target: 100 },
+    { id: 'globe_trotter', name: 'Globe Trotter', desc: 'Practice at 12 different tracks', icon: Plane, earned: tracks.size >= 12, progress: Math.min(tracks.size, 12), target: 12 },
+    { id: 'weekend_warrior', name: 'Weekend Warrior', desc: 'Log 5 sessions in a single day', icon: Zap, earned: maxSessionsPerDay >= 5, progress: Math.min(maxSessionsPerDay, 5), target: 5 },
+    { id: 'first_share', name: 'Community Spirit', desc: 'Share a session publicly', icon: Radio, earned: sessions.some(s => s.isPublic), progress: sessions.some(s => s.isPublic) ? 1 : 0, target: 1 },
   ];
 }
 

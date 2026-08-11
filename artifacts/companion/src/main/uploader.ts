@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { app } from "electron";
-import type { SessionSnapshot, LapRecord } from "./session";
+import type { SessionSnapshot, LapRecord, CarSetupSnapshot, TyreStint, LapHistoryEntry } from "./session";
 
 export interface PendingUpload {
   id: string;
@@ -11,6 +11,7 @@ export interface PendingUpload {
 }
 
 export interface UploadPayload {
+  id: string;
   sessionType: string;
   track: string;
   car: string;
@@ -22,6 +23,52 @@ export interface UploadPayload {
   laps: LapRecord[];
   aiDifficulty?: number;
   position?: string;
+  trackTemperature?: number;
+  airTemperature?: number;
+  totalLaps?: number;
+  pitSpeedLimit?: number;
+  safetyCarStatus?: number;
+  timeOfDay?: string;
+  speed?: number;
+  throttle?: number;
+  brake?: number;
+  gear?: number;
+  engineRpm?: number;
+  drsActive?: number;
+  tyreSurfaceTemps?: [number, number, number, number];
+  brakeTemps?: [number, number, number, number];
+  fuelInTank?: number;
+  ersDeployMode?: number;
+  ersEnergyStored?: number;
+  ersDeployedThisLap?: number;
+  tyreWear?: [number, number, number, number];
+  frontWingDamage?: number;
+  rearWingDamage?: number;
+  setup?: CarSetupSnapshot;
+  tyreStints?: TyreStint[];
+  lapHistory?: LapHistoryEntry[];
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  tyreCompound?: string;
+  actualTyreCompound?: string;
+  tyreAgeLaps?: number;
+  pitStops?: number;
+  fuelCapacity?: number;
+  startingFuelKg?: number;
+  engineMaxRpm?: number;
+  engineTemperature?: number;
+  vehicleFiaFlags?: number;
+  tyrePressureLive?: [number, number, number, number];
+  floorDamage?: number;
+  diffuserDamage?: number;
+  sidepodDamage?: number;
+  gearBoxDamage?: number;
+  engineDamage?: number;
+  liveBrakeBias?: number;
 }
 
 export interface UploadResult {
@@ -40,7 +87,20 @@ function loadPending(): PendingUpload[] {
   const p = pendingPath();
   if (!existsSync(p)) return [];
   try {
-    return JSON.parse(readFileSync(p, "utf-8")) as PendingUpload[];
+    const items = JSON.parse(readFileSync(p, "utf-8")) as PendingUpload[];
+    // Items queued before session ids existed have no payload.id, so the
+    // server can't dedupe them — every retry inserts a brand new row. Give
+    // each a stable id once, here, so from this point on they behave like
+    // any other upload: retried safely, never duplicated.
+    let backfilled = false;
+    for (const item of items) {
+      if (!item.payload.id) {
+        item.payload.id = randomId();
+        backfilled = true;
+      }
+    }
+    if (backfilled) savePending(items);
+    return items;
   } catch {
     return [];
   }
@@ -75,7 +135,10 @@ function bestLapTime(laps: LapRecord[]): string {
 export class Uploader {
   private pending: PendingUpload[] = [];
   private apiKey = "";
-  private apiBaseUrl = "https://f1simhub.com/api";
+  // Must stay in sync with store.ts's default — the non-www f1simhub.com
+  // domain redirects and drops POST bodies/auth headers in the process (see
+  // PROJECT.md), so it must never be used as an upload target.
+  private apiBaseUrl = "https://sim-racing-hub.onrender.com/api";
   private retryTimer: ReturnType<typeof setInterval> | null = null;
 
   onUploadResult: ((result: UploadResult) => void) | null = null;
@@ -91,6 +154,7 @@ export class Uploader {
 
   sessionToPayload(session: SessionSnapshot): UploadPayload {
     return {
+      id: session.id,
       sessionType: session.sessionType,
       track: session.track,
       car: session.car,
@@ -102,6 +166,52 @@ export class Uploader {
       laps: session.laps,
       aiDifficulty: session.aiDifficulty > 0 ? session.aiDifficulty : undefined,
       position: session.position > 0 ? String(session.position) : undefined,
+      trackTemperature: session.trackTemperature,
+      airTemperature: session.airTemperature,
+      totalLaps: session.totalLaps,
+      pitSpeedLimit: session.pitSpeedLimit,
+      safetyCarStatus: session.safetyCarStatus,
+      timeOfDay: session.timeOfDay,
+      speed: session.speed,
+      throttle: session.throttle,
+      brake: session.brake,
+      gear: session.gear,
+      engineRpm: session.engineRpm,
+      drsActive: session.drsActive,
+      tyreSurfaceTemps: session.tyreSurfaceTemps,
+      brakeTemps: session.brakeTemps,
+      fuelInTank: session.fuelInTank,
+      ersDeployMode: session.ersDeployMode,
+      ersEnergyStored: session.ersEnergyStored,
+      ersDeployedThisLap: session.ersDeployedThisLap,
+      tyreWear: session.tyreWear,
+      frontWingDamage: session.frontWingDamage,
+      rearWingDamage: session.rearWingDamage,
+      setup: session.setup,
+      tyreStints: session.tyreStints,
+      lapHistory: session.lapHistory,
+      topSpeedKph: session.topSpeedKph,
+      avgThrottlePct: session.avgThrottlePct,
+      avgBrakePct: session.avgBrakePct,
+      drsActivations: session.drsActivations,
+      maxRpm: session.maxRpm,
+      topGear: session.topGear,
+      tyreCompound: session.tyreCompound,
+      actualTyreCompound: session.actualTyreCompound,
+      tyreAgeLaps: session.tyreAgeLaps,
+      pitStops: session.pitStops,
+      fuelCapacity: session.fuelCapacity,
+      startingFuelKg: session.startingFuelKg,
+      engineMaxRpm: session.engineMaxRpm,
+      engineTemperature: session.engineTemperature,
+      vehicleFiaFlags: session.vehicleFiaFlags,
+      tyrePressureLive: session.tyrePressureLive,
+      floorDamage: session.floorDamage,
+      diffuserDamage: session.diffuserDamage,
+      sidepodDamage: session.sidepodDamage,
+      gearBoxDamage: session.gearBoxDamage,
+      engineDamage: session.engineDamage,
+      liveBrakeBias: session.liveBrakeBias,
     };
   }
 
@@ -110,9 +220,9 @@ export class Uploader {
     await this.uploadPayload(payload);
   }
 
-  async uploadPayload(payload: UploadPayload): Promise<void> {
+  async uploadPayload(payload: UploadPayload, existing?: PendingUpload): Promise<void> {
     if (!this.apiKey) {
-      this.queuePending(payload);
+      this.queuePending(payload, existing);
       return;
     }
     try {
@@ -123,12 +233,14 @@ export class Uploader {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(30000),
       });
 
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
+      // 409 means a prior attempt with this same id already landed server-
+      // side (the request that "timed out" client-side actually succeeded,
+      // or a retry raced an earlier one) — the upload already achieved its
+      // goal, so treat it as success rather than retrying forever.
+      if (!resp.ok && resp.status !== 409) throw new Error(`HTTP ${resp.status}`);
 
       const best = bestLapTime(payload.laps);
       this.onUploadResult?.({
@@ -146,17 +258,14 @@ export class Uploader {
         at: new Date().toISOString(),
         error: errMsg,
       });
-      this.queuePending(payload);
+      this.queuePending(payload, existing);
     }
   }
 
-  private queuePending(payload: UploadPayload): void {
-    const item: PendingUpload = {
-      id: randomId(),
-      payload,
-      attemptCount: 0,
-      createdAt: new Date().toISOString(),
-    };
+  private queuePending(payload: UploadPayload, existing?: PendingUpload): void {
+    const item: PendingUpload = existing
+      ? { ...existing, payload, attemptCount: existing.attemptCount + 1 }
+      : { id: randomId(), payload, attemptCount: 0, createdAt: new Date().toISOString() };
     this.pending.push(item);
     savePending(this.pending);
   }
@@ -165,11 +274,14 @@ export class Uploader {
     if (!this.apiKey || this.pending.length === 0) return;
 
     const toRetry = [...this.pending];
-    this.pending = [];
-    savePending(this.pending);
-
     for (const item of toRetry) {
-      await this.uploadPayload(item.payload);
+      // Remove and persist just this one item right before attempting it —
+      // not the whole queue up front — so a crash/quit mid-loop only risks
+      // the single in-flight item instead of every item still waiting its
+      // turn (which would otherwise already be gone from disk, unsent).
+      this.pending = this.pending.filter((p) => p.id !== item.id);
+      savePending(this.pending);
+      await this.uploadPayload(item.payload, item);
     }
   }
 

@@ -26,23 +26,31 @@ import type {
   CompanionApiKeyStatus,
   CompanionSessionRequest,
   CreateHardwareRequest,
+  CreateRivalChallengeRequest,
   CreateSessionRequest,
   CreateSetupRequest,
+  EngineerUsageStatus,
+  ErrorResponse,
   GetCommunitySessionsParams,
   GetCommunitySetupsParams,
   HardwareRecord,
   HealthStatus,
+  LookupRivalChallengeUserParams,
   NotFoundResponse,
   RateSetupRequest,
   RateSetupResponse,
+  RivalChallengeRecord,
+  RivalChallengeUserLookup,
   SessionRecord,
   SetupRecord,
   ShareSessionRequest,
   ShareSessionResponse,
   ShareSetupResponse,
+  SubmitRivalChallengeAttemptRequest,
   TrackDifficultyRecord,
   TrackNotesRecord,
   UnauthorizedResponse,
+  UnlockEngineerUsageRequest,
   UpsertTrackDifficultyRequest,
   UpsertTrackNotesRequest
 } from './api.schemas';
@@ -1755,6 +1763,600 @@ export const useUploadCompanionSession = <TError = ErrorType<NotFoundResponse | 
         TContext
       > => {
       return useMutation(getUploadCompanionSessionMutationOptions(options));
+    }
+
+export const getGetRivalChallengesUrl = () => {
+
+
+
+
+  return `/api/rival-challenges`
+}
+
+/**
+ * @summary Get all rival challenges the current user sent or received
+ */
+export const getRivalChallenges = async ( options?: RequestInit): Promise<RivalChallengeRecord[]> => {
+
+  return customFetch<RivalChallengeRecord[]>(getGetRivalChallengesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRivalChallengesQueryKey = () => {
+    return [
+    `/api/rival-challenges`
+    ] as const;
+    }
+
+
+export const getGetRivalChallengesQueryOptions = <TData = Awaited<ReturnType<typeof getRivalChallenges>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRivalChallenges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRivalChallengesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRivalChallenges>>> = ({ signal }) => getRivalChallenges({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRivalChallenges>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRivalChallengesQueryResult = NonNullable<Awaited<ReturnType<typeof getRivalChallenges>>>
+export type GetRivalChallengesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get all rival challenges the current user sent or received
+ */
+
+export function useGetRivalChallenges<TData = Awaited<ReturnType<typeof getRivalChallenges>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRivalChallenges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRivalChallengesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateRivalChallengeUrl = () => {
+
+
+
+
+  return `/api/rival-challenges`
+}
+
+/**
+ * @summary Challenge another user to beat one of your sessions
+ */
+export const createRivalChallenge = async (createRivalChallengeRequest: CreateRivalChallengeRequest, options?: RequestInit): Promise<RivalChallengeRecord> => {
+
+  return customFetch<RivalChallengeRecord>(getCreateRivalChallengeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createRivalChallengeRequest,)
+  }
+);}
+
+
+
+
+export const getCreateRivalChallengeMutationOptions = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRivalChallenge>>, TError,{data: BodyType<CreateRivalChallengeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRivalChallenge>>, TError,{data: BodyType<CreateRivalChallengeRequest>}, TContext> => {
+
+const mutationKey = ['createRivalChallenge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRivalChallenge>>, {data: BodyType<CreateRivalChallengeRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createRivalChallenge(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRivalChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof createRivalChallenge>>>
+    export type CreateRivalChallengeMutationBody = BodyType<CreateRivalChallengeRequest>
+    export type CreateRivalChallengeMutationError = ErrorType<NotFoundResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Challenge another user to beat one of your sessions
+ */
+export const useCreateRivalChallenge = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRivalChallenge>>, TError,{data: BodyType<CreateRivalChallengeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createRivalChallenge>>,
+        TError,
+        {data: BodyType<CreateRivalChallengeRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateRivalChallengeMutationOptions(options));
+    }
+
+export const getLookupRivalChallengeUserUrl = (params: LookupRivalChallengeUserParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/rival-challenges/lookup-user?${stringifiedParams}` : `/api/rival-challenges/lookup-user`
+}
+
+/**
+ * @summary Look up a user by username to challenge them
+ */
+export const lookupRivalChallengeUser = async (params: LookupRivalChallengeUserParams, options?: RequestInit): Promise<RivalChallengeUserLookup> => {
+
+  return customFetch<RivalChallengeUserLookup>(getLookupRivalChallengeUserUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLookupRivalChallengeUserQueryKey = (params?: LookupRivalChallengeUserParams,) => {
+    return [
+    `/api/rival-challenges/lookup-user`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getLookupRivalChallengeUserQueryOptions = <TData = Awaited<ReturnType<typeof lookupRivalChallengeUser>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(params: LookupRivalChallengeUserParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof lookupRivalChallengeUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLookupRivalChallengeUserQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lookupRivalChallengeUser>>> = ({ signal }) => lookupRivalChallengeUser(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lookupRivalChallengeUser>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type LookupRivalChallengeUserQueryResult = NonNullable<Awaited<ReturnType<typeof lookupRivalChallengeUser>>>
+export type LookupRivalChallengeUserQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Look up a user by username to challenge them
+ */
+
+export function useLookupRivalChallengeUser<TData = Awaited<ReturnType<typeof lookupRivalChallengeUser>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ params: LookupRivalChallengeUserParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof lookupRivalChallengeUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getLookupRivalChallengeUserQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCancelRivalChallengeUrl = (id: string,) => {
+
+
+
+
+  return `/api/rival-challenges/${id}`
+}
+
+/**
+ * @summary Cancel a pending rival challenge you created
+ */
+export const cancelRivalChallenge = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getCancelRivalChallengeUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getCancelRivalChallengeMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelRivalChallenge>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelRivalChallenge>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['cancelRivalChallenge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelRivalChallenge>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelRivalChallenge(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelRivalChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof cancelRivalChallenge>>>
+
+    export type CancelRivalChallengeMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Cancel a pending rival challenge you created
+ */
+export const useCancelRivalChallenge = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelRivalChallenge>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelRivalChallenge>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getCancelRivalChallengeMutationOptions(options));
+    }
+
+export const getSubmitRivalChallengeAttemptUrl = (id: string,) => {
+
+
+
+
+  return `/api/rival-challenges/${id}/attempt`
+}
+
+/**
+ * @summary Submit your session as your attempt at a rival challenge
+ */
+export const submitRivalChallengeAttempt = async (id: string,
+    submitRivalChallengeAttemptRequest: SubmitRivalChallengeAttemptRequest, options?: RequestInit): Promise<RivalChallengeRecord> => {
+
+  return customFetch<RivalChallengeRecord>(getSubmitRivalChallengeAttemptUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      submitRivalChallengeAttemptRequest,)
+  }
+);}
+
+
+
+
+export const getSubmitRivalChallengeAttemptMutationOptions = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitRivalChallengeAttempt>>, TError,{id: string;data: BodyType<SubmitRivalChallengeAttemptRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitRivalChallengeAttempt>>, TError,{id: string;data: BodyType<SubmitRivalChallengeAttemptRequest>}, TContext> => {
+
+const mutationKey = ['submitRivalChallengeAttempt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitRivalChallengeAttempt>>, {id: string;data: BodyType<SubmitRivalChallengeAttemptRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  submitRivalChallengeAttempt(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitRivalChallengeAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof submitRivalChallengeAttempt>>>
+    export type SubmitRivalChallengeAttemptMutationBody = BodyType<SubmitRivalChallengeAttemptRequest>
+    export type SubmitRivalChallengeAttemptMutationError = ErrorType<NotFoundResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Submit your session as your attempt at a rival challenge
+ */
+export const useSubmitRivalChallengeAttempt = <TError = ErrorType<NotFoundResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitRivalChallengeAttempt>>, TError,{id: string;data: BodyType<SubmitRivalChallengeAttemptRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitRivalChallengeAttempt>>,
+        TError,
+        {id: string;data: BodyType<SubmitRivalChallengeAttemptRequest>},
+        TContext
+      > => {
+      return useMutation(getSubmitRivalChallengeAttemptMutationOptions(options));
+    }
+
+export const getGetEngineerUsageUrl = () => {
+
+
+
+
+  return `/api/engineer-usage`
+}
+
+/**
+ * @summary Get the current user's AI Race Engineer usage status
+ */
+export const getEngineerUsage = async ( options?: RequestInit): Promise<EngineerUsageStatus> => {
+
+  return customFetch<EngineerUsageStatus>(getGetEngineerUsageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEngineerUsageQueryKey = () => {
+    return [
+    `/api/engineer-usage`
+    ] as const;
+    }
+
+
+export const getGetEngineerUsageQueryOptions = <TData = Awaited<ReturnType<typeof getEngineerUsage>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEngineerUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEngineerUsageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEngineerUsage>>> = ({ signal }) => getEngineerUsage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEngineerUsage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEngineerUsageQueryResult = NonNullable<Awaited<ReturnType<typeof getEngineerUsage>>>
+export type GetEngineerUsageQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get the current user's AI Race Engineer usage status
+ */
+
+export function useGetEngineerUsage<TData = Awaited<ReturnType<typeof getEngineerUsage>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEngineerUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEngineerUsageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCheckAndIncrementEngineerUsageUrl = () => {
+
+
+
+
+  return `/api/engineer-usage/check-and-increment`
+}
+
+/**
+ * Atomically increments the user's message count if they are unlocked or still under the free-tier limit, and reports whether the message is allowed to proceed.
+
+ * @summary Consume one AI Race Engineer message against the free-tier limit
+ */
+export const checkAndIncrementEngineerUsage = async ( options?: RequestInit): Promise<EngineerUsageStatus> => {
+
+  return customFetch<EngineerUsageStatus>(getCheckAndIncrementEngineerUsageUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCheckAndIncrementEngineerUsageMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>, TError,void, TContext> => {
+
+const mutationKey = ['checkAndIncrementEngineerUsage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>, void> = () => {
+
+
+          return  checkAndIncrementEngineerUsage(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckAndIncrementEngineerUsageMutationResult = NonNullable<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>>
+
+    export type CheckAndIncrementEngineerUsageMutationError = ErrorType<UnauthorizedResponse>
+
+    /**
+ * @summary Consume one AI Race Engineer message against the free-tier limit
+ */
+export const useCheckAndIncrementEngineerUsage = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkAndIncrementEngineerUsage>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCheckAndIncrementEngineerUsageMutationOptions(options));
+    }
+
+export const getUnlockEngineerUsageUrl = () => {
+
+
+
+
+  return `/api/engineer-usage/unlock`
+}
+
+/**
+ * @summary Unlock unlimited AI Race Engineer usage with the shared password
+ */
+export const unlockEngineerUsage = async (unlockEngineerUsageRequest: UnlockEngineerUsageRequest, options?: RequestInit): Promise<EngineerUsageStatus> => {
+
+  return customFetch<EngineerUsageStatus>(getUnlockEngineerUsageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      unlockEngineerUsageRequest,)
+  }
+);}
+
+
+
+
+export const getUnlockEngineerUsageMutationOptions = <TError = ErrorType<UnauthorizedResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockEngineerUsage>>, TError,{data: BodyType<UnlockEngineerUsageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlockEngineerUsage>>, TError,{data: BodyType<UnlockEngineerUsageRequest>}, TContext> => {
+
+const mutationKey = ['unlockEngineerUsage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlockEngineerUsage>>, {data: BodyType<UnlockEngineerUsageRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  unlockEngineerUsage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlockEngineerUsageMutationResult = NonNullable<Awaited<ReturnType<typeof unlockEngineerUsage>>>
+    export type UnlockEngineerUsageMutationBody = BodyType<UnlockEngineerUsageRequest>
+    export type UnlockEngineerUsageMutationError = ErrorType<UnauthorizedResponse | ErrorResponse>
+
+    /**
+ * @summary Unlock unlimited AI Race Engineer usage with the shared password
+ */
+export const useUnlockEngineerUsage = <TError = ErrorType<UnauthorizedResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockEngineerUsage>>, TError,{data: BodyType<UnlockEngineerUsageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlockEngineerUsage>>,
+        TError,
+        {data: BodyType<UnlockEngineerUsageRequest>},
+        TContext
+      > => {
+      return useMutation(getUnlockEngineerUsageMutationOptions(options));
     }
 
 export const getGetTrackNotesUrl = (trackId: string,) => {

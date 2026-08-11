@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
+import { normalizeTrackId } from "../lib/trackAlias";
 import {
   CreateSessionBody,
   GetSessionsResponse,
@@ -9,7 +10,24 @@ import {
 
 const router = Router();
 
-type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string };
+type LapTraceSample = { d: number; speed: number; throttle: number; brake: number; steer: number };
+type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: LapTraceSample[] };
+
+// A well-formed lap trace has at most a few thousand points (F1 25 sends
+// telemetry at 60Hz, downsampled client-side). A companion-app bug can
+// produce traces with duplicated, unbounded segments (e.g. from repeated
+// rewinds) that are large enough to crash the server on insert — clamp
+// defensively so a single bad upload can never take the whole API down.
+const MAX_TRACE_SAMPLES = 3000;
+
+function capTrace(laps: LapRecord[]): LapRecord[] {
+  for (const lap of laps) {
+    if (Array.isArray(lap.trace) && lap.trace.length > MAX_TRACE_SAMPLES) {
+      lap.trace = lap.trace.slice(0, MAX_TRACE_SAMPLES);
+    }
+  }
+  return laps;
+}
 
 function lapToSeconds(lap: string): number {
   if (!lap || !lap.includes(":")) {
@@ -24,9 +42,13 @@ function lapToSeconds(lap: string): number {
 }
 
 function secondsToLap(s: number): string {
-  const m = Math.floor(s / 60);
-  const rem = s - m * 60;
-  return `${m}:${rem.toFixed(3).padStart(6, "0")}`;
+  // Round to whole milliseconds first so floor/toFixed can't disagree at a
+  // minute boundary (e.g. 119.99958 -> floor(1.999..)=1 but toFixed(3)
+  // rounds the remainder up to "60.000", producing "1:60.000").
+  const totalMs = Math.round(s * 1000);
+  const m = Math.floor(totalMs / 60000);
+  const remSec = (totalMs - m * 60000) / 1000;
+  return `${m}:${remSec.toFixed(3).padStart(6, "0")}`;
 }
 
 function isFasterLap(a: string, b: string): boolean {
@@ -58,21 +80,38 @@ async function recalcPBsForUser(userId: string) {
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const pbMap: Record<string, string> = {};
 
-  const updates: { id: string; isPB: boolean }[] = sorted.map((s) => {
-    const key = s.trackId;
+  // Only the rows whose isPB flag actually changes need writing — for a
+  // single new upload that's normally just the old PB (now demoted) and the
+  // new one, not every session the user has ever logged. Batching those
+  // into two IN-list updates instead of one UPDATE per row turns a
+  // recalc that used to cost O(session count) round-trips into O(1) for
+  // the common case.
+  const toSetTrue: string[] = [];
+  const toSetFalse: string[] = [];
+
+  for (const s of sorted) {
+    const key = normalizeTrackId(s.trackId);
     const currentPB = pbMap[key];
     const isNewPB = isFasterLap(s.bestLap, currentPB);
     if (isNewPB && s.bestLap && s.bestLap.trim() !== "") {
       pbMap[key] = s.bestLap;
     }
-    return { id: s.id, isPB: isNewPB };
-  });
+    if (isNewPB !== s.isPB) {
+      (isNewPB ? toSetTrue : toSetFalse).push(s.id);
+    }
+  }
 
-  for (const { id, isPB } of updates) {
+  if (toSetTrue.length > 0) {
     await db
       .update(sessionsTable)
-      .set({ isPB })
-      .where(and(eq(sessionsTable.id, id as string), eq(sessionsTable.userId, userId)));
+      .set({ isPB: true })
+      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetTrue)));
+  }
+  if (toSetFalse.length > 0) {
+    await db
+      .update(sessionsTable)
+      .set({ isPB: false })
+      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetFalse)));
   }
 }
 
@@ -80,7 +119,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
   return {
     id: r.id,
     date: r.date,
-    trackId: r.trackId,
+    trackId: normalizeTrackId(r.trackId),
     car: r.car,
     type: r.type,
     bestLap: r.bestLap,
@@ -106,6 +145,46 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     laps: r.laps ?? null,
     isPB: r.isPB,
     position: r.position ?? '',
+    trackTemperature: r.trackTemperature ?? null,
+    airTemperature: r.airTemperature ?? null,
+    totalLaps: r.totalLaps ?? null,
+    pitSpeedLimit: r.pitSpeedLimit ?? null,
+    safetyCarStatus: r.safetyCarStatus ?? null,
+    fuelInTank: r.fuelInTank ?? null,
+    ersDeployMode: r.ersDeployMode ?? null,
+    ersEnergyStored: r.ersEnergyStored ?? null,
+    ersDeployedThisLap: r.ersDeployedThisLap ?? null,
+    tyreWear: r.tyreWear ?? null,
+    wingDamage: r.wingDamage ?? null,
+    tyreSurfaceTemps: r.tyreSurfaceTemps ?? null,
+    brakeTemps: r.brakeTemps ?? null,
+    setupSnapshot: r.setupSnapshot ?? null,
+    tyreStints: r.tyreStints ?? null,
+    lapHistory: r.lapHistory ?? null,
+    aiDifficulty: r.aiDifficulty ?? null,
+    topSpeedKph: r.topSpeedKph ?? null,
+    avgThrottlePct: r.avgThrottlePct ?? null,
+    avgBrakePct: r.avgBrakePct ?? null,
+    drsActivations: r.drsActivations ?? null,
+    maxRpm: r.maxRpm ?? null,
+    topGear: r.topGear ?? null,
+    fuelRemainingLaps: r.fuelRemainingLaps ?? null,
+    actualTyreCompound: r.actualTyreCompound ?? null,
+    tyreAgeLaps: r.tyreAgeLaps ?? null,
+    pitStops: r.pitStops ?? null,
+    fuelCapacity: r.fuelCapacity ?? null,
+    startingFuelKg: r.startingFuelKg ?? null,
+    engineMaxRpm: r.engineMaxRpm ?? null,
+    engineTemperature: r.engineTemperature ?? null,
+    vehicleFiaFlags: r.vehicleFiaFlags ?? null,
+    tyrePressureLive: r.tyrePressureLive ?? null,
+    floorDamage: r.floorDamage ?? null,
+    diffuserDamage: r.diffuserDamage ?? null,
+    sidepodDamage: r.sidepodDamage ?? null,
+    gearBoxDamage: r.gearBoxDamage ?? null,
+    engineDamage: r.engineDamage ?? null,
+    liveBrakeBias: r.liveBrakeBias ?? null,
+    createdAt: r.createdAt.toISOString(),
   };
 }
 
@@ -133,7 +212,9 @@ router.post("/sessions", requireAuth, async (req, res) => {
   }
 
   const data = parsed.data;
-  const incomingLaps = (data.laps ?? []) as LapRecord[];
+  const incomingLaps = capTrace((data.laps ?? []) as LapRecord[]).filter(
+    l => l.time && l.time.trim() !== ""
+  );
 
   // Auto-compute best/avg/worst from laps if laps provided and summary fields are blank
   let bestLap = data.bestLap;
@@ -151,7 +232,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
       id: data.id,
       userId,
       date: data.date,
-      trackId: data.trackId,
+      trackId: normalizeTrackId(data.trackId),
       car: data.car,
       type: data.type,
       bestLap,
@@ -174,6 +255,14 @@ router.post("/sessions", requireAuth, async (req, res) => {
       laps: incomingLaps.length > 0 ? incomingLaps : null,
       position: data.position ?? '',
       isPB: false,
+      aiDifficulty: data.aiDifficulty ?? null,
+      topSpeedKph: data.topSpeedKph ?? null,
+      avgThrottlePct: data.avgThrottlePct ?? null,
+      avgBrakePct: data.avgBrakePct ?? null,
+      drsActivations: data.drsActivations ?? null,
+      maxRpm: data.maxRpm ?? null,
+      topGear: data.topGear ?? null,
+      fuelRemainingLaps: data.fuelRemainingLaps ?? null,
     });
 
     await recalcPBsForUser(userId);

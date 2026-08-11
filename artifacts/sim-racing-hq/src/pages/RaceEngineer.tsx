@@ -1,0 +1,426 @@
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Check, Headphones, Lock, User as UserIcon } from 'lucide-react';
+import { useUser, useAuth } from '@clerk/react';
+import {
+  useGetSessions,
+  useGetEngineerUsage,
+  useUnlockEngineerUsage,
+  getGetEngineerUsageQueryKey,
+} from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+
+const HISTORY_STORAGE_PREFIX = 'f1simhub-engineer-history-';
+const MAX_STORED_MESSAGES = 50;
+
+type EngineerMessage = { role: 'user' | 'assistant'; content: string };
+
+function loadHistory(userId: string): { messages: EngineerMessage[]; started: boolean } {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_PREFIX + userId);
+    if (!raw) return { messages: [], started: false };
+    const messages = JSON.parse(raw) as EngineerMessage[];
+    return { messages, started: messages.length > 0 };
+  } catch {
+    return { messages: [], started: false };
+  }
+}
+
+function saveHistory(userId: string, messages: EngineerMessage[]) {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_PREFIX + userId, JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)));
+  } catch {
+    // Storage full or unavailable — history just won't persist this session.
+  }
+}
+
+const QUICK_QUESTIONS = [
+  'Where am I losing the most time?',
+  'What should I work on tonight?',
+  'How consistent am I?',
+  'Which track needs the most work?',
+  'What target should I set next session?',
+  'Compare my best and worst sessions',
+];
+
+/** Speaker attribution above each chat bubble — icon + name, mirrored for the driver's own messages. */
+function SpeakerLabel({ role }: { role: 'assistant' | 'user' }) {
+  const Icon = role === 'assistant' ? Headphones : UserIcon;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 5,
+      flexDirection: role === 'user' ? 'row-reverse' : 'row',
+      fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em',
+      color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 5,
+    }}>
+      <Icon size={11} aria-hidden="true" />
+      {role === 'assistant' ? 'Race Engineer' : 'You'}
+    </div>
+  );
+}
+
+export default function RaceEngineer() {
+  const { user, isLoaded: userLoaded } = useUser();
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: sessions = [] } = useGetSessions();
+  const { data: usage } = useGetEngineerUsage();
+  const unlockMutation = useUnlockEngineerUsage();
+
+  const userId = user?.id ?? 'guest';
+
+  const [messages, setMessages] = useState<EngineerMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [started, setStarted] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState('');
+  const [unlockError, setUnlockError] = useState('');
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Restore the driver's last debrief for this account once Clerk has
+  // resolved who's signed in, so a reload or revisit picks up where they left off.
+  useEffect(() => {
+    if (!userLoaded) return;
+    const { messages: restored, started: restoredStarted } = loadHistory(userId);
+    setMessages(restored);
+    setStarted(restoredStarted);
+    setHistoryLoaded(true);
+  }, [userLoaded, userId]);
+
+  useEffect(() => {
+    if (!historyLoaded) return;
+    saveHistory(userId, messages);
+  }, [historyLoaded, userId, messages]);
+
+  useEffect(() => {
+    if (usage && !usage.allowed) setLocked(true);
+  }, [usage]);
+
+  const submitUnlock = async () => {
+    setUnlockError('');
+    try {
+      await unlockMutation.mutateAsync({ data: { password: unlockPassword } });
+      setUnlockPassword('');
+      setLocked(false);
+      queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
+    } catch {
+      setUnlockError('Incorrect password.');
+    }
+  };
+
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [messages, streamingText]);
+
+  // Most-used platform across logged sessions — the app doesn't collect a
+  // dedicated per-user platform/hardware profile, so this is the best signal.
+  const platform = useMemo(() => {
+    const counts: Record<string, number> = {};
+    sessions.forEach(s => { if (s.platform) counts[s.platform] = (counts[s.platform] ?? 0) + 1; });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return top?.[0];
+  }, [sessions]);
+
+  const userProfile = {
+    name: user?.fullName ?? user?.firstName ?? undefined,
+    platform,
+  };
+
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading || locked) return;
+
+    const userMsg = { role: 'user' as const, content: trimmed };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setInput('');
+    setLoading(true);
+    setStreamingText('');
+
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/engineer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: updatedMessages,
+          userData: {
+            name: userProfile.name,
+            platform: userProfile.platform,
+            sessions: sessions.map(s => ({
+              date: s.date,
+              trackId: s.trackId,
+              car: s.car,
+              bestLap: s.bestLap || null,
+              avgLap: s.avgLap || null,
+              worstLap: s.worstLap || null,
+              s1: s.s1 || null,
+              s2: s.s2 || null,
+              s3: s.s3 || null,
+              type: s.type,
+              tires: s.tires || null,
+              notes: s.notes || null,
+              isPB: s.isPB ?? false,
+              // Strip the per-sample telemetry trace — the engineer only
+              // needs lap/sector/tyre/penalty per lap, and traces (up to
+              // 3000 points per lap) bloat the request enough to fail.
+              laps: s.laps && s.laps.length > 0
+                ? s.laps.map(l => ({ lap: l.lap, time: l.time, s1: l.s1, s2: l.s2, s3: l.s3, tires: l.tires, penalty: l.penalty }))
+                : null,
+            })),
+          },
+        }),
+      });
+
+      if (res.status === 403) {
+        setLocked(true);
+        setMessages(messages);
+        setInput(trimmed);
+        queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
+        return;
+      }
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += decoder.decode(value, { stream: true });
+        setStreamingText(full);
+      }
+
+      setMessages(prev => [...prev, { role: 'assistant', content: full }]);
+      setStreamingText('');
+      queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
+    } catch {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Radio check — having trouble connecting. Try again in a moment.',
+      }]);
+    } finally {
+      setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  };
+
+  const startDebrief = () => {
+    setStarted(true);
+    sendMessage('Analyse my recent data and tell me the single most important thing I should work on right now.');
+  };
+
+  const resetDebrief = () => {
+    if (window.confirm('Clear this debrief session and start fresh?')) {
+      setMessages([]);
+      setStreamingText('');
+      setStarted(false);
+      saveHistory(userId, []);
+    }
+  };
+
+  const hasSessions = sessions.length >= 3;
+  const hasAvgLaps = sessions.filter(s => s.avgLap).length >= 2;
+  const hasSectors = sessions.filter(s => s.s1).length >= 2;
+  const uniqueTracks = new Set(sessions.map(s => s.trackId)).size;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Headphones size={20} style={{ color: 'var(--red)' }} />
+            <h1 className="page-title" style={{ marginBottom: 0 }}>Race Engineer</h1>
+          </div>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginTop: 6 }}>
+            AI coaching powered by your session data
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8 }}>
+            <span className="engineer-live-dot" />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--teal)', textTransform: 'uppercase' }}>
+              Live · Claude Haiku 4.5
+            </span>
+          </div>
+        </div>
+        {started && (
+          <button className="btn btn-secondary" onClick={resetDebrief}>
+            New Debrief
+          </button>
+        )}
+      </div>
+
+      {!historyLoaded ? (
+        // Wait for the persisted debrief to load before deciding whether to
+        // show the "Ready for Debrief" empty state — otherwise a returning
+        // user briefly sees (and can click into) the empty state before
+        // their restored chat history snaps in.
+        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }} />
+      ) : locked ? (
+        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
+          <Lock size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 10, textTransform: 'uppercase' }}>
+            Free Debriefs Used Up
+          </div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 24 }}>
+            You've used your {usage?.limit ?? 3} free Race Engineer messages. Enter the unlock password for unlimited access.
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <input
+              type="password"
+              aria-label="Unlock password"
+              placeholder="Unlock password"
+              value={unlockPassword}
+              onChange={e => setUnlockPassword(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submitUnlock(); }}
+              style={{ flex: 1, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)', fontFamily: 'var(--font-body)', fontSize: 14 }}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={submitUnlock}
+              disabled={!unlockPassword.trim() || unlockMutation.isPending}
+            >
+              Unlock
+            </button>
+          </div>
+          {unlockError && (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--red)' }}>{unlockError}</div>
+          )}
+        </div>
+      ) : !started ? (
+        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
+          <Headphones size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 10, textTransform: 'uppercase' }}>
+            Ready for Debrief
+          </div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 28 }}>
+            Your engineer reads your real session history — lap times, sectors, consistency — and gives you specific,
+            data-driven coaching. No generic advice.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 24, textAlign: 'left' }}>
+            <div className={`engineer-data-pill${sessions.length > 0 ? ' engineer-data-pill--ready' : ''}`}>
+              <div className="field-label">Sessions</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: sessions.length > 0 ? 'var(--teal)' : 'var(--gray-mid)' }}>{sessions.length}</div>
+            </div>
+            <div className={`engineer-data-pill${uniqueTracks > 0 ? ' engineer-data-pill--ready' : ''}`}>
+              <div className="field-label">Tracks</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: uniqueTracks > 0 ? 'var(--teal)' : 'var(--gray-mid)' }}>{uniqueTracks}</div>
+            </div>
+            <div className={`engineer-data-pill${hasAvgLaps ? ' engineer-data-pill--ready' : ''}`}>
+              <div className="field-label">Avg Laps</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: hasAvgLaps ? 'var(--teal)' : 'var(--gray-mid)' }}>{hasAvgLaps ? <Check size={16} aria-label="Available" /> : '—'}</div>
+            </div>
+            <div className={`engineer-data-pill${hasSectors ? ' engineer-data-pill--ready' : ''}`}>
+              <div className="field-label">Sectors</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: hasSectors ? 'var(--teal)' : 'var(--gray-mid)' }}>{hasSectors ? <Check size={16} aria-label="Available" /> : '—'}</div>
+            </div>
+          </div>
+
+          {!hasSessions && (
+            <div style={{ borderLeft: '3px solid var(--red)', background: 'rgba(232,0,45,0.06)', padding: '10px 14px', marginBottom: 24, textAlign: 'left' }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>
+                Log at least <strong style={{ color: 'var(--white)' }}>3 sessions</strong> to unlock a real debrief — the engineer needs data to work from.
+              </div>
+            </div>
+          )}
+
+          <button className="btn btn-primary" style={{ minWidth: 220, padding: '14px 28px', fontSize: 14 }} onClick={startDebrief} disabled={!hasSessions}>
+            Start Debrief
+          </button>
+        </div>
+      ) : (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', maxWidth: 780, margin: '0 auto', height: '65vh', minHeight: 420 }}>
+          <div ref={chatRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                <SpeakerLabel role={m.role} />
+                <div style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  color: 'var(--gray-light)',
+                  whiteSpace: 'pre-wrap',
+                  padding: '10px 14px',
+                  background: m.role === 'assistant' ? 'var(--surface)' : 'transparent',
+                  borderLeft: m.role === 'assistant' ? '2px solid var(--red)' : undefined,
+                }}>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+
+            {loading && !streamingText && (
+              <div style={{ alignSelf: 'flex-start' }}>
+                <SpeakerLabel role="assistant" />
+                <div style={{ display: 'flex', gap: 4, padding: '12px 14px', background: 'var(--surface)', borderLeft: '2px solid var(--red)' }}>
+                  <span className="engineer-typing-dot" />
+                  <span className="engineer-typing-dot" />
+                  <span className="engineer-typing-dot" />
+                </div>
+              </div>
+            )}
+
+            {loading && streamingText && (
+              <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
+                <SpeakerLabel role="assistant" />
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.7, color: 'var(--gray-light)', whiteSpace: 'pre-wrap', padding: '10px 14px', background: 'var(--surface)', borderLeft: '2px solid var(--red)' }}>
+                  {streamingText}<span className="engineer-cursor" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+            <input
+              ref={inputRef}
+              type="text"
+              aria-label="Message your race engineer"
+              placeholder="Ask your engineer anything…"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') sendMessage(input); }}
+              style={{ flex: 1, padding: '14px 16px', background: 'transparent', border: 'none', color: 'var(--white)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none' }}
+            />
+            <button
+              className="btn btn-primary"
+              style={{ borderRadius: 0, textTransform: 'uppercase', padding: '0 24px' }}
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || loading}
+            >
+              Send
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '12px 24px', borderTop: '1px solid var(--border)' }}>
+            {QUICK_QUESTIONS.map(q => (
+              <button
+                key={q}
+                className="btn btn-ghost btn-sm"
+                onClick={() => sendMessage(q)}
+                disabled={loading}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ textAlign: 'center', marginTop: 16, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+        ~$0.003 per message · Your data is never stored by the AI
+        {usage && !usage.unlocked && (
+          <> · {Math.max(usage.limit - usage.count, 0)} free message{usage.limit - usage.count === 1 ? '' : 's'} left</>
+        )}
+      </div>
+    </div>
+  );
+}

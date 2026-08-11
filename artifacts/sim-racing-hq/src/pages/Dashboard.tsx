@@ -4,13 +4,15 @@ import type { SessionRecord } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
-import { calculateStreak, calculateRank, getRankColor, getDailyChallenge, calculateAchievements, sessionConsistency } from '../lib/engagement';
+import { calculateStreak, calculateRank, getRankColor, getRankProgress, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
+import { SessionDetailModal } from '../components/SessionDetail';
+import { Flame, Trophy } from 'lucide-react';
 
 const DIFF_COLORS: Record<string, string> = {
-  Easy: '#4CAF50',
-  Medium: '#FF9800',
-  Hard: '#E8002D',
+  Easy: 'var(--green)',
+  Medium: 'var(--amber)',
+  Hard: 'var(--red)',
 };
 
 function Sparkline({ data, color = 'var(--red)', width = 48, height = 18 }: { data: number[]; color?: string; width?: number; height?: number }) {
@@ -174,6 +176,14 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const { data: communitySessions = [] } = useGetCommunitySessions();
   const { user } = useUser();
   const [badgeTab, setBadgeTab] = useState('Skill');
+  const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
+
+  const startChallenge = () => {
+    try {
+      sessionStorage.setItem(PENDING_CHALLENGE_KEY, JSON.stringify({ trackId: daily.track.id, car: daily.car }));
+    } catch { /* ignore — Sessions page will just open the blank form */ }
+    setPage('sessions');
+  };
 
   const totalSessions = sessions.length;
   const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
@@ -244,6 +254,13 @@ export default function Dashboard({ setPage }: DashboardProps) {
       data.push(sessions.filter(s => s.isPB && s.date <= ds).length);
     }
     return data;
+  }, [sessions]);
+
+  const lastSession = useMemo(() => {
+    if (sessions.length === 0) return null;
+    return [...sessions].sort((a, b) =>
+      b.date.localeCompare(a.date) || (b.createdAt ?? '').localeCompare(a.createdAt ?? '')
+    )[0];
   }, [sessions]);
 
   const mostDrivenTrack = useMemo(() => {
@@ -413,7 +430,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
     const weekStr = weekAgo.toISOString().slice(0, 10);
     const weekSessions = sessions.filter(s => s.date >= weekStr);
     const pbs = weekSessions.filter(s => s.isPB).length;
-    const totalMinutes = weekSessions.length * 10;
+    const totalMinutes = Math.round(estimateSeatTimeMinutes(weekSessions));
     return { sessions: weekSessions.length, pbs, seatTime: totalMinutes };
   }, [sessions]);
 
@@ -422,7 +439,15 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
   const heatmapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (heatmapRef.current) heatmapRef.current.scrollLeft = heatmapRef.current.scrollWidth;
+    const el = heatmapRef.current;
+    if (!el) return;
+    // Snap to the most recent whole day-column (10px cell + 3px gap = 13px
+    // stride) so the leftmost visible column is never sliced mid-cell —
+    // scrolling to raw scrollWidth can land on a fractional offset that
+    // clips the first visible month label.
+    const COLUMN_STRIDE = 13;
+    const max = el.scrollWidth - el.clientWidth;
+    el.scrollLeft = Math.floor(max / COLUMN_STRIDE) * COLUMN_STRIDE;
   }, [cells]);
 
   const trackName = (id: string) => {
@@ -435,12 +460,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
   const userName = capitalize(rawName);
 
   // Rank progress bar
-  const rankTiers: DriverRank[] = ['Rookie', 'Amateur', 'Intermediate', 'Expert', 'Elite', 'Pro'];
-  const currentTierIdx = rankTiers.indexOf(rankInfo.rank);
   const nextTier = rankInfo.nextRank;
-  const progressToNext = nextTier
-    ? Math.max(0, Math.min(100, ((rankInfo.points - (currentTierIdx > 0 ? [0, 30, 100, 200, 350, 500][currentTierIdx] : 0)) / (rankInfo.pointsToNext + rankInfo.points - (currentTierIdx > 0 ? [0, 30, 100, 200, 350, 500][currentTierIdx] : 0))) * 100))
-    : 100;
+  const { pct: progressToNext } = getRankProgress(rankInfo);
 
   // #6 Next Goal
   const nextGoal = useMemo(() => {
@@ -578,64 +599,44 @@ export default function Dashboard({ setPage }: DashboardProps) {
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('community')}>Community</button>
       </div>
 
-      {/* ── Rank + XP Progress Bar ──────────────────────────────────────── */}
-      <div className="card dash-rank-card" style={{ padding: '14px 20px', marginBottom: 12, border: `1px solid ${getRankColor(rankInfo.rank)}33` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
-              {rankInfo.rank}
-            </span>
-            {streak > 0 && (
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: '#FF9800' }}>
-                🔥 {streak} day streak
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              {rankInfo.points} XP
-            </span>
-            {earnedCount > 0 && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
-                {earnedCount}/{achievements.length} badges
-              </span>
-            )}
-          </div>
-        </div>
-        {nextTier && (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{rankInfo.rank}</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: getRankColor(nextTier as DriverRank) }}>{nextTier}</span>
-            </div>
-            <div className="xp-bar-bg">
-              <div className="xp-bar-fill" style={{ width: `${progressToNext}%`, background: getRankColor(rankInfo.rank) }} />
-            </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2, textAlign: 'right' }}>
-              {rankInfo.pointsToNext} XP to {nextTier}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
-      {nextGoal && (
-        <div className="card dash-next-goal" style={{ padding: '14px 20px', marginBottom: 12, border: '1px solid rgba(0,210,190,0.25)' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
-            {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
-            {nextGoal.badge && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
-            )}
-            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
-              Start Attempt
+      {/* ── Achievements (tabbed by category) ──────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
+        <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {BADGE_CATEGORIES.map(cat => (
+            <button
+              key={cat.label}
+              onClick={() => setBadgeTab(cat.label)}
+              className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
+            >
+              {cat.label}
             </button>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
+        {filteredBadges.map(a => {
+          const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
+          const BadgeIcon = a.icon;
+          return (
+            <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
+              title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
+              <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
+              <div className="dash-badge-info">
+                <span className="dash-badge-name">{a.name}</span>
+                {!a.earned && a.target > 1 && (
+                  <div className="dash-badge-progress">
+                    <div className="dash-badge-bar">
+                      <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
+                    </div>
+                    <span className="dash-badge-count">{a.progress}/{a.target}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* ── Stat Cards with micro-context ───────────────────────────────── */}
       <div className="stat-grid">
@@ -672,7 +673,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
           <div className="stat-label">Personal Bests</div>
           <div className="stat-value"><AnimatedCounter value={pbsSet} /></div>
           {lastPBDaysAgo && <div className="stat-micro">Last PB: {lastPBDaysAgo}</div>}
-          <Sparkline data={pbSparkline} color="#FF9800" />
+          <Sparkline data={pbSparkline} color="var(--amber)" />
         </div>
         <div className="stat-card dash-stat-hover dash-fade-in" onClick={() => setPage('setups')} style={{ cursor: 'pointer' }}>
           <svg className="stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -682,9 +683,206 @@ export default function Dashboard({ setPage }: DashboardProps) {
         </div>
       </div>
 
+      {/* ── Last Session Summary ─────────────────────────────────────────── */}
+      {lastSession && (
+        <div
+          className="card dash-stat-hover"
+          style={{ padding: '14px 20px', marginBottom: 16, cursor: 'pointer' }}
+          onClick={() => setDetailSession(lastSession)}
+          title="Click to view full session details"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
+            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)' }}>
+                {F1_TRACKS.find(t => t.id === lastSession.trackId)?.flag} {trackName(lastSession.trackId)}
+              </div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
+                {lastSession.car} · {lastSession.type} · {lastSession.date}
+                {lastSession.createdAt && !isNaN(new Date(lastSession.createdAt).getTime()) && (
+                  <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
+                )}
+              </div>
+            </div>
+            {lastSession.bestLap && (
+              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 18, color: lastSession.isPB ? 'var(--yellow)' : 'var(--teal)', fontWeight: 700 }}>
+                  {lastSession.bestLap}{lastSession.isPB && <Trophy size={15} aria-label="Personal best" />}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
+      {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
+          <div className="perf-snap-grid">
+            {perfSnapshot.strongestTrack && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Strongest Track</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.strongestTrack}</div>
+                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
+              </div>
+            )}
+            {perfSnapshot.weakestTrack && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Needs Work</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.weakestTrack}</div>
+                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
+              </div>
+            )}
+            {perfSnapshot.bestSector && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Sector</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
+              </div>
+            )}
+            {perfSnapshot.worstSector && (
+              <div className="card perf-snap-card">
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--amber)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Activity Heatmap (with rich tooltips + weekly summary) ──────── */}
+      {/* #polish: tightened spacing before heatmap */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+        <div className="section-title" style={{ marginBottom: 0 }}>Activity — Last 365 Days</div>
+        <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>
+          <span>This week: <strong style={{ color: 'var(--white)' }}>{weeklySummary.sessions}</strong> sessions</span>
+          <span><strong style={{ color: 'var(--teal)' }}>{weeklySummary.pbs}</strong> PBs</span>
+          <span>~<strong style={{ color: 'var(--white)' }}>{weeklySummary.seatTime}</strong> min</span>
+        </div>
+      </div>
+      <div className="heatmap-section">
+        <div className="heatmap-header">
+          <div className="heatmap-legend">
+            <span className="legend-dot" style={{ background: 'var(--border)', border: '1px solid var(--border-accent)' }} />
+            <span style={{ fontSize: 10 }}>None</span>
+            <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.35)' }} />
+            <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.6)' }} />
+            <span className="legend-dot" style={{ background: 'var(--red)' }} />
+            <span style={{ fontSize: 10 }}>Active</span>
+          </div>
+        </div>
+
+        <div className="heatmap-scroll" ref={heatmapRef}>
+          <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
+            {monthLabels.map(({ label, col }, idx) => {
+              const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
+              const spanWidth = (nextCol - col) * 13;
+              return (
+                <div key={`${label}-${col}`} style={{ width: spanWidth, flexShrink: 0, overflow: 'hidden' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 11,
+                    color: 'var(--gray)',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    whiteSpace: 'nowrap',
+                  }}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="heatmap-grid">
+            <div className="heatmap-day-labels">
+              {['', 'M', '', 'W', '', 'F', ''].map((d, i) => (
+                <div key={i} className="heatmap-day-label">{d}</div>
+              ))}
+            </div>
+            <div className="heatmap-cols">
+              {cells.map((col, ci) => (
+                <div key={ci} className="heatmap-col">
+                  {col.map((cell, di) => (
+                    <div
+                      key={di}
+                      className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}`}
+                      title={buildHeatmapTooltip(cell)}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Rank + XP Progress Bar ──────────────────────────────────────── */}
+      <div className="card dash-rank-card" style={{ padding: '14px 20px', marginTop: 16, marginBottom: 16, border: `1px solid ${getRankColor(rankInfo.rank)}33` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
+              {rankInfo.rank}
+            </span>
+            {streak > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--amber)' }}>
+                <Flame size={13} aria-hidden="true" /> {streak} day streak
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              {rankInfo.points} XP
+            </span>
+            {earnedCount > 0 && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
+                {earnedCount}/{achievements.length} badges
+              </span>
+            )}
+          </div>
+        </div>
+        {nextTier && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{rankInfo.rank}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: getRankColor(nextTier as DriverRank) }}>{nextTier}</span>
+            </div>
+            <div className="xp-bar-bg">
+              <div className="xp-bar-fill" style={{ width: `${progressToNext}%`, background: getRankColor(rankInfo.rank) }} />
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2, textAlign: 'right' }}>
+              {rankInfo.pointsToNext} XP to {nextTier}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
+      {nextGoal && (
+        <div className="card dash-next-goal card-accent card-accent--teal" style={{ padding: '14px 20px', marginBottom: 16 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
+            {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
+            {nextGoal.badge && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
+            )}
+            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+              Start Attempt
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Daily Challenge ─────────────────────────────────────────────── */}
-      <div className="card dash-challenge" style={{ padding: 0, marginBottom: 12, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
-        <div style={{ background: 'rgba(0,210,190,0.06)', padding: '12px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+      <div className="card dash-challenge card-accent card-accent--teal" style={{ padding: 0, marginBottom: 16, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-elevated)', padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
@@ -716,8 +914,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
             Be first on the board today.
           </div>
         )}
-        <div style={{ padding: '8px 20px 12px', borderTop: '1px solid rgba(0,210,190,0.1)', textAlign: 'center' }}>
-          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={() => setPage('sessions')}>
+        <div style={{ padding: '8px 20px 12px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={startChallenge}>
             Start Challenge
           </button>
         </div>
@@ -725,7 +923,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
 
       {/* ── #10 Session Recommendation Engine ──────────────────────────── */}
       {recommendation && (
-        <div className="card dash-stat-hover" style={{ padding: '14px 20px', marginBottom: 12, border: '1px solid rgba(232,0,45,0.2)' }}>
+        <div className="card dash-stat-hover card-accent card-accent--red" style={{ padding: '14px 20px', marginBottom: 16 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>Recommended Session</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
             {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
@@ -751,144 +949,6 @@ export default function Dashboard({ setPage }: DashboardProps) {
         </div>
       )}
 
-      {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
-      {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
-          <div className="perf-snap-grid">
-            {perfSnapshot.strongestTrack && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Strongest Track</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.strongestTrack}</div>
-                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
-              </div>
-            )}
-            {perfSnapshot.weakestTrack && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Needs Work</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.weakestTrack}</div>
-                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
-              </div>
-            )}
-            {perfSnapshot.bestSector && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Sector</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
-              </div>
-            )}
-            {perfSnapshot.worstSector && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: '#FF9800', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Achievements (tabbed by category) ──────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {BADGE_CATEGORIES.map(cat => (
-            <button
-              key={cat.label}
-              onClick={() => setBadgeTab(cat.label)}
-              className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-        {filteredBadges.map(a => {
-          const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
-          return (
-            <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
-              title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
-              <span className="dash-badge-icon">{a.icon}</span>
-              <div className="dash-badge-info">
-                <span className="dash-badge-name">{a.name}</span>
-                {!a.earned && a.target > 1 && (
-                  <div className="dash-badge-progress">
-                    <div className="dash-badge-bar">
-                      <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
-                    </div>
-                    <span className="dash-badge-count">{a.progress}/{a.target}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Activity Heatmap (with rich tooltips + weekly summary) ──────── */}
-      {/* #polish: tightened spacing before heatmap */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>Activity — Last 365 Days</div>
-        <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>
-          <span>This week: <strong style={{ color: 'var(--white)' }}>{weeklySummary.sessions}</strong> sessions</span>
-          <span><strong style={{ color: 'var(--teal)' }}>{weeklySummary.pbs}</strong> PBs</span>
-          <span>~<strong style={{ color: 'var(--white)' }}>{weeklySummary.seatTime}</strong> min</span>
-        </div>
-      </div>
-      <div className="heatmap-section" ref={heatmapRef}>
-        <div className="heatmap-header">
-          <div className="heatmap-legend">
-            <span className="legend-dot" style={{ background: '#1E1E1E', border: '1px solid #333' }} />
-            <span style={{ fontSize: 10 }}>None</span>
-            <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.35)' }} />
-            <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.6)' }} />
-            <span className="legend-dot" style={{ background: '#E8002D' }} />
-            <span style={{ fontSize: 10 }}>Active</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
-          {monthLabels.map(({ label, col }, idx) => {
-            const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
-            const spanWidth = (nextCol - col) * 13;
-            return (
-              <div key={`${label}-${col}`} style={{ width: spanWidth, flexShrink: 0, overflow: 'hidden' }}>
-                <span style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 11,
-                  color: 'var(--gray)',
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  whiteSpace: 'nowrap',
-                }}>{label}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="heatmap-grid">
-          <div className="heatmap-day-labels">
-            {['', 'M', '', 'W', '', 'F', ''].map((d, i) => (
-              <div key={i} className="heatmap-day-label">{d}</div>
-            ))}
-          </div>
-          <div className="heatmap-cols">
-            {cells.map((col, ci) => (
-              <div key={ci} className="heatmap-col">
-                {col.map((cell, di) => (
-                  <div
-                    key={di}
-                    className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}`}
-                    title={buildHeatmapTooltip(cell)}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ── Recent Sessions (enhanced table with mini bars) ─────────────── */}
       {/* #polish: tightened spacing between heatmap and sessions */}
       <div className="section-title" style={{ marginTop: 8 }}>Recent Sessions</div>
@@ -904,7 +964,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table data-table--stack">
             <thead>
               <tr>
                 <th>Date</th>
@@ -919,20 +979,20 @@ export default function Dashboard({ setPage }: DashboardProps) {
             </thead>
             <tbody>
               {recentWithDelta.map(s => (
-                <tr key={s.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
-                  <td>{trackName(s.trackId)}</td>
-                  <td style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
-                  <td>
+                <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => setDetailSession(s)} title="Click to view full session details">
+                  <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
+                  <td data-label="Track">{trackName(s.trackId)}</td>
+                  <td data-label="Car" style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
+                  <td data-label="Best Lap">
                     <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                     {s.isPB && <span className="pb-badge">★ PB</span>}
                   </td>
-                  <td>
+                  <td data-label="Δ PB">
                     {s.delta !== null && s.delta !== 0 ? (
                       <span style={{
                         fontFamily: 'var(--font-mono)',
                         fontSize: 11,
-                        color: s.delta <= 0 ? 'var(--teal)' : s.delta < 0.5 ? '#FF9800' : 'var(--red)',
+                        color: s.delta <= 0 ? 'var(--teal)' : s.delta < 0.5 ? 'var(--amber)' : 'var(--red)',
                       }}>
                         {s.delta <= 0 ? '—' : `+${s.delta.toFixed(3)}`}
                       </span>
@@ -940,7 +1000,7 @@ export default function Dashboard({ setPage }: DashboardProps) {
                       <span style={{ color: 'var(--gray)', fontSize: 11 }}>—</span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Consistency">
                     {s.consistency !== null ? (
                       <span style={{
                         fontFamily: 'var(--font-mono)',
@@ -953,8 +1013,8 @@ export default function Dashboard({ setPage }: DashboardProps) {
                       <span style={{ color: 'var(--gray)' }}>—</span>
                     )}
                   </td>
-                  <td><span className={`badge ${(['badge-practice', 'badge-qualifying', 'badge-race', 'badge-hotlap', 'badge-hotlap'] as const)[['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'].indexOf(s.type)] || 'badge-practice'}`}>{s.type}</span></td>
-                  <td>
+                  <td data-label="Type"><span className={`badge ${(['badge-practice', 'badge-qualifying', 'badge-race', 'badge-hotlap', 'badge-hotlap'] as const)[['Practice', 'Qualifying', 'Race', 'Hotlap', 'Time Trial'].indexOf(s.type)] || 'badge-practice'}`}>{s.type}</span></td>
+                  <td data-label="Rating">
                     <div className="mini-bars-cell">
                       <MiniBar value={Math.min(5, Math.round(s.rating * 1))} label="Pace" />
                       <MiniBar value={s.consistency !== null ? Math.min(5, Math.round(s.consistency / 20)) : 0} label="Clean" />
@@ -1000,6 +1060,10 @@ export default function Dashboard({ setPage }: DashboardProps) {
             ))}
           </div>
         </>
+      )}
+
+      {detailSession && (
+        <SessionDetailModal session={detailSession} onClose={() => setDetailSession(null)} />
       )}
     </div>
   );

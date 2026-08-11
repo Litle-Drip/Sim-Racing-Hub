@@ -134,7 +134,7 @@ export default function HardwareVault() {
         setForm(defaultForm());
         setFormErrors({});
         setSaveError('');
-        setToast({ message: 'Hardware saved ✓' });
+        setToast({ message: 'Hardware saved' });
       },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to save profile. Please try again.';
