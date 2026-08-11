@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, real, timestamp, jsonb, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, real, timestamp, jsonb, unique, index } from "drizzle-orm/pg-core";
 
 export const apiKeysTable = pgTable("api_keys", {
   id: text("id").primaryKey(),
@@ -91,7 +91,10 @@ export const sessionsTable = pgTable("sessions", {
   gearBoxDamage: integer("gear_box_damage"),
   engineDamage: integer("engine_damage"),
   liveBrakeBias: integer("live_brake_bias"),
-});
+}, (t) => [
+  index("sessions_user_id_idx").on(t.userId),
+  index("sessions_user_id_date_idx").on(t.userId, t.date),
+]);
 
 export type DbSession = typeof sessionsTable.$inferSelect;
 export type InsertDbSession = typeof sessionsTable.$inferInsert;

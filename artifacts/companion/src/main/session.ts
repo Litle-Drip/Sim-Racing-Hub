@@ -491,6 +491,7 @@ export class SessionTracker {
     if (uid !== this.sessionUID) {
       if (this.sessionUID !== null && this.validLaps.length > 0) void this.flushSession();
       if (!isMenuState) {
+        console.log(`[Session] new session raw m_sessionType=${sessionType} packetFormat=${this.packetFormat} -> ${this.sessionTypeName(sessionType)}`);
         this.sessionUID = uid;
         this.sessionType = sessionType;
         this.trackId = trackId;

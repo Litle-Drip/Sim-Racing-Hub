@@ -46,6 +46,7 @@ export default function Companion() {
   const [loading, setLoading] = useState(false);
   const [freshKey, setFreshKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -83,7 +84,7 @@ export default function Companion() {
   }, [getToken]);
 
   const revokeKey = useCallback(async () => {
-    if (!confirm('Revoke your API key? The companion app will stop working until you generate a new one.')) return;
+    setShowRevokeConfirm(false);
     setLoading(true);
     setError(null);
     try {
@@ -197,7 +198,7 @@ export default function Companion() {
                 <button
                   className="btn btn-secondary"
                   style={{ fontSize: 12, border: '1px solid var(--red)', color: 'var(--red)' }}
-                  onClick={revokeKey}
+                  onClick={() => setShowRevokeConfirm(true)}
                   disabled={loading}
                 >
                   Revoke Key
@@ -207,6 +208,34 @@ export default function Companion() {
           </>
         )}
       </div>
+
+      {showRevokeConfirm && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowRevokeConfirm(false); }}>
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <span className="modal-title">Revoke API Key</span>
+              <button className="modal-close" onClick={() => setShowRevokeConfirm(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, margin: '0 0 20px' }}>
+                Revoke your API key? The companion app will stop working until you generate a new one.
+              </p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setShowRevokeConfirm(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  style={{ fontSize: 12, border: '1px solid var(--red)', color: 'var(--red)' }}
+                  onClick={revokeKey}
+                >
+                  Revoke Key
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Download Card */}
       <div className="card" style={{ padding: '20px', marginBottom: 16 }}>
