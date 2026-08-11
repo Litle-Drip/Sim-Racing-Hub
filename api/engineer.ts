@@ -219,13 +219,62 @@ export default async function handler(req: Request): Promise<Response> {
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };
 
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   try {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Authorization required" }), {
+        status: 401,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    // Free-tier gate: the api-server owns the per-user message count and
+    // the shared unlock password (it has DB + Clerk auth access; this edge
+    // function doesn't). Every message must clear that check first so the
+    // limit can't be bypassed by calling this endpoint directly.
+    const apiServerUrl = process.env.API_SERVER_URL;
+    if (!apiServerUrl) {
+      return new Response(JSON.stringify({ error: "Engineer comms down. API_SERVER_URL is not configured." }), {
+        status: 500,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    let usage: { allowed: boolean; count: number; limit: number; unlocked: boolean };
+    try {
+      const usageRes = await fetch(`${apiServerUrl.replace(/\/+$/, "")}/api/engineer-usage/check-and-increment`, {
+        method: "POST",
+        headers: { Authorization: authHeader },
+      });
+      if (usageRes.status === 401) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      if (!usageRes.ok) throw new Error(`usage check failed: ${usageRes.status}`);
+      usage = await usageRes.json();
+    } catch (err) {
+      console.error("Race Engineer usage check error:", err);
+      return new Response(JSON.stringify({ error: "Engineer comms down. Could not verify usage." }), {
+        status: 500,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!usage.allowed) {
+      return new Response(
+        JSON.stringify({ error: "limit_reached", count: usage.count, limit: usage.limit }),
+        { status: 403, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+
     const { messages, userData } = (await req.json()) as {
       messages: Array<{ role: string; content: string }>;
       userData: UserData;
@@ -236,6 +285,42 @@ export default async function handler(req: Request): Promise<Response> {
         status: 400,
         headers: { ...cors, "Content-Type": "application/json" },
       });
+    }
+
+    // Bound request size: the free-tier gate above only limits message *count*
+    // over time, not the size of any single request. Without these caps a
+    // single allowed request could still carry megabytes of content/sessions.
+    const MAX_MESSAGES = 40;
+    const MAX_CONTENT_CHARS = 4000;
+    const MAX_SESSIONS = 500;
+    const MAX_LAPS_PER_SESSION = 150;
+
+    if (messages.length > MAX_MESSAGES) {
+      return new Response(JSON.stringify({ error: "Too many messages in conversation." }), {
+        status: 400,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    if (messages.some((m) => typeof m.content !== "string" || m.content.length > MAX_CONTENT_CHARS)) {
+      return new Response(JSON.stringify({ error: "Message content too long." }), {
+        status: 400,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    const sessions = userData?.sessions;
+    if (sessions !== undefined) {
+      if (!Array.isArray(sessions) || sessions.length > MAX_SESSIONS) {
+        return new Response(JSON.stringify({ error: "Too much session data." }), {
+          status: 400,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      if (sessions.some((s) => Array.isArray(s.laps) && s.laps.length > MAX_LAPS_PER_SESSION)) {
+        return new Response(JSON.stringify({ error: "Too much lap data in a session." }), {
+          status: 400,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

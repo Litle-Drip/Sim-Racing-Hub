@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
@@ -42,9 +42,13 @@ function lapToSeconds(lap: string): number {
 }
 
 function secondsToLap(s: number): string {
-  const m = Math.floor(s / 60);
-  const rem = s - m * 60;
-  return `${m}:${rem.toFixed(3).padStart(6, "0")}`;
+  // Round to whole milliseconds first so floor/toFixed can't disagree at a
+  // minute boundary (e.g. 119.99958 -> floor(1.999..)=1 but toFixed(3)
+  // rounds the remainder up to "60.000", producing "1:60.000").
+  const totalMs = Math.round(s * 1000);
+  const m = Math.floor(totalMs / 60000);
+  const remSec = (totalMs - m * 60000) / 1000;
+  return `${m}:${remSec.toFixed(3).padStart(6, "0")}`;
 }
 
 function isFasterLap(a: string, b: string): boolean {
@@ -76,21 +80,38 @@ async function recalcPBsForUser(userId: string) {
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const pbMap: Record<string, string> = {};
 
-  const updates: { id: string; isPB: boolean }[] = sorted.map((s) => {
+  // Only the rows whose isPB flag actually changes need writing — for a
+  // single new upload that's normally just the old PB (now demoted) and the
+  // new one, not every session the user has ever logged. Batching those
+  // into two IN-list updates instead of one UPDATE per row turns a
+  // recalc that used to cost O(session count) round-trips into O(1) for
+  // the common case.
+  const toSetTrue: string[] = [];
+  const toSetFalse: string[] = [];
+
+  for (const s of sorted) {
     const key = normalizeTrackId(s.trackId);
     const currentPB = pbMap[key];
     const isNewPB = isFasterLap(s.bestLap, currentPB);
     if (isNewPB && s.bestLap && s.bestLap.trim() !== "") {
       pbMap[key] = s.bestLap;
     }
-    return { id: s.id, isPB: isNewPB };
-  });
+    if (isNewPB !== s.isPB) {
+      (isNewPB ? toSetTrue : toSetFalse).push(s.id);
+    }
+  }
 
-  for (const { id, isPB } of updates) {
+  if (toSetTrue.length > 0) {
     await db
       .update(sessionsTable)
-      .set({ isPB })
-      .where(and(eq(sessionsTable.id, id as string), eq(sessionsTable.userId, userId)));
+      .set({ isPB: true })
+      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetTrue)));
+  }
+  if (toSetFalse.length > 0) {
+    await db
+      .update(sessionsTable)
+      .set({ isPB: false })
+      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetFalse)));
   }
 }
 

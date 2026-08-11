@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, real, timestamp, jsonb, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, real, timestamp, jsonb, unique, index } from "drizzle-orm/pg-core";
 
 export const apiKeysTable = pgTable("api_keys", {
   id: text("id").primaryKey(),
@@ -91,7 +91,10 @@ export const sessionsTable = pgTable("sessions", {
   gearBoxDamage: integer("gear_box_damage"),
   engineDamage: integer("engine_damage"),
   liveBrakeBias: integer("live_brake_bias"),
-});
+}, (t) => [
+  index("sessions_user_id_idx").on(t.userId),
+  index("sessions_user_id_date_idx").on(t.userId, t.date),
+]);
 
 export type DbSession = typeof sessionsTable.$inferSelect;
 export type InsertDbSession = typeof sessionsTable.$inferInsert;
@@ -158,7 +161,9 @@ export const trackNotesTable = pgTable("track_notes", {
   trackId: text("track_id").notNull(),
   corners: jsonb("corners").notNull().default([]),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => [
+  unique("track_notes_uniq").on(t.userId, t.trackId),
+]);
 
 export type DbTrackNotes = typeof trackNotesTable.$inferSelect;
 export type InsertDbTrackNotes = typeof trackNotesTable.$inferInsert;
@@ -208,3 +213,16 @@ export const rivalChallengesTable = pgTable("rival_challenges", {
 
 export type DbRivalChallenge = typeof rivalChallengesTable.$inferSelect;
 export type InsertDbRivalChallenge = typeof rivalChallengesTable.$inferInsert;
+
+// Tracks each user's lifetime AI Race Engineer message count so the free
+// tier can be capped. Entering the shared unlock password sets
+// `unlocked`, which removes the cap for that user going forward.
+export const engineerUsageTable = pgTable("engineer_usage", {
+  userId: text("user_id").primaryKey(),
+  messageCount: integer("message_count").notNull().default(0),
+  unlocked: boolean("unlocked").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type DbEngineerUsage = typeof engineerUsageTable.$inferSelect;
+export type InsertDbEngineerUsage = typeof engineerUsageTable.$inferInsert;

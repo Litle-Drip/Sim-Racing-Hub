@@ -27,7 +27,15 @@ export default function PublicLeaderboard({ onBack }: { onBack?: () => void }) {
       .filter(t => byTrack[t.id])
       .map(t => {
         const sorted = byTrack[t.id].sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap));
-        return { track: t, entries: sorted.slice(0, 5) };
+        // Keep only each driver's fastest entry so one prolific driver can't
+        // occupy multiple of the top 5 slots.
+        const seenDrivers = new Set<string>();
+        const deduped = sorted.filter(s => {
+          if (seenDrivers.has(s.authorName)) return false;
+          seenDrivers.add(s.authorName);
+          return true;
+        });
+        return { track: t, entries: deduped.slice(0, 5) };
       });
   }, [sessions]);
 

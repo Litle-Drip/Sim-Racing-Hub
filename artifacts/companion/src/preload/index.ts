@@ -7,6 +7,8 @@ export interface CompanionStatus {
   lastUpload: { track: string; lapTime: string; at: string } | null;
   currentSession: { lapCount: number; track: string } | null;
   pendingUploads: number;
+  detectedGame: string | null;
+  unsupportedFormat: number | null;
 }
 
 export interface CompanionSettings {

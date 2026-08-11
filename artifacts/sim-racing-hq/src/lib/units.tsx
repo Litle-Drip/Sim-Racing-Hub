@@ -11,7 +11,8 @@ export interface UnitsContextValue {
   system: UnitSystem;
   setSystem: (s: UnitSystem) => void;
   toggleSystem: () => void;
-  speedUnit: 'mph' | 'km/h';
+  // Both regional presets display speed in mph — see UnitsProvider below.
+  speedUnit: 'mph';
   tempUnit: '°F' | '°C';
   /** Convert a km/h value to the display speed number (unrounded). */
   convertSpeed: (kph: number) => number;
@@ -49,7 +50,11 @@ function guessDefaultSystem(): UnitSystem {
   for (const loc of locales) {
     if (!loc) continue;
     try {
-      const region = new Intl.Locale(loc).maximize().region;
+      // Only trust a region the locale tag actually specifies (e.g. "en-US").
+      // A bare "en" has no region, and .maximize() fills one in from CLDR's
+      // default for the language (often "US"), which would silently default
+      // a non-US English browser without a country subtag to mph/°F.
+      const region = new Intl.Locale(loc).region;
       if (region) return FAHRENHEIT_REGIONS.has(region) ? 'us' : 'uk';
     } catch {
       // Intl.Locale not supported or locale string malformed — fall through.

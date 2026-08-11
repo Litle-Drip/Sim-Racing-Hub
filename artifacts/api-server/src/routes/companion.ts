@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { db, sessionsTable, apiKeysTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
@@ -102,9 +102,13 @@ function lapToSeconds(lap: string): number {
 }
 
 function secondsToLap(s: number): string {
-  const m = Math.floor(s / 60);
-  const rem = s - m * 60;
-  return `${m}:${rem.toFixed(3).padStart(6, "0")}`;
+  // Round to whole milliseconds first so floor/toFixed can't disagree at a
+  // minute boundary (e.g. 119.99958 -> floor(1.999..)=1 but toFixed(3)
+  // rounds the remainder up to "60.000", producing "1:60.000").
+  const totalMs = Math.round(s * 1000);
+  const m = Math.floor(totalMs / 60000);
+  const remSec = (totalMs - m * 60000) / 1000;
+  return `${m}:${remSec.toFixed(3).padStart(6, "0")}`;
 }
 
 function isFasterLap(a: string, b: string): boolean {
@@ -135,16 +139,30 @@ async function recalcPBsForUser(userId: string) {
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const pbMap: Record<string, string> = {};
 
-  const updates: { id: string; isPB: boolean }[] = sorted.map((s) => {
+  // Only the rows whose isPB flag actually changes need writing — for a
+  // single new upload that's normally just the old PB (now demoted) and the
+  // new one, not every session the user has ever logged. Batching those
+  // into two IN-list updates instead of one UPDATE per row turns a
+  // recalc that used to cost O(session count) round-trips into O(1) for
+  // the common case — this runs on every companion-app upload.
+  const toSetTrue: string[] = [];
+  const toSetFalse: string[] = [];
+
+  for (const s of sorted) {
     const key = normalizeTrackId(s.trackId);
     const currentPB = pbMap[key];
     const isNewPB = isFasterLap(s.bestLap, currentPB ?? "");
     if (isNewPB && s.bestLap && s.bestLap.trim() !== "") pbMap[key] = s.bestLap;
-    return { id: s.id, isPB: isNewPB };
-  });
+    if (isNewPB !== s.isPB) {
+      (isNewPB ? toSetTrue : toSetFalse).push(s.id);
+    }
+  }
 
-  for (const { id, isPB } of updates) {
-    await db.update(sessionsTable).set({ isPB }).where(eq(sessionsTable.id, id as string));
+  if (toSetTrue.length > 0) {
+    await db.update(sessionsTable).set({ isPB: true }).where(inArray(sessionsTable.id, toSetTrue));
+  }
+  if (toSetFalse.length > 0) {
+    await db.update(sessionsTable).set({ isPB: false }).where(inArray(sessionsTable.id, toSetFalse));
   }
 }
 
@@ -418,7 +436,9 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
     });
     if (duplicate) {
       req.log.warn({ userId, duplicateOf: duplicate.id, newId: sessionId }, "companion/session duplicate rejected");
-      res.status(201).json(serializeSession(duplicate));
+      // 200, not 201 — nothing was created. The existing session is returned
+      // as-is; any new telemetry in this payload was intentionally not merged.
+      res.status(200).json(serializeSession(duplicate));
       return;
     }
 

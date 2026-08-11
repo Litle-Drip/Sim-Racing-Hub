@@ -1,7 +1,37 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Check, Headphones, User as UserIcon } from 'lucide-react';
-import { useUser } from '@clerk/react';
-import { useGetSessions } from '@workspace/api-client-react';
+import { Check, Headphones, Lock, User as UserIcon } from 'lucide-react';
+import { useUser, useAuth } from '@clerk/react';
+import {
+  useGetSessions,
+  useGetEngineerUsage,
+  useUnlockEngineerUsage,
+  getGetEngineerUsageQueryKey,
+} from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+
+const HISTORY_STORAGE_PREFIX = 'f1simhub-engineer-history-';
+const MAX_STORED_MESSAGES = 50;
+
+type EngineerMessage = { role: 'user' | 'assistant'; content: string };
+
+function loadHistory(userId: string): { messages: EngineerMessage[]; started: boolean } {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_PREFIX + userId);
+    if (!raw) return { messages: [], started: false };
+    const messages = JSON.parse(raw) as EngineerMessage[];
+    return { messages, started: messages.length > 0 };
+  } catch {
+    return { messages: [], started: false };
+  }
+}
+
+function saveHistory(userId: string, messages: EngineerMessage[]) {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_PREFIX + userId, JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)));
+  } catch {
+    // Storage full or unavailable — history just won't persist this session.
+  }
+}
 
 const QUICK_QUESTIONS = [
   'Where am I losing the most time?',
@@ -29,16 +59,57 @@ function SpeakerLabel({ role }: { role: 'assistant' | 'user' }) {
 }
 
 export default function RaceEngineer() {
-  const { user } = useUser();
+  const { user, isLoaded: userLoaded } = useUser();
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
   const { data: sessions = [] } = useGetSessions();
+  const { data: usage } = useGetEngineerUsage();
+  const unlockMutation = useUnlockEngineerUsage();
 
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const userId = user?.id ?? 'guest';
+
+  const [messages, setMessages] = useState<EngineerMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [started, setStarted] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState('');
+  const [unlockError, setUnlockError] = useState('');
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Restore the driver's last debrief for this account once Clerk has
+  // resolved who's signed in, so a reload or revisit picks up where they left off.
+  useEffect(() => {
+    if (!userLoaded) return;
+    const { messages: restored, started: restoredStarted } = loadHistory(userId);
+    setMessages(restored);
+    setStarted(restoredStarted);
+    setHistoryLoaded(true);
+  }, [userLoaded, userId]);
+
+  useEffect(() => {
+    if (!historyLoaded) return;
+    saveHistory(userId, messages);
+  }, [historyLoaded, userId, messages]);
+
+  useEffect(() => {
+    if (usage && !usage.allowed) setLocked(true);
+  }, [usage]);
+
+  const submitUnlock = async () => {
+    setUnlockError('');
+    try {
+      await unlockMutation.mutateAsync({ data: { password: unlockPassword } });
+      setUnlockPassword('');
+      setLocked(false);
+      queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
+    } catch {
+      setUnlockError('Incorrect password.');
+    }
+  };
 
   useEffect(() => {
     if (chatRef.current) {
@@ -62,7 +133,7 @@ export default function RaceEngineer() {
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || loading || locked) return;
 
     const userMsg = { role: 'user' as const, content: trimmed };
     const updatedMessages = [...messages, userMsg];
@@ -72,9 +143,13 @@ export default function RaceEngineer() {
     setStreamingText('');
 
     try {
+      const token = await getToken();
       const res = await fetch('/api/engineer', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           messages: updatedMessages,
           userData: {
@@ -105,6 +180,13 @@ export default function RaceEngineer() {
         }),
       });
 
+      if (res.status === 403) {
+        setLocked(true);
+        setMessages(messages);
+        setInput(trimmed);
+        queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
+        return;
+      }
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
       const reader = res.body.getReader();
@@ -120,6 +202,7 @@ export default function RaceEngineer() {
 
       setMessages(prev => [...prev, { role: 'assistant', content: full }]);
       setStreamingText('');
+      queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -141,6 +224,7 @@ export default function RaceEngineer() {
       setMessages([]);
       setStreamingText('');
       setStarted(false);
+      saveHistory(userId, []);
     }
   };
 
@@ -174,7 +258,44 @@ export default function RaceEngineer() {
         )}
       </div>
 
-      {!started ? (
+      {!historyLoaded ? (
+        // Wait for the persisted debrief to load before deciding whether to
+        // show the "Ready for Debrief" empty state — otherwise a returning
+        // user briefly sees (and can click into) the empty state before
+        // their restored chat history snaps in.
+        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }} />
+      ) : locked ? (
+        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
+          <Lock size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 10, textTransform: 'uppercase' }}>
+            Free Debriefs Used Up
+          </div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 24 }}>
+            You've used your {usage?.limit ?? 3} free Race Engineer messages. Enter the unlock password for unlimited access.
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <input
+              type="password"
+              aria-label="Unlock password"
+              placeholder="Unlock password"
+              value={unlockPassword}
+              onChange={e => setUnlockPassword(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submitUnlock(); }}
+              style={{ flex: 1, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)', fontFamily: 'var(--font-body)', fontSize: 14 }}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={submitUnlock}
+              disabled={!unlockPassword.trim() || unlockMutation.isPending}
+            >
+              Unlock
+            </button>
+          </div>
+          {unlockError && (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--red)' }}>{unlockError}</div>
+          )}
+        </div>
+      ) : !started ? (
         <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
           <Headphones size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 10, textTransform: 'uppercase' }}>
@@ -262,6 +383,7 @@ export default function RaceEngineer() {
             <input
               ref={inputRef}
               type="text"
+              aria-label="Message your race engineer"
               placeholder="Ask your engineer anything…"
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -295,6 +417,9 @@ export default function RaceEngineer() {
 
       <div style={{ textAlign: 'center', marginTop: 16, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
         ~$0.003 per message · Your data is never stored by the AI
+        {usage && !usage.unlocked && (
+          <> · {Math.max(usage.limit - usage.count, 0)} free message{usage.limit - usage.count === 1 ? '' : 's'} left</>
+        )}
       </div>
     </div>
   );
