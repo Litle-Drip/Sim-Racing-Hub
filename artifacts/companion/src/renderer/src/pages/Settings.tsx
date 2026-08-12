@@ -3,6 +3,15 @@ import WindowControls from "../components/WindowControls";
 import Button from "../components/Button";
 import { theme } from "../theme";
 
+type UpdateState =
+  | { phase: "unsupported" }
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "downloading"; version: string; percent: number }
+  | { phase: "ready"; version: string }
+  | { phase: "not-available" }
+  | { phase: "error"; message: string };
+
 interface SettingsData {
   apiKey: string;
   apiBaseUrl: string;
@@ -81,9 +90,20 @@ export default function Settings({ onBack }: Props): React.ReactElement {
   const [version, setVersion] = useState<string | null>(null);
   const [verifyingKey, setVerifyingKey] = useState(false);
   const [keyError, setKeyError] = useState("");
+  const [updateState, setUpdateState] = useState<UpdateState>({ phase: "idle" });
+  const [acSetup, setAcSetup] = useState<{ ok: boolean; message: string } | null>(null);
+  const [accSetup, setAccSetup] = useState<{ ok: boolean; message: string } | null>(null);
+  const [settingUpAc, setSettingUpAc] = useState(false);
+  const [settingUpAcc, setSettingUpAcc] = useState(false);
 
   useEffect(() => {
     window.companion.getVersion().then(setVersion).catch(() => setVersion(null));
+  }, []);
+
+  useEffect(() => {
+    window.companion.getStatus().then((s) => setUpdateState(s.updateState));
+    const unsub = window.companion.onStatusUpdate((s) => setUpdateState(s.updateState));
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -122,6 +142,26 @@ export default function Settings({ onBack }: Props): React.ReactElement {
       setKeyError("Could not reach F1SimHub. Check your internet connection.");
     } finally {
       setVerifyingKey(false);
+    }
+  }
+
+  async function handleSetupAc(): Promise<void> {
+    setSettingUpAc(true);
+    setAcSetup(null);
+    try {
+      setAcSetup(await window.companion.setupAcTelemetry());
+    } finally {
+      setSettingUpAc(false);
+    }
+  }
+
+  async function handleSetupAcc(): Promise<void> {
+    setSettingUpAcc(true);
+    setAccSetup(null);
+    try {
+      setAccSetup(await window.companion.setupAccTelemetry());
+    } finally {
+      setSettingUpAcc(false);
     }
   }
 
@@ -274,6 +314,47 @@ export default function Settings({ onBack }: Props): React.ReactElement {
           <p style={{ fontSize: 11, color: theme.gray, marginTop: 6 }}>Default: 20777. Must match F1 25 settings.</p>
         </div>
 
+        {/* Game setup — AC/ACC need a config file changed before their
+            telemetry protocols will talk to this app at all; these buttons
+            do it automatically instead of the user hand-editing files. */}
+        <div style={{ padding: "14px 20px 8px", fontSize: 11, color: theme.gray, textTransform: "uppercase", letterSpacing: 1 }}>
+          Game Setup
+        </div>
+        <div style={{ padding: "0 20px 14px", borderBottom: `1px solid ${theme.border}` }}>
+          <p style={{ fontSize: 11, color: theme.gray, marginBottom: 10 }}>
+            F1 24/25/26 work with no setup. Assetto Corsa and ACC each need one setting enabled in-game first —
+            these buttons do it for you instead of editing a config file by hand.
+          </p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+            <Button
+              variant="secondary"
+              onClick={handleSetupAc}
+              disabled={settingUpAc}
+              style={{ flex: 1, padding: "8px", fontSize: 12 }}
+            >
+              {settingUpAc ? "Setting up…" : "Set up Assetto Corsa"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleSetupAcc}
+              disabled={settingUpAcc}
+              style={{ flex: 1, padding: "8px", fontSize: 12 }}
+            >
+              {settingUpAcc ? "Setting up…" : "Set up ACC"}
+            </Button>
+          </div>
+          {acSetup && (
+            <p style={{ fontSize: 11, color: acSetup.ok ? theme.teal : theme.red, marginTop: 4 }}>
+              AC: {acSetup.message}
+            </p>
+          )}
+          {accSetup && (
+            <p style={{ fontSize: 11, color: accSetup.ok ? theme.teal : theme.red, marginTop: 4 }}>
+              ACC: {accSetup.message}
+            </p>
+          )}
+        </div>
+
         {/* Behaviour toggles */}
         <div style={{ padding: "14px 20px 8px", fontSize: 11, color: theme.gray, textTransform: "uppercase", letterSpacing: 1 }}>
           Behaviour
@@ -291,18 +372,57 @@ export default function Settings({ onBack }: Props): React.ReactElement {
           onChange={(v) => save({ minimizeToTray: v })}
         />
 
-        {/* Logs */}
+        {/* Logs & Updates */}
         <div style={{ padding: "14px 20px", borderTop: `1px solid ${theme.border}`, marginTop: 4, display: "flex", flexDirection: "column", gap: 8 }}>
           <Button variant="secondary" onClick={() => window.companion.openLogFile()} style={{ width: "100%" }}>
             View Logs
           </Button>
-          <Button
-            variant="secondary"
-            onClick={() => window.companion.openReleasesPage()}
-            style={{ width: "100%", fontSize: 12 }}
-          >
-            Check for Updates
-          </Button>
+
+          {updateState.phase === "unsupported" ? (
+            <>
+              <p style={{ fontSize: 11, color: theme.gray, textAlign: "center" }}>
+                Auto-update isn't available on this build — download new versions manually.
+              </p>
+              <Button
+                variant="secondary"
+                onClick={() => window.companion.openReleasesPage()}
+                style={{ width: "100%", fontSize: 12 }}
+              >
+                Open Releases Page
+              </Button>
+            </>
+          ) : updateState.phase === "ready" ? (
+            <Button
+              variant="primary"
+              onClick={() => window.companion.installUpdate()}
+              style={{ width: "100%", fontSize: 12 }}
+            >
+              Restart &amp; Install v{updateState.version}
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => window.companion.checkForUpdates()}
+                disabled={updateState.phase === "checking" || updateState.phase === "downloading"}
+                style={{ width: "100%", fontSize: 12 }}
+              >
+                {updateState.phase === "checking"
+                  ? "Checking…"
+                  : updateState.phase === "downloading"
+                    ? `Downloading v${updateState.version}… ${updateState.percent}%`
+                    : "Check for Updates"}
+              </Button>
+              {updateState.phase === "not-available" && (
+                <p style={{ fontSize: 11, color: theme.gray, textAlign: "center" }}>You're up to date.</p>
+              )}
+              {updateState.phase === "error" && (
+                <p style={{ fontSize: 11, color: theme.red, textAlign: "center" }}>
+                  Update check failed: {updateState.message}
+                </p>
+              )}
+            </>
+          )}
         </div>
 
         {/* Version footer */}
