@@ -184,6 +184,15 @@ const SESSION_TYPES: Record<number, string> = {
 // F1 24's own session-type enum (pre-dates the F1 25 sprint-weekend shift
 // above). Confirmed against F1 24's own UDP spec
 // (github.com/MacManley/f1-24-udp): Race = 10, Time Trial = 13.
+//
+// id 18 is also mapped here (to the same "Time Trial" as the modern table)
+// based on a confirmed live sighting: a real F1 26 Time Trial session sent
+// m_packetFormat=2024 with raw m_sessionType=18, which only exists in the
+// post-F1-25 enum above — so m_packetFormat isn't a reliable signal for
+// which table to use (the game apparently doesn't always bump it), and 18
+// never legitimately appears in true F1 24 telemetry (its own spec tops
+// out at 13), so mapping it here is safe regardless of why packetFormat
+// reported 2024.
 const SESSION_TYPES_F1_24: Record<number, string> = {
   0: "Unknown",
   1: "Practice 1",
@@ -199,6 +208,7 @@ const SESSION_TYPES_F1_24: Record<number, string> = {
   11: "Race 2",
   12: "Race 3",
   13: "Time Trial",
+  18: "Time Trial", // confirmed live, 2026-08-12 — see comment above
 };
 
 const WEATHER_NAMES: Record<number, string> = {
