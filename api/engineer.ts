@@ -353,8 +353,14 @@ export default async function handler(req: Request): Promise<Response> {
               controller.enqueue(encoder.encode(chunk.delta.text));
             }
           }
-        } finally {
           controller.close();
+        } catch (err) {
+          // A mid-stream failure (network drop, upstream API error after the
+          // stream already started) must surface as a stream error, not a
+          // clean close — closing here would make a truncated response look
+          // like a successful, complete answer to the client.
+          console.error("Race Engineer stream error:", err);
+          controller.error(err);
         }
       },
     });

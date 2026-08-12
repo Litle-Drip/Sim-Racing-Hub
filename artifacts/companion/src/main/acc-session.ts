@@ -105,6 +105,12 @@ export class AccSessionTracker {
       console.log(`[ACC] Receiving car updates (focusedCarIndex=${this.focusedCarIndex}, this update's carIndex=${update.carIndex})`);
     }
     if (!this.trackName) return;
+    // The Broadcasting SDK has no "this is the player's own car" field —
+    // focusedCarIndex is camera focus, which is the only available proxy.
+    // If the local ACC client's camera ever leaves the player's own car
+    // (spectating a replay, a director-mode camera), this will attribute
+    // laps to whichever car is being watched instead. Unlike base AC
+    // (ac-session.ts), there is no protocol-level safeguard against this.
     if (update.carIndex !== this.focusedCarIndex) return;
     if (update.lastLap.laptimeMs === null || update.lastLap.laptimeMs <= 0) return;
     // `laps` is the car's running completed-lap count — use it to dedupe
