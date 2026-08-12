@@ -29,6 +29,8 @@ import Account from './pages/Account';
 import Companion from './pages/Companion';
 import DownloadPage from './pages/DownloadPage';
 import ServiceStatusBanner from './components/ServiceStatusBanner';
+import { buildSampleSessions } from './data/sampleSessions';
+import { enterDemoMode, exitDemoMode } from './lib/demoStore';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -163,7 +165,7 @@ function SignUpPage() {
   );
 }
 
-function LandingPage({ onGuest }: { onGuest?: () => void }) {
+function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () => void }) {
   const [, setLocation] = useLocation();
 
   const featureCategories = [
@@ -248,10 +250,13 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
           For F1 25 on Xbox, PlayStation, and PC — wheel or controller.
         </p>
         <div className="landing-cta-group">
-          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={onGuest}>
-            Continue as Guest — No Sign Up Required →
+          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={onDemo}>
+            Try the Live Demo — Sample Data, No Sign Up →
           </button>
           <div className="landing-cta-row">
+            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={onGuest}>
+              Continue as Guest
+            </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setLocation('/sign-up')}>
               Create Free Account
             </button>
@@ -260,6 +265,9 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
             </button>
           </div>
         </div>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 10, letterSpacing: '0.01em' }}>
+          The demo loads a real sample race weekend — dashboard, session log, lap history — right in your browser. Nothing is saved to an account.
+        </p>
       </div>
 
       {/* Feature Categories */}
@@ -519,11 +527,42 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
   );
 }
 
+function DemoBanner({ onSignIn }: { onSignIn: () => void }) {
+  return (
+    <div style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 700,
+      background: 'var(--teal)',
+      color: 'var(--black)',
+      padding: '8px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 14,
+      flexWrap: 'wrap',
+      fontFamily: 'var(--font-body)',
+      fontSize: 12,
+    }}>
+      <span>
+        <strong>Live Demo</strong> — you're viewing sample telemetry, not a real account. Nothing you do here is saved.
+      </span>
+      <button
+        className="btn btn-primary"
+        onClick={onSignIn}
+        style={{ fontSize: 11, padding: '5px 14px', background: 'var(--black)', color: 'var(--teal)', border: 'none', whiteSpace: 'nowrap' }}
+      >
+        Create Free Account →
+      </button>
+    </div>
+  );
+}
+
 const SHORTCUTS: Record<string, string> = {
   d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', r: 'rivals', c: 'community', x: 'companion', a: 'account',
 };
 
-function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
+function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: boolean; onSignIn?: () => void }) {
   const [page, setPage] = useState('dashboard');
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -579,7 +618,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
     return () => window.removeEventListener('keydown', handler);
   }, [handleSetPage]);
 
-  const showNudge = isGuest && (pageViews >= 3 || timeReached) && !nudgeDismissed;
+  const showNudge = isGuest && !isDemo && (pageViews >= 3 || timeReached) && !nudgeDismissed;
 
   // Allow child pages to trigger top-level navigation via custom event
   useEffect(() => {
@@ -604,7 +643,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       return <GuestWall page={page} onSignIn={onSignIn ?? (() => {})} />;
     }
     switch (page) {
-      case 'dashboard': return <Dashboard setPage={handleSetPage} />;
+      case 'dashboard': return <Dashboard setPage={handleSetPage} isGuest={isGuest} />;
       case 'sessions': return <Sessions isGuest={isGuest} />;
       case 'tracks': return <Tracks isGuest={isGuest} />;
       case 'setups': return <Setups />;
@@ -621,6 +660,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
 
   return (
     <div className="app-layout">
+      {isDemo && <DemoBanner onSignIn={onSignIn ?? (() => {})} />}
       <Nav page={page} setPage={handleSetPage} />
       <main className="main-content">
         {renderPage()}
@@ -656,9 +696,18 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
 
 function HomeRoute() {
   const [isGuest, setIsGuest] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
   const [, setLocation] = useLocation();
 
+  const handleDemo = () => {
+    enterDemoMode(buildSampleSessions());
+    setIsDemo(true);
+    setIsGuest(true);
+  };
+
   const handleSignIn = () => {
+    exitDemoMode();
+    setIsDemo(false);
     setIsGuest(false);
     setLocation('/sign-in');
   };
@@ -671,8 +720,8 @@ function HomeRoute() {
       </Show>
       <Show when="signed-out">
         {isGuest
-          ? <MainApp isGuest onSignIn={handleSignIn} />
-          : <LandingPage onGuest={() => setIsGuest(true)} />
+          ? <MainApp isGuest isDemo={isDemo} onSignIn={handleSignIn} />
+          : <LandingPage onGuest={() => setIsGuest(true)} onDemo={handleDemo} />
         }
       </Show>
     </>
