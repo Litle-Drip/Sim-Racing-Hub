@@ -676,9 +676,9 @@ function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: bo
 
   return (
     <div className="app-layout">
-      {isDemo && <DemoBanner onSignIn={onSignIn ?? (() => {})} />}
       <Nav page={page} setPage={handleSetPage} />
       <main className="main-content">
+        {isDemo && <DemoBanner onSignIn={onSignIn ?? (() => {})} />}
         {renderPage()}
       </main>
       {showNudge && (
