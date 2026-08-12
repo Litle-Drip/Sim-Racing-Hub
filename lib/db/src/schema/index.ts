@@ -16,6 +16,7 @@ export const sessionsTable = pgTable("sessions", {
   date: text("date").notNull(),
   trackId: text("track_id").notNull(),
   car: text("car").notNull(),
+  carIsCustom: boolean("car_is_custom").notNull().default(false),
   type: text("type").notNull(),
   bestLap: text("best_lap").notNull().default(""),
   avgLap: text("avg_lap").notNull().default(""),

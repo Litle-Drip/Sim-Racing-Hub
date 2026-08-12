@@ -15,6 +15,7 @@ export interface CompanionSessionRequest {
   sessionType: string;
   track: string;
   car: string;
+  carIsCustom?: boolean;
   lapTime?: string;
   sectors?: CompanionSessionSectors;
   tyreCompound?: string;
@@ -24,10 +25,13 @@ export interface CompanionSessionRequest {
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  /** @maxItems 150 */
   laps?: LapRecord[];
+  /** @maxLength 200 */
   id?: string;
   date?: string;
   position?: string;
+  /** @maxLength 5000 */
   notes?: string;
   rating?: number;
   penalty?: string;

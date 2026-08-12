@@ -8,6 +8,8 @@
 import type { CornerNote } from './cornerNote';
 
 export interface UpsertTrackNotesRequest {
+  /** @maxLength 200 */
   id: string;
+  /** @maxItems 60 */
   corners: CornerNote[];
 }
