@@ -8,10 +8,12 @@
 import type { LapRecord } from './lapRecord';
 
 export interface CreateSessionRequest {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
   car: string;
+  carIsCustom?: boolean;
   type: string;
   bestLap: string;
   avgLap: string;
@@ -24,12 +26,14 @@ export interface CreateSessionRequest {
   conditions: string;
   assists: string;
   rating: number;
+  /** @maxLength 5000 */
   notes: string;
   penalty?: string;
   timeOfDay?: string;
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  /** @maxItems 150 */
   laps?: LapRecord[];
   position?: string;
   aiDifficulty?: number;

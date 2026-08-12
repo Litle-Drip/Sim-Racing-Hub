@@ -14,6 +14,7 @@ export interface ErrorResponse {
 }
 
 export interface CornerNote {
+  /** @maxLength 200 */
   id: string;
   number: number;
   name: string;
@@ -39,6 +40,7 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  /** @maxItems 3500 */
   trace?: LapTraceSample[] | null;
 }
 
@@ -85,10 +87,12 @@ export interface LapHistoryEntry {
 }
 
 export interface SessionRecord {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
   car: string;
+  carIsCustom?: boolean;
   type: string;
   bestLap: string;
   avgLap: string;
@@ -101,6 +105,7 @@ export interface SessionRecord {
   conditions: string;
   assists: string;
   rating: number;
+  /** @maxLength 5000 */
   notes: string;
   isPB: boolean;
   penalty?: string | null;
@@ -110,6 +115,7 @@ export interface SessionRecord {
   isPublic: boolean;
   sharedAt?: string | null;
   publicNote?: string | null;
+  /** @maxItems 150 */
   laps?: LapRecord[] | null;
   timeOfDay?: string | null;
   position?: string;
@@ -156,10 +162,12 @@ export interface SessionRecord {
 }
 
 export interface CreateSessionRequest {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
   car: string;
+  carIsCustom?: boolean;
   type: string;
   bestLap: string;
   avgLap: string;
@@ -172,12 +180,14 @@ export interface CreateSessionRequest {
   conditions: string;
   assists: string;
   rating: number;
+  /** @maxLength 5000 */
   notes: string;
   penalty?: string;
   timeOfDay?: string;
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  /** @maxItems 150 */
   laps?: LapRecord[];
   position?: string;
   aiDifficulty?: number;
@@ -200,10 +210,12 @@ export interface ShareSessionResponse {
 }
 
 export interface CommunitySessionRecord {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
   car: string;
+  carIsCustom?: boolean;
   type: string;
   bestLap: string;
   avgLap: string;
@@ -221,7 +233,9 @@ export interface CommunitySessionRecord {
 }
 
 export interface SetupRecord {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   car: string;
   trackId: string;
@@ -239,6 +253,7 @@ export interface SetupRecord {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  /** @maxLength 5000 */
   notes: string;
   isPublic?: boolean;
   sharedAt?: string | null;
@@ -246,7 +261,9 @@ export interface SetupRecord {
 }
 
 export interface CommunitySetupRecord {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   car: string;
   trackId: string;
@@ -264,6 +281,7 @@ export interface CommunitySetupRecord {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  /** @maxLength 5000 */
   notes: string;
   authorName: string;
   isOwn: boolean;
@@ -292,7 +310,9 @@ export interface RateSetupResponse {
 }
 
 export interface CreateSetupRequest {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   car: string;
   trackId: string;
@@ -310,6 +330,7 @@ export interface CreateSetupRequest {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  /** @maxLength 5000 */
   notes: string;
   gameVersion?: string;
 }
@@ -346,6 +367,7 @@ export interface CompanionSessionRequest {
   sessionType: string;
   track: string;
   car: string;
+  carIsCustom?: boolean;
   lapTime?: string;
   sectors?: CompanionSessionSectors;
   tyreCompound?: string;
@@ -355,10 +377,13 @@ export interface CompanionSessionRequest {
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  /** @maxItems 150 */
   laps?: LapRecord[];
+  /** @maxLength 200 */
   id?: string;
   date?: string;
   position?: string;
+  /** @maxLength 5000 */
   notes?: string;
   rating?: number;
   penalty?: string;
@@ -406,18 +431,24 @@ export interface CompanionSessionRequest {
 }
 
 export interface TrackNotesRecord {
+  /** @maxLength 200 */
   id: string;
   trackId: string;
+  /** @maxItems 60 */
   corners: CornerNote[];
 }
 
 export interface UpsertTrackNotesRequest {
+  /** @maxLength 200 */
   id: string;
+  /** @maxItems 60 */
   corners: CornerNote[];
 }
 
 export interface HardwareRecord {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   peripheralType: string;
   brand: string;
@@ -431,6 +462,7 @@ export interface HardwareRecord {
   friction: string;
   linearity: string;
   steeringRange: string;
+  /** @maxLength 5000 */
   notes: string;
 }
 
@@ -441,6 +473,7 @@ export interface RivalChallengeParticipant {
 }
 
 export interface RivalChallengeSessionSummary {
+  /** @maxLength 200 */
   id: string;
   date: string;
   bestLap: string;
@@ -452,6 +485,7 @@ export interface RivalChallengeSessionSummary {
 }
 
 export interface RivalChallengeRecord {
+  /** @maxLength 200 */
   id: string;
   status: string;
   trackId: string;
@@ -496,7 +530,9 @@ export interface RivalChallengeUserLookup {
 }
 
 export interface CreateHardwareRequest {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   peripheralType: string;
   brand: string;
@@ -510,6 +546,7 @@ export interface CreateHardwareRequest {
   friction: string;
   linearity: string;
   steeringRange: string;
+  /** @maxLength 5000 */
   notes: string;
 }
 

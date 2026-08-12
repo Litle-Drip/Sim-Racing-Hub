@@ -7,7 +7,9 @@
  */
 
 export interface SetupRecord {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   car: string;
   trackId: string;
@@ -25,6 +27,7 @@ export interface SetupRecord {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  /** @maxLength 5000 */
   notes: string;
   isPublic?: boolean;
   sharedAt?: string | null;

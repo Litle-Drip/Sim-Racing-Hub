@@ -625,6 +625,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     const errors: Record<string, string> = {};
     if (!form.trackId) errors.trackId = 'Please select a track';
     if (!form.car.trim()) errors.car = 'Please enter a car name';
+    if (!form.platform) errors.platform = 'Please select a platform';
     if (laps.length === 0 && !form.bestLap.trim()) errors.bestLap = 'Enter a best lap time or add at least one lap';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
     setFormErrors({});
@@ -1106,10 +1107,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                 </div>
                 <div className="field">
                   <label className="field-label">Platform</label>
-                  <select value={form.platform} onChange={e => set('platform', e.target.value)}>
+                  <select value={form.platform} onChange={e => { set('platform', e.target.value); setFormErrors(fe => ({ ...fe, platform: '' })); }} style={formErrors.platform ? { borderBottomColor: 'var(--red)' } : {}}>
                     <option value="">Select Platform</option>
                     {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
+                  {formErrors.platform && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.platform}</span>}
                 </div>
                 <div className="field">
                   <label className="field-label">Input Device</label>

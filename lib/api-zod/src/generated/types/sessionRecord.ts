@@ -12,10 +12,12 @@ import type { TyreStintEntry } from './tyreStintEntry';
 import type { WingDamage } from './wingDamage';
 
 export interface SessionRecord {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
   car: string;
+  carIsCustom?: boolean;
   type: string;
   bestLap: string;
   avgLap: string;
@@ -28,6 +30,7 @@ export interface SessionRecord {
   conditions: string;
   assists: string;
   rating: number;
+  /** @maxLength 5000 */
   notes: string;
   isPB: boolean;
   penalty?: string | null;
@@ -37,6 +40,7 @@ export interface SessionRecord {
   isPublic: boolean;
   sharedAt?: string | null;
   publicNote?: string | null;
+  /** @maxItems 150 */
   laps?: LapRecord[] | null;
   timeOfDay?: string | null;
   position?: string;

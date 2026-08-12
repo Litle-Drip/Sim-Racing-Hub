@@ -15,5 +15,6 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  /** @maxItems 3500 */
   trace?: LapTraceSample[] | null;
 }

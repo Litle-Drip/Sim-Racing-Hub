@@ -162,7 +162,7 @@ function CommunitySessionCard({ session, onClick }: { session: CommunitySessionR
           <div className="community-card-title" style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--teal)' }}>
             {session.bestLap || '—'}
           </div>
-          <div className="community-card-car">{session.car}</div>
+          <div className="community-card-car">{session.car}{session.carIsCustom && <span className="badge badge-custom">Custom Team</span>}</div>
           <div className="community-card-track">{trackLabel(session.trackId)}</div>
         </div>
         <div className="community-card-right">
@@ -527,8 +527,8 @@ export default function Community() {
                       <td>{track.flag} {track.short}</td>
                       <td><span className="pb-time">{session.bestLap}</span></td>
                       <td style={{ fontFamily: 'var(--font-body)' }}>{session.authorName}</td>
-                      <td>{session.car}</td>
-                      <td>{session.platform || '—'}</td>
+                      <td>{session.car}{session.carIsCustom && <span className="badge badge-custom">Custom Team</span>}</td>
+                      <td>{session.platform || 'Unknown'}</td>
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{session.date}</td>
                     </tr>
                   ))}

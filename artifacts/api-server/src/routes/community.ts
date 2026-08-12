@@ -323,6 +323,7 @@ router.get("/community/sessions", async (req, res) => {
       date: r.date,
       trackId: normalizeTrackId(r.trackId),
       car: r.car,
+      carIsCustom: r.carIsCustom,
       type: r.type,
       bestLap: r.bestLap,
       avgLap: r.avgLap,

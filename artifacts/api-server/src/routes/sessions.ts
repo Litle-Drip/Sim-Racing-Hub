@@ -3,6 +3,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { db, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
+import { normalizeCar } from "../lib/carAlias";
 import {
   CreateSessionBody,
   GetSessionsResponse,
@@ -121,6 +122,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     date: r.date,
     trackId: normalizeTrackId(r.trackId),
     car: r.car,
+    carIsCustom: r.carIsCustom,
     type: r.type,
     bestLap: r.bestLap,
     avgLap: r.avgLap,
@@ -227,13 +229,16 @@ router.post("/sessions", requireAuth, async (req, res) => {
     if (!worstLap) worstLap = computed.worstLap;
   }
 
+  const { car, carIsCustom } = normalizeCar(data.car);
+
   try {
     await db.insert(sessionsTable).values({
       id: data.id,
       userId,
       date: data.date,
       trackId: normalizeTrackId(data.trackId),
-      car: data.car,
+      car,
+      carIsCustom,
       type: data.type,
       bestLap,
       avgLap,
@@ -250,7 +255,11 @@ router.post("/sessions", requireAuth, async (req, res) => {
       notes: data.notes,
       penalty: data.penalty,
       gameVersion: data.gameVersion ?? "",
-      platform: data.platform ?? "",
+      // Never store a silently blank platform — an unset/blank value here
+      // means the manual-entry form was skipped (see Sessions.tsx, where
+      // platform is now required) or a non-web caller omitted it; "Unknown"
+      // renders as an honest, visible signal instead of a bare "–".
+      platform: data.platform?.trim() || "Unknown",
       inputDevice: data.inputDevice ?? "",
       laps: incomingLaps.length > 0 ? incomingLaps : null,
       position: data.position ?? '',

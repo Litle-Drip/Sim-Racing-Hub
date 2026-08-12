@@ -1102,6 +1102,7 @@ summary:focus-visible,
 .badge-race { background: rgba(232,0,45,0.15); color: var(--red); border: 1px solid rgba(232,0,45,0.25); }
 .badge-hotlap { background: rgba(57,181,74,0.15); color: var(--green); border: 1px solid rgba(57,181,74,0.25); }
 .badge-wet { background: rgba(0,120,255,0.15); color: #5599ff; border: 1px solid rgba(0,120,255,0.25); }
+.badge-custom { background: rgba(255,255,255,0.06); color: var(--gray-light); border: 1px solid var(--border); margin-left: 6px; }
 
 /* =========================================================
    LAP TIME DISPLAY

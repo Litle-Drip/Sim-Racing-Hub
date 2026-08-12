@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import { db, sessionsTable, apiKeysTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
+import { normalizeCar } from "../lib/carAlias";
 import type { Request, Response, NextFunction } from "express";
 
 const router = Router();
@@ -243,6 +244,7 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     date: r.date,
     trackId: normalizeTrackId(r.trackId),
     car: r.car,
+    carIsCustom: r.carIsCustom,
     type: r.type,
     bestLap: r.bestLap,
     avgLap: r.avgLap,
@@ -442,13 +444,16 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       return;
     }
 
+    const { car, carIsCustom } = normalizeCar(body.car);
+
     try {
       await db.insert(sessionsTable).values({
         id: sessionId,
         userId,
         date: sessionDate,
         trackId,
-        car: body.car,
+        car,
+        carIsCustom,
         type: body.sessionType,
         bestLap,
         avgLap,
@@ -469,7 +474,8 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         notes: body.notes ?? "",
         penalty: body.penalty ?? "",
         gameVersion: body.gameVersion ?? "",
-        platform: body.platform ?? "",
+        // See sessions.ts for why a blank platform is never persisted as "".
+        platform: body.platform?.trim() || "Unknown",
         inputDevice: body.inputDevice ?? "",
         position: body.position ?? "",
         isPB: false,
