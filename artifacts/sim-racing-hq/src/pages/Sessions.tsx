@@ -429,7 +429,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [filterConditions, setFilterConditions] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
-  const [telemetryLap, setTelemetryLap] = useState<LapEntry | null>(null);
+  const [telemetryLap, setTelemetryLap] = useState<{ sessionId: string; lap: LapEntry } | null>(null);
   const [cleanupOpen, setCleanupOpen] = useState(false);
   const [toast, setToast] = useState('');
 
@@ -953,7 +953,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     <tr key={`${s.id}-exp`} className="expanded-row">
                       <td colSpan={12}>
                         <div className="expanded-content">
-                          <SessionDetailFields session={s} onViewTelemetry={setTelemetryLap} />
+                          <SessionDetailFields session={s} onViewTelemetry={(sessionId, lap) => setTelemetryLap({ sessionId, lap })} />
 
                           <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 12, marginTop: 4, borderTop: '1px solid var(--border)' }}>
                             {!isGuest && (
@@ -1023,7 +1023,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
       {/* ── Lap Telemetry Modal ───────────────────────────────────────────── */}
       {telemetryLap && (
-        <LapTelemetryModal lap={telemetryLap} onClose={() => setTelemetryLap(null)} />
+        <LapTelemetryModal sessionId={telemetryLap.sessionId} lap={telemetryLap.lap} onClose={() => setTelemetryLap(null)} />
       )}
 
       {cleanupOpen && (

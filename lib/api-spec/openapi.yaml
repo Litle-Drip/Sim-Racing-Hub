@@ -78,6 +78,31 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
   /sessions/{id}:
+    get:
+      operationId: getSessionDetail
+      tags: [sessions]
+      summary: Get one session, including full per-lap telemetry traces
+      description: >-
+        GET /sessions omits lap telemetry traces to keep the list view fast
+        and cheap; fetch this endpoint to load the full trace data for a
+        single session (e.g. when opening the lap telemetry chart).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session with full lap telemetry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
     delete:
       operationId: deleteSession
       tags: [sessions]

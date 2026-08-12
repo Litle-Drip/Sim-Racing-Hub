@@ -310,8 +310,29 @@ router.get("/community/sessions", async (req, res) => {
   const { sort } = req.query as Record<string, string | undefined>;
 
   try {
+    // Only the columns actually used below — in particular, never pull the
+    // `laps` column (which carries per-lap telemetry traces) for a feed that
+    // spans every public session across all users.
     const rows = await db
-      .select()
+      .select({
+        id: sessionsTable.id,
+        userId: sessionsTable.userId,
+        date: sessionsTable.date,
+        trackId: sessionsTable.trackId,
+        car: sessionsTable.car,
+        type: sessionsTable.type,
+        bestLap: sessionsTable.bestLap,
+        avgLap: sessionsTable.avgLap,
+        tires: sessionsTable.tires,
+        conditions: sessionsTable.conditions,
+        penalty: sessionsTable.penalty,
+        gameVersion: sessionsTable.gameVersion,
+        platform: sessionsTable.platform,
+        inputDevice: sessionsTable.inputDevice,
+        publicNote: sessionsTable.publicNote,
+        sharedAt: sessionsTable.sharedAt,
+        rating: sessionsTable.rating,
+      })
       .from(sessionsTable)
       .where(eq(sessionsTable.isPublic, true));
 
@@ -431,9 +452,21 @@ router.get("/community/driver/:username", async (req, res) => {
     const userId = user.id;
     const displayName = user.username ?? (user.first_name ? `${user.first_name} ${user.last_name ?? ""}`.trim() : "Anonymous");
 
-    // Get public sessions
+    // Get public sessions — only the columns the PB/track summary and
+    // recentSessions payload below actually read, so a profile view never
+    // pulls per-lap telemetry traces for a user's whole public history.
     const publicSessions = await db
-      .select()
+      .select({
+        id: sessionsTable.id,
+        date: sessionsTable.date,
+        trackId: sessionsTable.trackId,
+        car: sessionsTable.car,
+        type: sessionsTable.type,
+        bestLap: sessionsTable.bestLap,
+        conditions: sessionsTable.conditions,
+        platform: sessionsTable.platform,
+        inputDevice: sessionsTable.inputDevice,
+      })
       .from(sessionsTable)
       .where(and(eq(sessionsTable.userId, userId), eq(sessionsTable.isPublic, true)));
 

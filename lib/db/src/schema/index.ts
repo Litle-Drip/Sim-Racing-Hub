@@ -94,6 +94,7 @@ export const sessionsTable = pgTable("sessions", {
 }, (t) => [
   index("sessions_user_id_idx").on(t.userId),
   index("sessions_user_id_date_idx").on(t.userId, t.date),
+  index("sessions_is_public_idx").on(t.isPublic),
 ]);
 
 export type DbSession = typeof sessionsTable.$inferSelect;

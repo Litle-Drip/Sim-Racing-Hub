@@ -219,6 +219,80 @@ export function useGetSessions<TData = Awaited<ReturnType<typeof getSessions>>, 
 
 
 
+export const getGetSessionDetailUrl = (id: string,) => {
+
+
+
+
+  return `/api/sessions/${id}`
+}
+
+/**
+ * @summary Get one session, including full per-lap telemetry traces
+ */
+export const getSessionDetail = async (id: string, options?: RequestInit): Promise<SessionRecord> => {
+
+  return customFetch<SessionRecord>(getGetSessionDetailUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSessionDetailQueryKey = (id: string,) => {
+    return [
+    `/api/sessions/${id}`
+    ] as const;
+    }
+
+
+export const getGetSessionDetailQueryOptions = <TData = Awaited<ReturnType<typeof getSessionDetail>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSessionDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionDetailQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionDetail>>> = ({ signal }) => getSessionDetail(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionDetail>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSessionDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionDetail>>>
+export type GetSessionDetailQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get one session, including full per-lap telemetry traces
+ */
+
+export function useGetSessionDetail<TData = Awaited<ReturnType<typeof getSessionDetail>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSessionDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSessionDetailQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
 
 
 
