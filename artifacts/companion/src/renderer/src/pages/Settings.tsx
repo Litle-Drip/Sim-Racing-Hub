@@ -91,8 +91,8 @@ export default function Settings({ onBack }: Props): React.ReactElement {
   const [verifyingKey, setVerifyingKey] = useState(false);
   const [keyError, setKeyError] = useState("");
   const [updateState, setUpdateState] = useState<UpdateState>({ phase: "idle" });
-  const [acSetup, setAcSetup] = useState<{ ok: boolean; message: string } | null>(null);
-  const [accSetup, setAccSetup] = useState<{ ok: boolean; message: string } | null>(null);
+  const [acSetup, setAcSetup] = useState<{ ok: boolean; message: string; path: string } | null>(null);
+  const [accSetup, setAccSetup] = useState<{ ok: boolean; message: string; path: string } | null>(null);
   const [settingUpAc, setSettingUpAc] = useState(false);
   const [settingUpAcc, setSettingUpAcc] = useState(false);
 
@@ -344,14 +344,32 @@ export default function Settings({ onBack }: Props): React.ReactElement {
             </Button>
           </div>
           {acSetup && (
-            <p style={{ fontSize: 11, color: acSetup.ok ? theme.teal : theme.red, marginTop: 4 }}>
-              AC: {acSetup.message}
-            </p>
+            <div style={{ marginTop: 4 }}>
+              <p style={{ fontSize: 11, color: acSetup.ok ? theme.teal : theme.red }}>AC: {acSetup.message}</p>
+              <p style={{ fontSize: 10, color: theme.gray, fontFamily: "monospace", wordBreak: "break-all" }}>
+                {acSetup.path}{" "}
+                <span
+                  style={{ color: theme.teal, cursor: "pointer", fontFamily: "inherit" }}
+                  onClick={() => window.companion.showInFolder(acSetup.path)}
+                >
+                  Show in folder
+                </span>
+              </p>
+            </div>
           )}
           {accSetup && (
-            <p style={{ fontSize: 11, color: accSetup.ok ? theme.teal : theme.red, marginTop: 4 }}>
-              ACC: {accSetup.message}
-            </p>
+            <div style={{ marginTop: 4 }}>
+              <p style={{ fontSize: 11, color: accSetup.ok ? theme.teal : theme.red }}>ACC: {accSetup.message}</p>
+              <p style={{ fontSize: 10, color: theme.gray, fontFamily: "monospace", wordBreak: "break-all" }}>
+                {accSetup.path}{" "}
+                <span
+                  style={{ color: theme.teal, cursor: "pointer", fontFamily: "inherit" }}
+                  onClick={() => window.companion.showInFolder(accSetup.path)}
+                >
+                  Show in folder
+                </span>
+              </p>
+            </div>
           )}
         </div>
 
