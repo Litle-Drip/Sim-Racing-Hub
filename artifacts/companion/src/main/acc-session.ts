@@ -29,6 +29,11 @@ export class AccSessionTracker {
   private carLabels = new Map<number, string>();
   private laps: LapRecord[] = [];
   private lastRecordedLapCount = -1;
+  // Registration re-fires every 5s (see acc-udp.ts's re-register interval)
+  // and would otherwise re-log "connected" on every single one of those —
+  // only log the state transitions, not every request/response round trip.
+  private loggedRegistered = false;
+  private loggedFirstCarUpdate = false;
 
   onSessionComplete: ((session: SessionSnapshot) => void | Promise<void>) | null = null;
   onLapComplete: ((lap: LapRecord) => void) | null = null;
@@ -49,10 +54,17 @@ export class AccSessionTracker {
   handleRegistration(result: AccRegistrationResult): void {
     if (!result.success) {
       console.warn(`[ACC] Registration failed: ${result.error || "unknown reason"}`);
+      this.loggedRegistered = false;
+      return;
+    }
+    if (!this.loggedRegistered) {
+      this.loggedRegistered = true;
+      console.log(`[ACC] Registered (connectionId=${result.connectionId}, readOnly=${result.readOnly})`);
     }
   }
 
   handleTrackData(data: AccTrackData): void {
+    console.log(`[ACC] Track data: ${data.trackName} (${data.trackMeters}m)`);
     if (this.trackName === null) {
       this.trackName = data.trackName;
       this.onStatusChange?.();
@@ -69,10 +81,14 @@ export class AccSessionTracker {
 
   handleCarEntry(entry: AccCarEntry): void {
     const label = entry.teamCarName?.trim() || entry.displayName?.trim();
+    console.log(`[ACC] Car entry #${entry.carIndex}: ${label || "(no name given)"}`);
     if (label) this.carLabels.set(entry.carIndex, label);
   }
 
   handleRealtimeUpdate(update: AccRealtimeUpdate): void {
+    if (update.focusedCarIndex !== this.focusedCarIndex) {
+      console.log(`[ACC] Focused car index -> ${update.focusedCarIndex}`);
+    }
     this.focusedCarIndex = update.focusedCarIndex;
     const label = sessionTypeName(update.sessionType);
     if (label !== this.sessionTypeLabel && this.laps.length > 0) {
@@ -84,6 +100,10 @@ export class AccSessionTracker {
   }
 
   handleCarUpdate(update: AccCarUpdate): void {
+    if (!this.loggedFirstCarUpdate) {
+      this.loggedFirstCarUpdate = true;
+      console.log(`[ACC] Receiving car updates (focusedCarIndex=${this.focusedCarIndex}, this update's carIndex=${update.carIndex})`);
+    }
     if (!this.trackName) return;
     if (update.carIndex !== this.focusedCarIndex) return;
     if (update.lastLap.laptimeMs === null || update.lastLap.laptimeMs <= 0) return;

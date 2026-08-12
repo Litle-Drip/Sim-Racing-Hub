@@ -6,14 +6,18 @@ import * as dgram from "dgram";
 // TLV-ish, variable-length messages tagged by a leading command byte,
 // instead of fixed-size structs identified by packet length. It must be
 // enabled and given a port in Documents/Assetto Corsa Competizione/Config/
-// broadcasting.json (updListenerPort, default 9000). If that file sets a
-// non-empty connectionPassword, this client has no UI to configure one and
-// registration will be rejected — same class of limitation as F1/AC needing
-// telemetry enabled in-game first.
+// broadcasting.json (updListenerPort, default 9000). That file ships with a
+// non-blank stock connectionPassword ("asd", not "") — sending an empty
+// password against an unmodified config gets silently rejected, which is
+// why DEFAULT_CONNECTION_PASSWORD below matches it. Anyone who has changed
+// their own broadcasting.json password will still fail to register, since
+// this client has no UI to configure a custom one — same class of
+// limitation as F1/AC needing telemetry enabled in-game first.
 // Reference: Kunos's own BroadcastingNetworkProtocol.cs, published in the
 // ACC SDK folder (steamapps/common/Assetto Corsa Competizione/sdk).
 const ACC_DEFAULT_PORT = 9000;
 const PROTOCOL_VERSION = 2;
+const DEFAULT_CONNECTION_PASSWORD = "asd";
 
 const OUT_REGISTER = 1;
 const OUT_UNREGISTER = 9;
@@ -257,7 +261,7 @@ export class AccUdpClient extends EventEmitter {
       .byte(OUT_REGISTER)
       .byte(PROTOCOL_VERSION)
       .string(this.displayName)
-      .string("") // connectionPassword — see file header comment
+      .string(DEFAULT_CONNECTION_PASSWORD)
       .int32(250)
       .string(""); // commandPassword — unused, this client is read-only
     this.send(req.toBuffer());
