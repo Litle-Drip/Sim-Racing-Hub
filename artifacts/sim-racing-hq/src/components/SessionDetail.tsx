@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts';
-import type { SessionRecord } from '@workspace/api-client-react';
+import { useGetSessionDetail, type SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
 import { useUnits } from '../lib/units';
 
@@ -86,7 +86,7 @@ export function ExpandedGroup({ label, show, icon: Icon, defaultOpen, children }
 
 // ─── Lap table (expanded view) ────────────────────────────────────────────────
 
-export function LapTable({ laps: rawLaps, onViewTelemetry }: { laps: SessionRecord['laps']; onViewTelemetry: (lap: LapEntry) => void }) {
+export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessionId: string; laps: SessionRecord['laps']; onViewTelemetry: (sessionId: string, lap: LapEntry) => void }) {
   const laps = validLaps(rawLaps);
   if (!laps || laps.length === 0) return null;
   const fastestIdx = laps.reduce((best, l, i) => {
@@ -119,16 +119,15 @@ export function LapTable({ laps: rawLaps, onViewTelemetry }: { laps: SessionReco
                 <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.tires || '—'}</td>
                 <td style={{ padding: '5px 8px', color: l.penalty ? 'var(--red)' : 'var(--gray-mid)' }}>{l.penalty || '—'}</td>
                 <td style={{ padding: '5px 8px' }}>
-                  {l.trace && l.trace.length > 0 && (
-                    <button
-                      className="btn btn-secondary"
-                      style={{ fontSize: 10, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
-                      onClick={() => onViewTelemetry(l)}
-                      title="View speed/throttle/brake telemetry for this lap"
-                    >
-                      <Activity size={11} /> Telemetry
-                    </button>
-                  )}
+                  {/* Trace presence is unknown until LapTelemetryModal fetches full detail — list responses omit traces. */}
+                  <button
+                    className="btn btn-secondary"
+                    style={{ fontSize: 10, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => onViewTelemetry(sessionId, l)}
+                    title="View speed/throttle/brake telemetry for this lap"
+                  >
+                    <Activity size={11} /> Telemetry
+                  </button>
                 </td>
               </tr>
             );
@@ -197,8 +196,13 @@ function TelemetryTraceChart({
   );
 }
 
-export function LapTelemetryModal({ lap, onClose }: { lap: LapEntry; onClose: () => void }) {
+export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: string; lap: LapEntry; onClose: () => void }) {
   const { speedUnit, convertSpeed } = useUnits();
+  // The session list omits lap traces to stay fast/cheap to load, so the full
+  // trace for this one lap is fetched on demand when the modal opens.
+  const { data: fullSession, isLoading } = useGetSessionDetail(sessionId);
+  const trace = fullSession?.laps?.find(l => l.lap === lap.lap)?.trace ?? [];
+
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ maxWidth: 640 }}>
@@ -207,10 +211,18 @@ export function LapTelemetryModal({ lap, onClose }: { lap: LapEntry; onClose: ()
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
-          <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="var(--teal)" unit={` ${speedUnit}`} data={lap.trace ?? []} convert={convertSpeed} />
-          <TelemetryTraceChart dataKey="throttle" label="Throttle" color="var(--green)" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
-          <TelemetryTraceChart dataKey="brake" label="Brake" color="var(--red)" unit="%" domain={[0, 100]} data={lap.trace ?? []} />
-          <TelemetryTraceChart dataKey="steer" label="Steering" color="var(--purple)" unit="%" domain={[-100, 100]} data={lap.trace ?? []} />
+          {isLoading ? (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>Loading telemetry…</div>
+          ) : trace.length === 0 ? (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>No telemetry data recorded for this lap.</div>
+          ) : (
+            <>
+              <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="var(--teal)" unit={` ${speedUnit}`} data={trace} convert={convertSpeed} />
+              <TelemetryTraceChart dataKey="throttle" label="Throttle" color="var(--green)" unit="%" domain={[0, 100]} data={trace} />
+              <TelemetryTraceChart dataKey="brake" label="Brake" color="var(--red)" unit="%" domain={[0, 100]} data={trace} />
+              <TelemetryTraceChart dataKey="steer" label="Steering" color="var(--purple)" unit="%" domain={[-100, 100]} data={trace} />
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -220,7 +232,7 @@ export function LapTelemetryModal({ lap, onClose }: { lap: LapEntry; onClose: ()
 // ─── Full session detail fields — reused by Sessions row expansion and the
 // standalone modal opened from Dashboard / Tracks. ─────────────────────────
 
-export function SessionDetailFields({ session: s, onViewTelemetry }: { session: SessionRecord; onViewTelemetry: (lap: LapEntry) => void }) {
+export function SessionDetailFields({ session: s, onViewTelemetry }: { session: SessionRecord; onViewTelemetry: (sessionId: string, lap: LapEntry) => void }) {
   const { formatTemp, formatSpeed } = useUnits();
 
   return (
@@ -335,7 +347,7 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
 
       {s.laps && s.laps.length > 0 && (
         <div style={{ gridColumn: '1 / -1' }}>
-          <LapTable laps={s.laps} onViewTelemetry={onViewTelemetry} />
+          <LapTable sessionId={s.id} laps={s.laps} onViewTelemetry={onViewTelemetry} />
         </div>
       )}
     </>
@@ -347,6 +359,7 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
 
 export function SessionDetailModal({ session, onClose }: { session: SessionRecord; onClose: () => void }) {
   const [telemetryLap, setTelemetryLap] = useState<LapEntry | null>(null);
+  const onViewTelemetry = (_sessionId: string, lap: LapEntry) => setTelemetryLap(lap);
   const trackMeta = F1_TRACKS.find(t => t.id === session.trackId);
 
   return (
@@ -381,12 +394,12 @@ export function SessionDetailModal({ session, onClose }: { session: SessionRecor
             </div>
 
             <div className="expanded-content">
-              <SessionDetailFields session={session} onViewTelemetry={setTelemetryLap} />
+              <SessionDetailFields session={session} onViewTelemetry={onViewTelemetry} />
             </div>
           </div>
         </div>
       </div>
-      {telemetryLap && <LapTelemetryModal lap={telemetryLap} onClose={() => setTelemetryLap(null)} />}
+      {telemetryLap && <LapTelemetryModal sessionId={session.id} lap={telemetryLap} onClose={() => setTelemetryLap(null)} />}
     </>
   );
 }

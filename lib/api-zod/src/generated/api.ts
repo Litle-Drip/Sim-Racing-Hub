@@ -197,6 +197,134 @@ export const CreateSessionBody = zod.object({
 
 
 /**
+ * @summary Get one session, including full per-lap telemetry traces
+ */
+export const GetSessionDetailParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetSessionDetailResponse = zod.object({
+  "id": zod.string().max(200),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "worstLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "tires": zod.string(),
+  "fuelLoad": zod.number(),
+  "conditions": zod.string(),
+  "assists": zod.string(),
+  "rating": zod.number(),
+  "notes": zod.string().max(5000),
+  "isPB": zod.boolean(),
+  "penalty": zod.string().nullish(),
+  "gameVersion": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "inputDevice": zod.string().nullish(),
+  "isPublic": zod.boolean(),
+  "sharedAt": zod.string().nullish(),
+  "publicNote": zod.string().nullish(),
+  "laps": zod.array(zod.object({
+  "lap": zod.number(),
+  "time": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "tires": zod.string(),
+  "penalty": zod.string(),
+  "trace": zod.array(zod.object({
+  "d": zod.number(),
+  "speed": zod.number(),
+  "throttle": zod.number(),
+  "brake": zod.number(),
+  "steer": zod.number()
+})).nullish()
+})).nullish(),
+  "timeOfDay": zod.string().nullish(),
+  "position": zod.string().optional(),
+  "trackTemperature": zod.number().nullish(),
+  "airTemperature": zod.number().nullish(),
+  "totalLaps": zod.number().nullish(),
+  "pitSpeedLimit": zod.number().nullish(),
+  "safetyCarStatus": zod.number().nullish(),
+  "fuelInTank": zod.number().nullish(),
+  "ersDeployMode": zod.number().nullish(),
+  "ersEnergyStored": zod.number().nullish(),
+  "ersDeployedThisLap": zod.number().nullish(),
+  "tyreWear": zod.array(zod.number()).nullish(),
+  "wingDamage": zod.object({
+  "front": zod.number(),
+  "rear": zod.number()
+}).nullish(),
+  "tyreSurfaceTemps": zod.array(zod.number()).nullish(),
+  "brakeTemps": zod.array(zod.number()).nullish(),
+  "setupSnapshot": zod.object({
+  "frontWing": zod.number(),
+  "rearWing": zod.number(),
+  "onThrottle": zod.number(),
+  "offThrottle": zod.number(),
+  "frontCamber": zod.number(),
+  "rearCamber": zod.number(),
+  "frontToe": zod.number(),
+  "rearToe": zod.number(),
+  "frontSuspension": zod.number(),
+  "rearSuspension": zod.number(),
+  "frontAntiRollBar": zod.number(),
+  "rearAntiRollBar": zod.number(),
+  "frontRideHeight": zod.number(),
+  "rearRideHeight": zod.number(),
+  "brakePressure": zod.number(),
+  "brakeBias": zod.number(),
+  "frontTyrePressure": zod.number(),
+  "rearTyrePressure": zod.number()
+}).nullish(),
+  "tyreStints": zod.array(zod.object({
+  "startLap": zod.number(),
+  "endLap": zod.number(),
+  "compound": zod.string(),
+  "visualCompound": zod.string()
+})).nullish(),
+  "lapHistory": zod.array(zod.object({
+  "lap": zod.number(),
+  "lapTimeMs": zod.number(),
+  "sector1Ms": zod.number(),
+  "sector2Ms": zod.number(),
+  "sector3Ms": zod.number(),
+  "valid": zod.boolean()
+})).nullish(),
+  "aiDifficulty": zod.number().nullish(),
+  "topSpeedKph": zod.number().nullish(),
+  "avgThrottlePct": zod.number().nullish(),
+  "avgBrakePct": zod.number().nullish(),
+  "drsActivations": zod.number().nullish(),
+  "maxRpm": zod.number().nullish(),
+  "topGear": zod.number().nullish(),
+  "fuelRemainingLaps": zod.number().nullish(),
+  "actualTyreCompound": zod.string().nullish(),
+  "tyreAgeLaps": zod.number().nullish(),
+  "pitStops": zod.number().nullish(),
+  "fuelCapacity": zod.number().nullish(),
+  "startingFuelKg": zod.number().nullish(),
+  "engineMaxRpm": zod.number().nullish(),
+  "engineTemperature": zod.number().nullish(),
+  "vehicleFiaFlags": zod.number().nullish(),
+  "tyrePressureLive": zod.array(zod.number()).nullish(),
+  "floorDamage": zod.number().nullish(),
+  "diffuserDamage": zod.number().nullish(),
+  "sidepodDamage": zod.number().nullish(),
+  "gearBoxDamage": zod.number().nullish(),
+  "engineDamage": zod.number().nullish(),
+  "liveBrakeBias": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Delete a session
  */
 export const DeleteSessionParams = zod.object({
