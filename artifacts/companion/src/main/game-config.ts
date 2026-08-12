@@ -41,6 +41,26 @@ function accBroadcastingJsonPaths(): string[] {
   return candidateDocumentsRoots().map((root) => join(root, "Assetto Corsa Competizione", "Config", "broadcasting.json"));
 }
 
+export interface DetectedSims {
+  ac: boolean;
+  acc: boolean;
+}
+
+// Neither game is installed at all on plenty of setups (F1-only players,
+// or — the case that prompted this — AC/ACC being played on a console,
+// where the companion app running on a separate PC will never see any of
+// their telemetry regardless of setup). Detecting via each game's own
+// Documents folder existing is enough to decide whether to bother a user
+// with setup UI they have no use for; it doesn't need to be more precise
+// than that.
+export function detectInstalledSims(): DetectedSims {
+  const roots = candidateDocumentsRoots();
+  return {
+    ac: roots.some((root) => existsSync(join(root, "Assetto Corsa"))),
+    acc: roots.some((root) => existsSync(join(root, "Assetto Corsa Competizione"))),
+  };
+}
+
 function patchAcRaceIni(path: string): SetupPathResult {
   let text: string;
   try {
