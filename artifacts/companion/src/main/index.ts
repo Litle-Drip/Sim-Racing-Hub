@@ -19,6 +19,7 @@ import { AcSessionTracker } from "./ac-session";
 import { AccUdpClient } from "./acc-udp";
 import { AccSessionTracker } from "./acc-session";
 import { Uploader, type UploadResult } from "./uploader";
+import { setupAcTelemetry, setupAccTelemetry } from "./game-config";
 
 function getLogFilePath(): string {
   try {
@@ -90,6 +91,21 @@ let gameCheckInterval: ReturnType<typeof setInterval> | null = null;
 let updateReady = false;
 let refreshTrayMenu: (() => void) | null = null;
 
+type UpdateState =
+  | { phase: "unsupported" }
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "downloading"; version: string; percent: number }
+  | { phase: "ready"; version: string }
+  | { phase: "not-available" }
+  | { phase: "error"; message: string };
+
+// Windows+packaged only — see setupAutoUpdater's own gating below. Reported
+// as "unsupported" everywhere else so the Settings UI can say so instead of
+// a "Check for Updates" button that silently does nothing.
+let updateState: UpdateState =
+  process.platform === "win32" ? { phase: "idle" } : { phase: "unsupported" };
+
 function pushStatus(): void {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.send("status-update", buildStatus());
@@ -113,6 +129,7 @@ function buildStatus() {
     pendingUploads: uploader.pendingCount,
     detectedGame: tracker.gameVersion ?? (acConnected ? "Assetto Corsa" : accConnected ? "Assetto Corsa Competizione" : null),
     unsupportedFormat,
+    updateState,
   };
 }
 
@@ -296,21 +313,50 @@ function startGameWatchdog(): void {
 // app-update.yml, generated at build time from electron-builder.json5's
 // `publish` config, so there's nothing to configure here beyond gating.
 function setupAutoUpdater(): void {
-  if (process.platform !== "win32") return;
-  if (!app.isPackaged) return; // no installed app to update when running from source
+  if (process.platform !== "win32" || !app.isPackaged) {
+    // No installed Windows app to update (unsigned Mac build, or running
+    // from source) — report it as such rather than leaving the Settings
+    // "Check for Updates" button silently do nothing.
+    updateState = { phase: "unsupported" };
+    return;
+  }
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on("checking-for-update", () => console.log("[AutoUpdate] Checking for update"));
-  autoUpdater.on("update-available", (info) => console.log(`[AutoUpdate] Update available: ${info.version}`));
-  autoUpdater.on("update-not-available", () => console.log("[AutoUpdate] Already up to date"));
-  autoUpdater.on("error", (err) => console.error("[AutoUpdate] Error:", err));
-  autoUpdater.on("download-progress", (p) => console.log(`[AutoUpdate] Downloading: ${Math.round(p.percent)}%`));
+  autoUpdater.on("checking-for-update", () => {
+    console.log("[AutoUpdate] Checking for update");
+    updateState = { phase: "checking" };
+    pushStatus();
+  });
+  autoUpdater.on("update-available", (info) => {
+    console.log(`[AutoUpdate] Update available: ${info.version} (current: ${app.getVersion()})`);
+    updateState = { phase: "downloading", version: info.version, percent: 0 };
+    pushStatus();
+  });
+  autoUpdater.on("update-not-available", (info) => {
+    console.log(`[AutoUpdate] Already up to date (current: ${app.getVersion()}, latest: ${info.version})`);
+    updateState = { phase: "not-available" };
+    pushStatus();
+  });
+  autoUpdater.on("error", (err) => {
+    console.error("[AutoUpdate] Error:", err);
+    updateState = { phase: "error", message: err instanceof Error ? err.message : String(err) };
+    pushStatus();
+  });
+  autoUpdater.on("download-progress", (p) => {
+    console.log(`[AutoUpdate] Downloading: ${Math.round(p.percent)}%`);
+    if (updateState.phase === "downloading") {
+      updateState = { ...updateState, percent: Math.round(p.percent) };
+      pushStatus();
+    }
+  });
   autoUpdater.on("update-downloaded", (info) => {
-    console.log(`[AutoUpdate] Update ${info.version} downloaded — will install on quit`);
+    console.log(`[AutoUpdate] Update ${info.version} downloaded — ready to install`);
     updateReady = true;
+    updateState = { phase: "ready", version: info.version };
     refreshTrayMenu?.();
+    pushStatus();
   });
 
   const check = (): void => {
@@ -393,6 +439,31 @@ ipcMain.handle("force-flush", async () => {
   await uploader.flushPending();
   pushStatus();
 });
+
+ipcMain.handle("check-for-updates", async () => {
+  if (updateState.phase === "unsupported") return;
+  // A ready-to-install update doesn't need re-checking — clicking "check
+  // for updates" again here would just re-report the same ready state.
+  if (updateState.phase === "ready") {
+    pushStatus();
+    return;
+  }
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (err) {
+    console.error("[AutoUpdate] Manual check failed:", err);
+    updateState = { phase: "error", message: err instanceof Error ? err.message : String(err) };
+    pushStatus();
+  }
+});
+
+ipcMain.handle("install-update", () => {
+  if (updateState.phase !== "ready") return;
+  autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle("setup-ac-telemetry", () => setupAcTelemetry());
+ipcMain.handle("setup-acc-telemetry", () => setupAccTelemetry());
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
