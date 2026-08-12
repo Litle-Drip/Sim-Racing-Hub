@@ -14,6 +14,8 @@ import { autoUpdater } from "electron-updater";
 import { store } from "./store";
 import { UdpListener } from "./udp";
 import { SessionTracker } from "./session";
+import { AcUdpClient } from "./ac-udp";
+import { AcSessionTracker } from "./ac-session";
 import { Uploader, type UploadResult } from "./uploader";
 
 function getLogFilePath(): string {
@@ -53,6 +55,12 @@ setupFileLogging();
 
 const udp = new UdpListener(store.get("port", 20777));
 const tracker = new SessionTracker();
+// AC is a client-connects-out protocol on its own dedicated port (9996), not
+// a listener like F1's — the two can run simultaneously with no conflict,
+// so there's no "pick your game" setting; whichever game is actually
+// running is the one that ends up producing packets.
+const acUdp = new AcUdpClient();
+const acTracker = new AcSessionTracker();
 const uploader = new Uploader();
 
 let mainWindow: BrowserWindow | null = null;
@@ -80,16 +88,19 @@ function pushStatus(): void {
 }
 
 function buildStatus() {
+  const acConnected = acUdp.isReceiving(20000);
   return {
     signedIn: !!store.get("apiKey"),
-    gameConnected,
-    telemetryReceiving,
+    gameConnected: gameConnected || acConnected,
+    telemetryReceiving: telemetryReceiving || acConnected,
     lastUpload,
     currentSession: tracker.isActive
       ? { lapCount: tracker.currentLapCount, track: tracker.trackName }
-      : null,
+      : acTracker.isActive
+        ? { lapCount: acTracker.currentLapCount, track: acTracker.track ?? "" }
+        : null,
     pendingUploads: uploader.pendingCount,
-    detectedGame: tracker.gameVersion,
+    detectedGame: tracker.gameVersion ?? (acConnected ? "Assetto Corsa" : null),
     unsupportedFormat,
   };
 }
@@ -135,21 +146,46 @@ function wireUdp(): void {
   });
 }
 
-tracker.onSessionComplete = async (session) => {
+function wireAcUdp(): void {
+  acUdp.on("handshake", (info) => {
+    acTracker.handleHandshake(info as Parameters<typeof acTracker.handleHandshake>[0]);
+  });
+  acUdp.on("carInfo", (info) => {
+    acTracker.handleCarInfo(info as Parameters<typeof acTracker.handleCarInfo>[0]);
+  });
+  acUdp.on("lap", (info) => {
+    acTracker.handleLap(info as Parameters<typeof acTracker.handleLap>[0]);
+  });
+  acUdp.on("error", (err) => {
+    console.error("[AC UDP] error:", err);
+  });
+}
+
+async function handleSessionComplete(session: Parameters<NonNullable<typeof tracker.onSessionComplete>>[0]): Promise<void> {
   console.log(`[Session] Complete: ${session.track} — ${session.laps.length} laps`);
   try {
     await uploader.uploadSession(session);
   } catch (err) {
     console.error("[Upload] failed:", err);
   }
-};
+}
+
+tracker.onSessionComplete = handleSessionComplete;
+acTracker.onSessionComplete = handleSessionComplete;
 
 tracker.onLapComplete = (lap) => {
   console.log(`[Lap] #${lap.lap} ${lap.time}`);
   pushStatus();
 };
+acTracker.onLapComplete = (lap) => {
+  console.log(`[AC Lap] #${lap.lap} ${lap.time}`);
+  pushStatus();
+};
 
 tracker.onStatusChange = () => {
+  pushStatus();
+};
+acTracker.onStatusChange = () => {
   pushStatus();
 };
 
@@ -167,6 +203,8 @@ uploader.onUploadResult = (result: UploadResult) => {
   }
   pushStatus();
 };
+
+let acWasConnected = false;
 
 function startGameWatchdog(): void {
   gameCheckInterval = setInterval(() => {
@@ -187,7 +225,17 @@ function startGameWatchdog(): void {
       console.log("[Watchdog] Game disconnected — flushing session");
       void tracker.forceFlush();
     }
-    if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving) pushStatus();
+
+    const acReceiving = acUdp.isReceiving(20000);
+    const acChanged = acReceiving !== acWasConnected;
+    if (acReceiving && !acWasConnected) console.log("[Watchdog] AC connected");
+    if (!acReceiving && acWasConnected) {
+      console.log("[Watchdog] AC disconnected — flushing session");
+      void acTracker.forceFlush();
+    }
+    acWasConnected = acReceiving;
+
+    if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving || acChanged) pushStatus();
   }, 3000);
 }
 
@@ -290,6 +338,7 @@ ipcMain.handle("open-releases-page", () => shell.openExternal("https://github.co
 
 ipcMain.handle("force-flush", async () => {
   await tracker.forceFlush();
+  await acTracker.forceFlush();
   await uploader.flushPending();
   pushStatus();
 });
@@ -401,12 +450,20 @@ if (!gotSingleInstanceLock) {
     mainWindow = createWindow();
     tray = createTray();
     wireUdp();
+    wireAcUdp();
 
     try {
       await udp.start(store.get("port", 20777));
       console.log(`[UDP] Listening on port ${store.get("port", 20777)}`);
     } catch (err) {
       console.error("[UDP] Failed to start:", err);
+    }
+
+    try {
+      acUdp.start();
+      console.log("[AC UDP] Client started, handshaking on port 9996");
+    } catch (err) {
+      console.error("[AC UDP] Failed to start:", err);
     }
 
     uploader.setCredentials(store.get("apiKey"), store.get("apiBaseUrl"));
@@ -445,11 +502,13 @@ app.on("before-quit", (event) => {
     uploader.stopRetryLoop();
     try {
       await tracker.forceFlush();
+      await acTracker.forceFlush();
       await uploader.flushPending();
     } catch (err) {
       console.error("[Quit] Flush before quit failed:", err);
     }
     await udp.stop();
+    await acUdp.stop();
     app.quit();
   })();
 });

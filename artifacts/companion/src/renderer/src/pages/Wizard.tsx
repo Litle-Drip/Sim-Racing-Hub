@@ -268,6 +268,9 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
           </h2>
           <p style={{ color: theme.gray, fontSize: 13, marginBottom: 28, lineHeight: 1.6 }}>
             Start F1 25 and load into a session. The companion will detect the connection automatically.
+            Assetto Corsa is also supported — enable Remote Telemetry in{" "}
+            <code>Documents/Assetto Corsa/cfg/race.ini</code> (<code>[REMOTE_TELEMETRY] ACTIVE=1</code>) and it'll be
+            picked up the same way, no setup needed here.
           </p>
           <div
             style={{
