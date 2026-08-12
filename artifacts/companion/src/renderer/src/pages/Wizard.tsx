@@ -270,9 +270,11 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
             Start F1 25 and load into a session. The companion will detect the connection automatically.
             Assetto Corsa and Assetto Corsa Competizione are also supported, no setup needed here — just enable
             Remote Telemetry in <code>Documents/Assetto Corsa/cfg/race.ini</code>{" "}
-            (<code>[REMOTE_TELEMETRY] ACTIVE=1</code>) for AC, or set a <code>updListenerPort</code> in{" "}
-            <code>Documents/Assetto Corsa Competizione/Config/broadcasting.json</code> for ACC, and it'll be picked
-            up the same way.
+            (<code>[REMOTE_TELEMETRY] ACTIVE=1</code>) for AC. For ACC, create{" "}
+            <code>Documents/Assetto Corsa Competizione/Config/broadcasting.json</code> — ACC doesn't ship this file
+            by default, so it usually needs to be created from scratch — containing{" "}
+            <code>{"{\"updListenerPort\": 9000, \"connectionPassword\": \"asd\", \"commandPassword\": \"\"}"}</code>,
+            then restart ACC. Either way, no setup needed in this app itself.
           </p>
           <div
             style={{
