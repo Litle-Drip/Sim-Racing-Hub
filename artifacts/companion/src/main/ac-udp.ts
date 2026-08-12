@@ -137,7 +137,6 @@ export class AcUdpClient extends EventEmitter {
     });
 
     socket.on("message", (msg) => {
-      this._lastPacketAt = Date.now();
       this.handleMessage(msg);
     });
 
@@ -190,8 +189,19 @@ export class AcUdpClient extends EventEmitter {
       case HANDSHAKE_RESPONSE_SIZE: {
         const info = parseHandshakeResponse(buf);
         // Empty carName/trackName means AC answered but nothing is actually
-        // loaded (main menu) — not a real session, don't subscribe on it.
-        if (!info.carName || !info.trackName) return;
+        // loaded (main menu) — not a real session. Deliberately don't touch
+        // _lastPacketAt here: AC keeps answering these every 4s even after
+        // returning to the menu, and counting them as "live" would make the
+        // watchdog think the connection is still active — so a session
+        // never gets flushed just because the driver quit to the menu.
+        // Also drop the (now stale) subscription flag so a real handshake
+        // later — after AC forgot us across a restart or track change —
+        // re-subscribes instead of assuming it's still subscribed.
+        if (!info.carName || !info.trackName) {
+          this._handshaken = false;
+          return;
+        }
+        this._lastPacketAt = Date.now();
         if (!this._handshaken) {
           this._handshaken = true;
           this.send(buildRequest(OP_SUBSCRIBE_UPDATE));
@@ -201,9 +211,11 @@ export class AcUdpClient extends EventEmitter {
         break;
       }
       case RT_CAR_INFO_SIZE:
+        this._lastPacketAt = Date.now();
         this.emit("carInfo", parseCarInfo(buf));
         break;
       case RT_LAP_SIZE:
+        this._lastPacketAt = Date.now();
         this.emit("lap", parseLapInfo(buf));
         break;
       default:

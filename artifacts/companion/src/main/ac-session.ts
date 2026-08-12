@@ -20,8 +20,14 @@ function randomFlushId(): string {
 export class AcSessionTracker {
   private trackName: string | null = null;
   private carName: string | null = null;
+  private driverName: string | null = null;
   private laps: LapRecord[] = [];
-  private recordedLapNums = new Set<number>();
+  // Keyed by `${carIdentifierNumber}:${lap}`, not just lap number — in an
+  // AI or multiplayer session, other cars' spot-lap events arrive on the
+  // same connection, and keying by lap alone would both let another car's
+  // lap slip into the player's session and, worse, cause the player's own
+  // later lap N to be silently skipped as a false duplicate.
+  private recordedLapKeys = new Set<string>();
 
   private lastSpeed = 0;
   private lastThrottle = 0;
@@ -51,6 +57,7 @@ export class AcSessionTracker {
     if (this.trackName === null) {
       this.trackName = track;
       this.carName = info.carName;
+      this.driverName = info.driverName || null;
       this.onStatusChange?.();
       return;
     }
@@ -62,6 +69,7 @@ export class AcSessionTracker {
       void this.flushSession();
       this.trackName = track;
       this.carName = info.carName;
+      this.driverName = info.driverName || null;
       this.onStatusChange?.();
     }
   }
@@ -76,16 +84,25 @@ export class AcSessionTracker {
 
   handleLap(info: AcLapInfo): void {
     if (!this.trackName) return;
+    // In an AI or multiplayer session, spot-lap events fire for every car
+    // on the connection, not just the player's — only the driver name from
+    // the handshake tells them apart (AC gives no numeric "this is you"
+    // marker). If we somehow don't have a driver name to compare against,
+    // fall back to accepting everything rather than silently dropping all
+    // laps for the rest of the session.
+    if (this.driverName && info.driverName && info.driverName !== this.driverName) return;
+
     // AC's remote-telemetry protocol reports only the total lap time — no
     // sector splits (that needs the separate shared-memory API, which only
     // works when the companion runs on the same machine as the game and
     // isn't exposed over this UDP protocol at all). s1/s2/s3 are left blank
     // rather than guessed.
     const lapNum = info.lap;
-    if (this.recordedLapNums.has(lapNum)) return; // duplicate spot event
+    const key = `${info.carIdentifierNumber}:${lapNum}`;
+    if (this.recordedLapKeys.has(key)) return; // duplicate spot event
     if (info.timeMs <= 0) return; // an out-lap / invalid completion AC still spot-fires for
 
-    this.recordedLapNums.add(lapNum);
+    this.recordedLapKeys.add(key);
     const record: LapRecord = {
       lap: lapNum,
       time: msToLapTime(info.timeMs),
@@ -113,8 +130,9 @@ export class AcSessionTracker {
   private reset(): void {
     this.trackName = null;
     this.carName = null;
+    this.driverName = null;
     this.laps = [];
-    this.recordedLapNums = new Set();
+    this.recordedLapKeys = new Set();
     this.lastSpeed = 0;
     this.lastThrottle = 0;
     this.lastBrake = 0;
