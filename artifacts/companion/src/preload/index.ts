@@ -33,6 +33,7 @@ export interface CompanionSettings {
 export interface SetupResult {
   ok: boolean;
   message: string;
+  path: string;
 }
 
 export interface CompanionAPI {
@@ -53,6 +54,7 @@ export interface CompanionAPI {
   installUpdate(): Promise<void>;
   setupAcTelemetry(): Promise<SetupResult>;
   setupAccTelemetry(): Promise<SetupResult>;
+  showInFolder(path: string): Promise<void>;
 }
 
 const api: CompanionAPI = {
@@ -77,6 +79,7 @@ const api: CompanionAPI = {
   installUpdate: () => ipcRenderer.invoke("install-update"),
   setupAcTelemetry: () => ipcRenderer.invoke("setup-ac-telemetry"),
   setupAccTelemetry: () => ipcRenderer.invoke("setup-acc-telemetry"),
+  showInFolder: (path) => ipcRenderer.invoke("show-in-folder", path),
 };
 
 contextBridge.exposeInMainWorld("companion", api);

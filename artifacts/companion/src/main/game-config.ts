@@ -9,6 +9,11 @@ import { app } from "electron";
 export interface SetupResult {
   ok: boolean;
   message: string;
+  // Absolute path this operation read/wrote, so the UI can offer to reveal
+  // it in Explorer/Finder directly instead of the user having to guess
+  // where their "Documents" folder actually resolves to (OneDrive
+  // redirection, a custom library location, etc. can make that non-obvious).
+  path: string;
 }
 
 function acRaceIniPath(): string {
@@ -27,6 +32,7 @@ export function setupAcTelemetry(): SetupResult {
   if (!existsSync(path)) {
     return {
       ok: false,
+      path,
       message: "race.ini not found — launch Assetto Corsa at least once first, then try again.",
     };
   }
@@ -35,7 +41,7 @@ export function setupAcTelemetry(): SetupResult {
   try {
     text = readFileSync(path, "utf-8");
   } catch (err) {
-    return { ok: false, message: `Couldn't read race.ini: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, path, message: `Couldn't read race.ini: ${err instanceof Error ? err.message : String(err)}` };
   }
 
   const sectionMatch = /\[REMOTE_TELEMETRY\]([^[]*)/i.exec(text);
@@ -47,7 +53,7 @@ export function setupAcTelemetry(): SetupResult {
   } else {
     const body = sectionMatch[1];
     if (/^\s*ACTIVE\s*=\s*1\s*$/im.test(body)) {
-      return { ok: true, message: "Remote Telemetry is already enabled." };
+      return { ok: true, path, message: "Remote Telemetry is already enabled." };
     }
     if (/ACTIVE\s*=/im.test(body)) {
       const newBody = body.replace(/ACTIVE\s*=\s*\S*/im, "ACTIVE=1");
@@ -61,9 +67,9 @@ export function setupAcTelemetry(): SetupResult {
   try {
     writeFileSync(path, updated, "utf-8");
   } catch (err) {
-    return { ok: false, message: `Couldn't write race.ini: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, path, message: `Couldn't write race.ini: ${err instanceof Error ? err.message : String(err)}` };
   }
-  return { ok: true, message: "Remote Telemetry enabled — restart Assetto Corsa for it to take effect." };
+  return { ok: true, path, message: "Remote Telemetry enabled — restart Assetto Corsa for it to take effect." };
 }
 
 // Matches acc-udp.ts's DEFAULT_CONNECTION_PASSWORD and ACC_DEFAULT_PORT.
@@ -83,13 +89,14 @@ export function setupAccTelemetry(): SetupResult {
         connectionPassword?: string;
       };
       if (existing.updListenerPort === EXPECTED_ACC_PORT && existing.connectionPassword === EXPECTED_ACC_PASSWORD) {
-        return { ok: true, message: "Broadcasting is already configured correctly." };
+        return { ok: true, path, message: "Broadcasting is already configured correctly." };
       }
       // Don't silently overwrite — this file may already be configured for
       // a different broadcasting client (race control software, another
       // dashboard app) with a port/password this app doesn't know.
       return {
         ok: false,
+        path,
         message: `broadcasting.json exists with different settings (port ${existing.updListenerPort ?? "?"}). ` +
           `Set "updListenerPort": ${EXPECTED_ACC_PORT} and "connectionPassword": "${EXPECTED_ACC_PASSWORD}" ` +
           `manually to let this app connect, or leave it if that config is for another tool.`,
@@ -97,6 +104,7 @@ export function setupAccTelemetry(): SetupResult {
     } catch {
       return {
         ok: false,
+        path,
         message: "broadcasting.json exists but isn't valid JSON — fix or delete it, then try again.",
       };
     }
@@ -110,7 +118,7 @@ export function setupAccTelemetry(): SetupResult {
       "utf-8"
     );
   } catch (err) {
-    return { ok: false, message: `Couldn't create broadcasting.json: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, path, message: `Couldn't create broadcasting.json: ${err instanceof Error ? err.message : String(err)}` };
   }
-  return { ok: true, message: "Broadcasting configured — restart ACC for it to take effect." };
+  return { ok: true, path, message: "Broadcasting configured — restart ACC for it to take effect." };
 }

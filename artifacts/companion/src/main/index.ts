@@ -464,6 +464,11 @@ ipcMain.handle("install-update", () => {
 
 ipcMain.handle("setup-ac-telemetry", () => setupAcTelemetry());
 ipcMain.handle("setup-acc-telemetry", () => setupAccTelemetry());
+// Reveals the file in Explorer/Finder rather than opening it — lets a user
+// confirm this app's resolved Documents path actually matches where the
+// game itself looks (Documents can be redirected differently per-app,
+// e.g. by OneDrive), without them having to type/guess the path themselves.
+ipcMain.handle("show-in-folder", (_event, path: string) => shell.showItemInFolder(path));
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
