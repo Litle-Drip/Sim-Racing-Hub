@@ -77,7 +77,16 @@ async function recalcPBsForUser(userId: string) {
     .from(sessionsTable)
     .where(eq(sessionsTable.userId, userId));
 
-  const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+  // Sort chronologically so, among sessions logged on the same calendar
+  // date, the one uploaded/created first consistently wins tie-breaking
+  // for which row keeps the isPB flag (date alone doesn't distinguish
+  // same-day sessions, and without a stable secondary key the winner would
+  // depend on incidental DB row order).
+  const sorted = [...rows].sort((a, b) => {
+    const dateCmp = a.date.localeCompare(b.date);
+    if (dateCmp !== 0) return dateCmp;
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
   const pbMap: Record<string, string> = {};
 
   // Only the rows whose isPB flag actually changes need writing — for a

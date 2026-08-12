@@ -319,7 +319,7 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'rivals'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'rivals', 'companion', 'account'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -392,6 +392,8 @@ const PAGE_LABELS: Record<string, string> = {
   progress: 'PB Progression',
   engineer: 'Race Engineer',
   rivals: 'Rivals',
+  companion: 'Companion App Sync',
+  account: 'Account',
 };
 
 const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
@@ -435,6 +437,20 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'Challenge a friend to beat one of your lap times or races',
       'Race async — no need to be online at the same time',
       'See a side-by-side comparison the moment they submit their attempt',
+    ],
+  },
+  companion: {
+    bullets: [
+      'Auto-upload sessions straight from F1 24/25/26 and Assetto Corsa',
+      'Generate an API key to connect the desktop companion app',
+      'Never manually log a lap time again',
+    ],
+  },
+  account: {
+    bullets: [
+      'Manage your profile and connected devices',
+      'See your usage across the Race Engineer and companion app',
+      'Keep everything synced across your devices',
     ],
   },
 };

@@ -216,9 +216,17 @@ export class AccUdpClient extends EventEmitter {
       this._isRunning = true;
       this.register();
       // Re-send registration on an interval so a game restart (which drops
-      // ACC's server-side connection state) gets silently reconnected,
-      // same reasoning as ac-udp.ts's handshake retry.
-      this.registerTimer = setInterval(() => this.register(), 5000);
+      // ACC's server-side connection state) gets silently reconnected, same
+      // reasoning as ac-udp.ts's handshake retry — but unlike AC's handshake
+      // (idempotent, same connection), ACC's Broadcasting SDK hands back a
+      // brand-new connectionId on every OUT_REGISTER and never tells us to
+      // drop the old one, so blindly resending on every tick orphans a fresh
+      // connection on ACC's side every 5s. Only resend while we don't
+      // already have a live registration.
+      this.registerTimer = setInterval(() => {
+        const stale = Date.now() - this._lastPacketAt > 10000;
+        if (!this._registered || stale) this.register();
+      }, 5000);
     });
   }
 

@@ -324,8 +324,12 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           const laps = (s.laps ?? []) as Array<{ s1: string; s2: string; s3: string }>;
           const checkSector = (key: 's1' | 's2' | 's3', val: string) => {
             if (!val || !val.trim()) return;
-            const secs = parseFloat(val);
-            if (isNaN(secs) || secs <= 0) return;
+            // Sector times are usually plain seconds ("24.123"), but a
+            // formation-lap/red-flag sector can be logged as "M:SS.sss" —
+            // parseFloat would silently truncate that to just the minutes
+            // digit (e.g. "1:02.345" -> 1) instead of the real duration.
+            const secs = lapToSeconds(val);
+            if (!isFinite(secs) || secs <= 0) return;
             if (!bestSectors[key] || secs < bestSectors[key]!.secs) {
               bestSectors[key] = { val, secs, date: s.date, car: s.car };
             }

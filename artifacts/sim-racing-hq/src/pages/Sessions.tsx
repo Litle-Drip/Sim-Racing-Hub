@@ -576,9 +576,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     }
     setForm(f => {
       const next = { ...f, [k]: v };
-      if (k === 'bestLap' || k === 'worstLap') {
+      // Only derive avgLap from best/worst when the user hasn't already
+      // typed their own average — otherwise a later best/worst edit would
+      // silently discard a manually-entered average with no indication.
+      if ((k === 'bestLap' || k === 'worstLap') && !lockedSummary.has('avgLap')) {
         next.avgLap = recalcAvg(next.bestLap, next.worstLap);
-        setLockedSummary(s => new Set([...s, 'avgLap']));
       }
       return next;
     });

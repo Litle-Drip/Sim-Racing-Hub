@@ -14,7 +14,7 @@ interface NavProps {
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, authRequired: false },
   { id: 'tracks', label: 'Tracks', Icon: Map, authRequired: false },
-  { id: 'sessions', label: 'Sessions', Icon: ClipboardList, authRequired: true },
+  { id: 'sessions', label: 'Sessions', Icon: ClipboardList, authRequired: false },
   { id: 'progress', label: 'Progress', Icon: TrendingUp, authRequired: true },
   { id: 'setups', label: 'Setups', Icon: Settings2, authRequired: true },
   { id: 'hardware', label: 'Hardware', Icon: Cpu, authRequired: true },

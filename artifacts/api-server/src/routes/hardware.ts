@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { db, hardwareSettingsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { CreateHardwareBody } from "@workspace/api-zod";
+import { normalizeTrackId } from "../lib/trackAlias";
 
 const router = Router();
 
@@ -56,7 +57,7 @@ router.post("/hardware", requireAuth, async (req, res) => {
       peripheralType: data.peripheralType ?? "Wheel Base",
       brand: data.brand ?? "",
       model: data.model ?? "",
-      trackId: data.trackId ?? "",
+      trackId: data.trackId ? normalizeTrackId(data.trackId) : "",
       game: data.game ?? "",
       date: data.date,
       ffbStrength: String(data.ffbStrength ?? ""),

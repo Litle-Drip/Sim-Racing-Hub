@@ -136,7 +136,16 @@ function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string
 
 async function recalcPBsForUser(userId: string) {
   const rows = await db.select().from(sessionsTable).where(eq(sessionsTable.userId, userId));
-  const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+  // Sort chronologically so, among sessions logged on the same calendar
+  // date, the one uploaded/created first consistently wins tie-breaking
+  // for which row keeps the isPB flag (date alone doesn't distinguish
+  // same-day sessions, and without a stable secondary key the winner would
+  // depend on incidental DB row order).
+  const sorted = [...rows].sort((a, b) => {
+    const dateCmp = a.date.localeCompare(b.date);
+    if (dateCmp !== 0) return dateCmp;
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
   const pbMap: Record<string, string> = {};
 
   // Only the rows whose isPB flag actually changes need writing — for a
@@ -159,10 +168,16 @@ async function recalcPBsForUser(userId: string) {
   }
 
   if (toSetTrue.length > 0) {
-    await db.update(sessionsTable).set({ isPB: true }).where(inArray(sessionsTable.id, toSetTrue));
+    await db
+      .update(sessionsTable)
+      .set({ isPB: true })
+      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetTrue)));
   }
   if (toSetFalse.length > 0) {
-    await db.update(sessionsTable).set({ isPB: false }).where(inArray(sessionsTable.id, toSetFalse));
+    await db
+      .update(sessionsTable)
+      .set({ isPB: false })
+      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetFalse)));
   }
 }
 
