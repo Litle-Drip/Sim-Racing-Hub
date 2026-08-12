@@ -19,7 +19,7 @@ import { AcSessionTracker } from "./ac-session";
 import { AccUdpClient } from "./acc-udp";
 import { AccSessionTracker } from "./acc-session";
 import { Uploader, type UploadResult } from "./uploader";
-import { setupAcTelemetry, setupAccTelemetry } from "./game-config";
+import { setupAcTelemetry, setupAccTelemetry, detectInstalledSims } from "./game-config";
 
 function getLogFilePath(): string {
   try {
@@ -464,6 +464,7 @@ ipcMain.handle("install-update", () => {
 
 ipcMain.handle("setup-ac-telemetry", () => setupAcTelemetry());
 ipcMain.handle("setup-acc-telemetry", () => setupAccTelemetry());
+ipcMain.handle("detect-installed-sims", () => detectInstalledSims());
 // Reveals the file in Explorer/Finder rather than opening it — lets a user
 // confirm this app's resolved Documents path actually matches where the
 // game itself looks (Documents can be redirected differently per-app,

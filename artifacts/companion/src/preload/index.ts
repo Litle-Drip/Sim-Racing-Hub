@@ -41,6 +41,11 @@ export interface SetupResult {
   results: SetupPathResult[];
 }
 
+export interface DetectedSims {
+  ac: boolean;
+  acc: boolean;
+}
+
 export interface CompanionAPI {
   minimizeWindow(): Promise<void>;
   closeWindow(): Promise<void>;
@@ -60,6 +65,7 @@ export interface CompanionAPI {
   setupAcTelemetry(): Promise<SetupResult>;
   setupAccTelemetry(): Promise<SetupResult>;
   showInFolder(path: string): Promise<void>;
+  detectInstalledSims(): Promise<DetectedSims>;
 }
 
 const api: CompanionAPI = {
@@ -85,6 +91,7 @@ const api: CompanionAPI = {
   setupAcTelemetry: () => ipcRenderer.invoke("setup-ac-telemetry"),
   setupAccTelemetry: () => ipcRenderer.invoke("setup-acc-telemetry"),
   showInFolder: (path) => ipcRenderer.invoke("show-in-folder", path),
+  detectInstalledSims: () => ipcRenderer.invoke("detect-installed-sims"),
 };
 
 contextBridge.exposeInMainWorld("companion", api);

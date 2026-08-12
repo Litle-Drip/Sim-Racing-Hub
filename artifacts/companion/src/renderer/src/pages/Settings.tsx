@@ -128,6 +128,11 @@ export default function Settings({ onBack }: Props): React.ReactElement {
   const [accSetup, setAccSetup] = useState<SetupPathResult[] | null>(null);
   const [settingUpAc, setSettingUpAc] = useState(false);
   const [settingUpAcc, setSettingUpAcc] = useState(false);
+  const [detectedSims, setDetectedSims] = useState<{ ac: boolean; acc: boolean }>({ ac: false, acc: false });
+
+  useEffect(() => {
+    window.companion.detectInstalledSims().then(setDetectedSims).catch(() => {});
+  }, []);
 
   useEffect(() => {
     window.companion.getVersion().then(setVersion).catch(() => setVersion(null));
@@ -349,36 +354,52 @@ export default function Settings({ onBack }: Props): React.ReactElement {
 
         {/* Game setup — AC/ACC need a config file changed before their
             telemetry protocols will talk to this app at all; these buttons
-            do it automatically instead of the user hand-editing files. */}
-        <div style={{ padding: "14px 20px 8px", fontSize: 11, color: theme.gray, textTransform: "uppercase", letterSpacing: 1 }}>
-          Game Setup
-        </div>
-        <div style={{ padding: "0 20px 14px", borderBottom: `1px solid ${theme.border}` }}>
-          <p style={{ fontSize: 11, color: theme.gray, marginBottom: 10 }}>
-            F1 24/25/26 work with no setup. Assetto Corsa and ACC each need one setting enabled in-game first —
-            these buttons do it for you instead of editing a config file by hand.
-          </p>
-          <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-            <Button
-              variant="secondary"
-              onClick={handleSetupAc}
-              disabled={settingUpAc}
-              style={{ flex: 1, padding: "8px", fontSize: 12 }}
-            >
-              {settingUpAc ? "Setting up…" : "Set up Assetto Corsa"}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleSetupAcc}
-              disabled={settingUpAcc}
-              style={{ flex: 1, padding: "8px", fontSize: 12 }}
-            >
-              {settingUpAcc ? "Setting up…" : "Set up ACC"}
-            </Button>
-          </div>
-          {acSetup && <SetupResultList label="AC" results={acSetup} />}
-          {accSetup && <SetupResultList label="ACC" results={accSetup} />}
-        </div>
+            do it automatically instead of the user hand-editing files.
+            Hidden entirely when neither is installed on this PC (e.g. a
+            console-only AC/ACC player, or an F1-only user) — this app can
+            only ever see telemetry from a copy running on the same PC, so
+            the setup UI would just be irrelevant clutter for them. */}
+        {(detectedSims.ac || detectedSims.acc) && (
+          <>
+            <div style={{ padding: "14px 20px 8px", fontSize: 11, color: theme.gray, textTransform: "uppercase", letterSpacing: 1 }}>
+              Game Setup
+            </div>
+            <div style={{ padding: "0 20px 14px", borderBottom: `1px solid ${theme.border}` }}>
+              <p style={{ fontSize: 11, color: theme.gray, marginBottom: 10 }}>
+                {detectedSims.ac && detectedSims.acc
+                  ? "Assetto Corsa and ACC each need one setting enabled in-game first"
+                  : detectedSims.ac
+                    ? "Assetto Corsa needs one setting enabled in-game first"
+                    : "ACC needs one setting enabled in-game first"}{" "}
+                — these buttons do it for you instead of editing a config file by hand.
+              </p>
+              <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                {detectedSims.ac && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleSetupAc}
+                    disabled={settingUpAc}
+                    style={{ flex: 1, padding: "8px", fontSize: 12 }}
+                  >
+                    {settingUpAc ? "Setting up…" : "Set up Assetto Corsa"}
+                  </Button>
+                )}
+                {detectedSims.acc && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleSetupAcc}
+                    disabled={settingUpAcc}
+                    style={{ flex: 1, padding: "8px", fontSize: 12 }}
+                  >
+                    {settingUpAcc ? "Setting up…" : "Set up ACC"}
+                  </Button>
+                )}
+              </div>
+              {acSetup && <SetupResultList label="AC" results={acSetup} />}
+              {accSetup && <SetupResultList label="ACC" results={accSetup} />}
+            </div>
+          </>
+        )}
 
         {/* Behaviour toggles */}
         <div style={{ padding: "14px 20px 8px", fontSize: 11, color: theme.gray, textTransform: "uppercase", letterSpacing: 1 }}>
