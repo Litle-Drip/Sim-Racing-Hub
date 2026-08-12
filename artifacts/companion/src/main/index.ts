@@ -16,6 +16,8 @@ import { UdpListener } from "./udp";
 import { SessionTracker } from "./session";
 import { AcUdpClient } from "./ac-udp";
 import { AcSessionTracker } from "./ac-session";
+import { AccUdpClient } from "./acc-udp";
+import { AccSessionTracker } from "./acc-session";
 import { Uploader, type UploadResult } from "./uploader";
 
 function getLogFilePath(): string {
@@ -61,6 +63,12 @@ const tracker = new SessionTracker();
 // running is the one that ends up producing packets.
 const acUdp = new AcUdpClient();
 const acTracker = new AcSessionTracker();
+// ACC is a different game with its own protocol/port (9000, Broadcasting
+// SDK) — not an extension of base AC's Remote Telemetry. Same reasoning as
+// acUdp: a separate client-connects-out connection, no conflict with the
+// others, runs unconditionally alongside them.
+const accUdp = new AccUdpClient();
+const accTracker = new AccSessionTracker();
 const uploader = new Uploader();
 
 let mainWindow: BrowserWindow | null = null;
@@ -89,18 +97,21 @@ function pushStatus(): void {
 
 function buildStatus() {
   const acConnected = acUdp.isReceiving(20000);
+  const accConnected = accUdp.isReceiving(20000);
   return {
     signedIn: !!store.get("apiKey"),
-    gameConnected: gameConnected || acConnected,
-    telemetryReceiving: telemetryReceiving || acConnected,
+    gameConnected: gameConnected || acConnected || accConnected,
+    telemetryReceiving: telemetryReceiving || acConnected || accConnected,
     lastUpload,
     currentSession: tracker.isActive
       ? { lapCount: tracker.currentLapCount, track: tracker.trackName }
       : acTracker.isActive
         ? { lapCount: acTracker.currentLapCount, track: acTracker.track ?? "" }
-        : null,
+        : accTracker.isActive
+          ? { lapCount: accTracker.currentLapCount, track: accTracker.track ?? "" }
+          : null,
     pendingUploads: uploader.pendingCount,
-    detectedGame: tracker.gameVersion ?? (acConnected ? "Assetto Corsa" : null),
+    detectedGame: tracker.gameVersion ?? (acConnected ? "Assetto Corsa" : accConnected ? "Assetto Corsa Competizione" : null),
     unsupportedFormat,
   };
 }
@@ -161,6 +172,27 @@ function wireAcUdp(): void {
   });
 }
 
+function wireAccUdp(): void {
+  accUdp.on("registered", (result) => {
+    accTracker.handleRegistration(result as Parameters<typeof accTracker.handleRegistration>[0]);
+  });
+  accUdp.on("trackData", (data) => {
+    accTracker.handleTrackData(data as Parameters<typeof accTracker.handleTrackData>[0]);
+  });
+  accUdp.on("carEntry", (entry) => {
+    accTracker.handleCarEntry(entry as Parameters<typeof accTracker.handleCarEntry>[0]);
+  });
+  accUdp.on("realtimeUpdate", (update) => {
+    accTracker.handleRealtimeUpdate(update as Parameters<typeof accTracker.handleRealtimeUpdate>[0]);
+  });
+  accUdp.on("carUpdate", (update) => {
+    accTracker.handleCarUpdate(update as Parameters<typeof accTracker.handleCarUpdate>[0]);
+  });
+  accUdp.on("error", (err) => {
+    console.error("[ACC UDP] error:", err);
+  });
+}
+
 async function handleSessionComplete(session: Parameters<NonNullable<typeof tracker.onSessionComplete>>[0]): Promise<void> {
   console.log(`[Session] Complete: ${session.track} — ${session.laps.length} laps`);
   try {
@@ -172,6 +204,7 @@ async function handleSessionComplete(session: Parameters<NonNullable<typeof trac
 
 tracker.onSessionComplete = handleSessionComplete;
 acTracker.onSessionComplete = handleSessionComplete;
+accTracker.onSessionComplete = handleSessionComplete;
 
 tracker.onLapComplete = (lap) => {
   console.log(`[Lap] #${lap.lap} ${lap.time}`);
@@ -181,11 +214,18 @@ acTracker.onLapComplete = (lap) => {
   console.log(`[AC Lap] #${lap.lap} ${lap.time}`);
   pushStatus();
 };
+accTracker.onLapComplete = (lap) => {
+  console.log(`[ACC Lap] #${lap.lap} ${lap.time}`);
+  pushStatus();
+};
 
 tracker.onStatusChange = () => {
   pushStatus();
 };
 acTracker.onStatusChange = () => {
+  pushStatus();
+};
+accTracker.onStatusChange = () => {
   pushStatus();
 };
 
@@ -205,6 +245,7 @@ uploader.onUploadResult = (result: UploadResult) => {
 };
 
 let acWasConnected = false;
+let accWasConnected = false;
 
 function startGameWatchdog(): void {
   gameCheckInterval = setInterval(() => {
@@ -235,7 +276,16 @@ function startGameWatchdog(): void {
     }
     acWasConnected = acReceiving;
 
-    if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving || acChanged) pushStatus();
+    const accReceiving = accUdp.isReceiving(20000);
+    const accChanged = accReceiving !== accWasConnected;
+    if (accReceiving && !accWasConnected) console.log("[Watchdog] ACC connected");
+    if (!accReceiving && accWasConnected) {
+      console.log("[Watchdog] ACC disconnected — flushing session");
+      void accTracker.forceFlush();
+    }
+    accWasConnected = accReceiving;
+
+    if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving || acChanged || accChanged) pushStatus();
   }, 3000);
 }
 
@@ -339,6 +389,7 @@ ipcMain.handle("open-releases-page", () => shell.openExternal("https://github.co
 ipcMain.handle("force-flush", async () => {
   await tracker.forceFlush();
   await acTracker.forceFlush();
+  await accTracker.forceFlush();
   await uploader.flushPending();
   pushStatus();
 });
@@ -451,6 +502,7 @@ if (!gotSingleInstanceLock) {
     tray = createTray();
     wireUdp();
     wireAcUdp();
+    wireAccUdp();
 
     try {
       await udp.start(store.get("port", 20777));
@@ -464,6 +516,13 @@ if (!gotSingleInstanceLock) {
       console.log("[AC UDP] Client started, handshaking on port 9996");
     } catch (err) {
       console.error("[AC UDP] Failed to start:", err);
+    }
+
+    try {
+      accUdp.start();
+      console.log("[ACC UDP] Client started, registering on port 9000");
+    } catch (err) {
+      console.error("[ACC UDP] Failed to start:", err);
     }
 
     uploader.setCredentials(store.get("apiKey"), store.get("apiBaseUrl"));
@@ -503,12 +562,14 @@ app.on("before-quit", (event) => {
     try {
       await tracker.forceFlush();
       await acTracker.forceFlush();
+      await accTracker.forceFlush();
       await uploader.flushPending();
     } catch (err) {
       console.error("[Quit] Flush before quit failed:", err);
     }
     await udp.stop();
     await acUdp.stop();
+    await accUdp.stop();
     app.quit();
   })();
 });
