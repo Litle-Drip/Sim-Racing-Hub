@@ -21,6 +21,12 @@ function randomFlushId(): string {
 export class AccSessionTracker {
   private trackName: string | null = null;
   private sessionTypeLabel = "Practice";
+  // ACC's Broadcasting SDK has no "this is the player's car" field at all —
+  // REALTIME_UPDATE.focusedCarIndex is the spectator camera's target, which
+  // just happens to default to the player's own car in a normal solo
+  // session. It's not a real identity marker: cycling cameras, replays, or
+  // a multiplayer context can point it elsewhere, and there is no protocol
+  // fix for that — this is a genuine SDK gap, not a bug in this file.
   private focusedCarIndex = -1;
   // ACC has no reliable car-model-name table exposed over this protocol
   // (see acc-udp.ts) — TeamCarName is free text set by the entry, and is
