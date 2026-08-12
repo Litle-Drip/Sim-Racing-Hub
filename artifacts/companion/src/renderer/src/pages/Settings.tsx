@@ -82,6 +82,38 @@ function Toggle({
   );
 }
 
+// Multiple locations are checked at once (see game-config.ts's Documents
+// redirection handling) — one row per location so it's visible when they
+// disagree, e.g. one says "already correct" and another "not found here".
+function SetupResultList({
+  label,
+  results,
+}: {
+  label: string;
+  results: { path: string; ok: boolean; message: string }[];
+}): React.ReactElement {
+  return (
+    <div style={{ marginTop: 4, marginBottom: 8 }}>
+      {results.map((r) => (
+        <div key={r.path} style={{ marginBottom: 4 }}>
+          <p style={{ fontSize: 11, color: r.ok ? theme.teal : theme.red }}>
+            {label}: {r.message}
+          </p>
+          <p style={{ fontSize: 10, color: theme.gray, fontFamily: "monospace", wordBreak: "break-all" }}>
+            {r.path}{" "}
+            <span
+              style={{ color: theme.teal, cursor: "pointer", fontFamily: "inherit" }}
+              onClick={() => window.companion.showInFolder(r.path)}
+            >
+              Show in folder
+            </span>
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Settings({ onBack }: Props): React.ReactElement {
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [showKey, setShowKey] = useState(false);
@@ -91,8 +123,9 @@ export default function Settings({ onBack }: Props): React.ReactElement {
   const [verifyingKey, setVerifyingKey] = useState(false);
   const [keyError, setKeyError] = useState("");
   const [updateState, setUpdateState] = useState<UpdateState>({ phase: "idle" });
-  const [acSetup, setAcSetup] = useState<{ ok: boolean; message: string; path: string } | null>(null);
-  const [accSetup, setAccSetup] = useState<{ ok: boolean; message: string; path: string } | null>(null);
+  type SetupPathResult = { path: string; ok: boolean; message: string };
+  const [acSetup, setAcSetup] = useState<SetupPathResult[] | null>(null);
+  const [accSetup, setAccSetup] = useState<SetupPathResult[] | null>(null);
   const [settingUpAc, setSettingUpAc] = useState(false);
   const [settingUpAcc, setSettingUpAcc] = useState(false);
 
@@ -149,7 +182,7 @@ export default function Settings({ onBack }: Props): React.ReactElement {
     setSettingUpAc(true);
     setAcSetup(null);
     try {
-      setAcSetup(await window.companion.setupAcTelemetry());
+      setAcSetup((await window.companion.setupAcTelemetry()).results);
     } finally {
       setSettingUpAc(false);
     }
@@ -159,7 +192,7 @@ export default function Settings({ onBack }: Props): React.ReactElement {
     setSettingUpAcc(true);
     setAccSetup(null);
     try {
-      setAccSetup(await window.companion.setupAccTelemetry());
+      setAccSetup((await window.companion.setupAccTelemetry()).results);
     } finally {
       setSettingUpAcc(false);
     }
@@ -343,34 +376,8 @@ export default function Settings({ onBack }: Props): React.ReactElement {
               {settingUpAcc ? "Setting up…" : "Set up ACC"}
             </Button>
           </div>
-          {acSetup && (
-            <div style={{ marginTop: 4 }}>
-              <p style={{ fontSize: 11, color: acSetup.ok ? theme.teal : theme.red }}>AC: {acSetup.message}</p>
-              <p style={{ fontSize: 10, color: theme.gray, fontFamily: "monospace", wordBreak: "break-all" }}>
-                {acSetup.path}{" "}
-                <span
-                  style={{ color: theme.teal, cursor: "pointer", fontFamily: "inherit" }}
-                  onClick={() => window.companion.showInFolder(acSetup.path)}
-                >
-                  Show in folder
-                </span>
-              </p>
-            </div>
-          )}
-          {accSetup && (
-            <div style={{ marginTop: 4 }}>
-              <p style={{ fontSize: 11, color: accSetup.ok ? theme.teal : theme.red }}>ACC: {accSetup.message}</p>
-              <p style={{ fontSize: 10, color: theme.gray, fontFamily: "monospace", wordBreak: "break-all" }}>
-                {accSetup.path}{" "}
-                <span
-                  style={{ color: theme.teal, cursor: "pointer", fontFamily: "inherit" }}
-                  onClick={() => window.companion.showInFolder(accSetup.path)}
-                >
-                  Show in folder
-                </span>
-              </p>
-            </div>
-          )}
+          {acSetup && <SetupResultList label="AC" results={acSetup} />}
+          {accSetup && <SetupResultList label="ACC" results={accSetup} />}
         </div>
 
         {/* Behaviour toggles */}

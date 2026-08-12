@@ -30,10 +30,15 @@ export interface CompanionSettings {
   wizardComplete: boolean;
 }
 
-export interface SetupResult {
+export interface SetupPathResult {
+  path: string;
   ok: boolean;
   message: string;
-  path: string;
+}
+
+export interface SetupResult {
+  ok: boolean;
+  results: SetupPathResult[];
 }
 
 export interface CompanionAPI {
