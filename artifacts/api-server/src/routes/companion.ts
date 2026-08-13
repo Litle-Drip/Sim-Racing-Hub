@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, and, gte, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
-import { db, sessionsTable, apiKeysTable } from "@workspace/db";
+import { db, sessionsTable, apiKeysTable, type DbLapRecord } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
 import type { Request, Response, NextFunction } from "express";
@@ -117,8 +117,9 @@ function isFasterLap(a: string, b: string): boolean {
   return lapToSeconds(a) < lapToSeconds(b);
 }
 
-type LapTraceSample = { d: number; speed: number; throttle: number; brake: number; steer: number };
-type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: LapTraceSample[] };
+// Per-lap telemetry lives in the `laps` jsonb column, so the shape is
+// defined once alongside the table rather than restated here.
+type LapRecord = DbLapRecord;
 
 function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string; worstLap: string } {
   const valid = laps.filter(l => l.time && l.time.trim() !== "");
@@ -321,6 +322,24 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     gearBoxDamage: r.gearBoxDamage ?? null,
     engineDamage: r.engineDamage ?? null,
     liveBrakeBias: r.liveBrakeBias ?? null,
+    tyreDamage: r.tyreDamage ?? null,
+    brakesDamage: r.brakesDamage ?? null,
+    tyreBlisters: r.tyreBlisters ?? null,
+    tyreInnerTemps: r.tyreInnerTemps ?? null,
+    engineWear: r.engineWear ?? null,
+    ersHarvestedThisLap: r.ersHarvestedThisLap ?? null,
+    fuelMix: r.fuelMix ?? null,
+    speedTrapKph: r.speedTrapKph ?? null,
+    flashbacks: r.flashbacks ?? null,
+    collisions: r.collisions ?? null,
+    safetyCarPeriods: r.safetyCarPeriods ?? null,
+    redFlags: r.redFlags ?? null,
+    totalWarnings: r.totalWarnings ?? null,
+    cornerCuttingWarnings: r.cornerCuttingWarnings ?? null,
+    bestLapNum: r.bestLapNum ?? null,
+    bestSector1LapNum: r.bestSector1LapNum ?? null,
+    bestSector2LapNum: r.bestSector2LapNum ?? null,
+    bestSector3LapNum: r.bestSector3LapNum ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
@@ -382,7 +401,7 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         frontTyrePressure: number; rearTyrePressure: number;
       };
       tyreStints?: Array<{ startLap: number; endLap: number; compound: string; visualCompound: string }>;
-      lapHistory?: Array<{ lap: number; lapTimeMs: number; sector1Ms: number; sector2Ms: number; sector3Ms: number; valid: boolean }>;
+      lapHistory?: Array<{ lap: number; lapTimeMs: number; sector1Ms: number; sector2Ms: number; sector3Ms: number; valid: boolean; sector1Valid?: boolean; sector2Valid?: boolean; sector3Valid?: boolean }>;
       aiDifficulty?: number;
       topSpeedKph?: number;
       avgThrottlePct?: number;
@@ -405,6 +424,24 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       gearBoxDamage?: number;
       engineDamage?: number;
       liveBrakeBias?: number;
+      tyreDamage?: [number, number, number, number];
+      brakesDamage?: [number, number, number, number];
+      tyreBlisters?: [number, number, number, number];
+      tyreInnerTemps?: [number, number, number, number];
+      engineWear?: { mguh: number; es: number; ce: number; ice: number; mguk: number; tc: number };
+      ersHarvestedThisLap?: number;
+      fuelMix?: number;
+      speedTrapKph?: number;
+      flashbacks?: number;
+      collisions?: number;
+      safetyCarPeriods?: number;
+      redFlags?: number;
+      totalWarnings?: number;
+      cornerCuttingWarnings?: number;
+      bestLapNum?: number;
+      bestSector1LapNum?: number;
+      bestSector2LapNum?: number;
+      bestSector3LapNum?: number;
     };
 
     if (!body.sessionType || !body.track || !body.car) {
@@ -530,6 +567,24 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         gearBoxDamage: body.gearBoxDamage ?? null,
         engineDamage: body.engineDamage ?? null,
         liveBrakeBias: body.liveBrakeBias ?? null,
+        tyreDamage: body.tyreDamage ?? null,
+        brakesDamage: body.brakesDamage ?? null,
+        tyreBlisters: body.tyreBlisters ?? null,
+        tyreInnerTemps: body.tyreInnerTemps ?? null,
+        engineWear: body.engineWear ?? null,
+        ersHarvestedThisLap: body.ersHarvestedThisLap ?? null,
+        fuelMix: body.fuelMix ?? null,
+        speedTrapKph: body.speedTrapKph ?? null,
+        flashbacks: body.flashbacks ?? null,
+        collisions: body.collisions ?? null,
+        safetyCarPeriods: body.safetyCarPeriods ?? null,
+        redFlags: body.redFlags ?? null,
+        totalWarnings: body.totalWarnings ?? null,
+        cornerCuttingWarnings: body.cornerCuttingWarnings ?? null,
+        bestLapNum: body.bestLapNum ?? null,
+        bestSector1LapNum: body.bestSector1LapNum ?? null,
+        bestSector2LapNum: body.bestSector2LapNum ?? null,
+        bestSector3LapNum: body.bestSector3LapNum ?? null,
       });
     } catch (insertErr: unknown) {
       const msg = insertErr instanceof Error ? insertErr.message : String(insertErr);

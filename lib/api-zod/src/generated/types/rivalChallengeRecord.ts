@@ -9,6 +9,7 @@ import type { RivalChallengeParticipant } from './rivalChallengeParticipant';
 import type { RivalChallengeSessionSummary } from './rivalChallengeSessionSummary';
 
 export interface RivalChallengeRecord {
+  /** @maxLength 200 */
   id: string;
   status: string;
   trackId: string;

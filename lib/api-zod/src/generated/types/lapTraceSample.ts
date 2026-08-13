@@ -12,4 +12,7 @@ export interface LapTraceSample {
   throttle: number;
   brake: number;
   steer: number;
+  gear?: number;
+  rpm?: number;
+  drs?: number;
 }

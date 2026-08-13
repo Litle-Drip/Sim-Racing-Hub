@@ -10,6 +10,73 @@ export const apiKeysTable = pgTable("api_keys", {
 export type DbApiKey = typeof apiKeysTable.$inferSelect;
 export type InsertDbApiKey = typeof apiKeysTable.$inferInsert;
 
+// One sample of a lap's distance trace. gear/rpm/drs were added after the
+// first companion release, so they're absent from traces already stored.
+export type DbLapTraceSample = {
+  d: number;
+  speed: number;
+  throttle: number;
+  brake: number;
+  steer: number;
+  gear?: number;
+  rpm?: number;
+  drs?: number;
+};
+
+export type DbLapPenalty = {
+  type: number;
+  infringement: number;
+  seconds: number;
+  placesGained: number;
+};
+
+// A single lap as uploaded by the companion app. Everything past `trace` is
+// per-lap telemetry that only laps tracked live carry — laps recovered from
+// the game's own session-history record have timings and validity only, and
+// sessions uploaded by older companion builds have none of it.
+export type DbLapRecord = {
+  lap: number;
+  time: string;
+  s1: string;
+  s2: string;
+  s3: string;
+  tires: string;
+  penalty: string;
+  trace?: DbLapTraceSample[];
+  lapTimeMs?: number;
+  s1Ms?: number;
+  s2Ms?: number;
+  s3Ms?: number;
+  valid?: boolean;
+  actualCompound?: string;
+  tyreAgeLaps?: number;
+  position?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  maxRpm?: number;
+  fuelUsedKg?: number;
+  fuelAtEndKg?: number;
+  fuelMix?: number;
+  tyreWearEndPct?: [number, number, number, number];
+  tyreSurfaceTempsEnd?: [number, number, number, number];
+  tyreInnerTempsEnd?: [number, number, number, number];
+  brakeTempsEnd?: [number, number, number, number];
+  ersDeployedMJ?: number;
+  ersHarvestedMJ?: number;
+  ersStoreEndMJ?: number;
+  ersDeployMode?: number;
+  warningsThisLap?: number;
+  cornerCuttingWarningsThisLap?: number;
+  totalWarnings?: number;
+  penalties?: DbLapPenalty[];
+  speedTrapKph?: number;
+  pitted?: boolean;
+  pitLaneTimeMs?: number;
+  pitStopTimeMs?: number;
+  flashbacks?: number;
+};
+
 export const sessionsTable = pgTable("sessions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
@@ -37,7 +104,7 @@ export const sessionsTable = pgTable("sessions", {
   isPublic: boolean("is_public").notNull().default(false),
   sharedAt: timestamp("shared_at"),
   publicNote: text("public_note"),
-  laps: jsonb("laps").$type<Array<{ lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: Array<{ d: number; speed: number; throttle: number; brake: number; steer: number }> }>>()
+  laps: jsonb("laps").$type<DbLapRecord[]>()
 ,
   position: text("position").notNull().default(""),
   isPB: boolean("is_pb").notNull().default(false),
@@ -66,7 +133,7 @@ export const sessionsTable = pgTable("sessions", {
 ,
   tyreStints: jsonb("tyre_stints").$type<Array<{ startLap: number; endLap: number; compound: string; visualCompound: string }>>()
 ,
-  lapHistory: jsonb("lap_history").$type<Array<{ lap: number; lapTimeMs: number; sector1Ms: number; sector2Ms: number; sector3Ms: number; valid: boolean }>>()
+  lapHistory: jsonb("lap_history").$type<Array<{ lap: number; lapTimeMs: number; sector1Ms: number; sector2Ms: number; sector3Ms: number; valid: boolean; sector1Valid?: boolean; sector2Valid?: boolean; sector3Valid?: boolean }>>()
 ,
   aiDifficulty: integer("ai_difficulty"),
   topSpeedKph: real("top_speed_kph"),
@@ -91,6 +158,25 @@ export const sessionsTable = pgTable("sessions", {
   gearBoxDamage: integer("gear_box_damage"),
   engineDamage: integer("engine_damage"),
   liveBrakeBias: integer("live_brake_bias"),
+  tyreDamage: jsonb("tyre_damage").$type<[number, number, number, number]>(),
+  brakesDamage: jsonb("brakes_damage").$type<[number, number, number, number]>(),
+  // F1 25/26 only — the F1 24 CarDamage packet has no blister array.
+  tyreBlisters: jsonb("tyre_blisters").$type<[number, number, number, number]>(),
+  tyreInnerTemps: jsonb("tyre_inner_temps").$type<[number, number, number, number]>(),
+  engineWear: jsonb("engine_wear").$type<{ mguh: number; es: number; ce: number; ice: number; mguk: number; tc: number }>(),
+  ersHarvestedThisLap: real("ers_harvested_this_lap"),
+  fuelMix: integer("fuel_mix"),
+  speedTrapKph: real("speed_trap_kph"),
+  flashbacks: integer("flashbacks"),
+  collisions: integer("collisions"),
+  safetyCarPeriods: integer("safety_car_periods"),
+  redFlags: integer("red_flags"),
+  totalWarnings: integer("total_warnings"),
+  cornerCuttingWarnings: integer("corner_cutting_warnings"),
+  bestLapNum: integer("best_lap_num"),
+  bestSector1LapNum: integer("best_sector1_lap_num"),
+  bestSector2LapNum: integer("best_sector2_lap_num"),
+  bestSector3LapNum: integer("best_sector3_lap_num"),
 }, (t) => [
   index("sessions_user_id_idx").on(t.userId),
   index("sessions_user_id_date_idx").on(t.userId, t.date),
