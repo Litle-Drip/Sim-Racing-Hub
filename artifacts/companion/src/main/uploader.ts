@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { app } from "electron";
-import type { SessionSnapshot, LapRecord, CarSetupSnapshot, TyreStint, LapHistoryEntry } from "./session";
+import type { SessionSnapshot, LapRecord, CarSetupSnapshot, TyreStint, LapHistoryEntry, EngineWear } from "./session";
 
 export interface PendingUpload {
   id: string;
@@ -69,6 +69,24 @@ export interface UploadPayload {
   gearBoxDamage?: number;
   engineDamage?: number;
   liveBrakeBias?: number;
+  tyreDamage?: [number, number, number, number];
+  brakesDamage?: [number, number, number, number];
+  tyreBlisters?: [number, number, number, number];
+  tyreInnerTemps?: [number, number, number, number];
+  engineWear?: EngineWear;
+  ersHarvestedThisLap?: number;
+  fuelMix?: number;
+  speedTrapKph?: number;
+  flashbacks?: number;
+  collisions?: number;
+  safetyCarPeriods?: number;
+  redFlags?: number;
+  totalWarnings?: number;
+  cornerCuttingWarnings?: number;
+  bestLapNum?: number;
+  bestSector1LapNum?: number;
+  bestSector2LapNum?: number;
+  bestSector3LapNum?: number;
 }
 
 export interface UploadResult {
@@ -213,6 +231,24 @@ export class Uploader {
       gearBoxDamage: session.gearBoxDamage,
       engineDamage: session.engineDamage,
       liveBrakeBias: session.liveBrakeBias,
+      tyreDamage: session.tyreDamage,
+      brakesDamage: session.brakesDamage,
+      tyreBlisters: session.tyreBlisters,
+      tyreInnerTemps: session.tyreInnerTemps,
+      engineWear: session.engineWear,
+      ersHarvestedThisLap: session.ersHarvestedThisLap,
+      fuelMix: session.fuelMix,
+      speedTrapKph: session.speedTrapKph,
+      flashbacks: session.flashbacks,
+      collisions: session.collisions,
+      safetyCarPeriods: session.safetyCarPeriods,
+      redFlags: session.redFlags,
+      totalWarnings: session.totalWarnings,
+      cornerCuttingWarnings: session.cornerCuttingWarnings,
+      bestLapNum: session.bestLapNum,
+      bestSector1LapNum: session.bestSector1LapNum,
+      bestSector2LapNum: session.bestSector2LapNum,
+      bestSector3LapNum: session.bestSector3LapNum,
     };
   }
 

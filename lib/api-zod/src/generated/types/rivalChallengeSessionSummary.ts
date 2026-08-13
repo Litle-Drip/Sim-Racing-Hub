@@ -7,6 +7,7 @@
  */
 
 export interface RivalChallengeSessionSummary {
+  /** @maxLength 200 */
   id: string;
   date: string;
   bestLap: string;

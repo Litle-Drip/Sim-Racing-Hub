@@ -815,6 +815,12 @@ components:
           type: number
         steer:
           type: number
+        gear:
+          type: integer
+        rpm:
+          type: integer
+        drs:
+          type: integer
       required:
         - d
         - speed
@@ -822,8 +828,33 @@ components:
         - brake
         - steer
 
+    LapPenalty:
+      type: object
+      description: >
+        A penalty the game issued during a lap. Enum values are as sent by the
+        F1 UDP Event packet (PENA) and are decoded at display time.
+      properties:
+        type:
+          type: integer
+        infringement:
+          type: integer
+        seconds:
+          type: integer
+        placesGained:
+          type: integer
+      required:
+        - type
+        - infringement
+        - seconds
+        - placesGained
+
     LapRecord:
       type: object
+      description: >
+        One lap. Fields past `trace` are per-lap telemetry captured live by the
+        companion app; laps recovered from the game's own session-history
+        record carry timings and validity only, and sessions uploaded by older
+        companion builds carry none of them.
       properties:
         lap:
           type: integer
@@ -845,6 +876,80 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/LapTraceSample"
+        lapTimeMs:
+          type: integer
+        s1Ms:
+          type: integer
+        s2Ms:
+          type: integer
+        s3Ms:
+          type: integer
+        valid:
+          type: boolean
+        actualCompound:
+          type: string
+        tyreAgeLaps:
+          type: integer
+        position:
+          type: integer
+        topSpeedKph:
+          type: number
+        avgThrottlePct:
+          type: number
+        avgBrakePct:
+          type: number
+        maxRpm:
+          type: integer
+        fuelUsedKg:
+          type: number
+        fuelAtEndKg:
+          type: number
+        fuelMix:
+          type: integer
+        tyreWearEndPct:
+          type: array
+          items:
+            type: number
+        tyreSurfaceTempsEnd:
+          type: array
+          items:
+            type: number
+        tyreInnerTempsEnd:
+          type: array
+          items:
+            type: number
+        brakeTempsEnd:
+          type: array
+          items:
+            type: number
+        ersDeployedMJ:
+          type: number
+        ersHarvestedMJ:
+          type: number
+        ersStoreEndMJ:
+          type: number
+        ersDeployMode:
+          type: integer
+        warningsThisLap:
+          type: integer
+        cornerCuttingWarningsThisLap:
+          type: integer
+        totalWarnings:
+          type: integer
+        penalties:
+          type: array
+          items:
+            $ref: "#/components/schemas/LapPenalty"
+        speedTrapKph:
+          type: number
+        pitted:
+          type: boolean
+        pitLaneTimeMs:
+          type: integer
+        pitStopTimeMs:
+          type: integer
+        flashbacks:
+          type: integer
       required:
         - lap
         - time
@@ -864,6 +969,30 @@ components:
       required:
         - front
         - rear
+
+    EngineWear:
+      type: object
+      description: Power-unit component wear, percentage per component.
+      properties:
+        mguh:
+          type: number
+        es:
+          type: number
+        ce:
+          type: number
+        ice:
+          type: number
+        mguk:
+          type: number
+        tc:
+          type: number
+      required:
+        - mguh
+        - es
+        - ce
+        - ice
+        - mguk
+        - tc
 
     CarSetupSnapshot:
       type: object
@@ -955,6 +1084,12 @@ components:
         sector3Ms:
           type: integer
         valid:
+          type: boolean
+        sector1Valid:
+          type: boolean
+        sector2Valid:
+          type: boolean
+        sector3Valid:
           type: boolean
       required:
         - lap
@@ -1165,6 +1300,69 @@ components:
           type: integer
           nullable: true
         liveBrakeBias:
+          type: integer
+          nullable: true
+        tyreDamage:
+          type: array
+          nullable: true
+          items:
+            type: number
+        brakesDamage:
+          type: array
+          nullable: true
+          items:
+            type: number
+        tyreBlisters:
+          type: array
+          nullable: true
+          items:
+            type: number
+        tyreInnerTemps:
+          type: array
+          nullable: true
+          items:
+            type: number
+        engineWear:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/EngineWear"
+        ersHarvestedThisLap:
+          type: number
+          nullable: true
+        fuelMix:
+          type: integer
+          nullable: true
+        speedTrapKph:
+          type: number
+          nullable: true
+        flashbacks:
+          type: integer
+          nullable: true
+        collisions:
+          type: integer
+          nullable: true
+        safetyCarPeriods:
+          type: integer
+          nullable: true
+        redFlags:
+          type: integer
+          nullable: true
+        totalWarnings:
+          type: integer
+          nullable: true
+        cornerCuttingWarnings:
+          type: integer
+          nullable: true
+        bestLapNum:
+          type: integer
+          nullable: true
+        bestSector1LapNum:
+          type: integer
+          nullable: true
+        bestSector2LapNum:
+          type: integer
+          nullable: true
+        bestSector3LapNum:
           type: integer
           nullable: true
         createdAt:
@@ -1802,6 +2000,50 @@ components:
         engineDamage:
           type: integer
         liveBrakeBias:
+          type: integer
+        tyreDamage:
+          type: array
+          items:
+            type: number
+        brakesDamage:
+          type: array
+          items:
+            type: number
+        tyreBlisters:
+          type: array
+          items:
+            type: number
+        tyreInnerTemps:
+          type: array
+          items:
+            type: number
+        engineWear:
+          $ref: "#/components/schemas/EngineWear"
+        ersHarvestedThisLap:
+          type: number
+        fuelMix:
+          type: integer
+        speedTrapKph:
+          type: number
+        flashbacks:
+          type: integer
+        collisions:
+          type: integer
+        safetyCarPeriods:
+          type: integer
+        redFlags:
+          type: integer
+        totalWarnings:
+          type: integer
+        cornerCuttingWarnings:
+          type: integer
+        bestLapNum:
+          type: integer
+        bestSector1LapNum:
+          type: integer
+        bestSector2LapNum:
+          type: integer
+        bestSector3LapNum:
           type: integer
       required:
         - sessionType

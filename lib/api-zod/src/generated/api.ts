@@ -20,8 +20,18 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Get all sessions for current user
  */
+export const getSessionsResponseIdMax = 200;
+
+export const getSessionsResponseNotesMax = 5000;
+
+export const getSessionsResponseLapsItemTraceMax = 3500;
+
+export const getSessionsResponseLapsMax = 150;
+
+
+
 export const GetSessionsResponseItem = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(getSessionsResponseIdMax),
   "date": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -37,7 +47,7 @@ export const GetSessionsResponseItem = zod.object({
   "conditions": zod.string(),
   "assists": zod.string(),
   "rating": zod.number(),
-  "notes": zod.string().max(5000),
+  "notes": zod.string().max(getSessionsResponseNotesMax),
   "isPB": zod.boolean(),
   "penalty": zod.string().nullish(),
   "gameVersion": zod.string().nullish(),
@@ -59,9 +69,49 @@ export const GetSessionsResponseItem = zod.object({
   "speed": zod.number(),
   "throttle": zod.number(),
   "brake": zod.number(),
-  "steer": zod.number()
-})).nullish()
-})).nullish(),
+  "steer": zod.number(),
+  "gear": zod.number().optional(),
+  "rpm": zod.number().optional(),
+  "drs": zod.number().optional()
+})).max(getSessionsResponseLapsItemTraceMax).nullish(),
+  "lapTimeMs": zod.number().optional(),
+  "s1Ms": zod.number().optional(),
+  "s2Ms": zod.number().optional(),
+  "s3Ms": zod.number().optional(),
+  "valid": zod.boolean().optional(),
+  "actualCompound": zod.string().optional(),
+  "tyreAgeLaps": zod.number().optional(),
+  "position": zod.number().optional(),
+  "topSpeedKph": zod.number().optional(),
+  "avgThrottlePct": zod.number().optional(),
+  "avgBrakePct": zod.number().optional(),
+  "maxRpm": zod.number().optional(),
+  "fuelUsedKg": zod.number().optional(),
+  "fuelAtEndKg": zod.number().optional(),
+  "fuelMix": zod.number().optional(),
+  "tyreWearEndPct": zod.array(zod.number()).optional(),
+  "tyreSurfaceTempsEnd": zod.array(zod.number()).optional(),
+  "tyreInnerTempsEnd": zod.array(zod.number()).optional(),
+  "brakeTempsEnd": zod.array(zod.number()).optional(),
+  "ersDeployedMJ": zod.number().optional(),
+  "ersHarvestedMJ": zod.number().optional(),
+  "ersStoreEndMJ": zod.number().optional(),
+  "ersDeployMode": zod.number().optional(),
+  "warningsThisLap": zod.number().optional(),
+  "cornerCuttingWarningsThisLap": zod.number().optional(),
+  "totalWarnings": zod.number().optional(),
+  "penalties": zod.array(zod.object({
+  "type": zod.number(),
+  "infringement": zod.number(),
+  "seconds": zod.number(),
+  "placesGained": zod.number()
+}).describe('A penalty the game issued during a lap. Enum values are as sent by the F1 UDP Event packet (PENA) and are decoded at display time.\n')).optional(),
+  "speedTrapKph": zod.number().optional(),
+  "pitted": zod.boolean().optional(),
+  "pitLaneTimeMs": zod.number().optional(),
+  "pitStopTimeMs": zod.number().optional(),
+  "flashbacks": zod.number().optional()
+}).describe('One lap. Fields past `trace` are per-lap telemetry captured live by the companion app; laps recovered from the game\'s own session-history record carry timings and validity only, and sessions uploaded by older companion builds carry none of them.\n')).max(getSessionsResponseLapsMax).nullish(),
   "timeOfDay": zod.string().nullish(),
   "position": zod.string().optional(),
   "trackTemperature": zod.number().nullish(),
@@ -112,7 +162,10 @@ export const GetSessionsResponseItem = zod.object({
   "sector1Ms": zod.number(),
   "sector2Ms": zod.number(),
   "sector3Ms": zod.number(),
-  "valid": zod.boolean()
+  "valid": zod.boolean(),
+  "sector1Valid": zod.boolean().optional(),
+  "sector2Valid": zod.boolean().optional(),
+  "sector3Valid": zod.boolean().optional()
 })).nullish(),
   "aiDifficulty": zod.number().nullish(),
   "topSpeedKph": zod.number().nullish(),
@@ -137,6 +190,31 @@ export const GetSessionsResponseItem = zod.object({
   "gearBoxDamage": zod.number().nullish(),
   "engineDamage": zod.number().nullish(),
   "liveBrakeBias": zod.number().nullish(),
+  "tyreDamage": zod.array(zod.number()).nullish(),
+  "brakesDamage": zod.array(zod.number()).nullish(),
+  "tyreBlisters": zod.array(zod.number()).nullish(),
+  "tyreInnerTemps": zod.array(zod.number()).nullish(),
+  "engineWear": zod.object({
+  "mguh": zod.number(),
+  "es": zod.number(),
+  "ce": zod.number(),
+  "ice": zod.number(),
+  "mguk": zod.number(),
+  "tc": zod.number()
+}).describe('Power-unit component wear, percentage per component.').nullish(),
+  "ersHarvestedThisLap": zod.number().nullish(),
+  "fuelMix": zod.number().nullish(),
+  "speedTrapKph": zod.number().nullish(),
+  "flashbacks": zod.number().nullish(),
+  "collisions": zod.number().nullish(),
+  "safetyCarPeriods": zod.number().nullish(),
+  "redFlags": zod.number().nullish(),
+  "totalWarnings": zod.number().nullish(),
+  "cornerCuttingWarnings": zod.number().nullish(),
+  "bestLapNum": zod.number().nullish(),
+  "bestSector1LapNum": zod.number().nullish(),
+  "bestSector2LapNum": zod.number().nullish(),
+  "bestSector3LapNum": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
@@ -145,8 +223,18 @@ export const GetSessionsResponse = zod.array(GetSessionsResponseItem)
 /**
  * @summary Create a new session
  */
+export const createSessionBodyIdMax = 200;
+
+export const createSessionBodyNotesMax = 5000;
+
+export const createSessionBodyLapsItemTraceMax = 3500;
+
+export const createSessionBodyLapsMax = 150;
+
+
+
 export const CreateSessionBody = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(createSessionBodyIdMax),
   "date": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -162,7 +250,7 @@ export const CreateSessionBody = zod.object({
   "conditions": zod.string(),
   "assists": zod.string(),
   "rating": zod.coerce.number(),
-  "notes": zod.string().max(5000),
+  "notes": zod.string().max(createSessionBodyNotesMax),
   "penalty": zod.string().optional(),
   "timeOfDay": zod.string().optional(),
   "gameVersion": zod.string().optional(),
@@ -181,9 +269,49 @@ export const CreateSessionBody = zod.object({
   "speed": zod.coerce.number(),
   "throttle": zod.coerce.number(),
   "brake": zod.coerce.number(),
-  "steer": zod.coerce.number()
-})).nullish()
-})).optional(),
+  "steer": zod.coerce.number(),
+  "gear": zod.coerce.number().optional(),
+  "rpm": zod.coerce.number().optional(),
+  "drs": zod.coerce.number().optional()
+})).max(createSessionBodyLapsItemTraceMax).nullish(),
+  "lapTimeMs": zod.coerce.number().optional(),
+  "s1Ms": zod.coerce.number().optional(),
+  "s2Ms": zod.coerce.number().optional(),
+  "s3Ms": zod.coerce.number().optional(),
+  "valid": zod.boolean().optional(),
+  "actualCompound": zod.string().optional(),
+  "tyreAgeLaps": zod.coerce.number().optional(),
+  "position": zod.coerce.number().optional(),
+  "topSpeedKph": zod.coerce.number().optional(),
+  "avgThrottlePct": zod.coerce.number().optional(),
+  "avgBrakePct": zod.coerce.number().optional(),
+  "maxRpm": zod.coerce.number().optional(),
+  "fuelUsedKg": zod.coerce.number().optional(),
+  "fuelAtEndKg": zod.coerce.number().optional(),
+  "fuelMix": zod.coerce.number().optional(),
+  "tyreWearEndPct": zod.array(zod.coerce.number()).optional(),
+  "tyreSurfaceTempsEnd": zod.array(zod.coerce.number()).optional(),
+  "tyreInnerTempsEnd": zod.array(zod.coerce.number()).optional(),
+  "brakeTempsEnd": zod.array(zod.coerce.number()).optional(),
+  "ersDeployedMJ": zod.coerce.number().optional(),
+  "ersHarvestedMJ": zod.coerce.number().optional(),
+  "ersStoreEndMJ": zod.coerce.number().optional(),
+  "ersDeployMode": zod.coerce.number().optional(),
+  "warningsThisLap": zod.coerce.number().optional(),
+  "cornerCuttingWarningsThisLap": zod.coerce.number().optional(),
+  "totalWarnings": zod.coerce.number().optional(),
+  "penalties": zod.array(zod.object({
+  "type": zod.coerce.number(),
+  "infringement": zod.coerce.number(),
+  "seconds": zod.coerce.number(),
+  "placesGained": zod.coerce.number()
+}).describe('A penalty the game issued during a lap. Enum values are as sent by the F1 UDP Event packet (PENA) and are decoded at display time.\n')).optional(),
+  "speedTrapKph": zod.coerce.number().optional(),
+  "pitted": zod.boolean().optional(),
+  "pitLaneTimeMs": zod.coerce.number().optional(),
+  "pitStopTimeMs": zod.coerce.number().optional(),
+  "flashbacks": zod.coerce.number().optional()
+}).describe('One lap. Fields past `trace` are per-lap telemetry captured live by the companion app; laps recovered from the game\'s own session-history record carry timings and validity only, and sessions uploaded by older companion builds carry none of them.\n')).max(createSessionBodyLapsMax).optional(),
   "position": zod.string().optional(),
   "aiDifficulty": zod.coerce.number().optional(),
   "topSpeedKph": zod.coerce.number().optional(),
@@ -197,14 +325,25 @@ export const CreateSessionBody = zod.object({
 
 
 /**
+ * GET /sessions omits lap telemetry traces to keep the list view fast and cheap; fetch this endpoint to load the full trace data for a single session (e.g. when opening the lap telemetry chart).
  * @summary Get one session, including full per-lap telemetry traces
  */
 export const GetSessionDetailParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const getSessionDetailResponseIdMax = 200;
+
+export const getSessionDetailResponseNotesMax = 5000;
+
+export const getSessionDetailResponseLapsItemTraceMax = 3500;
+
+export const getSessionDetailResponseLapsMax = 150;
+
+
+
 export const GetSessionDetailResponse = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(getSessionDetailResponseIdMax),
   "date": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -220,7 +359,7 @@ export const GetSessionDetailResponse = zod.object({
   "conditions": zod.string(),
   "assists": zod.string(),
   "rating": zod.number(),
-  "notes": zod.string().max(5000),
+  "notes": zod.string().max(getSessionDetailResponseNotesMax),
   "isPB": zod.boolean(),
   "penalty": zod.string().nullish(),
   "gameVersion": zod.string().nullish(),
@@ -242,9 +381,49 @@ export const GetSessionDetailResponse = zod.object({
   "speed": zod.number(),
   "throttle": zod.number(),
   "brake": zod.number(),
-  "steer": zod.number()
-})).nullish()
-})).nullish(),
+  "steer": zod.number(),
+  "gear": zod.number().optional(),
+  "rpm": zod.number().optional(),
+  "drs": zod.number().optional()
+})).max(getSessionDetailResponseLapsItemTraceMax).nullish(),
+  "lapTimeMs": zod.number().optional(),
+  "s1Ms": zod.number().optional(),
+  "s2Ms": zod.number().optional(),
+  "s3Ms": zod.number().optional(),
+  "valid": zod.boolean().optional(),
+  "actualCompound": zod.string().optional(),
+  "tyreAgeLaps": zod.number().optional(),
+  "position": zod.number().optional(),
+  "topSpeedKph": zod.number().optional(),
+  "avgThrottlePct": zod.number().optional(),
+  "avgBrakePct": zod.number().optional(),
+  "maxRpm": zod.number().optional(),
+  "fuelUsedKg": zod.number().optional(),
+  "fuelAtEndKg": zod.number().optional(),
+  "fuelMix": zod.number().optional(),
+  "tyreWearEndPct": zod.array(zod.number()).optional(),
+  "tyreSurfaceTempsEnd": zod.array(zod.number()).optional(),
+  "tyreInnerTempsEnd": zod.array(zod.number()).optional(),
+  "brakeTempsEnd": zod.array(zod.number()).optional(),
+  "ersDeployedMJ": zod.number().optional(),
+  "ersHarvestedMJ": zod.number().optional(),
+  "ersStoreEndMJ": zod.number().optional(),
+  "ersDeployMode": zod.number().optional(),
+  "warningsThisLap": zod.number().optional(),
+  "cornerCuttingWarningsThisLap": zod.number().optional(),
+  "totalWarnings": zod.number().optional(),
+  "penalties": zod.array(zod.object({
+  "type": zod.number(),
+  "infringement": zod.number(),
+  "seconds": zod.number(),
+  "placesGained": zod.number()
+}).describe('A penalty the game issued during a lap. Enum values are as sent by the F1 UDP Event packet (PENA) and are decoded at display time.\n')).optional(),
+  "speedTrapKph": zod.number().optional(),
+  "pitted": zod.boolean().optional(),
+  "pitLaneTimeMs": zod.number().optional(),
+  "pitStopTimeMs": zod.number().optional(),
+  "flashbacks": zod.number().optional()
+}).describe('One lap. Fields past `trace` are per-lap telemetry captured live by the companion app; laps recovered from the game\'s own session-history record carry timings and validity only, and sessions uploaded by older companion builds carry none of them.\n')).max(getSessionDetailResponseLapsMax).nullish(),
   "timeOfDay": zod.string().nullish(),
   "position": zod.string().optional(),
   "trackTemperature": zod.number().nullish(),
@@ -295,7 +474,10 @@ export const GetSessionDetailResponse = zod.object({
   "sector1Ms": zod.number(),
   "sector2Ms": zod.number(),
   "sector3Ms": zod.number(),
-  "valid": zod.boolean()
+  "valid": zod.boolean(),
+  "sector1Valid": zod.boolean().optional(),
+  "sector2Valid": zod.boolean().optional(),
+  "sector3Valid": zod.boolean().optional()
 })).nullish(),
   "aiDifficulty": zod.number().nullish(),
   "topSpeedKph": zod.number().nullish(),
@@ -320,6 +502,31 @@ export const GetSessionDetailResponse = zod.object({
   "gearBoxDamage": zod.number().nullish(),
   "engineDamage": zod.number().nullish(),
   "liveBrakeBias": zod.number().nullish(),
+  "tyreDamage": zod.array(zod.number()).nullish(),
+  "brakesDamage": zod.array(zod.number()).nullish(),
+  "tyreBlisters": zod.array(zod.number()).nullish(),
+  "tyreInnerTemps": zod.array(zod.number()).nullish(),
+  "engineWear": zod.object({
+  "mguh": zod.number(),
+  "es": zod.number(),
+  "ce": zod.number(),
+  "ice": zod.number(),
+  "mguk": zod.number(),
+  "tc": zod.number()
+}).describe('Power-unit component wear, percentage per component.').nullish(),
+  "ersHarvestedThisLap": zod.number().nullish(),
+  "fuelMix": zod.number().nullish(),
+  "speedTrapKph": zod.number().nullish(),
+  "flashbacks": zod.number().nullish(),
+  "collisions": zod.number().nullish(),
+  "safetyCarPeriods": zod.number().nullish(),
+  "redFlags": zod.number().nullish(),
+  "totalWarnings": zod.number().nullish(),
+  "cornerCuttingWarnings": zod.number().nullish(),
+  "bestLapNum": zod.number().nullish(),
+  "bestSector1LapNum": zod.number().nullish(),
+  "bestSector2LapNum": zod.number().nullish(),
+  "bestSector3LapNum": zod.number().nullish(),
   "createdAt": zod.string()
 })
 
@@ -352,9 +559,17 @@ export const ShareSessionResponse = zod.object({
 /**
  * @summary Get all setups for current user
  */
+export const getSetupsResponseIdMax = 200;
+
+export const getSetupsResponseLabelMax = 100;
+
+export const getSetupsResponseNotesMax = 5000;
+
+
+
 export const GetSetupsResponseItem = zod.object({
-  "id": zod.string().max(200),
-  "label": zod.string().max(100),
+  "id": zod.string().max(getSetupsResponseIdMax),
+  "label": zod.string().max(getSetupsResponseLabelMax),
   "car": zod.string(),
   "trackId": zod.string(),
   "tag": zod.string(),
@@ -371,7 +586,7 @@ export const GetSetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string().max(5000),
+  "notes": zod.string().max(getSetupsResponseNotesMax),
   "isPublic": zod.boolean().optional(),
   "sharedAt": zod.string().nullish(),
   "gameVersion": zod.string().nullish()
@@ -382,9 +597,17 @@ export const GetSetupsResponse = zod.array(GetSetupsResponseItem)
 /**
  * @summary Create a new setup
  */
+export const createSetupBodyIdMax = 200;
+
+export const createSetupBodyLabelMax = 100;
+
+export const createSetupBodyNotesMax = 5000;
+
+
+
 export const CreateSetupBody = zod.object({
-  "id": zod.string().max(200),
-  "label": zod.string().max(100),
+  "id": zod.string().max(createSetupBodyIdMax),
+  "label": zod.string().max(createSetupBodyLabelMax),
   "car": zod.string(),
   "trackId": zod.string(),
   "tag": zod.string().optional(),
@@ -401,7 +624,7 @@ export const CreateSetupBody = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string().max(5000),
+  "notes": zod.string().max(createSetupBodyNotesMax),
   "gameVersion": zod.string().optional()
 })
 
@@ -434,8 +657,12 @@ export const GetCommunitySessionsQueryParams = zod.object({
   "sort": zod.coerce.string().optional()
 })
 
+export const getCommunitySessionsResponseIdMax = 200;
+
+
+
 export const GetCommunitySessionsResponseItem = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(getCommunitySessionsResponseIdMax),
   "date": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -467,9 +694,17 @@ export const GetCommunitySetupsQueryParams = zod.object({
   "gameVersion": zod.coerce.string().optional()
 })
 
+export const getCommunitySetupsResponseIdMax = 200;
+
+export const getCommunitySetupsResponseLabelMax = 100;
+
+export const getCommunitySetupsResponseNotesMax = 5000;
+
+
+
 export const GetCommunitySetupsResponseItem = zod.object({
-  "id": zod.string().max(200),
-  "label": zod.string().max(100),
+  "id": zod.string().max(getCommunitySetupsResponseIdMax),
+  "label": zod.string().max(getCommunitySetupsResponseLabelMax),
   "car": zod.string(),
   "trackId": zod.string(),
   "tag": zod.string(),
@@ -486,7 +721,7 @@ export const GetCommunitySetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string().max(5000),
+  "notes": zod.string().max(getCommunitySetupsResponseNotesMax),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
@@ -504,9 +739,17 @@ export const GetCommunitySetupParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const getCommunitySetupResponseIdMax = 200;
+
+export const getCommunitySetupResponseLabelMax = 100;
+
+export const getCommunitySetupResponseNotesMax = 5000;
+
+
+
 export const GetCommunitySetupResponse = zod.object({
-  "id": zod.string().max(200),
-  "label": zod.string().max(100),
+  "id": zod.string().max(getCommunitySetupResponseIdMax),
+  "label": zod.string().max(getCommunitySetupResponseLabelMax),
   "car": zod.string(),
   "trackId": zod.string(),
   "tag": zod.string(),
@@ -523,7 +766,7 @@ export const GetCommunitySetupResponse = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
-  "notes": zod.string().max(5000),
+  "notes": zod.string().max(getCommunitySetupResponseNotesMax),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
   "avgRating": zod.number().nullish(),
@@ -565,9 +808,17 @@ export const ImportSetupParams = zod.object({
 /**
  * @summary Get all hardware profiles for current user
  */
+export const getHardwareResponseIdMax = 200;
+
+export const getHardwareResponseLabelMax = 100;
+
+export const getHardwareResponseNotesMax = 5000;
+
+
+
 export const GetHardwareResponseItem = zod.object({
-  "id": zod.string().max(200),
-  "label": zod.string().max(100),
+  "id": zod.string().max(getHardwareResponseIdMax),
+  "label": zod.string().max(getHardwareResponseLabelMax),
   "peripheralType": zod.string(),
   "brand": zod.string(),
   "model": zod.string(),
@@ -580,7 +831,7 @@ export const GetHardwareResponseItem = zod.object({
   "friction": zod.string(),
   "linearity": zod.string(),
   "steeringRange": zod.string(),
-  "notes": zod.string().max(5000)
+  "notes": zod.string().max(getHardwareResponseNotesMax)
 })
 export const GetHardwareResponse = zod.array(GetHardwareResponseItem)
 
@@ -588,9 +839,17 @@ export const GetHardwareResponse = zod.array(GetHardwareResponseItem)
 /**
  * @summary Create a new hardware profile
  */
+export const createHardwareBodyIdMax = 200;
+
+export const createHardwareBodyLabelMax = 100;
+
+export const createHardwareBodyNotesMax = 5000;
+
+
+
 export const CreateHardwareBody = zod.object({
-  "id": zod.string().max(200),
-  "label": zod.string().max(100),
+  "id": zod.string().max(createHardwareBodyIdMax),
+  "label": zod.string().max(createHardwareBodyLabelMax),
   "peripheralType": zod.string(),
   "brand": zod.string(),
   "model": zod.string(),
@@ -603,7 +862,7 @@ export const CreateHardwareBody = zod.object({
   "friction": zod.string(),
   "linearity": zod.string(),
   "steeringRange": zod.string(),
-  "notes": zod.string().max(5000)
+  "notes": zod.string().max(createHardwareBodyNotesMax)
 })
 
 
@@ -667,6 +926,16 @@ export const GenerateCompanionApiKeyResponse = zod.object({
 /**
  * @summary Upload a session from the companion app (API key auth)
  */
+export const uploadCompanionSessionBodyLapsItemTraceMax = 3500;
+
+export const uploadCompanionSessionBodyLapsMax = 150;
+
+export const uploadCompanionSessionBodyIdMax = 200;
+
+export const uploadCompanionSessionBodyNotesMax = 5000;
+
+
+
 export const UploadCompanionSessionBody = zod.object({
   "sessionType": zod.string(),
   "track": zod.string(),
@@ -697,13 +966,53 @@ export const UploadCompanionSessionBody = zod.object({
   "speed": zod.coerce.number(),
   "throttle": zod.coerce.number(),
   "brake": zod.coerce.number(),
-  "steer": zod.coerce.number()
-})).nullish()
-})).optional(),
-  "id": zod.string().max(200).optional(),
+  "steer": zod.coerce.number(),
+  "gear": zod.coerce.number().optional(),
+  "rpm": zod.coerce.number().optional(),
+  "drs": zod.coerce.number().optional()
+})).max(uploadCompanionSessionBodyLapsItemTraceMax).nullish(),
+  "lapTimeMs": zod.coerce.number().optional(),
+  "s1Ms": zod.coerce.number().optional(),
+  "s2Ms": zod.coerce.number().optional(),
+  "s3Ms": zod.coerce.number().optional(),
+  "valid": zod.boolean().optional(),
+  "actualCompound": zod.string().optional(),
+  "tyreAgeLaps": zod.coerce.number().optional(),
+  "position": zod.coerce.number().optional(),
+  "topSpeedKph": zod.coerce.number().optional(),
+  "avgThrottlePct": zod.coerce.number().optional(),
+  "avgBrakePct": zod.coerce.number().optional(),
+  "maxRpm": zod.coerce.number().optional(),
+  "fuelUsedKg": zod.coerce.number().optional(),
+  "fuelAtEndKg": zod.coerce.number().optional(),
+  "fuelMix": zod.coerce.number().optional(),
+  "tyreWearEndPct": zod.array(zod.coerce.number()).optional(),
+  "tyreSurfaceTempsEnd": zod.array(zod.coerce.number()).optional(),
+  "tyreInnerTempsEnd": zod.array(zod.coerce.number()).optional(),
+  "brakeTempsEnd": zod.array(zod.coerce.number()).optional(),
+  "ersDeployedMJ": zod.coerce.number().optional(),
+  "ersHarvestedMJ": zod.coerce.number().optional(),
+  "ersStoreEndMJ": zod.coerce.number().optional(),
+  "ersDeployMode": zod.coerce.number().optional(),
+  "warningsThisLap": zod.coerce.number().optional(),
+  "cornerCuttingWarningsThisLap": zod.coerce.number().optional(),
+  "totalWarnings": zod.coerce.number().optional(),
+  "penalties": zod.array(zod.object({
+  "type": zod.coerce.number(),
+  "infringement": zod.coerce.number(),
+  "seconds": zod.coerce.number(),
+  "placesGained": zod.coerce.number()
+}).describe('A penalty the game issued during a lap. Enum values are as sent by the F1 UDP Event packet (PENA) and are decoded at display time.\n')).optional(),
+  "speedTrapKph": zod.coerce.number().optional(),
+  "pitted": zod.boolean().optional(),
+  "pitLaneTimeMs": zod.coerce.number().optional(),
+  "pitStopTimeMs": zod.coerce.number().optional(),
+  "flashbacks": zod.coerce.number().optional()
+}).describe('One lap. Fields past `trace` are per-lap telemetry captured live by the companion app; laps recovered from the game\'s own session-history record carry timings and validity only, and sessions uploaded by older companion builds carry none of them.\n')).max(uploadCompanionSessionBodyLapsMax).optional(),
+  "id": zod.string().max(uploadCompanionSessionBodyIdMax).optional(),
   "date": zod.string().optional(),
   "position": zod.string().optional(),
-  "notes": zod.string().max(5000).optional(),
+  "notes": zod.string().max(uploadCompanionSessionBodyNotesMax).optional(),
   "rating": zod.coerce.number().optional(),
   "penalty": zod.string().optional(),
   "trackTemperature": zod.coerce.number().optional(),
@@ -753,7 +1062,10 @@ export const UploadCompanionSessionBody = zod.object({
   "sector1Ms": zod.coerce.number(),
   "sector2Ms": zod.coerce.number(),
   "sector3Ms": zod.coerce.number(),
-  "valid": zod.boolean()
+  "valid": zod.boolean(),
+  "sector1Valid": zod.boolean().optional(),
+  "sector2Valid": zod.boolean().optional(),
+  "sector3Valid": zod.boolean().optional()
 })).optional(),
   "aiDifficulty": zod.coerce.number().optional(),
   "topSpeedKph": zod.coerce.number().optional(),
@@ -777,15 +1089,48 @@ export const UploadCompanionSessionBody = zod.object({
   "sidepodDamage": zod.coerce.number().optional(),
   "gearBoxDamage": zod.coerce.number().optional(),
   "engineDamage": zod.coerce.number().optional(),
-  "liveBrakeBias": zod.coerce.number().optional()
+  "liveBrakeBias": zod.coerce.number().optional(),
+  "tyreDamage": zod.array(zod.coerce.number()).optional(),
+  "brakesDamage": zod.array(zod.coerce.number()).optional(),
+  "tyreBlisters": zod.array(zod.coerce.number()).optional(),
+  "tyreInnerTemps": zod.array(zod.coerce.number()).optional(),
+  "engineWear": zod.object({
+  "mguh": zod.coerce.number(),
+  "es": zod.coerce.number(),
+  "ce": zod.coerce.number(),
+  "ice": zod.coerce.number(),
+  "mguk": zod.coerce.number(),
+  "tc": zod.coerce.number()
+}).optional().describe('Power-unit component wear, percentage per component.'),
+  "ersHarvestedThisLap": zod.coerce.number().optional(),
+  "fuelMix": zod.coerce.number().optional(),
+  "speedTrapKph": zod.coerce.number().optional(),
+  "flashbacks": zod.coerce.number().optional(),
+  "collisions": zod.coerce.number().optional(),
+  "safetyCarPeriods": zod.coerce.number().optional(),
+  "redFlags": zod.coerce.number().optional(),
+  "totalWarnings": zod.coerce.number().optional(),
+  "cornerCuttingWarnings": zod.coerce.number().optional(),
+  "bestLapNum": zod.coerce.number().optional(),
+  "bestSector1LapNum": zod.coerce.number().optional(),
+  "bestSector2LapNum": zod.coerce.number().optional(),
+  "bestSector3LapNum": zod.coerce.number().optional()
 })
 
 
 /**
  * @summary Get all rival challenges the current user sent or received
  */
+export const getRivalChallengesResponseIdMax = 200;
+
+export const getRivalChallengesResponseCreatorSessionIdMax = 200;
+
+export const getRivalChallengesResponseOpponentSessionOneIdMax = 200;
+
+
+
 export const GetRivalChallengesResponseItem = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(getRivalChallengesResponseIdMax),
   "status": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -804,7 +1149,7 @@ export const GetRivalChallengesResponseItem = zod.object({
   "isMe": zod.boolean()
 }),
   "creatorSession": zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(getRivalChallengesResponseCreatorSessionIdMax),
   "date": zod.string(),
   "bestLap": zod.string(),
   "avgLap": zod.string(),
@@ -814,7 +1159,7 @@ export const GetRivalChallengesResponseItem = zod.object({
   "raceTimeSeconds": zod.number().nullish()
 }),
   "opponentSession": zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(getRivalChallengesResponseOpponentSessionOneIdMax),
   "date": zod.string(),
   "bestLap": zod.string(),
   "avgLap": zod.string(),
@@ -872,8 +1217,16 @@ export const SubmitRivalChallengeAttemptBody = zod.object({
   "sessionId": zod.string()
 })
 
+export const submitRivalChallengeAttemptResponseIdMax = 200;
+
+export const submitRivalChallengeAttemptResponseCreatorSessionIdMax = 200;
+
+export const submitRivalChallengeAttemptResponseOpponentSessionOneIdMax = 200;
+
+
+
 export const SubmitRivalChallengeAttemptResponse = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(submitRivalChallengeAttemptResponseIdMax),
   "status": zod.string(),
   "trackId": zod.string(),
   "car": zod.string(),
@@ -892,7 +1245,7 @@ export const SubmitRivalChallengeAttemptResponse = zod.object({
   "isMe": zod.boolean()
 }),
   "creatorSession": zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(submitRivalChallengeAttemptResponseCreatorSessionIdMax),
   "date": zod.string(),
   "bestLap": zod.string(),
   "avgLap": zod.string(),
@@ -902,7 +1255,7 @@ export const SubmitRivalChallengeAttemptResponse = zod.object({
   "raceTimeSeconds": zod.number().nullish()
 }),
   "opponentSession": zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(submitRivalChallengeAttemptResponseOpponentSessionOneIdMax),
   "date": zod.string(),
   "bestLap": zod.string(),
   "avgLap": zod.string(),
@@ -961,18 +1314,26 @@ export const GetTrackNotesParams = zod.object({
   "trackId": zod.coerce.string()
 })
 
+export const getTrackNotesResponseIdMax = 200;
+
+export const getTrackNotesResponseCornersItemIdMax = 200;
+
+export const getTrackNotesResponseCornersMax = 60;
+
+
+
 export const GetTrackNotesResponse = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(getTrackNotesResponseIdMax),
   "trackId": zod.string(),
   "corners": zod.array(zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(getTrackNotesResponseCornersItemIdMax),
   "number": zod.number(),
   "name": zod.string(),
   "gear": zod.string(),
   "brakingPoint": zod.string(),
   "lineNotes": zod.string(),
   "myNotes": zod.string()
-}))
+})).max(getTrackNotesResponseCornersMax)
 })
 
 
@@ -983,31 +1344,47 @@ export const UpsertTrackNotesParams = zod.object({
   "trackId": zod.coerce.string()
 })
 
+export const upsertTrackNotesBodyIdMax = 200;
+
+export const upsertTrackNotesBodyCornersItemIdMax = 200;
+
+export const upsertTrackNotesBodyCornersMax = 60;
+
+
+
 export const UpsertTrackNotesBody = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(upsertTrackNotesBodyIdMax),
   "corners": zod.array(zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(upsertTrackNotesBodyCornersItemIdMax),
   "number": zod.coerce.number(),
   "name": zod.string(),
   "gear": zod.string(),
   "brakingPoint": zod.string(),
   "lineNotes": zod.string(),
   "myNotes": zod.string()
-}))
+})).max(upsertTrackNotesBodyCornersMax)
 })
 
+export const upsertTrackNotesResponseIdMax = 200;
+
+export const upsertTrackNotesResponseCornersItemIdMax = 200;
+
+export const upsertTrackNotesResponseCornersMax = 60;
+
+
+
 export const UpsertTrackNotesResponse = zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(upsertTrackNotesResponseIdMax),
   "trackId": zod.string(),
   "corners": zod.array(zod.object({
-  "id": zod.string().max(200),
+  "id": zod.string().max(upsertTrackNotesResponseCornersItemIdMax),
   "number": zod.number(),
   "name": zod.string(),
   "gear": zod.string(),
   "brakingPoint": zod.string(),
   "lineNotes": zod.string(),
   "myNotes": zod.string()
-}))
+})).max(upsertTrackNotesResponseCornersMax)
 })
 
 

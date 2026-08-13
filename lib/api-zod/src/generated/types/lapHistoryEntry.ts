@@ -13,4 +13,7 @@ export interface LapHistoryEntry {
   sector2Ms: number;
   sector3Ms: number;
   valid: boolean;
+  sector1Valid?: boolean;
+  sector2Valid?: boolean;
+  sector3Valid?: boolean;
 }

@@ -7,6 +7,7 @@
  */
 import type { CarSetupSnapshot } from './carSetupSnapshot';
 import type { CompanionSessionSectors } from './companionSessionSectors';
+import type { EngineWear } from './engineWear';
 import type { LapHistoryEntry } from './lapHistoryEntry';
 import type { LapRecord } from './lapRecord';
 import type { TyreStintEntry } from './tyreStintEntry';
@@ -24,10 +25,13 @@ export interface CompanionSessionRequest {
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  /** @maxItems 150 */
   laps?: LapRecord[];
+  /** @maxLength 200 */
   id?: string;
   date?: string;
   position?: string;
+  /** @maxLength 5000 */
   notes?: string;
   rating?: number;
   penalty?: string;
@@ -72,4 +76,22 @@ export interface CompanionSessionRequest {
   gearBoxDamage?: number;
   engineDamage?: number;
   liveBrakeBias?: number;
+  tyreDamage?: number[];
+  brakesDamage?: number[];
+  tyreBlisters?: number[];
+  tyreInnerTemps?: number[];
+  engineWear?: EngineWear;
+  ersHarvestedThisLap?: number;
+  fuelMix?: number;
+  speedTrapKph?: number;
+  flashbacks?: number;
+  collisions?: number;
+  safetyCarPeriods?: number;
+  redFlags?: number;
+  totalWarnings?: number;
+  cornerCuttingWarnings?: number;
+  bestLapNum?: number;
+  bestSector1LapNum?: number;
+  bestSector2LapNum?: number;
+  bestSector3LapNum?: number;
 }

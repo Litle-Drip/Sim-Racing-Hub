@@ -14,6 +14,7 @@ export interface ErrorResponse {
 }
 
 export interface CornerNote {
+  /** @maxLength 200 */
   id: string;
   number: number;
   name: string;
@@ -29,8 +30,26 @@ export interface LapTraceSample {
   throttle: number;
   brake: number;
   steer: number;
+  gear?: number;
+  rpm?: number;
+  drs?: number;
 }
 
+/**
+ * A penalty the game issued during a lap. Enum values are as sent by the F1 UDP Event packet (PENA) and are decoded at display time.
+
+ */
+export interface LapPenalty {
+  type: number;
+  infringement: number;
+  seconds: number;
+  placesGained: number;
+}
+
+/**
+ * One lap. Fields past `trace` are per-lap telemetry captured live by the companion app; laps recovered from the game's own session-history record carry timings and validity only, and sessions uploaded by older companion builds carry none of them.
+
+ */
 export interface LapRecord {
   lap: number;
   time: string;
@@ -39,12 +58,57 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  /** @maxItems 3500 */
   trace?: LapTraceSample[] | null;
+  lapTimeMs?: number;
+  s1Ms?: number;
+  s2Ms?: number;
+  s3Ms?: number;
+  valid?: boolean;
+  actualCompound?: string;
+  tyreAgeLaps?: number;
+  position?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  maxRpm?: number;
+  fuelUsedKg?: number;
+  fuelAtEndKg?: number;
+  fuelMix?: number;
+  tyreWearEndPct?: number[];
+  tyreSurfaceTempsEnd?: number[];
+  tyreInnerTempsEnd?: number[];
+  brakeTempsEnd?: number[];
+  ersDeployedMJ?: number;
+  ersHarvestedMJ?: number;
+  ersStoreEndMJ?: number;
+  ersDeployMode?: number;
+  warningsThisLap?: number;
+  cornerCuttingWarningsThisLap?: number;
+  totalWarnings?: number;
+  penalties?: LapPenalty[];
+  speedTrapKph?: number;
+  pitted?: boolean;
+  pitLaneTimeMs?: number;
+  pitStopTimeMs?: number;
+  flashbacks?: number;
 }
 
 export interface WingDamage {
   front: number;
   rear: number;
+}
+
+/**
+ * Power-unit component wear, percentage per component.
+ */
+export interface EngineWear {
+  mguh: number;
+  es: number;
+  ce: number;
+  ice: number;
+  mguk: number;
+  tc: number;
 }
 
 export interface CarSetupSnapshot {
@@ -82,9 +146,13 @@ export interface LapHistoryEntry {
   sector2Ms: number;
   sector3Ms: number;
   valid: boolean;
+  sector1Valid?: boolean;
+  sector2Valid?: boolean;
+  sector3Valid?: boolean;
 }
 
 export interface SessionRecord {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
@@ -101,6 +169,7 @@ export interface SessionRecord {
   conditions: string;
   assists: string;
   rating: number;
+  /** @maxLength 5000 */
   notes: string;
   isPB: boolean;
   penalty?: string | null;
@@ -110,6 +179,7 @@ export interface SessionRecord {
   isPublic: boolean;
   sharedAt?: string | null;
   publicNote?: string | null;
+  /** @maxItems 150 */
   laps?: LapRecord[] | null;
   timeOfDay?: string | null;
   position?: string;
@@ -152,10 +222,29 @@ export interface SessionRecord {
   gearBoxDamage?: number | null;
   engineDamage?: number | null;
   liveBrakeBias?: number | null;
+  tyreDamage?: number[] | null;
+  brakesDamage?: number[] | null;
+  tyreBlisters?: number[] | null;
+  tyreInnerTemps?: number[] | null;
+  engineWear?: EngineWear | null;
+  ersHarvestedThisLap?: number | null;
+  fuelMix?: number | null;
+  speedTrapKph?: number | null;
+  flashbacks?: number | null;
+  collisions?: number | null;
+  safetyCarPeriods?: number | null;
+  redFlags?: number | null;
+  totalWarnings?: number | null;
+  cornerCuttingWarnings?: number | null;
+  bestLapNum?: number | null;
+  bestSector1LapNum?: number | null;
+  bestSector2LapNum?: number | null;
+  bestSector3LapNum?: number | null;
   createdAt: string;
 }
 
 export interface CreateSessionRequest {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
@@ -172,12 +261,14 @@ export interface CreateSessionRequest {
   conditions: string;
   assists: string;
   rating: number;
+  /** @maxLength 5000 */
   notes: string;
   penalty?: string;
   timeOfDay?: string;
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  /** @maxItems 150 */
   laps?: LapRecord[];
   position?: string;
   aiDifficulty?: number;
@@ -200,6 +291,7 @@ export interface ShareSessionResponse {
 }
 
 export interface CommunitySessionRecord {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
@@ -221,7 +313,9 @@ export interface CommunitySessionRecord {
 }
 
 export interface SetupRecord {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   car: string;
   trackId: string;
@@ -239,6 +333,7 @@ export interface SetupRecord {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  /** @maxLength 5000 */
   notes: string;
   isPublic?: boolean;
   sharedAt?: string | null;
@@ -246,7 +341,9 @@ export interface SetupRecord {
 }
 
 export interface CommunitySetupRecord {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   car: string;
   trackId: string;
@@ -264,6 +361,7 @@ export interface CommunitySetupRecord {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  /** @maxLength 5000 */
   notes: string;
   authorName: string;
   isOwn: boolean;
@@ -292,7 +390,9 @@ export interface RateSetupResponse {
 }
 
 export interface CreateSetupRequest {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   car: string;
   trackId: string;
@@ -310,6 +410,7 @@ export interface CreateSetupRequest {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  /** @maxLength 5000 */
   notes: string;
   gameVersion?: string;
 }
@@ -355,10 +456,13 @@ export interface CompanionSessionRequest {
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  /** @maxItems 150 */
   laps?: LapRecord[];
+  /** @maxLength 200 */
   id?: string;
   date?: string;
   position?: string;
+  /** @maxLength 5000 */
   notes?: string;
   rating?: number;
   penalty?: string;
@@ -403,21 +507,45 @@ export interface CompanionSessionRequest {
   gearBoxDamage?: number;
   engineDamage?: number;
   liveBrakeBias?: number;
+  tyreDamage?: number[];
+  brakesDamage?: number[];
+  tyreBlisters?: number[];
+  tyreInnerTemps?: number[];
+  engineWear?: EngineWear;
+  ersHarvestedThisLap?: number;
+  fuelMix?: number;
+  speedTrapKph?: number;
+  flashbacks?: number;
+  collisions?: number;
+  safetyCarPeriods?: number;
+  redFlags?: number;
+  totalWarnings?: number;
+  cornerCuttingWarnings?: number;
+  bestLapNum?: number;
+  bestSector1LapNum?: number;
+  bestSector2LapNum?: number;
+  bestSector3LapNum?: number;
 }
 
 export interface TrackNotesRecord {
+  /** @maxLength 200 */
   id: string;
   trackId: string;
+  /** @maxItems 60 */
   corners: CornerNote[];
 }
 
 export interface UpsertTrackNotesRequest {
+  /** @maxLength 200 */
   id: string;
+  /** @maxItems 60 */
   corners: CornerNote[];
 }
 
 export interface HardwareRecord {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   peripheralType: string;
   brand: string;
@@ -431,6 +559,7 @@ export interface HardwareRecord {
   friction: string;
   linearity: string;
   steeringRange: string;
+  /** @maxLength 5000 */
   notes: string;
 }
 
@@ -441,6 +570,7 @@ export interface RivalChallengeParticipant {
 }
 
 export interface RivalChallengeSessionSummary {
+  /** @maxLength 200 */
   id: string;
   date: string;
   bestLap: string;
@@ -452,6 +582,7 @@ export interface RivalChallengeSessionSummary {
 }
 
 export interface RivalChallengeRecord {
+  /** @maxLength 200 */
   id: string;
   status: string;
   trackId: string;
@@ -496,7 +627,9 @@ export interface RivalChallengeUserLookup {
 }
 
 export interface CreateHardwareRequest {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   peripheralType: string;
   brand: string;
@@ -510,6 +643,7 @@ export interface CreateHardwareRequest {
   friction: string;
   linearity: string;
   steeringRange: string;
+  /** @maxLength 5000 */
   notes: string;
 }
 

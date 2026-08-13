@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, inArray, sql, getTableColumns } from "drizzle-orm";
-import { db, sessionsTable, type DbSession } from "@workspace/db";
+import { db, sessionsTable, type DbSession, type DbLapRecord } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
 import {
@@ -11,8 +11,9 @@ import {
 
 const router = Router();
 
-type LapTraceSample = { d: number; speed: number; throttle: number; brake: number; steer: number };
-type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: LapTraceSample[] };
+// Per-lap telemetry lives in the `laps` jsonb column, so the shape is
+// defined once alongside the table rather than restated here.
+type LapRecord = DbLapRecord;
 
 // A well-formed lap trace has at most a few thousand points (F1 25 sends
 // telemetry at 60Hz, downsampled client-side). A companion-app bug can
@@ -205,6 +206,24 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     gearBoxDamage: r.gearBoxDamage ?? null,
     engineDamage: r.engineDamage ?? null,
     liveBrakeBias: r.liveBrakeBias ?? null,
+    tyreDamage: r.tyreDamage ?? null,
+    brakesDamage: r.brakesDamage ?? null,
+    tyreBlisters: r.tyreBlisters ?? null,
+    tyreInnerTemps: r.tyreInnerTemps ?? null,
+    engineWear: r.engineWear ?? null,
+    ersHarvestedThisLap: r.ersHarvestedThisLap ?? null,
+    fuelMix: r.fuelMix ?? null,
+    speedTrapKph: r.speedTrapKph ?? null,
+    flashbacks: r.flashbacks ?? null,
+    collisions: r.collisions ?? null,
+    safetyCarPeriods: r.safetyCarPeriods ?? null,
+    redFlags: r.redFlags ?? null,
+    totalWarnings: r.totalWarnings ?? null,
+    cornerCuttingWarnings: r.cornerCuttingWarnings ?? null,
+    bestLapNum: r.bestLapNum ?? null,
+    bestSector1LapNum: r.bestSector1LapNum ?? null,
+    bestSector2LapNum: r.bestSector2LapNum ?? null,
+    bestSector3LapNum: r.bestSector3LapNum ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }

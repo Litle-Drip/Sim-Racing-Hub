@@ -5,8 +5,13 @@
  * Sim Racing HQ API — F1 sim companion
  * OpenAPI spec version: 0.2.0
  */
+import type { LapPenalty } from './lapPenalty';
 import type { LapTraceSample } from './lapTraceSample';
 
+/**
+ * One lap. Fields past `trace` are per-lap telemetry captured live by the companion app; laps recovered from the game's own session-history record carry timings and validity only, and sessions uploaded by older companion builds carry none of them.
+
+ */
 export interface LapRecord {
   lap: number;
   time: string;
@@ -15,5 +20,38 @@ export interface LapRecord {
   s3: string;
   tires: string;
   penalty: string;
+  /** @maxItems 3500 */
   trace?: LapTraceSample[] | null;
+  lapTimeMs?: number;
+  s1Ms?: number;
+  s2Ms?: number;
+  s3Ms?: number;
+  valid?: boolean;
+  actualCompound?: string;
+  tyreAgeLaps?: number;
+  position?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  maxRpm?: number;
+  fuelUsedKg?: number;
+  fuelAtEndKg?: number;
+  fuelMix?: number;
+  tyreWearEndPct?: number[];
+  tyreSurfaceTempsEnd?: number[];
+  tyreInnerTempsEnd?: number[];
+  brakeTempsEnd?: number[];
+  ersDeployedMJ?: number;
+  ersHarvestedMJ?: number;
+  ersStoreEndMJ?: number;
+  ersDeployMode?: number;
+  warningsThisLap?: number;
+  cornerCuttingWarningsThisLap?: number;
+  totalWarnings?: number;
+  penalties?: LapPenalty[];
+  speedTrapKph?: number;
+  pitted?: boolean;
+  pitLaneTimeMs?: number;
+  pitStopTimeMs?: number;
+  flashbacks?: number;
 }
