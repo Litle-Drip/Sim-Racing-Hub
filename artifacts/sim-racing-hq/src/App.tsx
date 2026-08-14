@@ -61,6 +61,15 @@ function stripBase(path: string): string {
     : path;
 }
 
+// Applied to every Clerk surface — sign-in, sign-up, and the Manage Account
+// modal. Keep this to design tokens plus overrides that are safe everywhere.
+// Card-shaped element overrides belong in authCardAppearance below: when they
+// lived here they also hit <UserProfile/>, which is why the Manage Account
+// modal rendered a 22px "Profile details" over 13px field labels.
+//
+// Rajdhani is a condensed face, so Clerk's 13px default reads a size smaller
+// than it measures. 15px is the root every other Clerk size scales from and
+// lines the modal up with the app's own body text.
 const clerkAppearance = {
   baseTheme: dark,
   cssLayerName: 'clerk',
@@ -79,8 +88,39 @@ const clerkAppearance = {
     colorInputForeground: '#F0F0F0',
     colorNeutral: '#3A3A3A',
     fontFamily: "'Rajdhani', sans-serif",
+    fontSize: '15px',
     borderRadius: '4px',
   },
+  elements: {
+    formFieldLabel: { color: '#C8C8C8', fontSize: '14px' },
+    formFieldSuccessText: { color: '#39B54A' },
+    alertText: { color: '#F0F0F0' },
+    alert: '!border-[#2A2A2A]',
+    dividerLine: { backgroundColor: '#2A2A2A' },
+    dividerText: { color: '#AAAAAA' },
+    // Manage Account modal — a readable, contained panel instead of a
+    // full-bleed sheet, with the row labels and values on the same scale.
+    modalContent: 'w-full max-w-[880px]',
+    cardBox: 'overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.55)]',
+    navbar: { borderRight: '1px solid #2A2A2A' },
+    navbarButton: { fontSize: '15px', fontWeight: '600', minHeight: '38px' },
+    navbarTitle: { fontSize: '20px', fontWeight: '700', letterSpacing: '0.02em' },
+    navbarSubtitle: { fontSize: '13px', color: '#BBBBBB' },
+    profileSectionTitleText: { fontSize: '15px', fontWeight: '600', color: '#E8E8E8' },
+    profileSectionPrimaryButton: { fontSize: '14px', fontWeight: '600' },
+    profileSectionContent: { fontSize: '15px' },
+    accordionTriggerButton: { fontSize: '14px' },
+    breadcrumbsItem: { fontSize: '13px' },
+    userPreviewMainIdentifier: { fontSize: '15px' },
+    userPreviewSecondaryIdentifier: { fontSize: '13px', color: '#BBBBBB' },
+    badge: { fontSize: '12px' },
+    menuButton: { fontSize: '14px' },
+  },
+};
+
+// Sign-in / sign-up card only — the squared-off, red-topped panel. Scoped to
+// those two components so it can't reshape the account modal.
+const authCardAppearance = {
   elements: {
     rootBox: 'w-full flex justify-center',
     cardBox: 'rounded-none w-[440px] max-w-full overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.55)]',
@@ -90,13 +130,9 @@ const clerkAppearance = {
     headerSubtitle: { color: '#BBBBBB', fontSize: '14px' },
     socialButtonsBlockButtonText: { color: '#E8E8E8', fontWeight: '600' },
     socialButtonsBlockButtonArrow: { color: '#E8E8E8' },
-    formFieldLabel: { color: '#C8C8C8' },
     footerActionLink: { color: '#E8002D' },
     footerActionText: { color: '#BBBBBB' },
-    dividerText: { color: '#AAAAAA' },
     identityPreviewEditButton: { color: '#E8002D' },
-    formFieldSuccessText: { color: '#39B54A' },
-    alertText: { color: '#F0F0F0' },
     logoBox: 'mb-4',
     logoImage: 'h-12',
     socialButtons: 'grid grid-cols-2 gap-2',
@@ -105,11 +141,7 @@ const clerkAppearance = {
     formButtonPrimary: '!bg-[#E8002D] hover:!bg-[#c0001e] !min-h-[48px]',
     formFieldInput: '!bg-[#1A1A1A] !border-[#2A2A2A] !text-[#F0F0F0] !min-h-[48px] !text-base',
     footerAction: { backgroundColor: '#111111' },
-    dividerLine: { backgroundColor: '#2A2A2A' },
-    alert: '!border-[#2A2A2A]',
     otpCodeFieldInput: '!bg-[#1A1A1A] !border-[#2A2A2A]',
-    formFieldRow: '',
-    main: '',
   },
 };
 
@@ -148,6 +180,7 @@ function SignInPage() {
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
+        appearance={authCardAppearance}
       />
     </AuthPageShell>
   );
@@ -160,6 +193,7 @@ function SignUpPage() {
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
+        appearance={authCardAppearance}
       />
     </AuthPageShell>
   );
