@@ -10,6 +10,7 @@ import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { UnitsProvider } from './lib/units';
 import { ThemeProvider } from './lib/theme';
+import { SHOW_ACHIEVEMENTS } from './lib/features';
 import Nav from './components/Nav';
 import { OPEN_LOG_KEY } from './lib/storage';
 import Footer from './components/Footer';
@@ -250,15 +251,29 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
         { title: 'Community Leaderboards', desc: 'Compare lap times against the community, per circuit.' },
         { title: 'Shared Setups', desc: 'Browse and import car setups shared by other drivers.' },
         { title: 'Rivals & Challenges', desc: 'Challenge players head-to-head to beat a lap time.' },
-        { title: 'Driver Profiles', desc: 'Public pages showing your PBs, achievements, and recent sessions.' },
-        { title: 'Achievements', desc: 'Badges and milestones for consistency and progress.' },
+        // The landing page only advertises what a new driver will actually
+        // find inside, so the achievement entries follow the flag.
+        {
+          title: 'Driver Profiles',
+          desc: SHOW_ACHIEVEMENTS
+            ? 'Public pages showing your PBs, achievements, and recent sessions.'
+            : 'Public pages showing your PBs and recent sessions.',
+        },
+        ...(SHOW_ACHIEVEMENTS
+          ? [{ title: 'Achievements', desc: 'Badges and milestones for consistency and progress.' }]
+          : []),
       ],
     },
     {
       Icon: LayoutDashboard,
       title: 'Account',
       items: [
-        { title: 'Account Dashboard', desc: 'Setups, PBs, and achievement progress, synced across devices.' },
+        {
+          title: 'Account Dashboard',
+          desc: SHOW_ACHIEVEMENTS
+            ? 'Setups, PBs, and achievement progress, synced across devices.'
+            : 'Setups and PBs, synced across devices.',
+        },
       ],
     },
   ];

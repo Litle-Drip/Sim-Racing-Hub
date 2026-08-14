@@ -3,6 +3,7 @@ import { useUser, useClerk } from '@clerk/react';
 import { Flame, Sun, Moon } from 'lucide-react';
 import { useUnits } from '../lib/units';
 import { useTheme } from '../lib/theme';
+import { SHOW_ACHIEVEMENTS, SHOW_XP } from '../lib/features';
 import { useGetSessions, useGetSetups } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -187,7 +188,7 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
         </div>
 
         {/* XP bar */}
-        {rankInfo.nextRank && (
+        {SHOW_XP && rankInfo.nextRank && (
           <div style={{ marginTop: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--gray-light)' }}>{rankInfo.rank}</span>
@@ -202,7 +203,7 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
             </div>
           </div>
         )}
-        {!rankInfo.nextRank && (
+        {SHOW_XP && !rankInfo.nextRank && (
           <div style={{ marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: 11, color: getRankColor(rankInfo.rank) }}>
             {rankInfo.points} XP — World Champion, the highest tier. Keep logging sessions — your XP total still climbs.
           </div>
@@ -300,32 +301,36 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
       </div>
 
       {/* Achievements */}
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>
-        Achievements — {earnedAchievements.length}/{achievements.length}
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-        {achievements.map(a => {
-          const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
-          const BadgeIcon = a.icon;
-          return (
-            <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
-              title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
-              <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
-              <div className="dash-badge-info">
-                <span className="dash-badge-name">{a.name}</span>
-                {!a.earned && a.target > 1 && (
-                  <div className="dash-badge-progress">
-                    <div className="dash-badge-bar">
-                      <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
-                    </div>
-                    <span className="dash-badge-count">{a.progress}/{a.target}</span>
+      {SHOW_ACHIEVEMENTS && (
+        <>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>
+            Achievements — {earnedAchievements.length}/{achievements.length}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+            {achievements.map(a => {
+              const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
+              const BadgeIcon = a.icon;
+              return (
+                <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
+                  title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
+                  <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
+                  <div className="dash-badge-info">
+                    <span className="dash-badge-name">{a.name}</span>
+                    {!a.earned && a.target > 1 && (
+                      <div className="dash-badge-progress">
+                        <div className="dash-badge-bar">
+                          <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
+                        </div>
+                        <span className="dash-badge-count">{a.progress}/{a.target}</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Personal Bests */}
       <div className="section-title">Personal Bests</div>

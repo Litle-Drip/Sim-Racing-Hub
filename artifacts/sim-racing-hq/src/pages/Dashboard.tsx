@@ -6,6 +6,7 @@ import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
 import { calculateStreak, calculateRank, getRankColor, getRankProgress, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
 import type { DriverRank, Achievement } from '../lib/engagement';
+import { SHOW_ACHIEVEMENTS, SHOW_XP, SHOW_NEXT_TARGET } from '../lib/features';
 import { SessionDetailModal } from '../components/SessionDetail';
 import { Flame, Trophy } from 'lucide-react';
 
@@ -404,9 +405,11 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         coachingInsight = `You're ${gap}s off your ${name} PB`;
       }
     }
-    // Fallback coaching lines
+    // Fallback coaching lines. The XP-distance line is skipped while XP is
+    // hidden \u2014 it quotes a number the driver has no way to see \u2014 so the
+    // consistency prompt below becomes the fallback instead.
     if (!coachingInsight) {
-      if (rankInfo.nextRank) {
+      if (SHOW_XP && rankInfo.nextRank) {
         coachingInsight = `${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
       } else if (weakest) {
         const name = F1_TRACKS.find(t => t.id === weakest.id)?.short ?? weakest.id;
@@ -415,12 +418,13 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     }
 
     // Build sub-line with streak + rank distance
+    const showRankDistance = SHOW_XP && rankInfo.nextRank;
     let subInsight = '';
-    if (streak > 0 && rankInfo.nextRank) {
+    if (streak > 0 && showRankDistance) {
       subInsight = `PB streak: ${streak} day${streak !== 1 ? 's' : ''} \u2022 ${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
     } else if (streak > 0) {
       subInsight = `PB streak: ${streak} day${streak !== 1 ? 's' : ''}`;
-    } else if (rankInfo.nextRank) {
+    } else if (showRankDistance) {
       subInsight = `${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
     }
 
@@ -572,8 +576,10 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   const primaryCTA = useMemo(() => {
     // If daily challenge has no entries, push that
     if (daily.entries.length === 0) return 'challenge';
-    // If a next goal with close gap exists, push that
-    if (nextGoal?.gap) return 'goal';
+    // If a next goal with close gap exists, push that — but not while the
+    // Next Target card is hidden, or the pulse would mark a card that
+    // never renders and no CTA would be highlighted at all.
+    if (SHOW_NEXT_TARGET && nextGoal?.gap) return 'goal';
     // Otherwise recommendation
     if (recommendation) return 'recommendation';
     return 'challenge';
@@ -614,43 +620,47 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       </div>
 
       {/* ── Achievements (tabbed by category) ──────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {BADGE_CATEGORIES.map(cat => (
-            <button
-              key={cat.label}
-              onClick={() => setBadgeTab(cat.label)}
-              className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
-        {filteredBadges.map(a => {
-          const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
-          const BadgeIcon = a.icon;
-          return (
-            <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
-              title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
-              <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
-              <div className="dash-badge-info">
-                <span className="dash-badge-name">{a.name}</span>
-                {!a.earned && a.target > 1 && (
-                  <div className="dash-badge-progress">
-                    <div className="dash-badge-bar">
-                      <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
-                    </div>
-                    <span className="dash-badge-count">{a.progress}/{a.target}</span>
-                  </div>
-                )}
-              </div>
+      {SHOW_ACHIEVEMENTS && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
+            <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {BADGE_CATEGORIES.map(cat => (
+                <button
+                  key={cat.label}
+                  onClick={() => setBadgeTab(cat.label)}
+                  className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
-          );
-        })}
-      </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
+            {filteredBadges.map(a => {
+              const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
+              const BadgeIcon = a.icon;
+              return (
+                <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
+                  title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
+                  <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
+                  <div className="dash-badge-info">
+                    <span className="dash-badge-name">{a.name}</span>
+                    {!a.earned && a.target > 1 && (
+                      <div className="dash-badge-progress">
+                        <div className="dash-badge-bar">
+                          <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
+                        </div>
+                        <span className="dash-badge-count">{a.progress}/{a.target}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* ── Stat Cards with micro-context ───────────────────────────────── */}
       <div className="stat-grid">
@@ -848,18 +858,24 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
               </span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              {rankInfo.points} XP
-            </span>
-            {earnedCount > 0 && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
-                {earnedCount}/{achievements.length} badges
-              </span>
-            )}
-          </div>
+          {/* Rank and streak stay; the XP total and badge tally are hidden,
+              so this side of the row only renders when one of them is on. */}
+          {(SHOW_XP || SHOW_ACHIEVEMENTS) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {SHOW_XP && (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>
+                  {rankInfo.points} XP
+                </span>
+              )}
+              {SHOW_ACHIEVEMENTS && earnedCount > 0 && (
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
+                  {earnedCount}/{achievements.length} badges
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        {nextTier && (
+        {SHOW_XP && nextTier && (
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{rankInfo.rank}</span>
@@ -876,7 +892,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       </div>
 
       {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
-      {nextGoal && (
+      {SHOW_NEXT_TARGET && nextGoal && (
         <div className="card dash-next-goal card-accent card-accent--teal" style={{ padding: '14px 20px', marginBottom: 16 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
@@ -910,7 +926,9 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Resets in <CountdownTimer /></div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.05em', color: 'var(--teal)', marginTop: 2 }}>+{daily.xpReward} XP</div>
+            {/* The reward reads off the XP system; with XP hidden it would
+                point at something the driver can no longer see. */}
+            {SHOW_XP && <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.05em', color: 'var(--teal)', marginTop: 2 }}>+{daily.xpReward} XP</div>}
           </div>
         </div>
         {daily.entries.length > 0 ? (
