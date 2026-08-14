@@ -1,7 +1,7 @@
 {
   "name": "@workspace/companion",
   "version": "0.0.1",
-  "description": "F1SimHub Companion — desktop app that listens to F1 25 UDP telemetry and auto-uploads sessions",
+  "description": "F1SimHub Companion — desktop app that listens to F1 24/25/26 and Assetto Corsa telemetry and auto-uploads sessions",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.3.9",
     "f1-telemetry-client": "^0.1.26"
   },
   "devDependencies": {

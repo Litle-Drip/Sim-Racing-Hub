@@ -56,13 +56,13 @@ export function CarCombobox({ value, onChange, error, placeholder = 'e.g. Ferrar
           top: '100%',
           left: 0,
           right: 0,
-          background: 'var(--bg-elevated, #1a1a1a)',
+          background: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
           borderTop: 'none',
           zIndex: 200,
           maxHeight: 220,
           overflowY: 'auto',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          boxShadow: 'var(--shadow-pop)',
         }}>
           {filtered.map((car, idx) => {
             if (car === '───') {
@@ -85,7 +85,7 @@ export function CarCombobox({ value, onChange, error, placeholder = 'e.g. Ferrar
                   borderLeft: isSelected ? '2px solid var(--teal)' : '2px solid transparent',
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--hover)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'rgba(0,210,190,0.08)' : 'transparent'; }}
               >
                 {car}

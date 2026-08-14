@@ -114,8 +114,8 @@ This must always point to Render directly, never to Vercel.
 ### Render free tier sleep
 Render's free tier spins down after 15 minutes of inactivity. First request after sleep takes ~30 seconds. The companion app handles this with a retry loop.
 
-### Session type shows "Unknown"
-The session type byte offset in the F1 25 UDP parser (`udp.ts`) may be slightly off. Sessions still upload correctly — the type just shows as "Unknown" instead of "Time Trial", "Race", etc. This is a cosmetic issue.
+### Session type showed "Unknown" for sessions before 2026-07-13 (fixed)
+Real Race and Time Trial sessions were saving as "Unknown". Root cause: F1 25 inserted 5 sprint-weekend session types before Race in its UDP numbering, shifting Race from id 10->15 and Time Trial from 13->18, but the companion's `SESSION_TYPES` lookup table (`session.ts`) still had the old F1 24 ids and had no entries for 15/18 — so those sessions fell through to "Unknown". Fixed in commit `b42a3f1` by updating the table to the shifted F1 25 ids. This was not a byte-offset bug in `udp.ts` (that parser is correct). Sessions from before the fix are permanently stuck with the "Unknown"/"Other" label since the raw numeric session type wasn't stored, only the resolved string — there's no way to backfill them.
 
 ---
 

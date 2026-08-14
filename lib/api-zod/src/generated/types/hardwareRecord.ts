@@ -7,7 +7,9 @@
  */
 
 export interface HardwareRecord {
+  /** @maxLength 200 */
   id: string;
+  /** @maxLength 100 */
   label: string;
   peripheralType: string;
   brand: string;
@@ -21,5 +23,6 @@ export interface HardwareRecord {
   friction: string;
   linearity: string;
   steeringRange: string;
+  /** @maxLength 5000 */
   notes: string;
 }

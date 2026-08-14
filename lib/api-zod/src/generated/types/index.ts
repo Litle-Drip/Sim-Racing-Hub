@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
+export * from './carSetupSnapshot';
 export * from './communitySessionRecord';
 export * from './communitySetupRecord';
 export * from './companionApiKeyResponse';
@@ -14,24 +15,39 @@ export * from './companionSessionRequest';
 export * from './companionSessionSectors';
 export * from './cornerNote';
 export * from './createHardwareRequest';
+export * from './createRivalChallengeRequest';
 export * from './createSessionRequest';
 export * from './createSetupRequest';
+export * from './engineerUsageStatus';
+export * from './engineWear';
 export * from './errorResponse';
 export * from './getCommunitySessionsParams';
 export * from './getCommunitySetupsParams';
 export * from './hardwareRecord';
 export * from './healthStatus';
+export * from './lapHistoryEntry';
+export * from './lapPenalty';
 export * from './lapRecord';
+export * from './lapTraceSample';
+export * from './lookupRivalChallengeUserParams';
 export * from './notFoundResponse';
 export * from './rateSetupRequest';
 export * from './rateSetupResponse';
+export * from './rivalChallengeParticipant';
+export * from './rivalChallengeRecord';
+export * from './rivalChallengeSessionSummary';
+export * from './rivalChallengeUserLookup';
 export * from './sessionRecord';
 export * from './setupRecord';
 export * from './shareSessionRequest';
 export * from './shareSessionResponse';
 export * from './shareSetupResponse';
+export * from './submitRivalChallengeAttemptRequest';
 export * from './trackDifficultyRecord';
 export * from './trackNotesRecord';
+export * from './tyreStintEntry';
 export * from './unauthorizedResponse';
+export * from './unlockEngineerUsageRequest';
 export * from './upsertTrackDifficultyRequest';
 export * from './upsertTrackNotesRequest';
+export * from './wingDamage';

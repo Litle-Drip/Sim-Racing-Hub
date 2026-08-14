@@ -50,44 +50,19 @@ router.put("/track-notes/:trackId", requireAuth, async (req, res) => {
   const data = parsed.data;
 
   try {
-    const [existing] = await db
-      .select()
-      .from(trackNotesTable)
-      .where(
-        and(
-          eq(trackNotesTable.userId, userId),
-          eq(trackNotesTable.trackId, trackId)
-        )
-      );
-
-    if (existing) {
-      await db
-        .update(trackNotesTable)
-        .set({ corners: data.corners, updatedAt: new Date() })
-        .where(
-          and(
-            eq(trackNotesTable.userId, userId),
-            eq(trackNotesTable.trackId, trackId)
-          )
-        );
-    } else {
-      await db.insert(trackNotesTable).values({
+    const [saved] = await db
+      .insert(trackNotesTable)
+      .values({
         id: data.id as string,
         userId,
         trackId,
         corners: data.corners,
-      });
-    }
-
-    const [saved] = await db
-      .select()
-      .from(trackNotesTable)
-      .where(
-        and(
-          eq(trackNotesTable.userId, userId),
-          eq(trackNotesTable.trackId, trackId)
-        )
-      );
+      })
+      .onConflictDoUpdate({
+        target: [trackNotesTable.userId, trackNotesTable.trackId],
+        set: { corners: data.corners, updatedAt: new Date() },
+      })
+      .returning();
 
     if (!saved) {
       res.status(500).json({ error: "Failed to retrieve track notes" });

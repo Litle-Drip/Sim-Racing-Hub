@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen } from 'lucide-react';
+import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen, CircleDot } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { Toast } from '../components/Toast';
-import { F1_TRACKS, F1Track, CORNER_NAMES } from '../data/f1Tracks';
+import { F1_TRACKS, F1Track, CORNER_NAMES, getTypeBadgeClass } from '../data/f1Tracks';
 import {
   useGetSessions,
   useGetTrackNotes,
@@ -14,21 +14,15 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CornerNote, SessionRecord, TrackDifficultyRecord } from '@workspace/api-client-react';
-import { lapToSeconds } from '../lib/storage';
+import { lapToSeconds, FOCUS_SESSION_KEY } from '../lib/storage';
 import { trackConsistency, TYRE_GUIDES } from '../lib/engagement';
 import { CIRCUIT_SCHOOL } from '../data/circuitSchool';
-
-const TYPE_BADGE: Record<string, string> = {
-  Practice: 'badge-practice',
-  Qualifying: 'badge-qualifying',
-  Race: 'badge-race',
-  Hotlap: 'badge-hotlap',
-  'Time Trial': 'badge-hotlap',
-};
+import { SessionDetailModal } from '../components/SessionDetail';
 
 const DIFFICULTY_LABELS = ['', 'Easy', 'Moderate', 'Tricky', 'Hard', 'Brutal'];
 
 function RatingDots({ rating }: { rating: number }) {
+  if (!rating) return <span style={{ color: 'var(--gray-mid)' }}>&mdash;</span>;
   return (
     <span className="rating-dots">
       {[1,2,3,4,5].map(i => (
@@ -79,9 +73,8 @@ function DifficultyRating({
               width: 14,
               height: 14,
               borderRadius: '50%',
-              background: i <= display ? 'var(--red)' : 'var(--border)',
-              opacity: i <= display ? (0.4 + (i * 0.15)) : 0.5,
-              transition: 'background 0.15s, opacity 0.15s',
+              background: i <= display ? 'var(--red)' : 'var(--border-accent)',
+              transition: 'background 0.15s',
             }}
           />
         ))}
@@ -140,9 +133,8 @@ function CardDifficultyDots({
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background: i <= display ? 'var(--red)' : 'var(--border)',
-              opacity: i <= display ? (0.45 + i * 0.11) : 0.35,
-              transition: 'background 0.12s, opacity 0.12s',
+              background: i <= display ? 'var(--red)' : 'var(--border-accent)',
+              transition: 'background 0.12s',
             }}
           />
         ))}
@@ -368,6 +360,7 @@ function TrackDetail({
   const qc = useQueryClient();
   const allSessions = sessions;
   const trackSessions = allSessions.filter(s => s.trackId === track.id);
+  const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
 
   const { data: trackNotesData } = useGetTrackNotes(track.id);
   const [notesToast, setNotesToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
@@ -375,7 +368,7 @@ function TrackDetail({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetTrackNotesQueryKey(track.id) });
-        setNotesToast({ message: 'Notes saved ✓' });
+        setNotesToast({ message: 'Notes saved' });
       },
       onError: () => {
         setNotesToast({ message: 'Failed to save notes — tap Retry below.', variant: 'error' });
@@ -489,17 +482,26 @@ function TrackDetail({
 
       <div className="track-stats-row">
         {[
-          { label: 'PB Time', value: bestLap || '—', mono: true, sub: pbCar },
+          { label: 'PB Time', value: bestLap || '—', mono: true, sub: pbCar, onClick: pbSession ? () => {
+              sessionStorage.setItem(FOCUS_SESSION_KEY, pbSession.id);
+              window.dispatchEvent(new CustomEvent('nav', { detail: 'sessions' }));
+            } : undefined },
           { label: 'Best S1', value: bestS1 || '—', mono: true },
           { label: 'Best S2', value: bestS2 || '—', mono: true },
           { label: 'Best S3', value: bestS3 || '—', mono: true },
           { label: 'Consistency', value: consistency !== null ? `${consistency.toFixed(1)}%` : '—', mono: true },
           { label: 'Sessions', value: String(trackSessions.length), mono: false },
           { label: 'Last Driven', value: lastDriven || 'Never', mono: false },
-        ].map(({ label, value, mono, sub }) => (
-          <div key={label} className="track-stat">
+        ].map(({ label, value, mono, sub, onClick }) => (
+          <div
+            key={label}
+            className="track-stat"
+            onClick={onClick}
+            title={onClick ? 'View this session' : undefined}
+            style={onClick ? { cursor: 'pointer' } : undefined}
+          >
             <div className="track-stat-label">{label}</div>
-            <div className={`track-stat-value${!mono || value === '—' || value === 'Never' ? ' gray' : ''}`}>{value}</div>
+            <div className={`track-stat-value${!mono || value === '—' || value === 'Never' ? ' gray' : ''}`} style={onClick ? { textDecoration: 'underline', textUnderlineOffset: 3 } : undefined}>{value}</div>
             {sub && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{sub}</div>}
           </div>
         ))}
@@ -509,7 +511,7 @@ function TrackDetail({
       {tyreGuide && (
         <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid var(--border)' }}>
           <div style={{ background: 'var(--bg-elevated)', padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 14 }}>🏎️</span>
+            <CircleDot size={13} aria-hidden="true" style={{ color: 'var(--gray-light)' }} />
             <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>Tyre Strategy Guide</span>
           </div>
           <div style={{ padding: '14px 20px', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontFamily: 'var(--font-body)', fontSize: 12 }}>
@@ -614,20 +616,24 @@ function TrackDetail({
             </thead>
             <tbody>
               {[...trackSessions].sort((a,b) => b.date.localeCompare(a.date)).map(s => (
-                <tr key={s.id}>
+                <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => setDetailSession(s)} title="Click to view full session details">
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
                   <td>{s.car}</td>
                   <td>
                     <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                     {s.isPB && <span className="pb-badge">★ PB</span>}
                   </td>
-                  <td><span className={`badge ${TYPE_BADGE[s.type] || 'badge-practice'}`}>{s.type}</span></td>
+                  <td><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
                   <td><RatingDots rating={s.rating} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {detailSession && (
+        <SessionDetailModal session={detailSession} onClose={() => setDetailSession(null)} />
       )}
     </div>
   );
@@ -644,13 +650,13 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
   const labelStyle = { fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--teal)', marginBottom: 6, marginTop: 16 };
 
   return (
-    <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.2)' }}>
+    <div className="card card-accent card-accent--teal" style={{ padding: 0, marginBottom: 24, overflow: 'hidden' }}>
       <div
         onClick={() => setExpanded(!expanded)}
-        style={{ background: 'rgba(0,210,190,0.04)', padding: '12px 20px', borderBottom: expanded ? '1px solid rgba(0,210,190,0.15)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        style={{ background: 'var(--bg-elevated)', padding: '12px 20px', borderBottom: expanded ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14 }}>📚</span>
+          <BookOpen size={13} aria-hidden="true" style={{ color: 'var(--teal)' }} />
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)' }}>Circuit School</span>
         </div>
         {expanded ? <ChevronUp size={14} style={{ color: 'var(--gray-mid)' }} /> : <ChevronDown size={14} style={{ color: 'var(--gray-mid)' }} />}

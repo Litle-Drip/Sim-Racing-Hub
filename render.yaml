@@ -6,7 +6,7 @@ services:
     plan: free
     buildCommand: >
       npm install -g pnpm@10 &&
-      pnpm install &&
+      pnpm install --no-frozen-lockfile &&
       pnpm --filter @workspace/sim-racing-hq run build &&
       pnpm --filter @workspace/api-server run build
     startCommand: node --enable-source-maps ./artifacts/api-server/dist/index.mjs
@@ -22,4 +22,6 @@ services:
       - key: CLERK_SECRET_KEY
         sync: false
       - key: VITE_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: ENGINEER_UNLOCK_PASSWORD
         sync: false

@@ -5,8 +5,12 @@
  * Sim Racing HQ API — F1 sim companion
  * OpenAPI spec version: 0.2.0
  */
+import type { CarSetupSnapshot } from './carSetupSnapshot';
 import type { CompanionSessionSectors } from './companionSessionSectors';
+import type { EngineWear } from './engineWear';
+import type { LapHistoryEntry } from './lapHistoryEntry';
 import type { LapRecord } from './lapRecord';
+import type { TyreStintEntry } from './tyreStintEntry';
 
 export interface CompanionSessionRequest {
   sessionType: string;
@@ -21,11 +25,73 @@ export interface CompanionSessionRequest {
   gameVersion?: string;
   platform?: string;
   inputDevice?: string;
+  /** @maxItems 150 */
   laps?: LapRecord[];
+  /** @maxLength 200 */
   id?: string;
   date?: string;
   position?: string;
+  /** @maxLength 5000 */
   notes?: string;
   rating?: number;
   penalty?: string;
+  trackTemperature?: number;
+  airTemperature?: number;
+  totalLaps?: number;
+  pitSpeedLimit?: number;
+  safetyCarStatus?: number;
+  timeOfDay?: string;
+  fuelInTank?: number;
+  ersDeployMode?: number;
+  ersEnergyStored?: number;
+  ersDeployedThisLap?: number;
+  tyreWear?: number[];
+  frontWingDamage?: number;
+  rearWingDamage?: number;
+  tyreSurfaceTemps?: number[];
+  brakeTemps?: number[];
+  setup?: CarSetupSnapshot;
+  tyreStints?: TyreStintEntry[];
+  lapHistory?: LapHistoryEntry[];
+  aiDifficulty?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  drsActivations?: number;
+  maxRpm?: number;
+  topGear?: number;
+  fuelRemainingLaps?: number;
+  actualTyreCompound?: string;
+  tyreAgeLaps?: number;
+  pitStops?: number;
+  fuelCapacity?: number;
+  startingFuelKg?: number;
+  engineMaxRpm?: number;
+  engineTemperature?: number;
+  vehicleFiaFlags?: number;
+  tyrePressureLive?: number[];
+  floorDamage?: number;
+  diffuserDamage?: number;
+  sidepodDamage?: number;
+  gearBoxDamage?: number;
+  engineDamage?: number;
+  liveBrakeBias?: number;
+  tyreDamage?: number[];
+  brakesDamage?: number[];
+  tyreBlisters?: number[];
+  tyreInnerTemps?: number[];
+  engineWear?: EngineWear;
+  ersHarvestedThisLap?: number;
+  fuelMix?: number;
+  speedTrapKph?: number;
+  flashbacks?: number;
+  collisions?: number;
+  safetyCarPeriods?: number;
+  redFlags?: number;
+  totalWarnings?: number;
+  cornerCuttingWarnings?: number;
+  bestLapNum?: number;
+  bestSector1LapNum?: number;
+  bestSector2LapNum?: number;
+  bestSector3LapNum?: number;
 }

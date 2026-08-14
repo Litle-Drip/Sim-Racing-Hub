@@ -7,6 +7,7 @@
  */
 
 export interface CommunitySessionRecord {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;

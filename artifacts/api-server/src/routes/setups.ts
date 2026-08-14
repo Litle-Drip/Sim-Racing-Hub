@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { db, setupsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { CreateSetupBody } from "@workspace/api-zod";
+import { normalizeTrackId } from "../lib/trackAlias";
 
 const router = Router();
 
@@ -62,7 +63,7 @@ router.post("/setups", requireAuth, async (req, res) => {
       userId,
       label: data.label,
       car: data.car,
-      trackId: data.trackId,
+      trackId: normalizeTrackId(data.trackId),
       tag: data.tag ?? "",
       date: data.date,
       frontWing: String(data.frontWing),

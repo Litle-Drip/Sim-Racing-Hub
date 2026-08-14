@@ -1,5 +1,14 @@
 import { contextBridge, ipcRenderer } from "electron";
 
+export type UpdateState =
+  | { phase: "unsupported" }
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "downloading"; version: string; percent: number }
+  | { phase: "ready"; version: string }
+  | { phase: "not-available" }
+  | { phase: "error"; message: string };
+
 export interface CompanionStatus {
   signedIn: boolean;
   gameConnected: boolean;
@@ -7,6 +16,9 @@ export interface CompanionStatus {
   lastUpload: { track: string; lapTime: string; at: string } | null;
   currentSession: { lapCount: number; track: string } | null;
   pendingUploads: number;
+  detectedGame: string | null;
+  unsupportedFormat: number | null;
+  updateState: UpdateState;
 }
 
 export interface CompanionSettings {
@@ -18,7 +30,25 @@ export interface CompanionSettings {
   wizardComplete: boolean;
 }
 
+export interface SetupPathResult {
+  path: string;
+  ok: boolean;
+  message: string;
+}
+
+export interface SetupResult {
+  ok: boolean;
+  results: SetupPathResult[];
+}
+
+export interface DetectedSims {
+  ac: boolean;
+  acc: boolean;
+}
+
 export interface CompanionAPI {
+  minimizeWindow(): Promise<void>;
+  closeWindow(): Promise<void>;
   getVersion(): Promise<string>;
   getStatus(): Promise<CompanionStatus>;
   getSettings(): Promise<CompanionSettings>;
@@ -30,9 +60,17 @@ export interface CompanionAPI {
   openLogFile(): Promise<void>;
   openReleasesPage(): Promise<void>;
   forceFlush(): Promise<void>;
+  checkForUpdates(): Promise<void>;
+  installUpdate(): Promise<void>;
+  setupAcTelemetry(): Promise<SetupResult>;
+  setupAccTelemetry(): Promise<SetupResult>;
+  showInFolder(path: string): Promise<void>;
+  detectInstalledSims(): Promise<DetectedSims>;
 }
 
 const api: CompanionAPI = {
+  minimizeWindow: () => ipcRenderer.invoke("window-minimize"),
+  closeWindow: () => ipcRenderer.invoke("window-close"),
   getVersion: () => ipcRenderer.invoke("get-version"),
   getStatus: () => ipcRenderer.invoke("get-status"),
   getSettings: () => ipcRenderer.invoke("get-settings"),
@@ -48,6 +86,12 @@ const api: CompanionAPI = {
   openLogFile: () => ipcRenderer.invoke("open-log-file"),
   openReleasesPage: () => ipcRenderer.invoke("open-releases-page"),
   forceFlush: () => ipcRenderer.invoke("force-flush"),
+  checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
+  installUpdate: () => ipcRenderer.invoke("install-update"),
+  setupAcTelemetry: () => ipcRenderer.invoke("setup-ac-telemetry"),
+  setupAccTelemetry: () => ipcRenderer.invoke("setup-acc-telemetry"),
+  showInFolder: (path) => ipcRenderer.invoke("show-in-folder", path),
+  detectInstalledSims: () => ipcRenderer.invoke("detect-installed-sims"),
 };
 
 contextBridge.exposeInMainWorld("companion", api);

@@ -5,9 +5,15 @@
  * Sim Racing HQ API — F1 sim companion
  * OpenAPI spec version: 0.2.0
  */
+import type { CarSetupSnapshot } from './carSetupSnapshot';
+import type { EngineWear } from './engineWear';
+import type { LapHistoryEntry } from './lapHistoryEntry';
 import type { LapRecord } from './lapRecord';
+import type { TyreStintEntry } from './tyreStintEntry';
+import type { WingDamage } from './wingDamage';
 
 export interface SessionRecord {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
@@ -24,6 +30,7 @@ export interface SessionRecord {
   conditions: string;
   assists: string;
   rating: number;
+  /** @maxLength 5000 */
   notes: string;
   isPB: boolean;
   penalty?: string | null;
@@ -33,7 +40,66 @@ export interface SessionRecord {
   isPublic: boolean;
   sharedAt?: string | null;
   publicNote?: string | null;
+  /** @maxItems 150 */
   laps?: LapRecord[] | null;
   timeOfDay?: string | null;
   position?: string;
+  trackTemperature?: number | null;
+  airTemperature?: number | null;
+  totalLaps?: number | null;
+  pitSpeedLimit?: number | null;
+  safetyCarStatus?: number | null;
+  fuelInTank?: number | null;
+  ersDeployMode?: number | null;
+  ersEnergyStored?: number | null;
+  ersDeployedThisLap?: number | null;
+  tyreWear?: number[] | null;
+  wingDamage?: WingDamage | null;
+  tyreSurfaceTemps?: number[] | null;
+  brakeTemps?: number[] | null;
+  setupSnapshot?: CarSetupSnapshot | null;
+  tyreStints?: TyreStintEntry[] | null;
+  lapHistory?: LapHistoryEntry[] | null;
+  aiDifficulty?: number | null;
+  topSpeedKph?: number | null;
+  avgThrottlePct?: number | null;
+  avgBrakePct?: number | null;
+  drsActivations?: number | null;
+  maxRpm?: number | null;
+  topGear?: number | null;
+  fuelRemainingLaps?: number | null;
+  actualTyreCompound?: string | null;
+  tyreAgeLaps?: number | null;
+  pitStops?: number | null;
+  fuelCapacity?: number | null;
+  startingFuelKg?: number | null;
+  engineMaxRpm?: number | null;
+  engineTemperature?: number | null;
+  vehicleFiaFlags?: number | null;
+  tyrePressureLive?: number[] | null;
+  floorDamage?: number | null;
+  diffuserDamage?: number | null;
+  sidepodDamage?: number | null;
+  gearBoxDamage?: number | null;
+  engineDamage?: number | null;
+  liveBrakeBias?: number | null;
+  tyreDamage?: number[] | null;
+  brakesDamage?: number[] | null;
+  tyreBlisters?: number[] | null;
+  tyreInnerTemps?: number[] | null;
+  engineWear?: EngineWear | null;
+  ersHarvestedThisLap?: number | null;
+  fuelMix?: number | null;
+  speedTrapKph?: number | null;
+  flashbacks?: number | null;
+  collisions?: number | null;
+  safetyCarPeriods?: number | null;
+  redFlags?: number | null;
+  totalWarnings?: number | null;
+  cornerCuttingWarnings?: number | null;
+  bestLapNum?: number | null;
+  bestSector1LapNum?: number | null;
+  bestSector2LapNum?: number | null;
+  bestSector3LapNum?: number | null;
+  createdAt: string;
 }
