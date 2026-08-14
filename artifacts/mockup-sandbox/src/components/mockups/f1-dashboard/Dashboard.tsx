@@ -211,7 +211,7 @@ function StatCard({ label, value, valueColor = "var(--white)", icon }: { label: 
       <div 
         className="absolute -bottom-4 -right-4 w-24 h-24 opacity-10 pointer-events-none flex items-center justify-center"
       >
-        {React.cloneElement(icon as React.ReactElement, { className: "w-full h-full" })}
+        {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: "w-full h-full" })}
       </div>
       <div 
         className="text-xs font-bold tracking-widest mb-4 z-10" 

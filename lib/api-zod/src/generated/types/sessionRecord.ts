@@ -6,12 +6,14 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { CarSetupSnapshot } from './carSetupSnapshot';
+import type { EngineWear } from './engineWear';
 import type { LapHistoryEntry } from './lapHistoryEntry';
 import type { LapRecord } from './lapRecord';
 import type { TyreStintEntry } from './tyreStintEntry';
 import type { WingDamage } from './wingDamage';
 
 export interface SessionRecord {
+  /** @maxLength 200 */
   id: string;
   date: string;
   trackId: string;
@@ -28,6 +30,7 @@ export interface SessionRecord {
   conditions: string;
   assists: string;
   rating: number;
+  /** @maxLength 5000 */
   notes: string;
   isPB: boolean;
   penalty?: string | null;
@@ -37,6 +40,7 @@ export interface SessionRecord {
   isPublic: boolean;
   sharedAt?: string | null;
   publicNote?: string | null;
+  /** @maxItems 150 */
   laps?: LapRecord[] | null;
   timeOfDay?: string | null;
   position?: string;
@@ -79,5 +83,23 @@ export interface SessionRecord {
   gearBoxDamage?: number | null;
   engineDamage?: number | null;
   liveBrakeBias?: number | null;
+  tyreDamage?: number[] | null;
+  brakesDamage?: number[] | null;
+  tyreBlisters?: number[] | null;
+  tyreInnerTemps?: number[] | null;
+  engineWear?: EngineWear | null;
+  ersHarvestedThisLap?: number | null;
+  fuelMix?: number | null;
+  speedTrapKph?: number | null;
+  flashbacks?: number | null;
+  collisions?: number | null;
+  safetyCarPeriods?: number | null;
+  redFlags?: number | null;
+  totalWarnings?: number | null;
+  cornerCuttingWarnings?: number | null;
+  bestLapNum?: number | null;
+  bestSector1LapNum?: number | null;
+  bestSector2LapNum?: number | null;
+  bestSector3LapNum?: number | null;
   createdAt: string;
 }

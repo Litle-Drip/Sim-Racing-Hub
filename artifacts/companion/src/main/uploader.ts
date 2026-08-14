@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { app } from "electron";
-import type { SessionSnapshot, LapRecord, CarSetupSnapshot, TyreStint, LapHistoryEntry } from "./session";
+import type { SessionSnapshot, LapRecord, CarSetupSnapshot, TyreStint, LapHistoryEntry, EngineWear } from "./session";
 
 export interface PendingUpload {
   id: string;
@@ -69,6 +69,24 @@ export interface UploadPayload {
   gearBoxDamage?: number;
   engineDamage?: number;
   liveBrakeBias?: number;
+  tyreDamage?: [number, number, number, number];
+  brakesDamage?: [number, number, number, number];
+  tyreBlisters?: [number, number, number, number];
+  tyreInnerTemps?: [number, number, number, number];
+  engineWear?: EngineWear;
+  ersHarvestedThisLap?: number;
+  fuelMix?: number;
+  speedTrapKph?: number;
+  flashbacks?: number;
+  collisions?: number;
+  safetyCarPeriods?: number;
+  redFlags?: number;
+  totalWarnings?: number;
+  cornerCuttingWarnings?: number;
+  bestLapNum?: number;
+  bestSector1LapNum?: number;
+  bestSector2LapNum?: number;
+  bestSector3LapNum?: number;
 }
 
 export interface UploadResult {
@@ -140,6 +158,7 @@ export class Uploader {
   // PROJECT.md), so it must never be used as an upload target.
   private apiBaseUrl = "https://sim-racing-hub.onrender.com/api";
   private retryTimer: ReturnType<typeof setInterval> | null = null;
+  private isFlushing = false;
 
   onUploadResult: ((result: UploadResult) => void) | null = null;
 
@@ -212,6 +231,24 @@ export class Uploader {
       gearBoxDamage: session.gearBoxDamage,
       engineDamage: session.engineDamage,
       liveBrakeBias: session.liveBrakeBias,
+      tyreDamage: session.tyreDamage,
+      brakesDamage: session.brakesDamage,
+      tyreBlisters: session.tyreBlisters,
+      tyreInnerTemps: session.tyreInnerTemps,
+      engineWear: session.engineWear,
+      ersHarvestedThisLap: session.ersHarvestedThisLap,
+      fuelMix: session.fuelMix,
+      speedTrapKph: session.speedTrapKph,
+      flashbacks: session.flashbacks,
+      collisions: session.collisions,
+      safetyCarPeriods: session.safetyCarPeriods,
+      redFlags: session.redFlags,
+      totalWarnings: session.totalWarnings,
+      cornerCuttingWarnings: session.cornerCuttingWarnings,
+      bestLapNum: session.bestLapNum,
+      bestSector1LapNum: session.bestSector1LapNum,
+      bestSector2LapNum: session.bestSector2LapNum,
+      bestSector3LapNum: session.bestSector3LapNum,
     };
   }
 
@@ -272,16 +309,26 @@ export class Uploader {
 
   async flushPending(): Promise<void> {
     if (!this.apiKey || this.pending.length === 0) return;
-
-    const toRetry = [...this.pending];
-    for (const item of toRetry) {
-      // Remove and persist just this one item right before attempting it —
-      // not the whole queue up front — so a crash/quit mid-loop only risks
-      // the single in-flight item instead of every item still waiting its
-      // turn (which would otherwise already be gone from disk, unsent).
-      this.pending = this.pending.filter((p) => p.id !== item.id);
-      savePending(this.pending);
-      await this.uploadPayload(item.payload, item);
+    // A manual force-flush (IPC) can otherwise land while the 60s retry
+    // timer's own flush is already mid-loop; both would snapshot `pending`
+    // independently and re-upload the same queued items in parallel. The
+    // server dedupes by id so it's not data-lossy, just redundant traffic —
+    // this guard makes a concurrent call a no-op instead.
+    if (this.isFlushing) return;
+    this.isFlushing = true;
+    try {
+      const toRetry = [...this.pending];
+      for (const item of toRetry) {
+        // Remove and persist just this one item right before attempting it —
+        // not the whole queue up front — so a crash/quit mid-loop only risks
+        // the single in-flight item instead of every item still waiting its
+        // turn (which would otherwise already be gone from disk, unsent).
+        this.pending = this.pending.filter((p) => p.id !== item.id);
+        savePending(this.pending);
+        await this.uploadPayload(item.payload, item);
+      }
+    } finally {
+      this.isFlushing = false;
     }
   }
 

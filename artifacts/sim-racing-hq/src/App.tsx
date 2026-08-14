@@ -29,6 +29,8 @@ import Account from './pages/Account';
 import Companion from './pages/Companion';
 import DownloadPage from './pages/DownloadPage';
 import ServiceStatusBanner from './components/ServiceStatusBanner';
+import { buildSampleSessions } from './data/sampleSessions';
+import { enterDemoMode, exitDemoMode } from './lib/demoStore';
 
 // publishableKeyFromHost is Replit-specific — it derives a key + proxy from
 // the hostname (clerk.<hostname>). On external hosts like Vercel that proxy
@@ -59,6 +61,15 @@ function stripBase(path: string): string {
     : path;
 }
 
+// Applied to every Clerk surface — sign-in, sign-up, and the Manage Account
+// modal. Keep this to design tokens plus overrides that are safe everywhere.
+// Card-shaped element overrides belong in authCardAppearance below: when they
+// lived here they also hit <UserProfile/>, which is why the Manage Account
+// modal rendered a 22px "Profile details" over 13px field labels.
+//
+// Rajdhani is a condensed face, so Clerk's 13px default reads a size smaller
+// than it measures. 15px is the root every other Clerk size scales from and
+// lines the modal up with the app's own body text.
 const clerkAppearance = {
   baseTheme: dark,
   cssLayerName: 'clerk',
@@ -77,37 +88,71 @@ const clerkAppearance = {
     colorInputForeground: '#F0F0F0',
     colorNeutral: '#3A3A3A',
     fontFamily: "'Rajdhani', sans-serif",
+    fontSize: '15px',
     borderRadius: '4px',
   },
   elements: {
-    rootBox: 'w-full flex justify-center',
-    cardBox: 'rounded-none w-[440px] max-w-full overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.55)]',
-    card: '!shadow-none !border !border-[#2A2A2A] !border-t-2 !border-t-[#E8002D] !bg-[#111111] !rounded-none !px-8 !py-8',
-    footer: '!shadow-none !border-0 !bg-[#111111] !rounded-none',
-    headerTitle: { color: '#F0F0F0', fontWeight: '700', fontSize: '22px' },
+    formFieldLabel: { color: '#C8C8C8', fontSize: '14px' },
+    formFieldSuccessText: { color: '#39B54A' },
+    alertText: { color: '#F0F0F0' },
+    alert: { borderColor: '#2A2A2A' },
+    dividerLine: { backgroundColor: '#2A2A2A' },
+    dividerText: { color: '#AAAAAA' },
+    // Manage Account modal — a contained panel rather than a full-bleed
+    // sheet. Everything else about its layout is Clerk's own and now that
+    // our reset no longer overrides it (see index.css) it needs no help;
+    // only the type scale is nudged to match the app.
+    modalContent: { width: '100%', maxWidth: '800px' },
+    navbar: { borderRight: '1px solid #2A2A2A' },
+    navbarButton: { fontSize: '15px', fontWeight: '600' },
+    navbarTitle: { fontSize: '20px', fontWeight: '700', letterSpacing: '0.02em' },
+    navbarSubtitle: { fontSize: '13px', color: '#BBBBBB' },
+    profileSectionTitleText: { fontSize: '15px', fontWeight: '600', color: '#E8E8E8' },
+    profileSectionPrimaryButton: { fontSize: '14px', fontWeight: '600' },
+    userPreviewMainIdentifier: { fontSize: '15px' },
+    userPreviewSecondaryIdentifier: { fontSize: '13px', color: '#BBBBBB' },
+    badge: { fontSize: '12px' },
+  },
+};
+
+// Sign-in / sign-up card only — the squared-off, red-topped panel. Scoped to
+// those two components so it can't reshape the account modal.
+//
+// Style objects, not Tailwind class strings: this app never imports
+// Tailwind's stylesheet into index.css, so the plugin emits no utilities and
+// every `!bg-[#E8002D]`/`w-[440px]` here was dead text that styled nothing.
+// Anything the `variables` above already cover (primary/danger colour, input
+// and card background, radius) is left to them rather than restated.
+const authCardAppearance = {
+  elements: {
+    rootBox: { width: '100%', display: 'flex', justifyContent: 'center' },
+    cardBox: {
+      width: '440px',
+      maxWidth: '100%',
+      borderRadius: 0,
+      overflow: 'hidden',
+      boxShadow: '0 12px 40px rgba(0, 0, 0, 0.55)',
+    },
+    card: {
+      boxShadow: 'none',
+      border: '1px solid #2A2A2A',
+      borderTop: '2px solid #E8002D',
+      borderRadius: 0,
+      padding: '32px',
+    },
+    footer: { boxShadow: 'none', border: 0, borderRadius: 0 },
+    headerTitle: { fontWeight: '700', fontSize: '22px' },
     headerSubtitle: { color: '#BBBBBB', fontSize: '14px' },
     socialButtonsBlockButtonText: { color: '#E8E8E8', fontWeight: '600' },
     socialButtonsBlockButtonArrow: { color: '#E8E8E8' },
-    formFieldLabel: { color: '#C8C8C8' },
-    footerActionLink: { color: '#E8002D' },
     footerActionText: { color: '#BBBBBB' },
-    dividerText: { color: '#AAAAAA' },
-    identityPreviewEditButton: { color: '#E8002D' },
-    formFieldSuccessText: { color: '#39B54A' },
-    alertText: { color: '#F0F0F0' },
-    logoBox: 'mb-4',
-    logoImage: 'h-12',
-    socialButtons: 'grid grid-cols-2 gap-2',
+    logoBox: { marginBottom: '16px' },
+    logoImage: { height: '48px' },
+    socialButtons: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
     socialButtonsBlockButton: { backgroundColor: '#232323', border: '1px solid #3A3A3A', minHeight: '48px' },
     socialButtonsProviderIcon: { width: '20px', height: '20px' },
-    formButtonPrimary: '!bg-[#E8002D] hover:!bg-[#c0001e] !min-h-[48px]',
-    formFieldInput: '!bg-[#1A1A1A] !border-[#2A2A2A] !text-[#F0F0F0] !min-h-[48px] !text-base',
-    footerAction: { backgroundColor: '#111111' },
-    dividerLine: { backgroundColor: '#2A2A2A' },
-    alert: '!border-[#2A2A2A]',
-    otpCodeFieldInput: '!bg-[#1A1A1A] !border-[#2A2A2A]',
-    formFieldRow: '',
-    main: '',
+    formButtonPrimary: { minHeight: '48px' },
+    formFieldInput: { minHeight: '48px', fontSize: '16px' },
   },
 };
 
@@ -146,6 +191,7 @@ function SignInPage() {
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
+        appearance={authCardAppearance}
       />
     </AuthPageShell>
   );
@@ -158,12 +204,13 @@ function SignUpPage() {
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
+        appearance={authCardAppearance}
       />
     </AuthPageShell>
   );
 }
 
-function LandingPage({ onGuest }: { onGuest?: () => void }) {
+function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () => void }) {
   const [, setLocation] = useLocation();
 
   const featureCategories = [
@@ -248,10 +295,13 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
           For F1 25 on Xbox, PlayStation, and PC — wheel or controller.
         </p>
         <div className="landing-cta-group">
-          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={onGuest}>
-            Continue as Guest — No Sign Up Required →
+          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={onDemo}>
+            Try the Live Demo — Sample Data, No Sign Up →
           </button>
           <div className="landing-cta-row">
+            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={onGuest}>
+              Continue as Guest
+            </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setLocation('/sign-up')}>
               Create Free Account
             </button>
@@ -260,6 +310,9 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
             </button>
           </div>
         </div>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 10, letterSpacing: '0.01em' }}>
+          The demo loads a real sample race weekend — dashboard, session log, lap history — right in your browser. Nothing is saved to an account.
+        </p>
       </div>
 
       {/* Feature Categories */}
@@ -311,7 +364,7 @@ function LandingPage({ onGuest }: { onGuest?: () => void }) {
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'rivals'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'rivals', 'companion', 'account'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -384,6 +437,8 @@ const PAGE_LABELS: Record<string, string> = {
   progress: 'PB Progression',
   engineer: 'Race Engineer',
   rivals: 'Rivals',
+  companion: 'Companion App Sync',
+  account: 'Account',
 };
 
 const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
@@ -427,6 +482,20 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'Challenge a friend to beat one of your lap times or races',
       'Race async — no need to be online at the same time',
       'See a side-by-side comparison the moment they submit their attempt',
+    ],
+  },
+  companion: {
+    bullets: [
+      'Auto-upload sessions straight from F1 24/25/26 and Assetto Corsa',
+      'Generate an API key to connect the desktop companion app',
+      'Never manually log a lap time again',
+    ],
+  },
+  account: {
+    bullets: [
+      'Manage your profile and connected devices',
+      'See your usage across the Race Engineer and companion app',
+      'Keep everything synced across your devices',
     ],
   },
 };
@@ -519,11 +588,42 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
   );
 }
 
+function DemoBanner({ onSignIn }: { onSignIn: () => void }) {
+  return (
+    <div style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 700,
+      background: 'var(--teal)',
+      color: 'var(--black)',
+      padding: '8px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 14,
+      flexWrap: 'wrap',
+      fontFamily: 'var(--font-body)',
+      fontSize: 12,
+    }}>
+      <span>
+        <strong>Live Demo</strong> — you're viewing sample telemetry, not a real account. Nothing you do here is saved.
+      </span>
+      <button
+        className="btn btn-primary"
+        onClick={onSignIn}
+        style={{ fontSize: 11, padding: '5px 14px', background: 'var(--black)', color: 'var(--teal)', border: 'none', whiteSpace: 'nowrap' }}
+      >
+        Create Free Account →
+      </button>
+    </div>
+  );
+}
+
 const SHORTCUTS: Record<string, string> = {
   d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', r: 'rivals', c: 'community', x: 'companion', a: 'account',
 };
 
-function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => void }) {
+function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: boolean; onSignIn?: () => void }) {
   const [page, setPage] = useState('dashboard');
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -579,7 +679,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
     return () => window.removeEventListener('keydown', handler);
   }, [handleSetPage]);
 
-  const showNudge = isGuest && (pageViews >= 3 || timeReached) && !nudgeDismissed;
+  const showNudge = isGuest && !isDemo && (pageViews >= 3 || timeReached) && !nudgeDismissed;
 
   // Allow child pages to trigger top-level navigation via custom event
   useEffect(() => {
@@ -604,7 +704,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
       return <GuestWall page={page} onSignIn={onSignIn ?? (() => {})} />;
     }
     switch (page) {
-      case 'dashboard': return <Dashboard setPage={handleSetPage} />;
+      case 'dashboard': return <Dashboard setPage={handleSetPage} isGuest={isGuest} />;
       case 'sessions': return <Sessions isGuest={isGuest} />;
       case 'tracks': return <Tracks isGuest={isGuest} />;
       case 'setups': return <Setups />;
@@ -623,6 +723,7 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
     <div className="app-layout">
       <Nav page={page} setPage={handleSetPage} />
       <main className="main-content">
+        {isDemo && <DemoBanner onSignIn={onSignIn ?? (() => {})} />}
         {renderPage()}
       </main>
       {showNudge && (
@@ -656,9 +757,18 @@ function MainApp({ isGuest, onSignIn }: { isGuest?: boolean; onSignIn?: () => vo
 
 function HomeRoute() {
   const [isGuest, setIsGuest] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
   const [, setLocation] = useLocation();
 
+  const handleDemo = () => {
+    enterDemoMode(buildSampleSessions());
+    setIsDemo(true);
+    setIsGuest(true);
+  };
+
   const handleSignIn = () => {
+    exitDemoMode();
+    setIsDemo(false);
     setIsGuest(false);
     setLocation('/sign-in');
   };
@@ -671,8 +781,8 @@ function HomeRoute() {
       </Show>
       <Show when="signed-out">
         {isGuest
-          ? <MainApp isGuest onSignIn={handleSignIn} />
-          : <LandingPage onGuest={() => setIsGuest(true)} />
+          ? <MainApp isGuest isDemo={isDemo} onSignIn={handleSignIn} />
+          : <LandingPage onGuest={() => setIsGuest(true)} onDemo={handleDemo} />
         }
       </Show>
     </>

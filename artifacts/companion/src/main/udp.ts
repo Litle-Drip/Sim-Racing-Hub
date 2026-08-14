@@ -46,6 +46,15 @@ function finalClassSize(format: number): number {
 const LAP_HISTORY_SIZE = 14;
 const TYRE_STINT_HISTORY_SIZE = 3;
 
+// CarDamageData gained a m_tyreBlisters[4] array in F1 25, inserted between
+// m_brakesDamage and m_frontLeftWingDamage. Every field from the wings
+// onwards therefore sits 4 bytes later in F1 25/26 than in F1 24 — reading
+// the F1 24 offsets against an F1 25/26 packet returns blister percentages
+// where wing damage should be, and shifts every later field by one.
+function damageWingBase(format: number): number {
+  return format === 2024 ? 24 : 28;
+}
+
 export class UdpListener extends EventEmitter {
   private socket: dgram.Socket | null = null;
   private port: number;
@@ -131,6 +140,7 @@ export class UdpListener extends EventEmitter {
     switch (packetId) {
       case 1: this.parseSession(buf, sessionUID, packetFormat); break;
       case 2: this.parseLapData(buf); break;
+      case 3: this.parseEvent(buf, playerCarIndex); break;
       case 4: this.parseParticipants(buf, playerCarIndex, packetFormat); break;
       case 5: this.parseCarSetup(buf); break;
       case 6: this.parseCarTelemetry(buf); break;
@@ -180,20 +190,138 @@ export class UdpListener extends EventEmitter {
       const s1Min = buf.readUInt8(o + 10);
       const s2Ms = buf.readUInt16LE(o + 11);
       const s2Min = buf.readUInt8(o + 13);
+      // The two gap fields are split ms/minutes the same way sector times
+      // are, so they need the same reconstruction to survive gaps over ~65s.
+      const frontMs = buf.readUInt16LE(o + 14);
+      const frontMin = buf.readUInt8(o + 16);
+      const leaderMs = buf.readUInt16LE(o + 17);
+      const leaderMin = buf.readUInt8(o + 19);
       m_lapData.push({
         m_lastLapTimeInMS: buf.readUInt32LE(o),
         m_currentLapTimeInMS: buf.readUInt32LE(o + 4),
         m_sector1TimeInMS: s1Min * 60_000 + s1Ms,
         m_sector2TimeInMS: s2Min * 60_000 + s2Ms,
+        m_deltaToCarInFrontInMS: frontMin * 60_000 + frontMs,
+        m_deltaToRaceLeaderInMS: leaderMin * 60_000 + leaderMs,
         m_lapDistance: buf.readFloatLE(o + 20),
+        m_totalDistance: buf.readFloatLE(o + 24),
+        m_safetyCarDelta: buf.readFloatLE(o + 28),
+        m_carPosition: buf.readUInt8(o + 32),
         m_currentLapNum: buf.readUInt8(o + 33),
         m_pitStatus: buf.readUInt8(o + 34),
         m_numPitStops: buf.readUInt8(o + 35),
+        m_sector: buf.readUInt8(o + 36),
         m_currentLapInvalid: buf.readUInt8(o + 37),
         m_penalties: buf.readUInt8(o + 38),
+        m_totalWarnings: buf.readUInt8(o + 39),
+        m_cornerCuttingWarnings: buf.readUInt8(o + 40),
+        m_numUnservedDriveThroughPens: buf.readUInt8(o + 41),
+        m_numUnservedStopGoPens: buf.readUInt8(o + 42),
+        m_gridPosition: buf.readUInt8(o + 43),
+        m_driverStatus: buf.readUInt8(o + 44),
+        m_resultStatus: buf.readUInt8(o + 45),
+        m_pitLaneTimerActive: buf.readUInt8(o + 46),
+        m_pitLaneTimeInLaneInMS: buf.readUInt16LE(o + 47),
+        m_pitStopTimerInMS: buf.readUInt16LE(o + 49),
+        m_pitStopShouldServePen: buf.readUInt8(o + 51),
+        m_speedTrapFastestSpeed: buf.readFloatLE(o + 52),
+        m_speedTrapFastestLap: buf.readUInt8(o + 56),
       });
     }
     this.emit("lapData", { m_lapData });
+  }
+
+  // The Event packet is a 4-character string code plus a union whose layout
+  // depends on that code. Only the codes carrying data worth attributing to
+  // a lap are decoded; the rest are emitted with just their code so a
+  // listener can still count/act on them. Every read past the code is length-
+  // guarded because the union is shorter than the packet's max size for most
+  // event types, and the game only sends as many bytes as the event needs.
+  private parseEvent(buf: Buffer, playerCarIndex: number): void {
+    if (buf.length < HEADER_SIZE + 4) return;
+    const code = buf.toString("utf8", HEADER_SIZE, HEADER_SIZE + 4);
+    const d = HEADER_SIZE + 4;
+    const has = (n: number): boolean => buf.length >= d + n;
+
+    const event: Record<string, unknown> = { m_eventStringCode: code, m_playerCarIndex: playerCarIndex };
+
+    switch (code) {
+      case "FTLP": // Fastest lap
+        if (has(5)) {
+          event.m_vehicleIdx = buf.readUInt8(d);
+          event.m_lapTime = buf.readFloatLE(d + 1);
+        }
+        break;
+      case "SPTP": // Speed trap triggered
+        if (has(12)) {
+          event.m_vehicleIdx = buf.readUInt8(d);
+          event.m_speed = buf.readFloatLE(d + 1);
+          event.m_isOverallFastestInSession = buf.readUInt8(d + 5);
+          event.m_isDriverFastestInSession = buf.readUInt8(d + 6);
+          event.m_fastestVehicleIdxInSession = buf.readUInt8(d + 7);
+          event.m_fastestSpeedInSession = buf.readFloatLE(d + 8);
+        }
+        break;
+      case "PENA": // Penalty issued
+        if (has(7)) {
+          event.m_penaltyType = buf.readUInt8(d);
+          event.m_infringementType = buf.readUInt8(d + 1);
+          event.m_vehicleIdx = buf.readUInt8(d + 2);
+          event.m_otherVehicleIdx = buf.readUInt8(d + 3);
+          event.m_time = buf.readUInt8(d + 4);
+          event.m_lapNum = buf.readUInt8(d + 5);
+          event.m_placesGained = buf.readUInt8(d + 6);
+        }
+        break;
+      case "FLBK": // Flashback used
+        if (has(8)) {
+          event.m_flashbackFrameIdentifier = buf.readUInt32LE(d);
+          event.m_flashbackSessionTime = buf.readFloatLE(d + 4);
+        }
+        break;
+      case "RTMT": // Retirement
+        if (has(2)) {
+          event.m_vehicleIdx = buf.readUInt8(d);
+          event.m_reason = buf.readUInt8(d + 1);
+        }
+        break;
+      case "DRSD": // DRS disabled
+        if (has(1)) event.m_reason = buf.readUInt8(d);
+        break;
+      case "SCAR": // Safety car deployed/changed
+        if (has(2)) {
+          event.m_safetyCarType = buf.readUInt8(d);
+          event.m_eventType = buf.readUInt8(d + 1);
+        }
+        break;
+      case "COLL": // Collision
+        if (has(2)) {
+          event.m_vehicle1Idx = buf.readUInt8(d);
+          event.m_vehicle2Idx = buf.readUInt8(d + 1);
+        }
+        break;
+      case "OVTK": // Overtake
+        if (has(2)) {
+          event.m_overtakingVehicleIdx = buf.readUInt8(d);
+          event.m_beingOvertakenVehicleIdx = buf.readUInt8(d + 1);
+        }
+        break;
+      case "TMPT": // Team mate in pits
+      case "RCWN": // Race winner
+      case "DTSV": // Drive-through penalty served
+      case "SGSV": // Stop-go penalty served
+        if (has(1)) event.m_vehicleIdx = buf.readUInt8(d);
+        break;
+      case "STLG": // Start lights
+        if (has(1)) event.m_numLights = buf.readUInt8(d);
+        break;
+      // SSTA / SEND / DRSE / CHQF / RDFL / LGOT / BUTN carry nothing this app
+      // needs beyond the code itself.
+      default:
+        break;
+    }
+
+    this.emit("event", event);
   }
 
   private parseParticipants(buf: Buffer, playerCarIndex: number, format: number): void {
@@ -258,9 +386,11 @@ export class UdpListener extends EventEmitter {
         m_throttle: buf.readFloatLE(o + 2),
         m_steer: buf.readFloatLE(o + 6),
         m_brake: buf.readFloatLE(o + 10),
+        m_clutch: buf.readUInt8(o + 14),
         m_gear: buf.readInt8(o + 15),
         m_engineRPM: buf.readUInt16LE(o + 16),
         m_drs: buf.readUInt8(o + 18),
+        m_revLightsPercent: buf.readUInt8(o + 19),
         m_brakesTemperature: [
           buf.readUInt16LE(o + 22),
           buf.readUInt16LE(o + 24),
@@ -273,12 +403,24 @@ export class UdpListener extends EventEmitter {
           buf.readUInt8(o + 32),
           buf.readUInt8(o + 33),
         ] as [number, number, number, number],
+        m_tyresInnerTemperature: [
+          buf.readUInt8(o + 34),
+          buf.readUInt8(o + 35),
+          buf.readUInt8(o + 36),
+          buf.readUInt8(o + 37),
+        ] as [number, number, number, number],
         m_engineTemperature: buf.readUInt16LE(o + 38),
         m_tyresPressure: [
           buf.readFloatLE(o + 40),
           buf.readFloatLE(o + 44),
           buf.readFloatLE(o + 48),
           buf.readFloatLE(o + 52),
+        ] as [number, number, number, number],
+        m_surfaceType: [
+          buf.readUInt8(o + 56),
+          buf.readUInt8(o + 57),
+          buf.readUInt8(o + 58),
+          buf.readUInt8(o + 59),
         ] as [number, number, number, number],
       });
     }
@@ -293,17 +435,27 @@ export class UdpListener extends EventEmitter {
       m_carStatusData.push({
         m_tractionControl: buf.readUInt8(o),
         m_antiLockBrakes: buf.readUInt8(o + 1),
+        m_fuelMix: buf.readUInt8(o + 2),
         m_frontBrakeBias: buf.readUInt8(o + 3),
+        m_pitLimiterStatus: buf.readUInt8(o + 4),
         m_fuelInTank: buf.readFloatLE(o + 5),
         m_fuelCapacity: buf.readFloatLE(o + 9),
         m_fuelRemainingLaps: buf.readFloatLE(o + 13),
         m_maxRPM: buf.readUInt16LE(o + 17),
+        m_idleRPM: buf.readUInt16LE(o + 19),
+        m_maxGears: buf.readUInt8(o + 21),
+        m_drsAllowed: buf.readUInt8(o + 22),
+        m_drsActivationDistance: buf.readUInt16LE(o + 23),
         m_actualTyreCompound: buf.readUInt8(o + 25),
         m_visualTyreCompound: buf.readUInt8(o + 26),
         m_tyresAgeLaps: buf.readUInt8(o + 27),
         m_vehicleFiaFlags: buf.readInt8(o + 28),
+        m_enginePowerICE: buf.readFloatLE(o + 29),
+        m_enginePowerMGUK: buf.readFloatLE(o + 33),
         m_ersStoreEnergy: buf.readFloatLE(o + 37),
         m_ersDeployMode: buf.readUInt8(o + 41),
+        m_ersHarvestedThisLapMGUK: buf.readFloatLE(o + 42),
+        m_ersHarvestedThisLapMGUH: buf.readFloatLE(o + 46),
         m_ersDeployedThisLap: buf.readFloatLE(o + 50),
       });
     }
@@ -332,6 +484,8 @@ export class UdpListener extends EventEmitter {
   private parseCarDamage(buf: Buffer, format: number): void {
     const stride = carDamageSize(format);
     if (buf.length < HEADER_SIZE + NUM_CARS * stride) return;
+    const w = damageWingBase(format);
+    const hasBlisters = format !== 2024;
     const m_carDamageData = [];
     for (let i = 0; i < NUM_CARS; i++) {
       const o = HEADER_SIZE + i * stride;
@@ -342,14 +496,44 @@ export class UdpListener extends EventEmitter {
           buf.readFloatLE(o + 8),
           buf.readFloatLE(o + 12),
         ] as [number, number, number, number],
-        m_frontLeftWingDamage: buf.readUInt8(o + 24),
-        m_frontRightWingDamage: buf.readUInt8(o + 25),
-        m_rearWingDamage: buf.readUInt8(o + 26),
-        m_floorDamage: buf.readUInt8(o + 27),
-        m_diffuserDamage: buf.readUInt8(o + 28),
-        m_sidepodDamage: buf.readUInt8(o + 29),
-        m_gearBoxDamage: buf.readUInt8(o + 32),
-        m_engineDamage: buf.readUInt8(o + 33),
+        m_tyresDamage: [
+          buf.readUInt8(o + 16),
+          buf.readUInt8(o + 17),
+          buf.readUInt8(o + 18),
+          buf.readUInt8(o + 19),
+        ] as [number, number, number, number],
+        m_brakesDamage: [
+          buf.readUInt8(o + 20),
+          buf.readUInt8(o + 21),
+          buf.readUInt8(o + 22),
+          buf.readUInt8(o + 23),
+        ] as [number, number, number, number],
+        m_tyreBlisters: hasBlisters
+          ? ([
+              buf.readUInt8(o + 24),
+              buf.readUInt8(o + 25),
+              buf.readUInt8(o + 26),
+              buf.readUInt8(o + 27),
+            ] as [number, number, number, number])
+          : undefined,
+        m_frontLeftWingDamage: buf.readUInt8(o + w),
+        m_frontRightWingDamage: buf.readUInt8(o + w + 1),
+        m_rearWingDamage: buf.readUInt8(o + w + 2),
+        m_floorDamage: buf.readUInt8(o + w + 3),
+        m_diffuserDamage: buf.readUInt8(o + w + 4),
+        m_sidepodDamage: buf.readUInt8(o + w + 5),
+        m_drsFault: buf.readUInt8(o + w + 6),
+        m_ersFault: buf.readUInt8(o + w + 7),
+        m_gearBoxDamage: buf.readUInt8(o + w + 8),
+        m_engineDamage: buf.readUInt8(o + w + 9),
+        m_engineMGUHWear: buf.readUInt8(o + w + 10),
+        m_engineESWear: buf.readUInt8(o + w + 11),
+        m_engineCEWear: buf.readUInt8(o + w + 12),
+        m_engineICEWear: buf.readUInt8(o + w + 13),
+        m_engineMGUKWear: buf.readUInt8(o + w + 14),
+        m_engineTCWear: buf.readUInt8(o + w + 15),
+        m_engineBlown: buf.readUInt8(o + w + 16),
+        m_engineSeized: buf.readUInt8(o + w + 17),
       });
     }
     this.emit("carDamage", { m_carDamageData });
@@ -364,6 +548,10 @@ export class UdpListener extends EventEmitter {
 
     const m_numLaps = buf.readUInt8(HEADER_SIZE + 1);
     const m_numTyreStints = buf.readUInt8(HEADER_SIZE + 2);
+    const m_bestLapTimeLapNum = buf.readUInt8(HEADER_SIZE + 3);
+    const m_bestSector1LapNum = buf.readUInt8(HEADER_SIZE + 4);
+    const m_bestSector2LapNum = buf.readUInt8(HEADER_SIZE + 5);
+    const m_bestSector3LapNum = buf.readUInt8(HEADER_SIZE + 6);
 
     const m_lapHistoryData = [];
     const lapCount = Math.min(m_numLaps, 100);
@@ -399,6 +587,10 @@ export class UdpListener extends EventEmitter {
       m_carIdx,
       m_numLaps,
       m_numTyreStints,
+      m_bestLapTimeLapNum,
+      m_bestSector1LapNum,
+      m_bestSector2LapNum,
+      m_bestSector3LapNum,
       m_lapHistoryData,
       m_tyreStintsHistoryData,
     });

@@ -8,7 +8,9 @@
 import type { CornerNote } from './cornerNote';
 
 export interface TrackNotesRecord {
+  /** @maxLength 200 */
   id: string;
   trackId: string;
+  /** @maxItems 60 */
   corners: CornerNote[];
 }

@@ -1,17 +1,19 @@
 import { Router } from "express";
-import { eq, and, inArray } from "drizzle-orm";
-import { db, sessionsTable } from "@workspace/db";
+import { eq, and, inArray, sql, getTableColumns } from "drizzle-orm";
+import { db, sessionsTable, type DbSession, type DbLapRecord } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
 import {
   CreateSessionBody,
   GetSessionsResponse,
+  GetSessionDetailResponse,
 } from "@workspace/api-zod";
 
 const router = Router();
 
-type LapTraceSample = { d: number; speed: number; throttle: number; brake: number; steer: number };
-type LapRecord = { lap: number; time: string; s1: string; s2: string; s3: string; tires: string; penalty: string; trace?: LapTraceSample[] };
+// Per-lap telemetry lives in the `laps` jsonb column, so the shape is
+// defined once alongside the table rather than restated here.
+type LapRecord = DbLapRecord;
 
 // A well-formed lap trace has at most a few thousand points (F1 25 sends
 // telemetry at 60Hz, downsampled client-side). A companion-app bug can
@@ -72,12 +74,32 @@ function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string
 }
 
 async function recalcPBsForUser(userId: string) {
+  // Only the columns the PB comparison below actually reads — this runs on
+  // every session create/delete, so pulling the full row (including the
+  // per-lap telemetry traces in `laps`) would re-transfer a user's entire
+  // session history's worth of trace data on every upload.
   const rows = await db
-    .select()
+    .select({
+      id: sessionsTable.id,
+      date: sessionsTable.date,
+      createdAt: sessionsTable.createdAt,
+      trackId: sessionsTable.trackId,
+      bestLap: sessionsTable.bestLap,
+      isPB: sessionsTable.isPB,
+    })
     .from(sessionsTable)
     .where(eq(sessionsTable.userId, userId));
 
-  const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+  // Sort chronologically so, among sessions logged on the same calendar
+  // date, the one uploaded/created first consistently wins tie-breaking
+  // for which row keeps the isPB flag (date alone doesn't distinguish
+  // same-day sessions, and without a stable secondary key the winner would
+  // depend on incidental DB row order).
+  const sorted = [...rows].sort((a, b) => {
+    const dateCmp = a.date.localeCompare(b.date);
+    if (dateCmp !== 0) return dateCmp;
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
   const pbMap: Record<string, string> = {};
 
   // Only the rows whose isPB flag actually changes need writing — for a
@@ -184,21 +206,72 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     gearBoxDamage: r.gearBoxDamage ?? null,
     engineDamage: r.engineDamage ?? null,
     liveBrakeBias: r.liveBrakeBias ?? null,
+    tyreDamage: r.tyreDamage ?? null,
+    brakesDamage: r.brakesDamage ?? null,
+    tyreBlisters: r.tyreBlisters ?? null,
+    tyreInnerTemps: r.tyreInnerTemps ?? null,
+    engineWear: r.engineWear ?? null,
+    ersHarvestedThisLap: r.ersHarvestedThisLap ?? null,
+    fuelMix: r.fuelMix ?? null,
+    speedTrapKph: r.speedTrapKph ?? null,
+    flashbacks: r.flashbacks ?? null,
+    collisions: r.collisions ?? null,
+    safetyCarPeriods: r.safetyCarPeriods ?? null,
+    redFlags: r.redFlags ?? null,
+    totalWarnings: r.totalWarnings ?? null,
+    cornerCuttingWarnings: r.cornerCuttingWarnings ?? null,
+    bestLapNum: r.bestLapNum ?? null,
+    bestSector1LapNum: r.bestSector1LapNum ?? null,
+    bestSector2LapNum: r.bestSector2LapNum ?? null,
+    bestSector3LapNum: r.bestSector3LapNum ?? null,
     createdAt: r.createdAt.toISOString(),
   };
 }
+
+// Per-lap telemetry traces (up to 3000 points each) are only ever rendered
+// from the single-session detail view (see GET /sessions/:id below), never
+// from the list. Stripping them here in SQL — rather than fetching the full
+// JSONB and discarding `trace` in JS — keeps Postgres from reading and
+// transferring that data on every login/refresh, which is what was driving
+// up load time and Neon compute/egress.
+const lapsWithoutTrace = sql<DbSession["laps"]>`(
+  select jsonb_agg(lap_elem - 'trace')
+  from jsonb_array_elements(${sessionsTable.laps}) as lap_elem
+)`.as("laps");
 
 router.get("/sessions", requireAuth, async (req, res) => {
   const userId = (req as AuthRequest).userId as string;
   try {
     const rows = await db
-      .select()
+      .select({ ...getTableColumns(sessionsTable), laps: lapsWithoutTrace })
       .from(sessionsTable)
       .where(eq(sessionsTable.userId, userId));
 
     res.json(GetSessionsResponse.parse(rows.map(serializeSession)));
   } catch (err) {
     req.log.error({ err }, "Failed to get sessions");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/sessions/:id", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).userId as string;
+  const id = req.params.id as string;
+
+  try {
+    const [row] = await db
+      .select()
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.id, id), eq(sessionsTable.userId, userId)));
+
+    if (!row) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
+    res.json(GetSessionDetailResponse.parse(serializeSession(row)));
+  } catch (err) {
+    req.log.error({ err }, "Failed to get session detail");
     res.status(500).json({ error: "Internal server error" });
   }
 });

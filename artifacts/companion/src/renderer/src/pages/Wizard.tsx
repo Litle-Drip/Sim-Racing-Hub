@@ -268,6 +268,9 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
           </h2>
           <p style={{ color: theme.gray, fontSize: 13, marginBottom: 28, lineHeight: 1.6 }}>
             Start F1 25 and load into a session. The companion will detect the connection automatically.
+            Assetto Corsa and Assetto Corsa Competizione are also supported — after finishing this setup, use the{" "}
+            <strong style={{ color: theme.grayLight }}>Game Setup</strong> section in Settings to enable them with
+            one click each, no manual file editing required.
           </p>
           <div
             style={{

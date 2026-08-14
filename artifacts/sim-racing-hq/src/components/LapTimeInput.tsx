@@ -55,17 +55,19 @@ export function LapTimeInput({
 
     let formatted = '';
     if (digits.length <= 2) {
+      // Not enough digits yet to know where minutes end and seconds begin.
       formatted = digits;
-    } else if (digits.length <= 4) {
-      formatted = `${digits.slice(0, -2)}:${digits.slice(-2)}`;
     } else {
-      const millis = digits.slice(-3);
-      const rest = digits.slice(0, -3);
-      if (rest.length <= 2) {
-        formatted = `${rest}.${millis}`;
-      } else {
-        formatted = `${rest.slice(0, -2)}:${rest.slice(-2)}.${millis}`;
-      }
+      // From the 3rd digit on, digit 1 is always minutes, the next two are
+      // seconds, and anything after that is milliseconds — keeping this
+      // mapping fixed as more digits arrive (rather than re-slicing from
+      // the end) avoids a digit shifting from seconds into minutes mid-type
+      // (e.g. "1234" briefly reading as "12:34" instead of "1:23.4").
+      const capped = digits.slice(0, 6); // M + SS + SSS
+      const minutes = capped.slice(0, 1);
+      const seconds = capped.slice(1, 3);
+      const millis = capped.slice(3, 6);
+      formatted = millis ? `${minutes}:${seconds}.${millis}` : `${minutes}:${seconds}`;
     }
 
     onChange(formatted);

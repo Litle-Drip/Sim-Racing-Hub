@@ -7,6 +7,7 @@
  */
 
 export interface CornerNote {
+  /** @maxLength 200 */
   id: string;
   number: number;
   name: string;

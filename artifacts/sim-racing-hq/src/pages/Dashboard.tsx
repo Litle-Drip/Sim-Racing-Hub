@@ -166,15 +166,29 @@ function buildHeatmapTooltip(cell: { date: string; count: number; pbs: number; b
   return tip;
 }
 
+const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
+
 interface DashboardProps {
   setPage: (p: string) => void;
+  isGuest?: boolean;
 }
 
-export default function Dashboard({ setPage }: DashboardProps) {
-  const { data: sessions = [] } = useGetSessions();
-  const { data: setups = [] } = useGetSetups();
+export default function Dashboard({ setPage, isGuest }: DashboardProps) {
+  const { data: apiSessions = [] } = useGetSessions(isGuest ? { query: { enabled: false } as never } : undefined);
+  const { data: apiSetups = [] } = useGetSetups(isGuest ? { query: { enabled: false } as never } : undefined);
   const { data: communitySessions = [] } = useGetCommunitySessions();
   const { user } = useUser();
+
+  const [guestSessions] = useState<SessionRecord[]>(() => {
+    if (!isGuest) return [];
+    try {
+      const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
+      return raw ? (JSON.parse(raw) as SessionRecord[]) : [];
+    } catch { return []; }
+  });
+
+  const sessions: SessionRecord[] = isGuest ? guestSessions : apiSessions;
+  const setups = isGuest ? [] : apiSetups;
   const [badgeTab, setBadgeTab] = useState('Skill');
   const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
 

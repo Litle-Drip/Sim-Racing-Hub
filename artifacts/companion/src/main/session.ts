@@ -6,6 +6,23 @@ export interface LapTraceSample {
   throttle: number; // 0-100
   brake: number; // 0-100
   steer: number; // -100 (full left) to 100 (full right)
+  // Optional so traces recorded by older companion builds (and already
+  // stored server-side) stay valid — readers must treat these as absent
+  // rather than zero when missing.
+  gear?: number; // -1 reverse, 0 neutral, 1-8
+  rpm?: number;
+  drs?: number; // 0 off, 1 open
+}
+
+// A penalty the game issued during a specific lap. Raw enum values are kept
+// rather than resolved to strings: the penalty/infringement tables are long,
+// version-specific, and better decoded where they're displayed than guessed
+// at here.
+export interface LapPenalty {
+  type: number;
+  infringement: number;
+  seconds: number;
+  placesGained: number;
 }
 
 export interface LapRecord {
@@ -17,6 +34,43 @@ export interface LapRecord {
   tires: string;
   penalty: string;
   trace?: LapTraceSample[];
+
+  // Everything below is per-lap telemetry captured alongside the lap time.
+  // All optional: laps recovered from session history (see
+  // reconcileFromLapHistory) only ever have the timing fields, and older
+  // stored sessions have none of them.
+  lapTimeMs?: number;
+  s1Ms?: number;
+  s2Ms?: number;
+  s3Ms?: number;
+  valid?: boolean;
+  actualCompound?: string;
+  tyreAgeLaps?: number;
+  position?: number;
+  topSpeedKph?: number;
+  avgThrottlePct?: number;
+  avgBrakePct?: number;
+  maxRpm?: number;
+  fuelUsedKg?: number;
+  fuelAtEndKg?: number;
+  fuelMix?: number;
+  tyreWearEndPct?: [number, number, number, number];
+  tyreSurfaceTempsEnd?: [number, number, number, number];
+  tyreInnerTempsEnd?: [number, number, number, number];
+  brakeTempsEnd?: [number, number, number, number];
+  ersDeployedMJ?: number;
+  ersHarvestedMJ?: number;
+  ersStoreEndMJ?: number;
+  ersDeployMode?: number;
+  warningsThisLap?: number;
+  cornerCuttingWarningsThisLap?: number;
+  totalWarnings?: number;
+  penalties?: LapPenalty[];
+  speedTrapKph?: number;
+  pitted?: boolean;
+  pitLaneTimeMs?: number;
+  pitStopTimeMs?: number;
+  flashbacks?: number;
 }
 
 export interface CarSetupSnapshot {
@@ -54,6 +108,21 @@ export interface LapHistoryEntry {
   sector2Ms: number;
   sector3Ms: number;
   valid: boolean;
+  // m_lapValidBitFlags carries per-sector validity in bits 1-3 alongside the
+  // whole-lap bit 0 — a lap can be invalidated in one sector while the other
+  // two remain legal reference times.
+  sector1Valid?: boolean;
+  sector2Valid?: boolean;
+  sector3Valid?: boolean;
+}
+
+export interface EngineWear {
+  mguh: number;
+  es: number;
+  ce: number;
+  ice: number;
+  mguk: number;
+  tc: number;
 }
 
 export interface SessionSnapshot {
@@ -115,6 +184,24 @@ export interface SessionSnapshot {
   gearBoxDamage?: number;
   engineDamage?: number;
   liveBrakeBias?: number;
+  tyreDamage?: [number, number, number, number];
+  brakesDamage?: [number, number, number, number];
+  tyreBlisters?: [number, number, number, number];
+  tyreInnerTemps?: [number, number, number, number];
+  engineWear?: EngineWear;
+  ersHarvestedThisLap?: number;
+  fuelMix?: number;
+  speedTrapKph?: number;
+  flashbacks?: number;
+  collisions?: number;
+  safetyCarPeriods?: number;
+  redFlags?: number;
+  totalWarnings?: number;
+  cornerCuttingWarnings?: number;
+  bestLapNum?: number;
+  bestSector1LapNum?: number;
+  bestSector2LapNum?: number;
+  bestSector3LapNum?: number;
 }
 
 const TRACK_NAMES: Record<number, string> = {
@@ -319,7 +406,94 @@ interface LapState {
   s2Ms: number;
   invalid: boolean;
   trace: LapTraceSample[];
+
+  // Running aggregates over this lap's telemetry samples.
+  topSpeedKph: number;
+  throttleSum: number;
+  brakeSum: number;
+  inputSamples: number;
+  maxRpm: number;
+
+  // Most recent value seen *while on this lap*. Snapshotting continuously
+  // rather than reading the tracker's live fields at completion time matters
+  // for the per-lap counters the game resets at the line (ERS deployed /
+  // harvested): by the time a lap is finalized those have already rolled
+  // over to the new lap's values.
+  fuelStartKg: number;
+  fuelEndKg: number;
+  fuelMix: number;
+  tyreWearEnd: [number, number, number, number];
+  tyreSurfaceTempsEnd: [number, number, number, number];
+  tyreInnerTempsEnd: [number, number, number, number];
+  brakeTempsEnd: [number, number, number, number];
+  ersDeployedJ: number;
+  ersHarvestedJ: number;
+  ersStoreJ: number;
+  ersDeployMode: number;
+  actualCompound: number;
+  tyreAgeLaps: number;
+  position: number;
+
+  // Session-cumulative counters captured at lap start, so the per-lap delta
+  // can be reported instead of a running total that only grows.
+  warningsAtStart: number;
+  cornerCuttingAtStart: number;
+  totalWarnings: number;
+  cornerCuttingWarnings: number;
+
+  penalties: LapPenalty[];
+  speedTrapKph: number;
+  pitted: boolean;
+  pitLaneTimeMs: number;
+  pitStopTimeMs: number;
+  flashbacks: number;
 }
+
+function newLapState(lapNum: number, s1Ms: number, s2Ms: number, invalid: boolean, seed?: {
+  fuelKg: number;
+  warnings: number;
+  cornerCutting: number;
+}): LapState {
+  return {
+    lapNum,
+    lapStartTimeMs: Date.now(),
+    s1Ms,
+    s2Ms,
+    invalid,
+    trace: [],
+    topSpeedKph: 0,
+    throttleSum: 0,
+    brakeSum: 0,
+    inputSamples: 0,
+    maxRpm: 0,
+    fuelStartKg: seed?.fuelKg ?? 0,
+    fuelEndKg: seed?.fuelKg ?? 0,
+    fuelMix: 0,
+    tyreWearEnd: [0, 0, 0, 0],
+    tyreSurfaceTempsEnd: [0, 0, 0, 0],
+    tyreInnerTempsEnd: [0, 0, 0, 0],
+    brakeTempsEnd: [0, 0, 0, 0],
+    ersDeployedJ: 0,
+    ersHarvestedJ: 0,
+    ersStoreJ: 0,
+    ersDeployMode: 0,
+    actualCompound: 0,
+    tyreAgeLaps: 0,
+    position: 0,
+    warningsAtStart: seed?.warnings ?? 0,
+    cornerCuttingAtStart: seed?.cornerCutting ?? 0,
+    totalWarnings: seed?.warnings ?? 0,
+    cornerCuttingWarnings: seed?.cornerCutting ?? 0,
+    penalties: [],
+    speedTrapKph: 0,
+    pitted: false,
+    pitLaneTimeMs: 0,
+    pitStopTimeMs: 0,
+    flashbacks: 0,
+  };
+}
+
+const JOULES_PER_MJ = 1_000_000;
 
 export class SessionTracker {
   private sessionUID: string | null = null;
@@ -399,6 +573,29 @@ export class SessionTracker {
   private lastEngineDamage = 0;
   private lastLiveBrakeBias = 0;
 
+  private lastTyreDamage: [number, number, number, number] = [0, 0, 0, 0];
+  private lastBrakesDamage: [number, number, number, number] = [0, 0, 0, 0];
+  private lastTyreBlisters: [number, number, number, number] = [0, 0, 0, 0];
+  private lastTyreInnerTemps: [number, number, number, number] = [0, 0, 0, 0];
+  private lastEngineWear: EngineWear | undefined = undefined;
+  private lastErsHarvestedThisLap = 0;
+  private lastFuelMix = 0;
+  private lastTotalWarnings = 0;
+  private lastCornerCuttingWarnings = 0;
+  private lastBestLapNum = 0;
+  private lastBestSector1LapNum = 0;
+  private lastBestSector2LapNum = 0;
+  private lastBestSector3LapNum = 0;
+
+  // Event-packet derived session counters (packet id 3). These have no
+  // equivalent in the per-frame packets — a flashback, a collision or a red
+  // flag is only ever announced once, as an event.
+  private speedTrapKph = 0;
+  private flashbackCount = 0;
+  private collisionCount = 0;
+  private safetyCarPeriods = 0;
+  private redFlagCount = 0;
+
   // Session-level aggregates (running max/avg/count), distinct from the
   // lastX "most recent sample" fields above — these summarize the whole
   // session rather than a snapshot at flush time.
@@ -445,9 +642,22 @@ export class SessionTracker {
     }
   }
 
+  // m_packetFormat=2024 isn't a reliable signal that the F1-24 session-type
+  // enum applies — confirmed live on 2026-08-12/13: a real F1 26 session
+  // sent packetFormat=2024 with raw m_sessionType=18 (Time Trial) and,
+  // separately, 15 (Race), neither of which exist in the F1-24 table (it
+  // tops out at 13) — so the game apparently doesn't always bump this
+  // field on newer releases. Rather than hardcode each colliding id as
+  // it's found, fall through to the modern table whenever the id isn't
+  // recognized in the legacy one; this self-heals for ids the F1-24 table
+  // was never going to define and is inert for real F1 24 telemetry, whose
+  // own spec never sends ids outside the legacy table's range.
   private sessionTypeName(type: number): string {
-    const table = this.packetFormat === 2024 ? SESSION_TYPES_F1_24 : SESSION_TYPES;
-    return table[type] ?? "Unknown";
+    if (this.packetFormat === 2024) {
+      const legacyName = SESSION_TYPES_F1_24[type];
+      if (legacyName) return legacyName;
+    }
+    return SESSION_TYPES[type] ?? "Unknown";
   }
 
   get timeSinceLastPacket(): number {
@@ -569,6 +779,12 @@ export class SessionTracker {
     m_penalties?: number;
     m_lapDistance?: number;
     m_numPitStops?: number;
+    m_carPosition?: number;
+    m_pitStatus?: number;
+    m_totalWarnings?: number;
+    m_cornerCuttingWarnings?: number;
+    m_pitLaneTimeInLaneInMS?: number;
+    m_pitStopTimerInMS?: number;
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!this.sessionUID) return;
@@ -586,6 +802,25 @@ export class SessionTracker {
     const penalties = lap.m_penalties ?? 0;
     this.currentLapDistanceM = lap.m_lapDistance ?? 0;
     if (lap.m_numPitStops !== undefined) this.lastPitStops = lap.m_numPitStops;
+    if (lap.m_totalWarnings !== undefined) this.lastTotalWarnings = lap.m_totalWarnings;
+    if (lap.m_cornerCuttingWarnings !== undefined) this.lastCornerCuttingWarnings = lap.m_cornerCuttingWarnings;
+    if (lap.m_carPosition !== undefined && lap.m_carPosition > 0) this.lastPosition = lap.m_carPosition;
+
+    // Fold this frame's LapData into the lap being driven before any
+    // completion check below, so a lap that finishes on this very packet
+    // still carries the final values from it.
+    if (this.pendingLap && lapNum === this.pendingLap.lapNum) {
+      const p = this.pendingLap;
+      if (lap.m_carPosition !== undefined && lap.m_carPosition > 0) p.position = lap.m_carPosition;
+      if (lap.m_totalWarnings !== undefined) p.totalWarnings = lap.m_totalWarnings;
+      if (lap.m_cornerCuttingWarnings !== undefined) p.cornerCuttingWarnings = lap.m_cornerCuttingWarnings;
+      // pitStatus: 0 none, 1 pitting, 2 in pit area. The pit timers are only
+      // non-zero while the stop is in progress, so keep the largest value
+      // seen rather than whatever happens to be current at the line.
+      if ((lap.m_pitStatus ?? 0) > 0) p.pitted = true;
+      if ((lap.m_pitLaneTimeInLaneInMS ?? 0) > p.pitLaneTimeMs) p.pitLaneTimeMs = lap.m_pitLaneTimeInLaneInMS ?? 0;
+      if ((lap.m_pitStopTimerInMS ?? 0) > p.pitStopTimeMs) p.pitStopTimeMs = lap.m_pitStopTimerInMS ?? 0;
+    }
 
     // A rewind/flashback can make the game report a lower m_currentLapNum
     // than the lap we were tracking (re-driving an earlier lap). That's not
@@ -614,17 +849,22 @@ export class SessionTracker {
             // completed once.
             console.log(`[Lap] #${this.pendingLap.lapNum} duplicate (already recorded) — skipped`);
           } else {
-            const s1 = msToLapTime(this.pendingLap.s1Ms);
-            const s2 = msToLapTime(this.pendingLap.s2Ms);
-            const s3 = msToLapTime(Math.max(0, lastLapMs - this.pendingLap.s1Ms - this.pendingLap.s2Ms));
-            const record: LapRecord = {
-              lap: this.pendingLap.lapNum,
-              time: msToLapTime(lastLapMs),
-              s1, s2, s3,
-              tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
-              penalty: penalties > 0 ? `${penalties}s` : "",
-              trace: this.pendingLap.trace.length > 0 ? this.pendingLap.trace : undefined,
-            };
+            // The packet that reports the new lap number is also the first
+            // to carry any warning picked up in the final metres of the lap
+            // just finished — fold it in before the record is built, or that
+            // warning is credited to the next lap instead. Both counters are
+            // session-cumulative and never decrease, so taking the larger
+            // value is safe.
+            if (lap.m_totalWarnings !== undefined) {
+              this.pendingLap.totalWarnings = Math.max(this.pendingLap.totalWarnings, lap.m_totalWarnings);
+            }
+            if (lap.m_cornerCuttingWarnings !== undefined) {
+              this.pendingLap.cornerCuttingWarnings = Math.max(
+                this.pendingLap.cornerCuttingWarnings,
+                lap.m_cornerCuttingWarnings,
+              );
+            }
+            const record = this.buildLapRecord(this.pendingLap, lastLapMs, penalties);
             this.validLaps.push(record);
             this.lastRecordedLapMs = lastLapMs;
             this.onLapComplete?.(record);
@@ -638,7 +878,11 @@ export class SessionTracker {
           console.log(`[Lap] #${this.pendingLap.lapNum} invalid — excluded from session`);
         }
       }
-      this.pendingLap = { lapNum, lapStartTimeMs: Date.now(), s1Ms, s2Ms, invalid, trace: [] };
+      this.pendingLap = newLapState(lapNum, s1Ms, s2Ms, invalid, {
+        fuelKg: this.lastFuelInTank,
+        warnings: this.lastTotalWarnings,
+        cornerCutting: this.lastCornerCuttingWarnings,
+      });
       this.telemetrySampleCounter = 0;
       this.currentLapNum = lapNum;
     } else if (lapNum < this.pendingLap.lapNum) {
@@ -664,6 +908,68 @@ export class SessionTracker {
     }
   }
 
+  // Turns a finished lap's accumulated state into the record that gets
+  // uploaded. Every telemetry field is emitted only when it was actually
+  // observed during the lap — a zero from a packet that never arrived is
+  // indistinguishable from a real zero once uploaded, so absent stays
+  // absent.
+  private buildLapRecord(state: LapState, lapTimeMs: number, penaltiesSec: number): LapRecord {
+    const s3Ms = Math.max(0, lapTimeMs - state.s1Ms - state.s2Ms);
+    const nonZero = (a: [number, number, number, number]): [number, number, number, number] | undefined =>
+      a.some(v => v > 0) ? a : undefined;
+
+    return {
+      lap: state.lapNum,
+      time: msToLapTime(lapTimeMs),
+      s1: msToLapTime(state.s1Ms),
+      s2: msToLapTime(state.s2Ms),
+      s3: msToLapTime(s3Ms),
+      tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
+      penalty: penaltiesSec > 0 ? `${penaltiesSec}s` : "",
+      trace: state.trace.length > 0 ? state.trace : undefined,
+
+      lapTimeMs,
+      s1Ms: state.s1Ms || undefined,
+      s2Ms: state.s2Ms || undefined,
+      s3Ms: s3Ms || undefined,
+      valid: !state.invalid,
+      actualCompound: state.actualCompound > 0
+        ? (TYRE_ACTUAL_NAMES[state.actualCompound] ?? `C${state.actualCompound}`)
+        : undefined,
+      tyreAgeLaps: state.tyreAgeLaps || undefined,
+      position: state.position || undefined,
+      topSpeedKph: state.topSpeedKph || undefined,
+      avgThrottlePct: state.inputSamples > 0 ? state.throttleSum / state.inputSamples : undefined,
+      avgBrakePct: state.inputSamples > 0 ? state.brakeSum / state.inputSamples : undefined,
+      maxRpm: state.maxRpm || undefined,
+      // Only meaningful when both ends were observed; a lap that started
+      // before the first CarStatus packet has no start reading to subtract.
+      fuelUsedKg: state.fuelStartKg > 0 && state.fuelEndKg > 0
+        ? Math.max(0, state.fuelStartKg - state.fuelEndKg)
+        : undefined,
+      fuelAtEndKg: state.fuelEndKg || undefined,
+      fuelMix: state.fuelMix || undefined,
+      tyreWearEndPct: nonZero(state.tyreWearEnd),
+      tyreSurfaceTempsEnd: nonZero(state.tyreSurfaceTempsEnd),
+      tyreInnerTempsEnd: nonZero(state.tyreInnerTempsEnd),
+      brakeTempsEnd: nonZero(state.brakeTempsEnd),
+      ersDeployedMJ: state.ersDeployedJ > 0 ? state.ersDeployedJ / JOULES_PER_MJ : undefined,
+      ersHarvestedMJ: state.ersHarvestedJ > 0 ? state.ersHarvestedJ / JOULES_PER_MJ : undefined,
+      ersStoreEndMJ: state.ersStoreJ > 0 ? state.ersStoreJ / JOULES_PER_MJ : undefined,
+      ersDeployMode: state.ersDeployMode || undefined,
+      warningsThisLap: Math.max(0, state.totalWarnings - state.warningsAtStart) || undefined,
+      cornerCuttingWarningsThisLap:
+        Math.max(0, state.cornerCuttingWarnings - state.cornerCuttingAtStart) || undefined,
+      totalWarnings: state.totalWarnings || undefined,
+      penalties: state.penalties.length > 0 ? state.penalties : undefined,
+      speedTrapKph: state.speedTrapKph || undefined,
+      pitted: state.pitted || undefined,
+      pitLaneTimeMs: state.pitLaneTimeMs || undefined,
+      pitStopTimeMs: state.pitStopTimeMs || undefined,
+      flashbacks: state.flashbacks || undefined,
+    };
+  }
+
   handleCarStatusPacket(data: { m_carStatusData?: Array<{
     m_visualTyreCompound?: number;
     m_tyreVisualCompound?: number;
@@ -680,6 +986,9 @@ export class SessionTracker {
     m_ersStoreEnergy?: number;
     m_ersDeployMode?: number;
     m_ersDeployedThisLap?: number;
+    m_ersHarvestedThisLapMGUK?: number;
+    m_ersHarvestedThisLapMGUH?: number;
+    m_fuelMix?: number;
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!data.m_carStatusData) return;
@@ -703,6 +1012,26 @@ export class SessionTracker {
     if (car.m_ersStoreEnergy !== undefined) this.lastErsEnergyStored = car.m_ersStoreEnergy;
     if (car.m_ersDeployMode !== undefined) this.lastErsDeployMode = car.m_ersDeployMode;
     if (car.m_ersDeployedThisLap !== undefined) this.lastErsDeployedThisLap = car.m_ersDeployedThisLap;
+    const harvested = (car.m_ersHarvestedThisLapMGUK ?? 0) + (car.m_ersHarvestedThisLapMGUH ?? 0);
+    if (harvested > 0) this.lastErsHarvestedThisLap = harvested;
+    if (car.m_fuelMix !== undefined) this.lastFuelMix = car.m_fuelMix;
+
+    const p = this.pendingLap;
+    if (p) {
+      if ((car.m_fuelInTank ?? 0) > 0) {
+        // First reading on this lap doubles as its start value when the lap
+        // began before any CarStatus packet arrived (session just started).
+        if (p.fuelStartKg <= 0) p.fuelStartKg = car.m_fuelInTank!;
+        p.fuelEndKg = car.m_fuelInTank!;
+      }
+      if (car.m_fuelMix !== undefined) p.fuelMix = car.m_fuelMix;
+      if (car.m_ersDeployedThisLap !== undefined) p.ersDeployedJ = car.m_ersDeployedThisLap;
+      if (harvested > 0) p.ersHarvestedJ = harvested;
+      if (car.m_ersStoreEnergy !== undefined) p.ersStoreJ = car.m_ersStoreEnergy;
+      if (car.m_ersDeployMode !== undefined) p.ersDeployMode = car.m_ersDeployMode;
+      if ((car.m_actualTyreCompound ?? 0) > 0) p.actualCompound = car.m_actualTyreCompound!;
+      if (car.m_tyresAgeLaps !== undefined) p.tyreAgeLaps = car.m_tyresAgeLaps;
+    }
   }
 
   handleCarTelemetryPacket(data: { m_carTelemetryData?: Array<{
@@ -716,6 +1045,7 @@ export class SessionTracker {
     m_tyreSurfaceTemperature?: [number, number, number, number];
     m_tyresSurfaceTemperature?: [number, number, number, number];
     m_brakesTemperature?: [number, number, number, number];
+    m_tyresInnerTemperature?: [number, number, number, number];
     m_engineTemperature?: number;
     m_tyresPressure?: [number, number, number, number];
   }> }): void {
@@ -737,6 +1067,7 @@ export class SessionTracker {
     const surfaceTemps = car.m_tyresSurfaceTemperature ?? car.m_tyreSurfaceTemperature;
     if (surfaceTemps) this.lastTyreSurfaceTemps = surfaceTemps;
     if (car.m_brakesTemperature) this.lastBrakeTemps = car.m_brakesTemperature;
+    if (car.m_tyresInnerTemperature) this.lastTyreInnerTemps = car.m_tyresInnerTemperature;
     if (car.m_engineTemperature !== undefined && car.m_engineTemperature > 0) this.lastEngineTemperature = car.m_engineTemperature;
     if (car.m_tyresPressure && car.m_tyresPressure.some(p => p > 0)) this.lastTyrePressureLive = car.m_tyresPressure;
 
@@ -752,15 +1083,35 @@ export class SessionTracker {
     if ((car.m_engineRPM ?? 0) > this.maxRpm) this.maxRpm = car.m_engineRPM ?? 0;
     if ((car.m_gear ?? 0) > this.topGear) this.topGear = car.m_gear ?? 0;
 
-    if (this.pendingLap && !this.pendingLap.invalid) {
+    const p = this.pendingLap;
+    if (p) {
+      // Per-lap aggregates mirror the session-level ones above but reset at
+      // every lap, so a session's laps can be compared against each other
+      // rather than only against a single whole-session figure.
+      if ((car.m_speed ?? 0) > p.topSpeedKph) p.topSpeedKph = car.m_speed ?? 0;
+      if ((car.m_engineRPM ?? 0) > p.maxRpm) p.maxRpm = car.m_engineRPM ?? 0;
+      if (car.m_throttle !== undefined && car.m_brake !== undefined) {
+        p.throttleSum += car.m_throttle * 100;
+        p.brakeSum += car.m_brake * 100;
+        p.inputSamples++;
+      }
+      if (surfaceTemps) p.tyreSurfaceTempsEnd = surfaceTemps;
+      if (car.m_tyresInnerTemperature) p.tyreInnerTempsEnd = car.m_tyresInnerTemperature;
+      if (car.m_brakesTemperature) p.brakeTempsEnd = car.m_brakesTemperature;
+    }
+
+    if (p && !p.invalid) {
       this.telemetrySampleCounter++;
       if (this.telemetrySampleCounter % SessionTracker.TRACE_SAMPLE_EVERY === 0) {
-        this.pendingLap.trace.push({
+        p.trace.push({
           d: Math.round(this.currentLapDistanceM),
           speed: car.m_speed ?? 0,
           throttle: Math.round((car.m_throttle ?? 0) * 100),
           brake: Math.round((car.m_brake ?? 0) * 100),
           steer: Math.round((car.m_steer ?? 0) * 100),
+          gear: car.m_gear ?? 0,
+          rpm: car.m_engineRPM ?? 0,
+          drs: car.m_drs ?? 0,
         });
       }
     }
@@ -830,6 +1181,9 @@ export class SessionTracker {
 
   handleCarDamagePacket(data: { m_carDamageData?: Array<{
     m_tyresWear?: [number, number, number, number];
+    m_tyresDamage?: [number, number, number, number];
+    m_brakesDamage?: [number, number, number, number];
+    m_tyreBlisters?: [number, number, number, number];
     m_frontLeftWingDamage?: number;
     m_frontRightWingDamage?: number;
     m_rearWingDamage?: number;
@@ -838,6 +1192,12 @@ export class SessionTracker {
     m_sidepodDamage?: number;
     m_gearBoxDamage?: number;
     m_engineDamage?: number;
+    m_engineMGUHWear?: number;
+    m_engineESWear?: number;
+    m_engineCEWear?: number;
+    m_engineICEWear?: number;
+    m_engineMGUKWear?: number;
+    m_engineTCWear?: number;
   }> }): void {
     this.lastPacketTime = Date.now();
     if (!data.m_carDamageData) return;
@@ -857,11 +1217,97 @@ export class SessionTracker {
     if (car.m_sidepodDamage !== undefined) this.lastSidepodDamage = car.m_sidepodDamage;
     if (car.m_gearBoxDamage !== undefined) this.lastGearBoxDamage = car.m_gearBoxDamage;
     if (car.m_engineDamage !== undefined) this.lastEngineDamage = car.m_engineDamage;
+    if (car.m_tyresDamage) this.lastTyreDamage = car.m_tyresDamage;
+    if (car.m_brakesDamage) this.lastBrakesDamage = car.m_brakesDamage;
+    if (car.m_tyreBlisters) this.lastTyreBlisters = car.m_tyreBlisters;
+    if (car.m_engineICEWear !== undefined) {
+      this.lastEngineWear = {
+        mguh: car.m_engineMGUHWear ?? 0,
+        es: car.m_engineESWear ?? 0,
+        ce: car.m_engineCEWear ?? 0,
+        ice: car.m_engineICEWear,
+        mguk: car.m_engineMGUKWear ?? 0,
+        tc: car.m_engineTCWear ?? 0,
+      };
+    }
+
+    if (this.pendingLap && car.m_tyresWear) this.pendingLap.tyreWearEnd = car.m_tyresWear;
+  }
+
+  // Event packet (id 3). Everything here is announced exactly once and has
+  // no equivalent in the per-frame packets, so an event missed is data that
+  // cannot be recovered later from any other packet.
+  handleEventPacket(data: {
+    m_eventStringCode?: string;
+    m_vehicleIdx?: number;
+    m_vehicle1Idx?: number;
+    m_vehicle2Idx?: number;
+    m_speed?: number;
+    m_penaltyType?: number;
+    m_infringementType?: number;
+    m_time?: number;
+    m_lapNum?: number;
+    m_placesGained?: number;
+    m_eventType?: number;
+  }): void {
+    this.lastPacketTime = Date.now();
+    if (!this.sessionUID) return;
+
+    const isPlayer = (idx?: number): boolean => idx !== undefined && idx === this.playerCarIdx;
+
+    switch (data.m_eventStringCode) {
+      case "SPTP":
+        if (isPlayer(data.m_vehicleIdx) && (data.m_speed ?? 0) > 0) {
+          if (this.pendingLap) this.pendingLap.speedTrapKph = data.m_speed!;
+          if (data.m_speed! > this.speedTrapKph) this.speedTrapKph = data.m_speed!;
+        }
+        break;
+      case "PENA":
+        if (isPlayer(data.m_vehicleIdx)) {
+          const penalty: LapPenalty = {
+            type: data.m_penaltyType ?? 0,
+            infringement: data.m_infringementType ?? 0,
+            seconds: data.m_time ?? 0,
+            placesGained: data.m_placesGained ?? 0,
+          };
+          // The event names the lap it belongs to, which is not always the
+          // lap being driven now — a penalty for a last-lap infringement can
+          // land after the line. Attach it to the named lap wherever that
+          // lap currently lives.
+          const lapNum = data.m_lapNum;
+          const recorded = lapNum !== undefined ? this.validLaps.find(l => l.lap === lapNum) : undefined;
+          if (recorded) {
+            recorded.penalties = [...(recorded.penalties ?? []), penalty];
+          } else if (this.pendingLap && (lapNum === undefined || lapNum === this.pendingLap.lapNum)) {
+            this.pendingLap.penalties.push(penalty);
+          }
+        }
+        break;
+      case "FLBK":
+        this.flashbackCount++;
+        if (this.pendingLap) this.pendingLap.flashbacks++;
+        break;
+      case "COLL":
+        if (isPlayer(data.m_vehicle1Idx) || isPlayer(data.m_vehicle2Idx)) this.collisionCount++;
+        break;
+      case "SCAR":
+        this.safetyCarPeriods++;
+        break;
+      case "RDFL":
+        this.redFlagCount++;
+        break;
+      default:
+        break;
+    }
   }
 
   handleSessionHistoryPacket(data: {
     m_carIdx?: number;
     m_numLaps?: number;
+    m_bestLapTimeLapNum?: number;
+    m_bestSector1LapNum?: number;
+    m_bestSector2LapNum?: number;
+    m_bestSector3LapNum?: number;
     m_lapHistoryData?: Array<{
       m_lapTimeInMS?: number;
       m_sector1TimeMS?: number;
@@ -879,14 +1325,25 @@ export class SessionTracker {
     if (!this.sessionUID) return;
     if (!data.m_lapHistoryData) return;
 
-    this.lastLapHistory = data.m_lapHistoryData.map((l, i) => ({
-      lap: i + 1,
-      lapTimeMs: l.m_lapTimeInMS ?? 0,
-      sector1Ms: l.m_sector1TimeMS ?? 0,
-      sector2Ms: l.m_sector2TimeMS ?? 0,
-      sector3Ms: l.m_sector3TimeMS ?? 0,
-      valid: ((l.m_lapValidBitFlags ?? 0) & 0x01) !== 0,
-    }));
+    if (data.m_bestLapTimeLapNum !== undefined) this.lastBestLapNum = data.m_bestLapTimeLapNum;
+    if (data.m_bestSector1LapNum !== undefined) this.lastBestSector1LapNum = data.m_bestSector1LapNum;
+    if (data.m_bestSector2LapNum !== undefined) this.lastBestSector2LapNum = data.m_bestSector2LapNum;
+    if (data.m_bestSector3LapNum !== undefined) this.lastBestSector3LapNum = data.m_bestSector3LapNum;
+
+    this.lastLapHistory = data.m_lapHistoryData.map((l, i) => {
+      const flags = l.m_lapValidBitFlags ?? 0;
+      return {
+        lap: i + 1,
+        lapTimeMs: l.m_lapTimeInMS ?? 0,
+        sector1Ms: l.m_sector1TimeMS ?? 0,
+        sector2Ms: l.m_sector2TimeMS ?? 0,
+        sector3Ms: l.m_sector3TimeMS ?? 0,
+        valid: (flags & 0x01) !== 0,
+        sector1Valid: (flags & 0x02) !== 0,
+        sector2Valid: (flags & 0x04) !== 0,
+        sector3Valid: (flags & 0x08) !== 0,
+      };
+    });
 
     if (data.m_tyreStintsHistoryData) {
       const stints: TyreStint[] = [];
@@ -1011,6 +1468,26 @@ export class SessionTracker {
     this.lastGearBoxDamage = 0;
     this.lastEngineDamage = 0;
     this.lastLiveBrakeBias = 0;
+
+    this.lastTyreDamage = [0, 0, 0, 0];
+    this.lastBrakesDamage = [0, 0, 0, 0];
+    this.lastTyreBlisters = [0, 0, 0, 0];
+    this.lastTyreInnerTemps = [0, 0, 0, 0];
+    this.lastEngineWear = undefined;
+    this.lastErsHarvestedThisLap = 0;
+    this.lastFuelMix = 0;
+    this.lastTotalWarnings = 0;
+    this.lastCornerCuttingWarnings = 0;
+    this.lastBestLapNum = 0;
+    this.lastBestSector1LapNum = 0;
+    this.lastBestSector2LapNum = 0;
+    this.lastBestSector3LapNum = 0;
+
+    this.speedTrapKph = 0;
+    this.flashbackCount = 0;
+    this.collisionCount = 0;
+    this.safetyCarPeriods = 0;
+    this.redFlagCount = 0;
   }
 
   // Live lap completion (handleLapPacket) only finalizes a lap once it sees
@@ -1041,6 +1518,14 @@ export class SessionTracker {
         s3: msToLapTime(entry.sector3Ms),
         tires: TYRE_NAMES[this.lastTyreCompound] ?? `Compound ${this.lastTyreCompound}`,
         penalty: "",
+        // The history packet carries timings and validity only — none of the
+        // per-lap telemetry a live-tracked lap accumulates is available for
+        // a lap that live tracking never saw.
+        lapTimeMs: entry.lapTimeMs,
+        s1Ms: entry.sector1Ms || undefined,
+        s2Ms: entry.sector2Ms || undefined,
+        s3Ms: entry.sector3Ms || undefined,
+        valid: entry.valid,
       });
       recovered++;
       console.log(`[Lap] #${entry.lap} ${msToLapTime(entry.lapTimeMs)} recovered from session history (missed by live tracking)`);
@@ -1111,6 +1596,24 @@ export class SessionTracker {
       gearBoxDamage: this.lastGearBoxDamage || undefined,
       engineDamage: this.lastEngineDamage || undefined,
       liveBrakeBias: this.lastLiveBrakeBias || undefined,
+      tyreDamage: this.lastTyreDamage.some(d => d > 0) ? this.lastTyreDamage : undefined,
+      brakesDamage: this.lastBrakesDamage.some(d => d > 0) ? this.lastBrakesDamage : undefined,
+      tyreBlisters: this.lastTyreBlisters.some(b => b > 0) ? this.lastTyreBlisters : undefined,
+      tyreInnerTemps: this.lastTyreInnerTemps.some(t => t > 0) ? this.lastTyreInnerTemps : undefined,
+      engineWear: this.lastEngineWear,
+      ersHarvestedThisLap: this.lastErsHarvestedThisLap || undefined,
+      fuelMix: this.lastFuelMix || undefined,
+      speedTrapKph: this.speedTrapKph || undefined,
+      flashbacks: this.flashbackCount || undefined,
+      collisions: this.collisionCount || undefined,
+      safetyCarPeriods: this.safetyCarPeriods || undefined,
+      redFlags: this.redFlagCount || undefined,
+      totalWarnings: this.lastTotalWarnings || undefined,
+      cornerCuttingWarnings: this.lastCornerCuttingWarnings || undefined,
+      bestLapNum: this.lastBestLapNum || undefined,
+      bestSector1LapNum: this.lastBestSector1LapNum || undefined,
+      bestSector2LapNum: this.lastBestSector2LapNum || undefined,
+      bestSector3LapNum: this.lastBestSector3LapNum || undefined,
     };
 
     this.sessionUID = null;

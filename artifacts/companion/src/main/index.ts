@@ -14,7 +14,12 @@ import { autoUpdater } from "electron-updater";
 import { store } from "./store";
 import { UdpListener } from "./udp";
 import { SessionTracker } from "./session";
+import { AcUdpClient } from "./ac-udp";
+import { AcSessionTracker } from "./ac-session";
+import { AccUdpClient } from "./acc-udp";
+import { AccSessionTracker } from "./acc-session";
 import { Uploader, type UploadResult } from "./uploader";
+import { setupAcTelemetry, setupAccTelemetry, detectInstalledSims } from "./game-config";
 
 function getLogFilePath(): string {
   try {
@@ -53,6 +58,18 @@ setupFileLogging();
 
 const udp = new UdpListener(store.get("port", 20777));
 const tracker = new SessionTracker();
+// AC is a client-connects-out protocol on its own dedicated port (9996), not
+// a listener like F1's — the two can run simultaneously with no conflict,
+// so there's no "pick your game" setting; whichever game is actually
+// running is the one that ends up producing packets.
+const acUdp = new AcUdpClient();
+const acTracker = new AcSessionTracker();
+// ACC is a different game with its own protocol/port (9000, Broadcasting
+// SDK) — not an extension of base AC's Remote Telemetry. Same reasoning as
+// acUdp: a separate client-connects-out connection, no conflict with the
+// others, runs unconditionally alongside them.
+const accUdp = new AccUdpClient();
+const accTracker = new AccSessionTracker();
 const uploader = new Uploader();
 
 let mainWindow: BrowserWindow | null = null;
@@ -74,23 +91,45 @@ let gameCheckInterval: ReturnType<typeof setInterval> | null = null;
 let updateReady = false;
 let refreshTrayMenu: (() => void) | null = null;
 
+type UpdateState =
+  | { phase: "unsupported" }
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "downloading"; version: string; percent: number }
+  | { phase: "ready"; version: string }
+  | { phase: "not-available" }
+  | { phase: "error"; message: string };
+
+// Windows+packaged only — see setupAutoUpdater's own gating below. Reported
+// as "unsupported" everywhere else so the Settings UI can say so instead of
+// a "Check for Updates" button that silently does nothing.
+let updateState: UpdateState =
+  process.platform === "win32" ? { phase: "idle" } : { phase: "unsupported" };
+
 function pushStatus(): void {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.send("status-update", buildStatus());
 }
 
 function buildStatus() {
+  const acConnected = acUdp.isReceiving(20000);
+  const accConnected = accUdp.isReceiving(20000);
   return {
     signedIn: !!store.get("apiKey"),
-    gameConnected,
-    telemetryReceiving,
+    gameConnected: gameConnected || acConnected || accConnected,
+    telemetryReceiving: telemetryReceiving || acConnected || accConnected,
     lastUpload,
     currentSession: tracker.isActive
       ? { lapCount: tracker.currentLapCount, track: tracker.trackName }
-      : null,
+      : acTracker.isActive
+        ? { lapCount: acTracker.currentLapCount, track: acTracker.track ?? "" }
+        : accTracker.isActive
+          ? { lapCount: accTracker.currentLapCount, track: accTracker.track ?? "" }
+          : null,
     pendingUploads: uploader.pendingCount,
-    detectedGame: tracker.gameVersion,
+    detectedGame: tracker.gameVersion ?? (acConnected ? "Assetto Corsa" : accConnected ? "Assetto Corsa Competizione" : null),
     unsupportedFormat,
+    updateState,
   };
 }
 
@@ -130,26 +169,83 @@ function wireUdp(): void {
   udp.on("finalClassification", (data) => {
     tracker.handleFinalClassificationPacket(data as Parameters<typeof tracker.handleFinalClassificationPacket>[0]);
   });
+  udp.on("event", (data) => {
+    tracker.handleEventPacket(data as Parameters<typeof tracker.handleEventPacket>[0]);
+  });
   udp.on("error", (err) => {
     console.error("[UDP] error:", err);
   });
 }
 
-tracker.onSessionComplete = async (session) => {
+function wireAcUdp(): void {
+  acUdp.on("handshake", (info) => {
+    acTracker.handleHandshake(info as Parameters<typeof acTracker.handleHandshake>[0]);
+  });
+  acUdp.on("carInfo", (info) => {
+    acTracker.handleCarInfo(info as Parameters<typeof acTracker.handleCarInfo>[0]);
+  });
+  acUdp.on("lap", (info) => {
+    acTracker.handleLap(info as Parameters<typeof acTracker.handleLap>[0]);
+  });
+  acUdp.on("error", (err) => {
+    console.error("[AC UDP] error:", err);
+  });
+}
+
+function wireAccUdp(): void {
+  accUdp.on("registered", (result) => {
+    accTracker.handleRegistration(result as Parameters<typeof accTracker.handleRegistration>[0]);
+  });
+  accUdp.on("trackData", (data) => {
+    accTracker.handleTrackData(data as Parameters<typeof accTracker.handleTrackData>[0]);
+  });
+  accUdp.on("carEntry", (entry) => {
+    accTracker.handleCarEntry(entry as Parameters<typeof accTracker.handleCarEntry>[0]);
+  });
+  accUdp.on("realtimeUpdate", (update) => {
+    accTracker.handleRealtimeUpdate(update as Parameters<typeof accTracker.handleRealtimeUpdate>[0]);
+  });
+  accUdp.on("carUpdate", (update) => {
+    accTracker.handleCarUpdate(update as Parameters<typeof accTracker.handleCarUpdate>[0]);
+  });
+  accUdp.on("error", (err) => {
+    console.error("[ACC UDP] error:", err);
+  });
+}
+
+async function handleSessionComplete(session: Parameters<NonNullable<typeof tracker.onSessionComplete>>[0]): Promise<void> {
   console.log(`[Session] Complete: ${session.track} — ${session.laps.length} laps`);
   try {
     await uploader.uploadSession(session);
   } catch (err) {
     console.error("[Upload] failed:", err);
   }
-};
+}
+
+tracker.onSessionComplete = handleSessionComplete;
+acTracker.onSessionComplete = handleSessionComplete;
+accTracker.onSessionComplete = handleSessionComplete;
 
 tracker.onLapComplete = (lap) => {
   console.log(`[Lap] #${lap.lap} ${lap.time}`);
   pushStatus();
 };
+acTracker.onLapComplete = (lap) => {
+  console.log(`[AC Lap] #${lap.lap} ${lap.time}`);
+  pushStatus();
+};
+accTracker.onLapComplete = (lap) => {
+  console.log(`[ACC Lap] #${lap.lap} ${lap.time}`);
+  pushStatus();
+};
 
 tracker.onStatusChange = () => {
+  pushStatus();
+};
+acTracker.onStatusChange = () => {
+  pushStatus();
+};
+accTracker.onStatusChange = () => {
   pushStatus();
 };
 
@@ -167,6 +263,9 @@ uploader.onUploadResult = (result: UploadResult) => {
   }
   pushStatus();
 };
+
+let acWasConnected = false;
+let accWasConnected = false;
 
 function startGameWatchdog(): void {
   gameCheckInterval = setInterval(() => {
@@ -187,7 +286,26 @@ function startGameWatchdog(): void {
       console.log("[Watchdog] Game disconnected — flushing session");
       void tracker.forceFlush();
     }
-    if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving) pushStatus();
+
+    const acReceiving = acUdp.isReceiving(20000);
+    const acChanged = acReceiving !== acWasConnected;
+    if (acReceiving && !acWasConnected) console.log("[Watchdog] AC connected");
+    if (!acReceiving && acWasConnected) {
+      console.log("[Watchdog] AC disconnected — flushing session");
+      void acTracker.forceFlush();
+    }
+    acWasConnected = acReceiving;
+
+    const accReceiving = accUdp.isReceiving(20000);
+    const accChanged = accReceiving !== accWasConnected;
+    if (accReceiving && !accWasConnected) console.log("[Watchdog] ACC connected");
+    if (!accReceiving && accWasConnected) {
+      console.log("[Watchdog] ACC disconnected — flushing session");
+      void accTracker.forceFlush();
+    }
+    accWasConnected = accReceiving;
+
+    if (gameConnected !== wasConnected || telemetryReceiving !== wasReceiving || acChanged || accChanged) pushStatus();
   }, 3000);
 }
 
@@ -198,21 +316,50 @@ function startGameWatchdog(): void {
 // app-update.yml, generated at build time from electron-builder.json5's
 // `publish` config, so there's nothing to configure here beyond gating.
 function setupAutoUpdater(): void {
-  if (process.platform !== "win32") return;
-  if (!app.isPackaged) return; // no installed app to update when running from source
+  if (process.platform !== "win32" || !app.isPackaged) {
+    // No installed Windows app to update (unsigned Mac build, or running
+    // from source) — report it as such rather than leaving the Settings
+    // "Check for Updates" button silently do nothing.
+    updateState = { phase: "unsupported" };
+    return;
+  }
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on("checking-for-update", () => console.log("[AutoUpdate] Checking for update"));
-  autoUpdater.on("update-available", (info) => console.log(`[AutoUpdate] Update available: ${info.version}`));
-  autoUpdater.on("update-not-available", () => console.log("[AutoUpdate] Already up to date"));
-  autoUpdater.on("error", (err) => console.error("[AutoUpdate] Error:", err));
-  autoUpdater.on("download-progress", (p) => console.log(`[AutoUpdate] Downloading: ${Math.round(p.percent)}%`));
+  autoUpdater.on("checking-for-update", () => {
+    console.log("[AutoUpdate] Checking for update");
+    updateState = { phase: "checking" };
+    pushStatus();
+  });
+  autoUpdater.on("update-available", (info) => {
+    console.log(`[AutoUpdate] Update available: ${info.version} (current: ${app.getVersion()})`);
+    updateState = { phase: "downloading", version: info.version, percent: 0 };
+    pushStatus();
+  });
+  autoUpdater.on("update-not-available", (info) => {
+    console.log(`[AutoUpdate] Already up to date (current: ${app.getVersion()}, latest: ${info.version})`);
+    updateState = { phase: "not-available" };
+    pushStatus();
+  });
+  autoUpdater.on("error", (err) => {
+    console.error("[AutoUpdate] Error:", err);
+    updateState = { phase: "error", message: err instanceof Error ? err.message : String(err) };
+    pushStatus();
+  });
+  autoUpdater.on("download-progress", (p) => {
+    console.log(`[AutoUpdate] Downloading: ${Math.round(p.percent)}%`);
+    if (updateState.phase === "downloading") {
+      updateState = { ...updateState, percent: Math.round(p.percent) };
+      pushStatus();
+    }
+  });
   autoUpdater.on("update-downloaded", (info) => {
-    console.log(`[AutoUpdate] Update ${info.version} downloaded — will install on quit`);
+    console.log(`[AutoUpdate] Update ${info.version} downloaded — ready to install`);
     updateReady = true;
+    updateState = { phase: "ready", version: info.version };
     refreshTrayMenu?.();
+    pushStatus();
   });
 
   const check = (): void => {
@@ -290,9 +437,42 @@ ipcMain.handle("open-releases-page", () => shell.openExternal("https://github.co
 
 ipcMain.handle("force-flush", async () => {
   await tracker.forceFlush();
+  await acTracker.forceFlush();
+  await accTracker.forceFlush();
   await uploader.flushPending();
   pushStatus();
 });
+
+ipcMain.handle("check-for-updates", async () => {
+  if (updateState.phase === "unsupported") return;
+  // A ready-to-install update doesn't need re-checking — clicking "check
+  // for updates" again here would just re-report the same ready state.
+  if (updateState.phase === "ready") {
+    pushStatus();
+    return;
+  }
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (err) {
+    console.error("[AutoUpdate] Manual check failed:", err);
+    updateState = { phase: "error", message: err instanceof Error ? err.message : String(err) };
+    pushStatus();
+  }
+});
+
+ipcMain.handle("install-update", () => {
+  if (updateState.phase !== "ready") return;
+  autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle("setup-ac-telemetry", () => setupAcTelemetry());
+ipcMain.handle("setup-acc-telemetry", () => setupAccTelemetry());
+ipcMain.handle("detect-installed-sims", () => detectInstalledSims());
+// Reveals the file in Explorer/Finder rather than opening it — lets a user
+// confirm this app's resolved Documents path actually matches where the
+// game itself looks (Documents can be redirected differently per-app,
+// e.g. by OneDrive), without them having to type/guess the path themselves.
+ipcMain.handle("show-in-folder", (_event, path: string) => shell.showItemInFolder(path));
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -401,12 +581,28 @@ if (!gotSingleInstanceLock) {
     mainWindow = createWindow();
     tray = createTray();
     wireUdp();
+    wireAcUdp();
+    wireAccUdp();
 
     try {
       await udp.start(store.get("port", 20777));
       console.log(`[UDP] Listening on port ${store.get("port", 20777)}`);
     } catch (err) {
       console.error("[UDP] Failed to start:", err);
+    }
+
+    try {
+      acUdp.start();
+      console.log("[AC UDP] Client started, handshaking on port 9996");
+    } catch (err) {
+      console.error("[AC UDP] Failed to start:", err);
+    }
+
+    try {
+      accUdp.start();
+      console.log("[ACC UDP] Client started, registering on port 9000");
+    } catch (err) {
+      console.error("[ACC UDP] Failed to start:", err);
     }
 
     uploader.setCredentials(store.get("apiKey"), store.get("apiBaseUrl"));
@@ -445,11 +641,15 @@ app.on("before-quit", (event) => {
     uploader.stopRetryLoop();
     try {
       await tracker.forceFlush();
+      await acTracker.forceFlush();
+      await accTracker.forceFlush();
       await uploader.flushPending();
     } catch (err) {
       console.error("[Quit] Flush before quit failed:", err);
     }
     await udp.stop();
+    await acUdp.stop();
+    await accUdp.stop();
     app.quit();
   })();
 });
