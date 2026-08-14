@@ -201,7 +201,14 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   };
 
   const totalSessions = sessions.length;
-  const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
+  // Only circuits on the current calendar count. Companion uploads and older
+  // imports can carry ids F1_TRACKS doesn't know (e.g. "track_42"), which
+  // pushed this past the 24-circuit total — the dashboard read "25/24".
+  // Sessions.tsx already filters its own count the same way.
+  const tracksPracticed = useMemo(
+    () => new Set(sessions.map(s => s.trackId).filter(id => F1_TRACKS.some(t => t.id === id))).size,
+    [sessions],
+  );
   const pbsSet = sessions.filter(s => s.isPB).length;
   const setupsSaved = setups.length;
 
@@ -232,8 +239,11 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     const monthStr = monthAgo.toISOString().slice(0, 10);
     const prevMonthAgo = new Date(today); prevMonthAgo.setDate(today.getDate() - 60);
     const prevStr = prevMonthAgo.toISOString().slice(0, 10);
-    const curr = new Set(sessions.filter(s => s.date >= monthStr).map(s => s.trackId)).size;
-    const prev = new Set(sessions.filter(s => s.date >= prevStr && s.date < monthStr).map(s => s.trackId)).size;
+    // Filtered to known circuits for the same reason as tracksPracticed above,
+    // so the delta can't count a circuit the total doesn't.
+    const known = (ids: string[]) => new Set(ids.filter(id => F1_TRACKS.some(t => t.id === id))).size;
+    const curr = known(sessions.filter(s => s.date >= monthStr).map(s => s.trackId));
+    const prev = known(sessions.filter(s => s.date >= prevStr && s.date < monthStr).map(s => s.trackId));
     return { current: curr, delta: curr - prev };
   }, [sessions]);
 
@@ -447,13 +457,6 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       }
     });
 
-    // Average of the ratings the driver actually gave — unrated sessions are
-    // a non-answer, not a zero, so they're excluded rather than dragging it down.
-    const ratedSessions = sessions.filter(s => s.rating > 0);
-    const avgRating = ratedSessions.length > 0
-      ? ratedSessions.reduce((a, s) => a + s.rating, 0) / ratedSessions.length
-      : null;
-
     return {
       strongestTrack: strongest ? F1_TRACKS.find(t => t.id === strongest.id)?.short ?? strongest.id : null,
       strongestScore: strongest?.avg ?? null,
@@ -463,7 +466,6 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       worstSector,
       avgConsistency,
       fastestLap: fastestLap as { time: string; track: string } | null,
-      avgRating,
       coachingInsight,
       subInsight,
     };
@@ -798,7 +800,9 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         </div>
       )}
 
-      {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
+      {/* ── Performance Snapshot — one row of measures the stat cards above
+             don't already carry. Session/PB/circuit counts live up there; if a
+             number is on both, it was cut from here. ──────────────────────── */}
       {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
@@ -818,14 +822,14 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
               </div>
             )}
             {perfSnapshot.bestSector && (
-              <div className="card perf-snap-card">
+              <div className="card perf-snap-card perf-snap-card--secondary">
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Sector</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
               </div>
             )}
             {perfSnapshot.worstSector && (
-              <div className="card perf-snap-card">
+              <div className="card perf-snap-card perf-snap-card--secondary">
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--amber)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
@@ -845,36 +849,6 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
                   {perfSnapshot.avgConsistency.toFixed(1)}%
                 </div>
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Best vs average lap</div>
-              </div>
-            )}
-            <div className="card perf-snap-card">
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sessions This Week</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{sessionsThisWeek}</div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, marginTop: 2, color: sessionsThisWeek >= sessionsLastWeek ? 'var(--teal)' : 'var(--gray-mid)' }}>
-                {sessionsLastWeek === 0
-                  ? 'No sessions last week'
-                  : `${sessionsThisWeek >= sessionsLastWeek ? '+' : ''}${sessionsThisWeek - sessionsLastWeek} vs last week`}
-              </div>
-            </div>
-            {lastPBDaysAgo && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Last Personal Best</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{lastPBDaysAgo}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{pbsSet} total</div>
-              </div>
-            )}
-            {mostDrivenTrack && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Most Driven</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{mostDrivenTrack}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{tracksPracticed}/{F1_TRACKS.length} circuits</div>
-              </div>
-            )}
-            {perfSnapshot.avgRating !== null && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Avg Session Rating</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.avgRating.toFixed(1)} / 5</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>How they felt</div>
               </div>
             )}
           </div>
