@@ -402,55 +402,53 @@ router.get("/community/driver/:username", async (req, res) => {
     type ClerkUser = {
       id: string;
       username?: string | null;
-      first_name?: string | null;
-      last_name?: string | null;
       created_at?: number;
       image_url?: string | null;
     };
 
-    // Look up user by username via Clerk. This filter is an exact,
-    // case-sensitive match, so it misses if the stored username's casing
-    // ever drifted from what's in the URL (e.g. link copied before a
-    // rename, or typed in by hand). Fall back to Clerk's fuzzy `query`
-    // search and pick a case-insensitive exact match from the results
-    // before giving up.
-    let users: ClerkUser[] = [];
-    const userResp = await fetch(
-      `https://api.clerk.com/v1/users?username[]=${encodeURIComponent(username)}&limit=1`,
-      { headers: { Authorization: `Bearer ${secretKey}` } }
-    );
-    if (!userResp.ok) {
-      req.log.error(
-        { status: userResp.status, body: await userResp.text().catch(() => "") },
-        "Clerk user lookup failed for driver profile",
-      );
-      res.status(404).json({ error: "Driver not found" });
-      return;
-    }
-    users = (await userResp.json()) as ClerkUser[];
+    // Never trust position in a Clerk result set — always confirm the user
+    // we hand back actually owns the username that was asked for. Clerk
+    // returns a plain list, and any request it can't apply the username
+    // filter to degrades into "first user in the instance", which served
+    // one driver's sessions, PBs and avatar under another driver's URL.
+    const matchesUsername = (u: ClerkUser) =>
+      !!u.username && u.username.toLowerCase() === username.toLowerCase();
 
-    if (users.length === 0) {
-      const searchResp = await fetch(
-        `https://api.clerk.com/v1/users?query=${encodeURIComponent(username)}&limit=10`,
-        { headers: { Authorization: `Bearer ${secretKey}` } }
-      );
-      if (searchResp.ok) {
-        const candidates = (await searchResp.json()) as ClerkUser[];
-        const match = candidates.find(
-          (u) => u.username && u.username.toLowerCase() === username.toLowerCase(),
+    const lookup = async (query: string): Promise<ClerkUser[]> => {
+      const resp = await fetch(`https://api.clerk.com/v1/users?${query}`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      });
+      if (!resp.ok) {
+        req.log.error(
+          { status: resp.status, query, body: await resp.text().catch(() => "") },
+          "Clerk user lookup failed for driver profile",
         );
-        if (match) users = [match];
+        return [];
       }
+      return (await resp.json()) as ClerkUser[];
+    };
+
+    // Exact filter first. It's case-sensitive, so fall back to Clerk's fuzzy
+    // `query` search for usernames whose casing drifted from the URL (link
+    // copied before a rename, or typed by hand).
+    let user = (await lookup(`username[]=${encodeURIComponent(username)}&limit=10`))
+      .find(matchesUsername);
+
+    if (!user) {
+      user = (await lookup(`query=${encodeURIComponent(username)}&limit=20`))
+        .find(matchesUsername);
     }
 
-    if (users.length === 0) {
+    if (!user) {
       res.status(404).json({ error: "Driver not found" });
       return;
     }
 
-    const user = users[0];
     const userId = user.id;
-    const displayName = user.username ?? (user.first_name ? `${user.first_name} ${user.last_name ?? ""}`.trim() : "Anonymous");
+    // Profiles are addressed by username, so that's the name shown — never a
+    // real name pulled off the account, which the driver never chose to
+    // publish here.
+    const displayName = user.username ?? username;
 
     // Get public sessions — only the columns the PB/track summary and
     // recentSessions payload below actually read, so a profile view never
