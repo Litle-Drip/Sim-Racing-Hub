@@ -1539,9 +1539,90 @@ summary:focus-visible,
 
 /* Only the month-labels + grid scroll horizontally — the header/legend
    above stays put. Scrollbar is thin so it doesn't add visual noise. */
+.heatmap-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  border: 1px solid rgba(255, 152, 0, 0.35);
+  border-radius: 3px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* Calendar and its summary rail sit side by side. The grid is a fixed 53
+   columns wide, so on a desktop it never fills the card on its own — the
+   rail takes whatever is left rather than leaving it blank. */
+.heatmap-body {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+}
+
 .heatmap-scroll {
   overflow-x: auto;
   scrollbar-width: thin;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.heatmap-stats {
+  flex: 1 1 200px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 12px 16px;
+  align-content: center;
+  border-left: 1px solid var(--border);
+  padding-left: 20px;
+}
+
+.heatmap-stat-label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray);
+}
+
+.heatmap-stat-value {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.1;
+  color: var(--white);
+  margin-top: 3px;
+}
+
+.heatmap-stat-unit {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--gray-mid);
+  margin-left: 3px;
+}
+
+.heatmap-stat-sub {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--gray-mid);
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .heatmap-body {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .heatmap-stats {
+    flex: 1 1 auto;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding-left: 0;
+    padding-top: 16px;
+  }
 }
 
 .legend-dot {
@@ -1630,12 +1711,6 @@ summary:focus-visible,
 
 @keyframes xpFillIn {
   from { width: 0 !important; }
-}
-
-/* Rank card — a static edge instead of a looping glow. Nothing on a data
-   surface should animate forever; it competes with the data for attention. */
-.dash-rank-card {
-  box-shadow: var(--shadow-card);
 }
 
 /* Accent cards — a single coloured left edge instead of a fully coloured
@@ -1742,9 +1817,12 @@ summary:focus-visible,
 }
 
 /* Performance Snapshot 4-card grid */
+/* auto-fit, not auto-fill: auto-fill keeps empty phantom columns on a wide
+   screen, so a short row of cards left a stretch of dead space to the right.
+   auto-fit collapses the empties and lets the real cards share the width. */
 .perf-snap-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 
