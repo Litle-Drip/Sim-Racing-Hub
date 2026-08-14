@@ -1817,13 +1817,42 @@ summary:focus-visible,
 }
 
 /* Performance Snapshot 4-card grid */
-/* auto-fit, not auto-fill: auto-fill keeps empty phantom columns on a wide
-   screen, so a short row of cards left a stretch of dead space to the right.
-   auto-fit collapses the empties and lets the real cards share the width. */
+/* One row on desktop, always. A minmax() track count is derived from the
+   available width, so it wraps to a second row the moment the cards don't
+   fit — which is what left two orphans hanging under a row of six. Column
+   auto-flow instead lays every card out on a single line and splits the width
+   between however many actually render, so a card being absent (no sector
+   data yet, say) shrinks the row rather than leaving a hole in it. */
 .perf-snap-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-auto-flow: column;
+  /* minmax(0, 1fr), not 1fr: a plain 1fr floors at the column's min-content,
+     so a long label like "BIGGEST TIME LOSS" would push the row wider than
+     its container instead of wrapping inside its own card. */
+  grid-auto-columns: minmax(0, 1fr);
   gap: 10px;
+}
+
+/* Six across stops being readable before it stops fitting, so below this the
+   grid goes back to wrapping rows — three up, evenly, never a lone orphan. */
+@media (max-width: 1200px) {
+  .perf-snap-grid {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .perf-snap-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Sector variance is the most specialist read here and the least useful on
+     a phone, so the two sector cards drop out and four remain, 2x2. */
+  .perf-snap-card--secondary {
+    display: none;
+  }
 }
 
 .perf-snap-card {
