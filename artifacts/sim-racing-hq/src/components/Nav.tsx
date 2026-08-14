@@ -66,6 +66,14 @@ export default function Nav({ page, setPage }: NavProps) {
 
   const rawName = user?.firstName ?? user?.username ?? 'Driver';
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
+  const avatarUrl = user?.imageUrl ?? null;
+
+  // Seat time and favourite track are secondary detail — one muted line that
+  // truncates, rather than two stacked mono rows competing with the name.
+  const profileStats = [
+    seatTimeHours > 0 ? `${seatTimeHours}h seat time` : null,
+    favTrack ? `Fav ${favTrack}` : null,
+  ].filter(Boolean).join(' · ');
 
   // Rank progress for ring
   const { pct: progressToNext } = getRankProgress(rankInfo);
@@ -142,7 +150,12 @@ export default function Nav({ page, setPage }: NavProps) {
         </ul>
 
         {/* Profile Card */}
-        <div className="nav-profile-card" onClick={() => navigate('account')} style={{ cursor: 'pointer' }}>
+        <button
+          type="button"
+          className="nav-profile-card"
+          onClick={() => navigate('account')}
+          title="View your account"
+        >
           <div className="nav-profile-avatar-ring">
             <svg viewBox="0 0 36 36">
               <circle cx="18" cy="18" r="15" fill="none" stroke="var(--border)" strokeWidth="2" />
@@ -150,31 +163,35 @@ export default function Nav({ page, setPage }: NavProps) {
                 strokeDasharray={ringCircum} strokeDashoffset={ringOffset} strokeLinecap="round"
                 style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
             </svg>
-            <div className="nav-profile-avatar">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
+            {avatarUrl ? (
+              <img className="nav-profile-avatar" src={avatarUrl} alt="" />
+            ) : (
+              <div className="nav-profile-avatar">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
           <div className="nav-profile-info">
             <div className="nav-profile-name">{displayName}</div>
-            <div className="nav-profile-rank" style={{ color: getRankColor(rankInfo.rank) }}>
-              {rankInfo.rank}
+            {/* Rank and streak share one row — two status chips stacked on
+                separate lines read as two unrelated claims about the driver. */}
+            <div className="nav-profile-meta">
+              <span className="nav-profile-rank" style={{ color: getRankColor(rankInfo.rank) }}>
+                {rankInfo.rank}
+              </span>
+              {streak > 0 && (
+                <span className="nav-profile-streak" title={`${streak} day streak`}>
+                  <Flame size={10} aria-hidden="true" />
+                  {streak}d
+                </span>
+              )}
             </div>
-            {streak > 0 && (
-              <div className="nav-profile-streak">
-                <Flame size={11} aria-hidden="true" />
-                {streak} day streak
-              </div>
-            )}
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--gray)', marginTop: 1, lineHeight: 1.3 }}>
-              {seatTimeHours > 0 && <span>{seatTimeHours}h seat time</span>}
-              {favTrack && <span style={{ display: 'block' }}>Fav: {favTrack}</span>}
-            </div>
+            {profileStats && <div className="nav-profile-stats">{profileStats}</div>}
           </div>
-        </div>
+        </button>
 
-        <div style={{
-          padding: '6px 20px 14px',
-        }}>
+        <div className="nav-footer">
+          <div className="nav-footer-label">Units</div>
           <div
             className="units-toggle"
             role="group"
@@ -182,12 +199,16 @@ export default function Nav({ page, setPage }: NavProps) {
             title="Switch speed/temperature units"
           >
             <button
+              type="button"
+              aria-pressed={system === 'us'}
               className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
               onClick={() => setSystem('us')}
             >
               US <span className="units-toggle-sub">mph · °F</span>
             </button>
             <button
+              type="button"
+              aria-pressed={system === 'uk'}
               className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
               onClick={() => setSystem('uk')}
             >
