@@ -484,16 +484,6 @@ summary:focus-visible,
   border-top: 1px solid var(--border);
 }
 
-.nav-footer-label {
-  font-family: var(--font-display);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--gray);
-  margin-bottom: 5px;
-}
-
 .units-toggle {
   display: flex;
   gap: 2px;

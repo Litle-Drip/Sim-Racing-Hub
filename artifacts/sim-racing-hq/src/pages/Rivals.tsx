@@ -368,7 +368,11 @@ function AttemptModal({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Panel ────────────────────────────────────────────────────────────────────
+//
+// Rivals used to be its own top-level page and nav item, duplicating the
+// head-to-head idea Community already had a 'challenges' tab for. It's now a
+// tab inside Community, so this renders bare — Community owns the page title.
 
 type Tab = 'yourTurn' | 'waiting' | 'completed';
 
@@ -398,9 +402,8 @@ export default function Rivals() {
   const visible = tab === 'yourTurn' ? yourTurn : tab === 'waiting' ? waiting : completed;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Rivals</h1>
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <button className="btn btn-primary" onClick={() => setShowNew(true)}>
           <Swords size={12} /> Challenge Someone
         </button>
@@ -468,6 +471,6 @@ export default function Rivals() {
       )}
 
       {toast && <Toast message={toast} variant={toastVariant} onDone={() => setToast('')} />}
-    </div>
+    </>
   );
 }

@@ -5,11 +5,13 @@ import { setAuthTokenGetter, createSession as apiCreateSessionRaw, getGetSession
 import type { SessionRecord } from '@workspace/api-client-react';
 import { dark } from '@clerk/themes';
 import { Settings2, Map, Trophy, Activity, Bot, LayoutDashboard } from 'lucide-react';
-import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
+import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { UnitsProvider } from './lib/units';
+import { ThemeProvider } from './lib/theme';
 import Nav from './components/Nav';
+import { OPEN_LOG_KEY } from './lib/storage';
 import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
@@ -18,12 +20,7 @@ import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
 import RaceEngineer from './pages/RaceEngineer';
-import Rivals from './pages/Rivals';
 import Community from './pages/Community';
-import PublicSetups from './pages/PublicSetups';
-import PublicTracks from './pages/PublicTracks';
-import PublicLeaderboard from './pages/PublicLeaderboard';
-import QuickLog from './pages/QuickLog';
 import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
 import Companion from './pages/Companion';
@@ -219,7 +216,6 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
       title: 'Session & Performance Tracking',
       items: [
         { title: 'Companion App Auto-Logging', desc: 'Free desktop app reads live F1 25 telemetry and uploads sessions automatically.' },
-        { title: 'Quick Log', desc: "Manually log a session's results in seconds." },
         { title: 'Session History', desc: 'Searchable log of every session with automatic PB detection.' },
         { title: 'Progress Dashboard', desc: 'Activity heatmap plus stats on sessions, tracks, and PBs.' },
         { title: 'Progress Analytics', desc: 'PB progression charts and lap-time consistency graphs.' },
@@ -251,8 +247,8 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
       Icon: Trophy,
       title: 'Community & Competition',
       items: [
-        { title: 'Community Hub', desc: 'Browse and import setups and sessions shared by other users.' },
-        { title: 'Public Leaderboards', desc: 'Compare lap times against the community, per track.' },
+        { title: 'Community Leaderboards', desc: 'Compare lap times against the community, per circuit.' },
+        { title: 'Shared Setups', desc: 'Browse and import car setups shared by other drivers.' },
         { title: 'Rivals & Challenges', desc: 'Challenge players head-to-head to beat a lap time.' },
         { title: 'Driver Profiles', desc: 'Public pages showing your PBs, achievements, and recent sessions.' },
         { title: 'Achievements', desc: 'Badges and milestones for consistency and progress.' },
@@ -342,14 +338,11 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
       <div className="landing-browse">
         <div className="landing-section-label">Browse without an account</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/setups')}>
-            Community Setups
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/community')}>
+            Community
           </button>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/tracks')}>
             Circuit Guide
-          </button>
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/leaderboard')}>
-            Leaderboard
           </button>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/download')}>
             ↓ Download Companion App
@@ -364,7 +357,7 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'rivals', 'companion', 'account'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'companion', 'account'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -436,7 +429,6 @@ const PAGE_LABELS: Record<string, string> = {
   hardware: 'Hardware Vault',
   progress: 'PB Progression',
   engineer: 'Race Engineer',
-  rivals: 'Rivals',
   companion: 'Companion App Sync',
   account: 'Account',
 };
@@ -475,13 +467,6 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'AI coaching built from your actual session data',
       'Get specific, data-driven feedback after every debrief',
       'Ask follow-up questions about your pace and consistency',
-    ],
-  },
-  rivals: {
-    bullets: [
-      'Challenge a friend to beat one of your lap times or races',
-      'Race async — no need to be online at the same time',
-      'See a side-by-side comparison the moment they submit their attempt',
     ],
   },
   companion: {
@@ -619,13 +604,8 @@ function DemoBanner({ onSignIn }: { onSignIn: () => void }) {
   );
 }
 
-const SHORTCUTS: Record<string, string> = {
-  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', r: 'rivals', c: 'community', x: 'companion', a: 'account',
-};
-
-function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: boolean; onSignIn?: () => void }) {
-  const [page, setPage] = useState('dashboard');
-  const [showShortcuts, setShowShortcuts] = useState(false);
+function MainApp({ isGuest, isDemo, onSignIn, initialPage }: { isGuest?: boolean; isDemo?: boolean; onSignIn?: () => void; initialPage?: string }) {
+  const [page, setPage] = useState(initialPage ?? 'dashboard');
 
   // Persist guest activity across same-session refreshes
   const [pageViews, setPageViews] = useState<number>(() => {
@@ -667,18 +647,6 @@ function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: bo
     sessionStorage.setItem('guestNudgeDismissed', '1');
   }, []);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === '?') { setShowShortcuts(v => !v); return; }
-      const dest = SHORTCUTS[e.key.toLowerCase()];
-      if (dest) handleSetPage(dest);
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [handleSetPage]);
-
   const showNudge = isGuest && !isDemo && (pageViews >= 3 || timeReached) && !nudgeDismissed;
 
   // Allow child pages to trigger top-level navigation via custom event
@@ -711,8 +679,7 @@ function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: bo
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
       case 'engineer': return <RaceEngineer />;
-      case 'rivals': return <Rivals />;
-      case 'community': return <Community />;
+      case 'community': return <Community isGuest={isGuest} />;
       case 'companion': return <Companion />;
       case 'account': return <Account setPage={handleSetPage} />;
       default: return <Dashboard setPage={handleSetPage} />;
@@ -732,31 +699,16 @@ function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: bo
           onDismiss={handleDismiss}
         />
       )}
-
-      {/* Keyboard Shortcuts Modal */}
-      {showShortcuts && (
-        <div style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowShortcuts(false)}>
-          <div className="card" style={{ padding: '24px 32px', maxWidth: 360, width: '90%' }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.1em', color: 'var(--white)', marginBottom: 16, textTransform: 'uppercase' }}>Keyboard Shortcuts</div>
-            {Object.entries(SHORTCUTS).map(([key, dest]) => (
-              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontFamily: 'var(--font-body)', fontSize: 13 }}>
-                <span style={{ color: 'var(--gray-light)', textTransform: 'capitalize' }}>{dest}</span>
-                <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 3, color: 'var(--teal)' }}>{key.toUpperCase()}</kbd>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontFamily: 'var(--font-body)', fontSize: 13, borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
-              <span style={{ color: 'var(--gray-light)' }}>Toggle this panel</span>
-              <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 3, color: 'var(--teal)' }}>?</kbd>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function HomeRoute() {
-  const [isGuest, setIsGuest] = useState(false);
+// `initialPage` is how the public deep links (/community, /tracks, /log) land
+// directly on a page instead of on the landing screen. They used to be separate
+// standalone components with their own trimmed-down copies of the same data;
+// now they're just entry points into the one app shell.
+function HomeRoute({ initialPage }: { initialPage?: string }) {
+  const [isGuest, setIsGuest] = useState(!!initialPage);
   const [isDemo, setIsDemo] = useState(false);
   const [, setLocation] = useLocation();
 
@@ -777,16 +729,26 @@ function HomeRoute() {
     <>
       <Show when="signed-in">
         <GuestSessionMigrator />
-        <MainApp />
+        <MainApp initialPage={initialPage} />
       </Show>
       <Show when="signed-out">
         {isGuest
-          ? <MainApp isGuest isDemo={isDemo} onSignIn={handleSignIn} />
+          ? <MainApp isGuest isDemo={isDemo} onSignIn={handleSignIn} initialPage={initialPage} />
           : <LandingPage onGuest={() => setIsGuest(true)} onDemo={handleDemo} />
         }
       </Show>
     </>
   );
+}
+
+// /log used to be its own Quick Log screen with a parallel, cut-down copy of
+// the session form. It now opens the real log form on the Sessions page, so
+// there is exactly one way to log a lap.
+function LogRedirect() {
+  useState(() => {
+    try { sessionStorage.setItem(OPEN_LOG_KEY, '1'); } catch { /* storage unavailable — form just opens blank */ }
+  });
+  return <HomeRoute initialPage="sessions" />;
 }
 
 function ClerkAuthTokenRegistrar() {
@@ -851,16 +813,20 @@ function ClerkProviderWithRoutes() {
         <ClerkAuthTokenRegistrar />
         <ClerkQueryClientCacheInvalidator />
         <Switch>
-          <Route path="/" component={HomeRoute} />
+          <Route path="/">{() => <HomeRoute />}</Route>
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
-          <Route path="/setups">{() => <PublicSetups onBack={() => window.location.href = basePath || '/'} />}</Route>
-          <Route path="/tracks">{() => <PublicTracks onBack={() => window.location.href = basePath || '/'} />}</Route>
-          <Route path="/leaderboard">{() => <PublicLeaderboard onBack={() => window.location.href = basePath || '/'} />}</Route>
+          {/* /setups and /leaderboard were standalone public pages duplicating
+              what Community already showed signed-in. They now land on the one
+              Community surface. */}
+          <Route path="/community">{() => <HomeRoute initialPage="community" />}</Route>
+          <Route path="/setups">{() => <Redirect to="/community" />}</Route>
+          <Route path="/leaderboard">{() => <Redirect to="/community" />}</Route>
+          <Route path="/tracks">{() => <HomeRoute initialPage="tracks" />}</Route>
           <Route path="/download">{() => <DownloadPage />}</Route>
-          <Route path="/log">{() => <QuickLog onDone={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/log">{() => <LogRedirect />}</Route>
           <Route path="/driver/:username">{(params) => <DriverProfile username={params.username} />}</Route>
-          <Route component={HomeRoute} />
+          <Route>{() => <HomeRoute />}</Route>
         </Switch>
       </QueryClientProvider>
     </ClerkProvider>
@@ -908,9 +874,11 @@ export default function App() {
   return (
     <WouterRouter base={basePath}>
       <ServiceStatusBanner />
-      <UnitsProvider>
-        <ClerkProviderWithRoutes />
-      </UnitsProvider>
+      <ThemeProvider>
+        <UnitsProvider>
+          <ClerkProviderWithRoutes />
+        </UnitsProvider>
+      </ThemeProvider>
     </WouterRouter>
   );
 }
