@@ -397,12 +397,16 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginBottom: 6 }}>Units</div>
             <div className="units-toggle" role="group" aria-label="Unit system" style={{ minWidth: 200, marginBottom: 0 }}>
               <button
+                type="button"
+                aria-pressed={system === 'us'}
                 className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
                 onClick={() => setSystem('us')}
               >
                 US <span className="units-toggle-sub">mph · °F</span>
               </button>
               <button
+                type="button"
+                aria-pressed={system === 'uk'}
                 className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
                 onClick={() => setSystem('uk')}
               >

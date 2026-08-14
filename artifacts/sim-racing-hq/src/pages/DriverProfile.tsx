@@ -42,7 +42,10 @@ export default function DriverProfile({ username }: { username: string }) {
   useEffect(() => {
     setLoading(true);
     setError('');
-    const base = import.meta.env.VITE_API_URL || '/api';
+    // VITE_API_URL is the bare origin (no /api suffix) — every caller adds
+    // /api itself. Without it this hit <origin>/community/driver/... which
+    // 404s, so every public profile link rendered "Driver Not Found".
+    const base = `${(import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') ?? ''}/api`;
     fetch(`${base}/community/driver/${encodeURIComponent(username)}`)
       .then(r => {
         if (!r.ok) throw new Error('Driver not found');
