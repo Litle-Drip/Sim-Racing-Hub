@@ -3,6 +3,7 @@ import { Crown, Flag, Globe, Hash, Plane, Radio, Target, Trophy, Wind, Wrench, Z
 import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
 import { getRankColor, resolveRankTier } from '../lib/engagement';
 import type { RankInfo, Achievement } from '../lib/engagement';
+import { SHOW_ACHIEVEMENTS } from '../lib/features';
 
 interface DriverPB {
   trackId: string;
@@ -146,7 +147,7 @@ export default function DriverProfile({ username }: { username: string }) {
       </div>
 
       {/* Achievement Badges */}
-      {earnedAchievements.length > 0 && (
+      {SHOW_ACHIEVEMENTS && earnedAchievements.length > 0 && (
         <>
           <div className="section-title" style={{ marginTop: 28 }}>Achievements</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
