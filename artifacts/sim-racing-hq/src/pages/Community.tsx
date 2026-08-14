@@ -1,5 +1,5 @@
-import { useState, useMemo, Fragment } from 'react';
-import { Star, Download, Users } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Download, Users } from 'lucide-react';
 import {
   useGetCommunitySetups,
   useGetCommunitySessions,
@@ -7,12 +7,12 @@ import {
   useImportSetup,
   getGetSetupsQueryKey,
   getGetCommunitySetupsQueryKey,
-  getGetCommunitySessionsQueryKey,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, F1_25_CARS, SETUP_TAGS, SESSION_TYPES, PLATFORMS, INPUT_DEVICES, getTypeBadgeClass } from '../data/f1Tracks';
+import { F1_TRACKS, F1_25_CARS, getTypeBadgeClass } from '../data/f1Tracks';
 import { getDailyChallenge } from '../lib/engagement';
+import Rivals from './Rivals';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -21,6 +21,9 @@ const TAG_BADGE: Record<string, string> = {
   Test: 'badge-practice',
   Sprint: 'badge-hotlap',
 };
+
+// How many circuits the leaderboard shows before "Show More".
+const LEADERBOARD_PAGE_SIZE = 10;
 
 function StarRating({
   avg,
@@ -145,92 +148,31 @@ function CommunitySetupCard({
   );
 }
 
-function CommunitySessionCard({ session, onClick }: { session: CommunitySessionRecord; onClick?: () => void }) {
-  const params = [
-    { label: 'Avg Lap', value: session.avgLap || '—' },
-    { label: 'Tires', value: session.tires },
-    { label: 'Conditions', value: session.conditions },
-  ];
-  if (session.penalty && session.penalty.trim() !== '') {
-    params.push({ label: 'Penalty', value: session.penalty });
-  }
+type Tab = 'leaderboard' | 'setups' | 'rivals';
 
-  return (
-    <div className="community-card" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
-      <div className="community-card-header">
-        <div className="community-card-left">
-          <div className="community-card-title" style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--teal)' }}>
-            {session.bestLap || '—'}
-          </div>
-          <div className="community-card-car">{session.car}</div>
-          <div className="community-card-track">{trackLabel(session.trackId)}</div>
-        </div>
-        <div className="community-card-right">
-          <span className={`badge ${getTypeBadgeClass(session.type)}`}>{session.type}</span>
-          {session.platform && <span className="badge badge-practice">{session.platform}</span>}
-          {session.inputDevice && <span className="badge badge-practice">{session.inputDevice}</span>}
-          <div className="community-card-author">
-            <Users size={10} />
-            {session.authorName}
-          </div>
-        </div>
-      </div>
+const TAB_LABELS: Record<Tab, string> = {
+  leaderboard: 'Leaderboard',
+  setups: 'Setups',
+  rivals: 'Rivals',
+};
 
-      <div className="community-card-params">
-        {params.map(({ label, value }) => (
-          <div key={label} className="community-param-item">
-            <div className="community-param-label">{label}</div>
-            <div className="community-param-value" style={label === 'Penalty' ? { color: 'var(--red)' } : {}}>{value}</div>
-          </div>
-        ))}
-      </div>
-
-      {session.gameVersion && (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4 }}>
-          {session.gameVersion}
-        </div>
-      )}
-
-      {session.publicNote && (
-        <div className="community-card-notes">{session.publicNote}</div>
-      )}
-
-      <div className="community-card-footer">
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-          {session.date}
-        </span>
-        {onClick && <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>View Details →</span>}
-      </div>
-    </div>
-  );
-}
-
-export default function Community() {
+export default function Community({ isGuest }: { isGuest?: boolean }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'setups' | 'sessions' | 'leaderboard' | 'challenges'>('leaderboard');
+  const [tab, setTab] = useState<Tab>('leaderboard');
   const [filterTrack, setFilterTrack] = useState('');
-  const [filterTag, setFilterTag] = useState('');
   const [filterCar, setFilterCar] = useState('');
-  const [filterGameVersion, setFilterGameVersion] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [filterPlatform, setFilterPlatform] = useState('');
-  const [filterInput, setFilterInput] = useState('');
-  const [sessionSort, setSessionSort] = useState<'fastest' | 'recent' | 'rating'>('recent');
   const [importingId, setImportingId] = useState<string | null>(null);
-  const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
   const [localRatings, setLocalRatings] = useState<Record<string, number>>({});
   const [importError, setImportError] = useState('');
+  const [visibleCircuits, setVisibleCircuits] = useState(LEADERBOARD_PAGE_SIZE);
+  const [detailSession, setDetailSession] = useState<CommunitySessionRecord | null>(null);
 
   const { data: setups = [], isLoading: setupsLoading } = useGetCommunitySetups({
     trackId: filterTrack || undefined,
-    tag: filterTag || undefined,
     car: filterCar || undefined,
-    gameVersion: filterGameVersion || undefined,
   });
 
-  const { data: sessions = [], isLoading: sessionsLoading } = useGetCommunitySessions({
-    sort: sessionSort === 'fastest' ? undefined : sessionSort,
-  });
+  const { data: sessions = [], isLoading: sessionsLoading } = useGetCommunitySessions();
 
   const { mutate: rateSetup } = useRateSetup({
     mutation: {
@@ -242,9 +184,8 @@ export default function Community() {
 
   const { mutate: importSetup } = useImportSetup({
     mutation: {
-      onSuccess: (_, vars) => {
+      onSuccess: () => {
         qc.invalidateQueries({ queryKey: getGetSetupsQueryKey() });
-        setImportedIds((s) => new Set(s).add(vars.id));
         setImportingId(null);
       },
       onError: () => {
@@ -271,48 +212,34 @@ export default function Community() {
     [setups],
   );
 
-  const filteredSessions = useMemo(() => {
-    return [...sessions].filter(s => {
-      if (filterTrack && s.trackId !== filterTrack) return false;
-      if (filterType && s.type !== filterType) return false;
-      if (filterCar && !s.car.toLowerCase().includes(filterCar.toLowerCase())) return false;
-      if (filterPlatform && s.platform !== filterPlatform) return false;
-      if (filterInput && s.inputDevice !== filterInput) return false;
-      return true;
-    });
-  }, [sessions, filterTrack, filterType, filterCar, filterPlatform, filterInput]);
-
+  // Top 5 per circuit, one entry per driver so a prolific driver can't occupy
+  // the whole board. This absorbs both the old standalone /leaderboard page and
+  // the 'sessions' browse tab — a ranked list of shared laps is what that tab
+  // was, only with six filters bolted on top.
   const leaderboard = useMemo(() => {
-    const byTrack: Record<string, CommunitySessionRecord> = {};
+    const byTrack: Record<string, CommunitySessionRecord[]> = {};
     sessions.forEach(s => {
       if (!s.bestLap || s.bestLap.trim() === '') return;
-      const existing = byTrack[s.trackId];
-      if (!existing || lapToSeconds(s.bestLap) < lapToSeconds(existing.bestLap)) {
-        byTrack[s.trackId] = s;
-      }
+      if (!byTrack[s.trackId]) byTrack[s.trackId] = [];
+      byTrack[s.trackId].push(s);
     });
+
     return F1_TRACKS
       .filter(t => byTrack[t.id])
-      .map(t => ({ track: t, session: byTrack[t.id] }));
+      .map(t => {
+        const sorted = [...byTrack[t.id]].sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap));
+        const seenDrivers = new Set<string>();
+        const deduped = sorted.filter(s => {
+          if (seenDrivers.has(s.authorName)) return false;
+          seenDrivers.add(s.authorName);
+          return true;
+        });
+        return { track: t, entries: deduped.slice(0, 5) };
+      });
   }, [sessions]);
 
-  const [detailSession, setDetailSession] = useState<CommunitySessionRecord | null>(null);
-
-  const challenge = useMemo(() => {
-    const now = new Date();
-    // ISO week number (Monday-based, UTC-stable)
-    const day = now.getUTCDay(); // 0=Sun, 1=Mon
-    const mondayOffset = day === 0 ? 6 : day - 1;
-    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - mondayOffset));
-    const week = Math.floor(monday.getTime() / (7 * 24 * 3600 * 1000));
-    const track = F1_TRACKS[week % F1_TRACKS.length];
-    const challengeSessions = sessions
-      .filter(s => s.trackId === track.id && s.bestLap && s.bestLap.trim() !== '')
-      .sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap))
-      .slice(0, 3);
-    return { track, entries: challengeSessions, week };
-  }, [sessions]);
-
+  // Today's challenge is just the leaderboard scoped to one track + car, so it
+  // sits pinned at the top of the board instead of owning a tab of its own.
   const daily = useMemo(() => {
     const today = getDailyChallenge();
     const entries = sessions
@@ -322,24 +249,26 @@ export default function Community() {
     return { ...today, entries };
   }, [sessions]);
 
+  const headerCount = tab === 'setups'
+    ? `${setups.length} shared setup${setups.length !== 1 ? 's' : ''}`
+    : tab === 'leaderboard'
+    ? `${leaderboard.length} circuit${leaderboard.length !== 1 ? 's' : ''}`
+    : '';
+
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Community</h1>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-          {tab === 'setups'
-            ? `${setups.length} shared setup${setups.length !== 1 ? 's' : ''}`
-            : tab === 'sessions'
-            ? `${sessions.length} shared session${sessions.length !== 1 ? 's' : ''}`
-            : tab === 'challenges'
-            ? `${daily.entries.length + challenge.entries.length} challenge entr${daily.entries.length + challenge.entries.length !== 1 ? 'ies' : 'y'}`
-            : `${leaderboard.length} track${leaderboard.length !== 1 ? 's' : ''}`}
-        </div>
+        {headerCount && (
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+            {headerCount}
+          </div>
+        )}
       </div>
 
       {/* Tab switcher */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
-        {(['leaderboard', 'sessions', 'setups', 'challenges'] as const).map(t => (
+        {(['leaderboard', 'setups', 'rivals'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -357,7 +286,7 @@ export default function Community() {
               marginBottom: -1,
             }}
           >
-            {t === 'setups' ? 'Setups' : t === 'sessions' ? 'Sessions' : t === 'challenges' ? 'Challenges' : 'Leaderboard'}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -376,6 +305,112 @@ export default function Community() {
         </div>
       )}
 
+      {tab === 'leaderboard' && (
+        <>
+          {/* Today's Challenge — pinned above the board */}
+          <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
+            <div style={{ background: 'rgba(0,210,190,0.06)', padding: '14px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Today's Challenge</span>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
+                  {daily.track.flag} {daily.track.name} — {daily.car}
+                </div>
+              </div>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+                Log and share a session here today to compete
+              </span>
+            </div>
+            {daily.entries.length > 0 ? (
+              <div style={{ padding: '12px 20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {daily.entries.map((s, i) => (
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
+                      <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
+                      <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
+                      <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '16px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+                No times submitted today yet — be the first on the board.
+              </div>
+            )}
+          </div>
+
+          {sessionsLoading ? (
+            <div className="card" style={{ padding: 0 }}>
+              <div className="empty-state">
+                <div className="empty-state-title">Loading Leaderboard…</div>
+              </div>
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div className="card" style={{ padding: 0 }}>
+              <div className="empty-state">
+                <div className="empty-state-title">No Leaderboard Data</div>
+                <div className="empty-state-desc">
+                  Share a session with a best lap time to put the first name on the board.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {leaderboard.slice(0, visibleCircuits).map(({ track, entries }) => (
+                <div key={track.id}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 8 }}>
+                    {track.flag} {track.name}
+                  </div>
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 32 }}>#</th>
+                          <th>Time</th>
+                          <th>Driver</th>
+                          <th>Car</th>
+                          <th>Platform</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entries.map((s, idx) => (
+                          <tr
+                            key={s.id}
+                            style={{ cursor: 'pointer' }}
+                            title="View session details"
+                            onClick={() => setDetailSession(s)}
+                          >
+                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: idx === 0 ? 'var(--teal)' : 'var(--gray-mid)' }}>{idx + 1}</td>
+                            <td><span className={idx === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span></td>
+                            <td style={{ fontFamily: 'var(--font-body)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{s.authorName}</td>
+                            <td>{s.car}</td>
+                            <td>{s.platform || '—'}</td>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+              {leaderboard.length > visibleCircuits && (
+                <div style={{ textAlign: 'center', paddingTop: 8 }}>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ fontSize: 13, padding: '10px 24px' }}
+                    onClick={() => setVisibleCircuits(c => c + LEADERBOARD_PAGE_SIZE)}
+                  >
+                    Show More Circuits ({leaderboard.length - visibleCircuits} remaining)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
       {tab === 'setups' && (
         <>
           <div className="filter-bar" style={{ marginBottom: 24 }}>
@@ -385,21 +420,10 @@ export default function Community() {
                 <option key={t.id} value={t.id}>{t.flag} {t.short}</option>
               ))}
             </select>
-            <select className="filter-select" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
-              <option value="">All Tags</option>
-              {SETUP_TAGS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
             <select className="filter-select" value={filterCar} onChange={(e) => setFilterCar(e.target.value)}>
               <option value="">All Cars</option>
               {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <input
-              className="filter-select"
-              type="text"
-              placeholder="Filter by version…"
-              value={filterGameVersion}
-              onChange={(e) => setFilterGameVersion(e.target.value)}
-            />
           </div>
 
           {setupsLoading ? (
@@ -434,179 +458,26 @@ export default function Community() {
         </>
       )}
 
-      {tab === 'sessions' && (
-        <>
-          <div className="filter-bar" style={{ marginBottom: 24, flexWrap: 'wrap' }}>
-            <select className="filter-select" value={filterTrack} onChange={(e) => setFilterTrack(e.target.value)}>
-              <option value="">All Tracks</option>
-              {F1_TRACKS.map((t) => (
-                <option key={t.id} value={t.id}>{t.flag} {t.short}</option>
-              ))}
-            </select>
-            <select className="filter-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-              <option value="">All Types</option>
-              {SESSION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <select className="filter-select" value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}>
-              <option value="">All Platforms</option>
-              {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-            <select className="filter-select" value={filterInput} onChange={(e) => setFilterInput(e.target.value)}>
-              <option value="">All Inputs</option>
-              {INPUT_DEVICES.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <select className="filter-select" value={filterCar} onChange={(e) => setFilterCar(e.target.value)}>
-              <option value="">All Cars</option>
-              {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select className="filter-select" value={sessionSort} onChange={(e) => setSessionSort(e.target.value as 'fastest' | 'recent' | 'rating')}>
-              <option value="fastest">Fastest First</option>
-              <option value="recent">Most Recent</option>
-              <option value="rating">Best Session Rating</option>
-            </select>
+      {tab === 'rivals' && (
+        isGuest ? (
+          <div className="card" style={{ padding: 0 }}>
+            <div className="empty-state">
+              <div className="empty-state-title">Sign in to challenge someone</div>
+              <div className="empty-state-desc">
+                Rivals matches you head-to-head against another driver's lap. Create a free account to send and accept challenges.
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ marginTop: 16 }}
+                onClick={() => window.dispatchEvent(new CustomEvent('guestSignIn'))}
+              >
+                Create Free Account
+              </button>
+            </div>
           </div>
-
-          {sessionsLoading ? (
-            <div className="card" style={{ padding: 0 }}>
-              <div className="empty-state">
-                <div className="empty-state-title">Loading Community Sessions…</div>
-              </div>
-            </div>
-          ) : filteredSessions.length === 0 ? (
-            <div className="card" style={{ padding: 0 }}>
-              <div className="empty-state">
-                <div className="empty-state-title">No Community Sessions</div>
-                <div className="empty-state-desc">
-                  Share a session from your Session Log using the "Share" button on any session.
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="community-grid">
-              {filteredSessions.map((session) => (
-                <CommunitySessionCard key={session.id} session={session} onClick={() => setDetailSession(session)} />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {tab === 'leaderboard' && (
-        <>
-          {sessionsLoading ? (
-            <div className="card" style={{ padding: 0 }}>
-              <div className="empty-state">
-                <div className="empty-state-title">Loading Leaderboard…</div>
-              </div>
-            </div>
-          ) : leaderboard.length === 0 ? (
-            <div className="card" style={{ padding: 0 }}>
-              <div className="empty-state">
-                <div className="empty-state-title">No Leaderboard Data</div>
-                <div className="empty-state-desc">
-                  Share sessions with best lap times to populate the leaderboard.
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Track</th>
-                    <th>Best Time</th>
-                    <th>Driver</th>
-                    <th>Car</th>
-                    <th>Platform</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map(({ track, session }) => (
-                    <tr key={track.id}>
-                      <td>{track.flag} {track.short}</td>
-                      <td><span className="pb-time">{session.bestLap}</span></td>
-                      <td style={{ fontFamily: 'var(--font-body)' }}>{session.authorName}</td>
-                      <td>{session.car}</td>
-                      <td>{session.platform || '—'}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{session.date}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
-
-      {tab === 'challenges' && (
-        <>
-          {/* Daily Challenge */}
-          <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
-            <div style={{ background: 'rgba(0,210,190,0.06)', padding: '14px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
-                  {daily.track.flag} {daily.track.name} — {daily.car}
-                </div>
-              </div>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-                Log today's session on Sessions → Start Challenge to compete
-              </span>
-            </div>
-            {daily.entries.length > 0 ? (
-              <div style={{ padding: '12px 20px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {daily.entries.map((s, i) => (
-                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
-                      <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
-                      <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
-                      <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '16px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-                No times submitted today yet — be the first on the board.
-              </div>
-            )}
-          </div>
-
-          {/* Weekly Challenge */}
-          <div className="card" style={{ padding: 0, marginBottom: 20, overflow: 'hidden', border: '1px solid rgba(232,0,45,0.3)' }}>
-            <div style={{ background: 'rgba(232,0,45,0.08)', padding: '14px 20px', borderBottom: '1px solid rgba(232,0,45,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)' }}>Weekly Challenge</span>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
-                  {challenge.track.flag} Fastest Lap at {challenge.track.name}
-                </div>
-              </div>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-                Share a session at {challenge.track.short} to compete
-              </span>
-            </div>
-            {challenge.entries.length > 0 ? (
-              <div style={{ padding: '12px 20px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {challenge.entries.map((s, i) => (
-                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
-                      <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
-                      <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
-                      <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '16px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-                No times submitted yet — be the first to set the pace!
-              </div>
-            )}
-          </div>
-        </>
+        ) : (
+          <Rivals />
+        )
       )}
 
       {/* Session detail modal */}

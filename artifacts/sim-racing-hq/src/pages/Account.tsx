@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useUser, useClerk } from '@clerk/react';
-import { Flame } from 'lucide-react';
+import { Flame, Sun, Moon } from 'lucide-react';
+import { useUnits } from '../lib/units';
+import { useTheme } from '../lib/theme';
 import { useGetSessions, useGetSetups } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -36,6 +38,8 @@ function normalizeSessionType(raw: string): string {
 export default function Account({ setPage }: { setPage?: (p: string) => void }) {
   const { user } = useUser();
   const { signOut, openUserProfile } = useClerk();
+  const { system, setSystem } = useUnits();
+  const { theme, toggleTheme } = useTheme();
   const { data: sessions = [] } = useGetSessions();
   const { data: setups = [] } = useGetSetups();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -383,6 +387,38 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
           </button>
         </div>
       )}
+
+      {/* Preferences — units and theme, both moved off the sidebar where they
+          occupied permanent space on every page for a choice made once. */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 16 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>Preferences</div>
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginBottom: 6 }}>Units</div>
+            <div className="units-toggle" role="group" aria-label="Unit system" style={{ minWidth: 200, marginBottom: 0 }}>
+              <button
+                className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
+                onClick={() => setSystem('us')}
+              >
+                US <span className="units-toggle-sub">mph · °F</span>
+              </button>
+              <button
+                className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
+                onClick={() => setSystem('uk')}
+              >
+                UK <span className="units-toggle-sub">mph · °C</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginBottom: 6 }}>Appearance</div>
+            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={toggleTheme}>
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Account Actions */}
       <div className="card" style={{ padding: '16px 20px' }}>

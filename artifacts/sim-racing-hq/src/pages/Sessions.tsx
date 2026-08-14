@@ -11,7 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SessionRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, F1_25_CARS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS, getTypeBadgeClass } from '../data/f1Tracks';
+import { F1_TRACKS, TIRE_COMPOUNDS, SESSION_TYPES, CONDITIONS, TIME_OF_DAY, ASSISTS, PLATFORMS, INPUT_DEVICES, GAME_VERSIONS, getTypeBadgeClass } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
 import { LapTimeInput } from '../components/LapTimeInput';
 import { sessionConsistency, isDailyChallengeSession, PENDING_CHALLENGE_KEY } from '../lib/engagement';
@@ -23,7 +23,7 @@ import {
   SessionDetailFields,
   type LapEntry,
 } from '../components/SessionDetail';
-import { FOCUS_SESSION_KEY } from '../lib/storage';
+import { FOCUS_SESSION_KEY, OPEN_LOG_KEY } from '../lib/storage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -424,14 +424,15 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState('');
   const [filterTrack, setFilterTrack] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [filterCar, setFilterCar] = useState('');
-  const [filterConditions, setFilterConditions] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
   const [telemetryLap, setTelemetryLap] = useState<{ sessionId: string; lap: LapEntry } | null>(null);
   const [cleanupOpen, setCleanupOpen] = useState(false);
   const [toast, setToast] = useState('');
+  // Everything past track/car/best-lap is collapsed by default. Logging a lap
+  // needs three answers; the other seventeen fields are for the minority of
+  // sessions that want them.
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // ── Daily Challenge hand-off from Dashboard ────────────────────────────
   // Dashboard's "Start Challenge" button stashes the challenge's track/car
@@ -450,6 +451,18 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       setShowModal(true);
     } catch { /* ignore malformed payload */ }
     // Runs once on mount — this is a one-shot hand-off, not a live subscription.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── /log deep link ─────────────────────────────────────────────────────
+  // The old Quick Log screen is gone; /log now opens this page's log form.
+  useEffect(() => {
+    let flag: string | null = null;
+    try { flag = sessionStorage.getItem(OPEN_LOG_KEY); } catch { /* ignore */ }
+    if (!flag) return;
+    try { sessionStorage.removeItem(OPEN_LOG_KEY); } catch { /* ignore */ }
+    setShowModal(true);
+    // One-shot hand-off, same as the challenge hand-off above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -589,14 +602,8 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const filtered = useMemo(() => {
     return [...sessions]
       .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
-      .filter(s => {
-        if (filterTrack && s.trackId !== filterTrack) return false;
-        if (filterType && s.type !== filterType) return false;
-        if (filterCar && !s.car.toLowerCase().includes(filterCar.toLowerCase())) return false;
-        if (filterConditions && s.conditions !== filterConditions) return false;
-        return true;
-      });
-  }, [sessions, filterTrack, filterType, filterCar, filterConditions]);
+      .filter(s => !filterTrack || s.trackId === filterTrack);
+  }, [sessions, filterTrack]);
 
   const mostRecentId = useMemo(() => {
     if (sessions.length === 0) return null;
@@ -612,9 +619,6 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     sessionStorage.removeItem(FOCUS_SESSION_KEY);
     if (!sessions.some(s => s.id === focusId)) return;
     setFilterTrack('');
-    setFilterType('');
-    setFilterCar('');
-    setFilterConditions('');
     setExpanded(focusId);
     setTimeout(() => {
       document.getElementById(`session-row-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -782,6 +786,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const closeModal = () => {
     saveDraft();
     setShowModal(false);
+    setShowAdvanced(false);
     setForm(defaultForm());
     setLaps([]);
     setLockedSummary(new Set());
@@ -801,7 +806,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               <AlertTriangle size={12} style={{ marginRight: 4 }} /> Review Data ({dataIssuesCount})
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowModal(true); }}>
+          <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowAdvanced(hadDraft); setShowModal(true); }}>
             <Plus size={12} /> Log Session
           </button>
         </div>
@@ -844,23 +849,13 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       )}
 
-      {/* Filters */}
+      {/* One filter. Track is the only axis anyone actually narrows a session
+          list by — type, car and conditions each had their own dropdown for a
+          list most drivers scroll rather than query. */}
       <div className="filter-bar">
         <select className="filter-select" value={filterTrack} onChange={e => setFilterTrack(e.target.value)}>
           <option value="">All Tracks</option>
           {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.short}</option>)}
-        </select>
-        <select className="filter-select" value={filterType} onChange={e => setFilterType(e.target.value)}>
-          <option value="">All Types</option>
-          {SESSION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select className="filter-select" value={filterCar} onChange={e => setFilterCar(e.target.value)}>
-          <option value="">All Cars</option>
-          {F1_25_CARS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select className="filter-select" value={filterConditions} onChange={e => setFilterConditions(e.target.value)}>
-          <option value="">All Conditions</option>
-          {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
 
@@ -889,19 +884,16 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       ) : (
         <div className="table-wrap">
           <table className="data-table sessions-table data-table--stack">
+            {/* Six columns, not twelve. Avg/worst lap, consistency, tyres,
+                conditions and rating all live one click away in the expanded
+                row — they were never what you scan a session list for. */}
             <thead>
               <tr>
                 <th>Date</th>
                 <th>Track</th>
                 <th>Car</th>
                 <th>Best Lap</th>
-                <th>Avg Lap</th>
-                <th>Worst Lap</th>
-                <th>Consistency</th>
                 <th>Type</th>
-                <th>Tires</th>
-                <th>Conditions</th>
-                <th>Rating</th>
                 <th></th>
               </tr>
             </thead>
@@ -929,16 +921,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                       <span className={s.isPB ? 'pb-time' : 'lap-time'}>{s.bestLap || '—'}</span>
                       {s.isPB && <span className="pb-badge">★ PB</span>}
                     </td>
-                    <td data-label="Avg Lap"><span className="lap-time" style={{ color: 'var(--gray-light)', fontSize: 12 }}>{s.avgLap || '—'}</span></td>
-                    <td data-label="Worst Lap"><span className="lap-time" style={{ color: 'var(--gray-mid)', fontSize: 12 }}>{s.worstLap || '—'}</span></td>
-                    <td data-label="Consistency">{(() => { const c = sessionConsistency(s); return c !== null ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: c >= 98 ? 'var(--teal)' : c >= 95 ? 'var(--white)' : 'var(--gray-mid)' }}>{c.toFixed(1)}%</span> : <span style={{ color: 'var(--gray)' }}>—</span>; })()}</td>
                     <td data-label="Type"><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
-                    <td data-label="Tires" style={{ color: 'var(--gray-mid)' }}>{s.tires}</td>
-                    <td data-label="Conditions" style={{ color: 'var(--gray-light)', fontSize: 12 }}>
-                      {s.conditions || '—'}
-                      {s.timeOfDay && s.timeOfDay !== '00:00' ? <span style={{ color: 'var(--gray-mid)', marginLeft: 4 }}>· {s.timeOfDay}</span> : null}
-                    </td>
-                    <td data-label="Rating"><RatingDots rating={s.rating} /></td>
                     <td data-label="">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, whiteSpace: 'nowrap' }}>
                         {s.id === mostRecentId && <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>NEW</span>}
@@ -951,8 +934,21 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                   </tr>
                   {expanded === s.id && (
                     <tr key={`${s.id}-exp`} className="expanded-row">
-                      <td colSpan={12}>
+                      <td colSpan={6}>
                         <div className="expanded-content">
+                          {/* Lap summary — these came out of the table's columns
+                              so the list stays scannable. */}
+                          <div className="expanded-item"><div className="expanded-label">Avg Lap</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)' }}>{s.avgLap || '—'}</div></div>
+                          <div className="expanded-item"><div className="expanded-label">Worst Lap</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)' }}>{s.worstLap || '—'}</div></div>
+                          <div className="expanded-item">
+                            <div className="expanded-label">Consistency</div>
+                            <div className="expanded-value" style={{ fontFamily: 'var(--font-mono)' }}>
+                              {(() => { const c = sessionConsistency(s); return c !== null ? `${c.toFixed(1)}%` : '—'; })()}
+                            </div>
+                          </div>
+                          {s.tires && <div className="expanded-item"><div className="expanded-label">Tires</div><div className="expanded-value">{s.tires}</div></div>}
+                          {s.rating > 0 && <div className="expanded-item"><div className="expanded-label">Rating</div><div className="expanded-value"><RatingDots rating={s.rating} /></div></div>}
+
                           <SessionDetailFields session={s} onViewTelemetry={(sessionId, lap) => setTelemetryLap({ sessionId, lap })} />
 
                           <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 12, marginTop: 4, borderTop: '1px solid var(--border)' }}>
@@ -1045,15 +1041,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
-              {/* ── Core fields ── */}
+              {/* ── The three answers a logged lap actually needs ── */}
               <div className="form-grid">
                 <div className="field">
-                  <label className="field-label">Date</label>
-                  <input type="date" autoFocus value={form.date} onChange={e => set('date', e.target.value)} />
-                </div>
-                <div className="field">
                   <label className="field-label">Track <span style={{ color: 'var(--red)' }}>*</span></label>
-                  <select value={form.trackId} onChange={e => { set('trackId', e.target.value); setFormErrors(fe => ({ ...fe, trackId: '' })); }} style={formErrors.trackId ? { borderBottomColor: 'var(--red)' } : {}}>
+                  <select autoFocus value={form.trackId} onChange={e => { set('trackId', e.target.value); setFormErrors(fe => ({ ...fe, trackId: '' })); }} style={formErrors.trackId ? { borderBottomColor: 'var(--red)' } : {}}>
                     <option value="">Select Track</option>
                     {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.flag} {t.short}</option>)}
                   </select>
@@ -1065,145 +1057,169 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                   {formErrors.car && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.car}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Session Type</label>
-                  <select value={form.type} onChange={e => set('type', e.target.value)}>
-                    {SESSION_TYPES.map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="field-label">Default Tires</label>
-                  <select value={form.tires} onChange={e => set('tires', e.target.value)}>
-                    {TIRE_COMPOUNDS.map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="field-label">Fuel Load %</label>
-                  <input type="number" min={0} max={100} value={form.fuelLoad} onChange={e => set('fuelLoad', e.target.value)} />
-                </div>
-                <div className="field">
-                  <label className="field-label">Conditions</label>
-                  <select value={form.conditions} onChange={e => set('conditions', e.target.value)}>
-                    {CONDITIONS.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="field-label">Time of Day</label>
-                  <select value={form.timeOfDay} onChange={e => set('timeOfDay', e.target.value)}>
-                    <option value="">Not Set</option>
-                    {TIME_OF_DAY.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="field-label">Assists</label>
-                  <select value={form.assists} onChange={e => set('assists', e.target.value)}>
-                    {ASSISTS.map(a => <option key={a}>{a}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="field-label">Game Version</label>
-                  <select value={form.gameVersion} onChange={e => set('gameVersion', e.target.value)}>
-                    <option value="">Select Version</option>
-                    {GAME_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="field-label">Platform</label>
-                  <select value={form.platform} onChange={e => set('platform', e.target.value)}>
-                    <option value="">Select Platform</option>
-                    {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="field-label">Input Device</label>
-                  <select value={form.inputDevice} onChange={e => set('inputDevice', e.target.value)}>
-                    <option value="">Select Input</option>
-                    {INPUT_DEVICES.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label className="field-label">Overall Penalty</label>
-                  <input type="text" placeholder="e.g. 5s, 10s" value={form.penalty} onChange={e => set('penalty', e.target.value)} />
-                </div>
-                {form.type === 'Race' && (
-                  <div className="field">
-                    <label className="field-label">Finishing Position</label>
-                    <select value={form.position} onChange={e => set('position', e.target.value)}>
-                      <option value="">Not Set</option>
-                      {Array.from({ length: 20 }, (_, i) => i + 1).map(p => (
-                        <option key={p} value={String(p)}>P{p}</option>
-                      ))}
-                      <option value="DNF">DNF</option>
-                      <option value="DSQ">DSQ</option>
-                    </select>
-                  </div>
-                )}
-                <div className="field">
-                  <label className="field-label">Rating</label>
-                  <StarRating value={form.rating} onChange={v => set('rating', v)} />
-                </div>
-                <div className="field full">
-                  <label className="field-label">Notes</label>
-                  <textarea rows={2} placeholder="Session notes..." value={form.notes} onChange={e => set('notes', e.target.value)} style={{ resize: 'vertical' }} />
+                  <label className="field-label">Best Lap {laps.length === 0 && <span style={{ color: 'var(--red)' }}>*</span>}</label>
+                  <LapTimeInput value={form.bestLap} onChange={v => { set('bestLap', v); setFormErrors(fe => ({ ...fe, bestLap: '' })); }} error={!!formErrors.bestLap} readOnly={laps.length > 0} />
+                  {formErrors.bestLap && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.bestLap}</span>}
+                  {laps.length > 0 && <span style={{ color: 'var(--teal)', fontSize: 11, fontFamily: 'var(--font-body)' }}>Auto-computed from laps</span>}
                 </div>
               </div>
 
-              {/* ── Summary times (auto-computed or manual) ── */}
-              <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 16 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 10 }}>
-                  Lap Summary {laps.length > 0 && <span style={{ color: 'var(--teal)', marginLeft: 6 }}>← auto-computed from laps</span>}
-                </div>
-                <div className="form-grid">
-                  <div className="field">
-                    <label className="field-label">Best Lap {laps.length === 0 && <span style={{ color: 'var(--red)' }}>*</span>}</label>
-                    <LapTimeInput value={form.bestLap} onChange={v => { set('bestLap', v); setFormErrors(fe => ({ ...fe, bestLap: '' })); }} error={!!formErrors.bestLap} readOnly={laps.length > 0} />
-                    {formErrors.bestLap && <span style={{ color: 'var(--red)', fontSize: 11, fontFamily: 'var(--font-body)' }}>{formErrors.bestLap}</span>}
-                  </div>
-                  <div className="field">
-                    <label className="field-label">Avg Lap</label>
-                    <LapTimeInput value={form.avgLap} onChange={v => set('avgLap', v)} placeholder="1:24.123" readOnly={laps.length > 0} />
-                  </div>
-                  <div className="field">
-                    <label className="field-label">Worst Lap</label>
-                    <LapTimeInput value={form.worstLap} onChange={v => set('worstLap', v)} placeholder="1:26.789" readOnly={laps.length > 0} />
-                  </div>
-                </div>
-              </div>
+              {/* ── Everything else ── */}
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: 16, paddingTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(v => !v)}
+                  aria-expanded={showAdvanced}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em',
+                    textTransform: 'uppercase', color: 'var(--gray-mid)',
+                  }}
+                >
+                  {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  Advanced
+                  <span style={{ color: 'var(--gray)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                    — date, conditions, setup, sectors, lap-by-lap
+                  </span>
+                </button>
 
-              {/* ── Laps section ── */}
-              <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: laps.length > 0 ? 12 : 0 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
-                    Laps <span style={{ color: 'var(--gray)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— optional, paste lap-by-lap data from F1 25</span>
-                  </div>
-                  <button type="button" className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 12px' }} onClick={addLap}>
-                    <Plus size={11} style={{ marginRight: 4 }} /> Add Lap
-                  </button>
-                </div>
+                {showAdvanced && (
+                  <>
+                    <div className="form-grid" style={{ marginTop: 16 }}>
+                      <div className="field">
+                        <label className="field-label">Date</label>
+                        <input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Session Type</label>
+                        <select value={form.type} onChange={e => set('type', e.target.value)}>
+                          {SESSION_TYPES.map(t => <option key={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Default Tires</label>
+                        <select value={form.tires} onChange={e => set('tires', e.target.value)}>
+                          {TIRE_COMPOUNDS.map(t => <option key={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Fuel Load %</label>
+                        <input type="number" min={0} max={100} value={form.fuelLoad} onChange={e => set('fuelLoad', e.target.value)} />
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Conditions</label>
+                        <select value={form.conditions} onChange={e => set('conditions', e.target.value)}>
+                          {CONDITIONS.map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Time of Day</label>
+                        <select value={form.timeOfDay} onChange={e => set('timeOfDay', e.target.value)}>
+                          <option value="">Not Set</option>
+                          {TIME_OF_DAY.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Assists</label>
+                        <select value={form.assists} onChange={e => set('assists', e.target.value)}>
+                          {ASSISTS.map(a => <option key={a}>{a}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Game Version</label>
+                        <select value={form.gameVersion} onChange={e => set('gameVersion', e.target.value)}>
+                          <option value="">Select Version</option>
+                          {GAME_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Platform</label>
+                        <select value={form.platform} onChange={e => set('platform', e.target.value)}>
+                          <option value="">Select Platform</option>
+                          {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Input Device</label>
+                        <select value={form.inputDevice} onChange={e => set('inputDevice', e.target.value)}>
+                          <option value="">Select Input</option>
+                          {INPUT_DEVICES.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Overall Penalty</label>
+                        <input type="text" placeholder="e.g. 5s, 10s" value={form.penalty} onChange={e => set('penalty', e.target.value)} />
+                      </div>
+                      {form.type === 'Race' && (
+                        <div className="field">
+                          <label className="field-label">Finishing Position</label>
+                          <select value={form.position} onChange={e => set('position', e.target.value)}>
+                            <option value="">Not Set</option>
+                            {Array.from({ length: 20 }, (_, i) => i + 1).map(p => (
+                              <option key={p} value={String(p)}>P{p}</option>
+                            ))}
+                            <option value="DNF">DNF</option>
+                            <option value="DSQ">DSQ</option>
+                          </select>
+                        </div>
+                      )}
+                      <div className="field">
+                        <label className="field-label">Rating</label>
+                        <StarRating value={form.rating} onChange={v => set('rating', v)} />
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Avg Lap</label>
+                        <LapTimeInput value={form.avgLap} onChange={v => set('avgLap', v)} placeholder="1:24.123" readOnly={laps.length > 0} />
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Worst Lap</label>
+                        <LapTimeInput value={form.worstLap} onChange={v => set('worstLap', v)} placeholder="1:26.789" readOnly={laps.length > 0} />
+                      </div>
+                      <div className="field full">
+                        <label className="field-label">Notes</label>
+                        <textarea rows={2} placeholder="Session notes..." value={form.notes} onChange={e => set('notes', e.target.value)} style={{ resize: 'vertical' }} />
+                      </div>
+                    </div>
 
-                {laps.length > 0 && (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          {['#', 'Lap Time', 'S1', 'S2', 'S3', 'Tires', 'Pen', ''].map(h => (
-                            <th key={h} style={{ padding: '5px 6px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {laps.map((lap, i) => (
-                          <LapRow
-                            key={i}
-                            index={i}
-                            lap={lap}
-                            onChange={(field, value) => updateLap(i, field, value)}
-                            onRemove={() => removeLap(i)}
-                            defaultTires={form.tires}
-                          />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                    {/* ── Laps ── */}
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: laps.length > 0 ? 12 : 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
+                          Laps <span style={{ color: 'var(--gray)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— paste lap-by-lap data from F1 25</span>
+                        </div>
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 12px' }} onClick={addLap}>
+                          <Plus size={11} style={{ marginRight: 4 }} /> Add Lap
+                        </button>
+                      </div>
+
+                      {laps.length > 0 && (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                {['#', 'Lap Time', 'S1', 'S2', 'S3', 'Tires', 'Pen', ''].map(h => (
+                                  <th key={h} style={{ padding: '5px 6px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {laps.map((lap, i) => (
+                                <LapRow
+                                  key={i}
+                                  index={i}
+                                  lap={lap}
+                                  onChange={(field, value) => updateLap(i, field, value)}
+                                  onRemove={() => removeLap(i)}
+                                  defaultTires={form.tires}
+                                />
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </div>

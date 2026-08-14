@@ -1,16 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, Sun, Moon, User, Zap, Headphones, Trophy, Swords, Lock, Flame } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, User, Zap, Headphones, Trophy, Lock, Flame } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions, useGetRivalChallenges } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { calculateStreak, calculateRank, getRankColor, getRankProgress, estimateSeatTimeMinutes } from '../lib/engagement';
-import { useUnits } from '../lib/units';
 
 interface NavProps {
   page: string;
   setPage: (p: string) => void;
 }
 
+// Rivals is no longer its own destination — it lives as a tab inside Community,
+// which already carried a 'challenges' tab covering the same head-to-head idea.
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, authRequired: false },
   { id: 'tracks', label: 'Tracks', Icon: Map, authRequired: false },
@@ -19,7 +20,6 @@ const NAV_ITEMS = [
   { id: 'setups', label: 'Setups', Icon: Settings2, authRequired: true },
   { id: 'hardware', label: 'Hardware', Icon: Cpu, authRequired: true },
   { id: 'engineer', label: 'Race Engineer', Icon: Headphones, authRequired: true },
-  { id: 'rivals', label: 'Rivals', Icon: Swords, authRequired: true },
   { id: 'companion', label: 'Companion', Icon: Zap, authRequired: true },
   { id: 'community', label: 'Community', Icon: Users, authRequired: false },
   { id: 'account', label: 'Account', Icon: User, authRequired: true },
@@ -37,8 +37,6 @@ export default function Nav({ page, setPage }: NavProps) {
     [rivalChallenges],
   );
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') || 'dark');
-  const { system, setSystem } = useUnits();
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
@@ -51,13 +49,6 @@ export default function Nav({ page, setPage }: NavProps) {
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
     return F1_TRACKS.find(t => t.id === top[0])?.short ?? top[0];
   }, [sessions]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   function navigate(id: string) {
     setPage(id);
@@ -125,7 +116,7 @@ export default function Nav({ page, setPage }: NavProps) {
                 >
                   <Icon className="nav-icon" size={16} />
                   {label}
-                  {id === 'rivals' && !isLocked && pendingRivalChallenges > 0 && (
+                  {id === 'community' && user && pendingRivalChallenges > 0 && (
                     <span style={{
                       marginLeft: 'auto', minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
                       background: 'var(--red)', color: 'var(--on-accent)', fontSize: 10, fontWeight: 700,
@@ -172,35 +163,12 @@ export default function Nav({ page, setPage }: NavProps) {
           </div>
         </div>
 
+        {/* Units and theme are set-once preferences — they live in
+            Account → Preferences rather than taking permanent sidebar space
+            on every page. */}
         <div style={{
           padding: '6px 20px 14px',
         }}>
-          <div
-            className="units-toggle"
-            role="group"
-            aria-label="Unit system"
-            title="Switch speed/temperature units"
-          >
-            <button
-              className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
-              onClick={() => setSystem('us')}
-            >
-              US <span className="units-toggle-sub">mph · °F</span>
-            </button>
-            <button
-              className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
-              onClick={() => setSystem('uk')}
-            >
-              UK <span className="units-toggle-sub">mph · °C</span>
-            </button>
-          </div>
-          <button
-            onClick={toggleTheme}
-            className="nav-footer-btn"
-          >
-            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-          </button>
           <button
             onClick={() => signOut({ redirectUrl: basePath || '/' })}
             className="nav-footer-btn nav-footer-btn--danger"

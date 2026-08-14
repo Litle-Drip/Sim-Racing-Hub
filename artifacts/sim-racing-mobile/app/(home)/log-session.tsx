@@ -150,6 +150,7 @@ export default function LogSessionScreen() {
   const [assists, setAssists] = useState<string>(ASSISTS[0]);
   const [rating, setRating] = useState(3);
   const [notes, setNotes] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const { mutate: createSession, isPending } = useCreateSession({
     mutation: {
@@ -277,6 +278,20 @@ export default function LogSessionScreen() {
       fontSize: 12,
       fontFamily: "Inter_500Medium",
     },
+    advancedToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 12,
+      marginBottom: 8,
+    },
+    advancedText: {
+      fontSize: 12,
+      fontWeight: "700" as const,
+      color: colors.mutedForeground,
+      letterSpacing: 2,
+      fontFamily: "Inter_700Bold",
+    },
   });
 
   return (
@@ -287,17 +302,8 @@ export default function LogSessionScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={s.sectionTitle}>SESSION INFO</Text>
-
-        <Text style={s.label}>DATE</Text>
-        <TextInput
-          style={s.input}
-          value={date}
-          onChangeText={setDate}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={colors.mutedForeground}
-        />
-
+        {/* Track, car, best lap — the three answers a logged lap needs. The
+            other thirteen fields sit behind ADVANCED, same as on the web. */}
         <Text style={s.label}>TRACK</Text>
         <View style={s.trackGrid}>
           {F1_TRACKS.map((track) => (
@@ -334,97 +340,136 @@ export default function LogSessionScreen() {
           testID="car-input"
         />
 
-        <OptionPicker
-          label="SESSION TYPE"
-          options={SESSION_TYPES}
-          value={type}
-          onChange={setType}
-          colors={colors}
-        />
-
-        <View style={s.divider} />
-        <Text style={s.sectionTitle}>LAP TIMES</Text>
-
-        <View style={s.row}>
-          <LapTimeInput label="BEST LAP" value={bestLap} onChange={setBestLap} colors={colors} />
-          <LapTimeInput label="AVG LAP" value={avgLap} onChange={setAvgLap} colors={colors} />
-          <LapTimeInput label="WORST LAP" value={worstLap} onChange={setWorstLap} colors={colors} />
-        </View>
-
-        <View style={s.row}>
-          <LapTimeInput label="S1" value={s1} onChange={setS1} colors={colors} />
-          <LapTimeInput label="S2" value={s2} onChange={setS2} colors={colors} />
-          <LapTimeInput label="S3" value={s3} onChange={setS3} colors={colors} />
-        </View>
-
-        <View style={s.divider} />
-        <Text style={s.sectionTitle}>CONDITIONS</Text>
-
-        <OptionPicker
-          label="TIRES"
-          options={TIRE_COMPOUNDS}
-          value={tires}
-          onChange={setTires}
-          colors={colors}
-        />
-        <OptionPicker
-          label="CONDITIONS"
-          options={CONDITIONS}
-          value={conditions}
-          onChange={setConditions}
-          colors={colors}
-        />
-        <OptionPicker
-          label="ASSISTS"
-          options={ASSISTS}
-          value={assists}
-          onChange={setAssists}
-          colors={colors}
-        />
-
-        <Text style={s.label}>FUEL LOAD (kg)</Text>
+        <Text style={s.label}>BEST LAP</Text>
         <TextInput
-          style={s.input}
-          value={fuelLoad}
-          onChangeText={setFuelLoad}
-          keyboardType="numeric"
-          placeholder="50"
+          style={[s.input, { color: colors.teal }]}
+          value={bestLap}
+          onChangeText={setBestLap}
+          placeholder="1:23.456"
           placeholderTextColor={colors.mutedForeground}
+          keyboardType="numbers-and-punctuation"
+          testID="best-lap-input"
         />
 
-        <View style={s.divider} />
-        <Text style={s.sectionTitle}>RATING</Text>
+        <Pressable
+          onPress={() => setShowAdvanced((v) => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showAdvanced }}
+          style={s.advancedToggle}
+        >
+          <Ionicons
+            name={showAdvanced ? "chevron-up" : "chevron-down"}
+            size={16}
+            color={colors.mutedForeground}
+          />
+          <Text style={s.advancedText}>ADVANCED</Text>
+        </Pressable>
 
-        <View style={s.ratingRow}>
-          {[1, 2, 3, 4, 5].map((r) => (
-            <Pressable
-              key={r}
-              onPress={() => setRating(r)}
-              style={[
-                s.ratingBtn,
-                {
-                  backgroundColor: rating >= r ? colors.redDim : colors.secondary,
-                  borderColor: rating >= r ? colors.primary : colors.input,
-                },
-              ]}
-            >
-              <Text style={[s.ratingText, { color: rating >= r ? colors.primary : colors.mutedForeground }]}>
-                {r}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {showAdvanced && (
+          <>
+            <View style={s.divider} />
 
-        <Text style={s.label}>NOTES</Text>
-        <TextInput
-          style={[s.input, { height: 80, textAlignVertical: "top", paddingTop: 12 }]}
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="Session notes, setup changes, observations..."
-          placeholderTextColor={colors.mutedForeground}
-          multiline
-          numberOfLines={3}
-        />
+            <Text style={s.label}>DATE</Text>
+            <TextInput
+              style={s.input}
+              value={date}
+              onChangeText={setDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.mutedForeground}
+            />
+
+            <OptionPicker
+              label="SESSION TYPE"
+              options={SESSION_TYPES}
+              value={type}
+              onChange={setType}
+              colors={colors}
+            />
+
+            <View style={s.divider} />
+            <Text style={s.sectionTitle}>LAP TIMES</Text>
+
+            <View style={s.row}>
+              <LapTimeInput label="AVG LAP" value={avgLap} onChange={setAvgLap} colors={colors} />
+              <LapTimeInput label="WORST LAP" value={worstLap} onChange={setWorstLap} colors={colors} />
+            </View>
+
+            <View style={s.row}>
+              <LapTimeInput label="S1" value={s1} onChange={setS1} colors={colors} />
+              <LapTimeInput label="S2" value={s2} onChange={setS2} colors={colors} />
+              <LapTimeInput label="S3" value={s3} onChange={setS3} colors={colors} />
+            </View>
+
+            <View style={s.divider} />
+            <Text style={s.sectionTitle}>CONDITIONS</Text>
+
+            <OptionPicker
+              label="TIRES"
+              options={TIRE_COMPOUNDS}
+              value={tires}
+              onChange={setTires}
+              colors={colors}
+            />
+            <OptionPicker
+              label="CONDITIONS"
+              options={CONDITIONS}
+              value={conditions}
+              onChange={setConditions}
+              colors={colors}
+            />
+            <OptionPicker
+              label="ASSISTS"
+              options={ASSISTS}
+              value={assists}
+              onChange={setAssists}
+              colors={colors}
+            />
+
+            <Text style={s.label}>FUEL LOAD (kg)</Text>
+            <TextInput
+              style={s.input}
+              value={fuelLoad}
+              onChangeText={setFuelLoad}
+              keyboardType="numeric"
+              placeholder="50"
+              placeholderTextColor={colors.mutedForeground}
+            />
+
+            <View style={s.divider} />
+            <Text style={s.sectionTitle}>RATING</Text>
+
+            <View style={s.ratingRow}>
+              {[1, 2, 3, 4, 5].map((r) => (
+                <Pressable
+                  key={r}
+                  onPress={() => setRating(r)}
+                  style={[
+                    s.ratingBtn,
+                    {
+                      backgroundColor: rating >= r ? colors.redDim : colors.secondary,
+                      borderColor: rating >= r ? colors.primary : colors.input,
+                    },
+                  ]}
+                >
+                  <Text style={[s.ratingText, { color: rating >= r ? colors.primary : colors.mutedForeground }]}>
+                    {r}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={s.label}>NOTES</Text>
+            <TextInput
+              style={[s.input, { height: 80, textAlignVertical: "top", paddingTop: 12 }]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Session notes, setup changes, observations..."
+              placeholderTextColor={colors.mutedForeground}
+              multiline
+              numberOfLines={3}
+            />
+          </>
+        )}
 
         <Pressable
           style={({ pressed }) => [
