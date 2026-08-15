@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Check, Headphones, Lock, User as UserIcon } from 'lucide-react';
+import { Check, Headphones, Key, Lock, User as UserIcon } from 'lucide-react';
 import { useUser, useAuth } from '@clerk/react';
 import {
   useGetSessions,
@@ -11,6 +11,37 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const HISTORY_STORAGE_PREFIX = 'f1simhub-engineer-history-';
 const MAX_STORED_MESSAGES = 50;
+
+// Bring-your-own-key. The driver's Anthropic key stays in their own browser —
+// it's sent as a request header on each message so the tokens bill to them, and
+// it is never written to the F1SimHub database.
+const API_KEY_STORAGE_PREFIX = 'f1simhub-engineer-apikey-';
+
+function loadApiKey(userId: string): string {
+  try {
+    return localStorage.getItem(API_KEY_STORAGE_PREFIX + userId) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function saveApiKey(userId: string, key: string) {
+  try {
+    if (key) localStorage.setItem(API_KEY_STORAGE_PREFIX + userId, key);
+    else localStorage.removeItem(API_KEY_STORAGE_PREFIX + userId);
+  } catch {
+    // Storage unavailable — the key just won't persist past this tab.
+  }
+}
+
+function isPlausibleApiKey(key: string): boolean {
+  return /^sk-ant-[A-Za-z0-9_-]{20,200}$/.test(key);
+}
+
+/** sk-ant-…a1b2 — enough to recognise which key is in use, not enough to leak it. */
+function maskApiKey(key: string): string {
+  return `sk-ant-…${key.slice(-4)}`;
+}
 
 type EngineerMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -58,6 +89,74 @@ function SpeakerLabel({ role }: { role: 'assistant' | 'user' }) {
   );
 }
 
+/**
+ * Bring-your-own-key panel. The key never leaves the driver's browser except as
+ * a request header on their own messages, so this is the "unlimited, and it
+ * costs F1SimHub nothing" path out of the free-tier limit.
+ */
+function ApiKeyPanel({
+  apiKey, draft, error, onDraftChange, onSave, onRemove,
+}: {
+  apiKey: string;
+  draft: string;
+  error: string;
+  onDraftChange: (v: string) => void;
+  onSave: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div style={{ textAlign: 'left' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Key size={14} aria-hidden="true" style={{ color: 'var(--teal)' }} />
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--white)', textTransform: 'uppercase' }}>
+          Your Own API Key
+        </span>
+      </div>
+
+      {apiKey ? (
+        <>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 14 }}>
+            Using <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{maskApiKey(apiKey)}</span> — unlimited debriefs on the stronger model, billed to your Anthropic account.
+          </p>
+          <button className="btn btn-secondary btn-sm" onClick={onRemove}>Remove key</button>
+        </>
+      ) : (
+        <>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 14 }}>
+            Paste an Anthropic API key for unlimited debriefs on a stronger model. Typical cost is a fraction of a cent per message, billed to you.
+            The key is stored only in this browser and is never saved to F1SimHub — it's sent with your own messages so Anthropic can bill them.
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <input
+              type="password"
+              aria-label="Anthropic API key"
+              placeholder="sk-ant-…"
+              autoComplete="off"
+              spellCheck={false}
+              value={draft}
+              onChange={e => onDraftChange(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') onSave(); }}
+              style={{ flex: 1, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+            />
+            <button className="btn btn-primary" onClick={onSave} disabled={!draft.trim()}>Save</button>
+          </div>
+          {error && (
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--red)', marginBottom: 8 }}>{error}</div>
+          )}
+          <a
+            href="https://console.anthropic.com/settings/keys"
+            target="_blank"
+            rel="noreferrer noopener"
+            style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', textDecoration: 'underline' }}
+          >
+            Get a key from the Anthropic Console
+          </a>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function RaceEngineer() {
   const { user, isLoaded: userLoaded } = useUser();
   const { getToken } = useAuth();
@@ -77,6 +176,10 @@ export default function RaceEngineer() {
   const [unlockPassword, setUnlockPassword] = useState('');
   const [unlockError, setUnlockError] = useState('');
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [keyDraft, setKeyDraft] = useState('');
+  const [keyPanelOpen, setKeyPanelOpen] = useState(false);
+  const [keyError, setKeyError] = useState('');
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -87,6 +190,7 @@ export default function RaceEngineer() {
     const { messages: restored, started: restoredStarted } = loadHistory(userId);
     setMessages(restored);
     setStarted(restoredStarted);
+    setApiKey(loadApiKey(userId));
     setHistoryLoaded(true);
   }, [userLoaded, userId]);
 
@@ -95,9 +199,33 @@ export default function RaceEngineer() {
     saveHistory(userId, messages);
   }, [historyLoaded, userId, messages]);
 
+  // Drivers on their own key aren't metered at all, so the free-tier lockout
+  // never applies to them.
   useEffect(() => {
+    if (apiKey) setLocked(false);
+    else if (usage && !usage.allowed) setLocked(true);
+  }, [usage, apiKey]);
+
+  const saveKey = () => {
+    const trimmed = keyDraft.trim();
+    if (!isPlausibleApiKey(trimmed)) {
+      setKeyError('That doesn’t look like an Anthropic key — it should start with sk-ant-.');
+      return;
+    }
+    setKeyError('');
+    setApiKey(trimmed);
+    saveApiKey(userId, trimmed);
+    setKeyDraft('');
+    setKeyPanelOpen(false);
+    setLocked(false);
+  };
+
+  const removeKey = () => {
+    setApiKey('');
+    saveApiKey(userId, '');
+    setKeyError('');
     if (usage && !usage.allowed) setLocked(true);
-  }, [usage]);
+  };
 
   const submitUnlock = async () => {
     setUnlockError('');
@@ -149,6 +277,9 @@ export default function RaceEngineer() {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          // Present only for BYOK drivers — the edge function bills this key
+          // instead of F1SimHub's and skips the free-tier meter entirely.
+          ...(apiKey ? { 'X-Anthropic-Api-Key': apiKey } : {}),
         },
         body: JSON.stringify({
           messages: updatedMessages,
@@ -202,7 +333,8 @@ export default function RaceEngineer() {
 
       setMessages(prev => [...prev, { role: 'assistant', content: full }]);
       setStreamingText('');
-      queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
+      // BYOK messages don't touch the counter, so there's nothing to refetch.
+      if (!apiKey) queryClient.invalidateQueries({ queryKey: getGetEngineerUsageQueryKey() });
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -247,16 +379,39 @@ export default function RaceEngineer() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8 }}>
             <span className="engineer-live-dot" />
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--teal)', textTransform: 'uppercase' }}>
-              Live · Claude Haiku 4.5
+              {apiKey ? 'Live · Your key · Claude Sonnet 5' : 'Live · Claude Haiku 4.5'}
             </span>
           </div>
         </div>
-        {started && (
-          <button className="btn btn-secondary" onClick={resetDebrief}>
-            New Debrief
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => { setKeyPanelOpen(o => !o); setKeyError(''); }}
+            aria-expanded={keyPanelOpen}
+          >
+            <Key size={14} aria-hidden="true" style={{ marginRight: 6, verticalAlign: '-2px' }} />
+            {apiKey ? 'Your Key' : 'Use Own Key'}
           </button>
-        )}
+          {started && (
+            <button className="btn btn-secondary" onClick={resetDebrief}>
+              New Debrief
+            </button>
+          )}
+        </div>
       </div>
+
+      {keyPanelOpen && (
+        <div className="card" style={{ padding: '20px 24px', maxWidth: 640, margin: '0 auto 20px' }}>
+          <ApiKeyPanel
+            apiKey={apiKey}
+            draft={keyDraft}
+            error={keyError}
+            onDraftChange={setKeyDraft}
+            onSave={saveKey}
+            onRemove={removeKey}
+          />
+        </div>
+      )}
 
       {!historyLoaded ? (
         // Wait for the persisted debrief to load before deciding whether to
@@ -294,6 +449,17 @@ export default function RaceEngineer() {
           {unlockError && (
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--red)' }}>{unlockError}</div>
           )}
+
+          <div style={{ borderTop: '1px solid var(--border)', margin: '24px 0 20px' }} />
+
+          <ApiKeyPanel
+            apiKey={apiKey}
+            draft={keyDraft}
+            error={keyError}
+            onDraftChange={setKeyDraft}
+            onSave={saveKey}
+            onRemove={removeKey}
+          />
         </div>
       ) : !started ? (
         <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
@@ -416,9 +582,16 @@ export default function RaceEngineer() {
       )}
 
       <div style={{ textAlign: 'center', marginTop: 16, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-        ~$0.003 per message · Your data is never stored by the AI
-        {usage && !usage.unlocked && (
-          <> · {Math.max(usage.limit - usage.count, 0)} free message{usage.limit - usage.count === 1 ? '' : 's'} left</>
+        Your data is never stored by the AI
+        {apiKey ? (
+          <> · Billed to your Anthropic key · unlimited</>
+        ) : (
+          <>
+            {' '}· ~$0.003 per message
+            {usage && !usage.unlocked && (
+              <> · {Math.max(usage.limit - usage.count, 0)} free message{usage.limit - usage.count === 1 ? '' : 's'} left</>
+            )}
+          </>
         )}
       </div>
     </div>
