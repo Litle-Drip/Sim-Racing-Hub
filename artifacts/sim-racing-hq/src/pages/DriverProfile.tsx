@@ -4,6 +4,7 @@ import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
 import { getRankColor, resolveRankTier } from '../lib/engagement';
 import type { RankInfo, Achievement } from '../lib/engagement';
 import { SHOW_ACHIEVEMENTS } from '../lib/features';
+import { formatLastActive } from '../lib/lastActive';
 
 interface DriverPB {
   trackId: string;
@@ -27,6 +28,8 @@ interface DriverSession {
 interface DriverData {
   username: string;
   memberSince: string | null;
+  /** ISO timestamp of their most recent logged session, shared or not. */
+  lastActiveAt?: string | null;
   avatarUrl: string | null;
   sessions: number;
   setups: number;
@@ -123,11 +126,12 @@ export default function DriverProfile({ username }: { username: string }) {
               </span>
             )}
           </h1>
-          {driver.memberSince && (
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 4 }}>
-              Member since {driver.memberSince}
-            </div>
-          )}
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 4 }}>
+            {driver.memberSince && <>Member since {driver.memberSince} · </>}
+            {driver.lastActiveAt
+              ? `Last session ${formatLastActive(driver.lastActiveAt).toLowerCase()}`
+              : 'No sessions logged yet'}
+          </div>
         </div>
       </div>
 

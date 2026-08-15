@@ -301,6 +301,28 @@ export const rivalChallengesTable = pgTable("rival_challenges", {
 export type DbRivalChallenge = typeof rivalChallengesTable.$inferSelect;
 export type InsertDbRivalChallenge = typeof rivalChallengesTable.$inferInsert;
 
+// A friendship is one row per pair, owned by whoever sent the request.
+// `status` is "pending" until the addressee accepts, then "accepted".
+// Declining or removing deletes the row outright, so a pair can always
+// start over. The unique constraint is on (requester_id, addressee_id) —
+// the reverse direction is prevented in the route, which checks for an
+// existing row in either direction before inserting.
+export const friendshipsTable = pgTable("friendships", {
+  id: text("id").primaryKey(),
+  requesterId: text("requester_id").notNull(),
+  addresseeId: text("addressee_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending | accepted
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  respondedAt: timestamp("responded_at"),
+}, (t) => [
+  unique("friendships_uniq").on(t.requesterId, t.addresseeId),
+  index("friendships_requester_idx").on(t.requesterId),
+  index("friendships_addressee_idx").on(t.addresseeId),
+]);
+
+export type DbFriendship = typeof friendshipsTable.$inferSelect;
+export type InsertDbFriendship = typeof friendshipsTable.$inferInsert;
+
 // Tracks each user's lifetime AI Race Engineer message count so the free
 // tier can be capped. Entering the shared unlock password sets
 // `unlocked`, which removes the cap for that user going forward.

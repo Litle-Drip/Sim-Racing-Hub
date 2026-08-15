@@ -26,6 +26,8 @@ tags:
     description: Head-to-head time trial / race challenge operations
   - name: engineerUsage
     description: AI Race Engineer free-tier usage limit and unlock
+  - name: friends
+    description: Friend requests, friend list and the friends activity feed
 paths:
   /healthz:
     get:
@@ -742,6 +744,113 @@ paths:
                 $ref: "#/components/schemas/TrackNotesRecord"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /friends:
+    get:
+      operationId: getFriends
+      tags: [friends]
+      summary: Get the current user's friends and pending friend requests
+      responses:
+        "200":
+          description: Friends and pending requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: addFriend
+      tags: [friends]
+      summary: Send a friend request by username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddFriendRequest"
+      responses:
+        "201":
+          description: Friend request sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRecord"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Already a friend or a request already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /friends/sessions:
+    get:
+      operationId: getFriendSessions
+      tags: [friends]
+      summary: Recent shared sessions from the current user's friends
+      responses:
+        "200":
+          description: Friends' recent shared sessions, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendSessionRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /friends/{id}/accept:
+    post:
+      operationId: acceptFriendRequest
+      tags: [friends]
+      summary: Accept a friend request sent to you
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Friend request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /friends/{id}:
+    delete:
+      operationId: removeFriend
+      tags: [friends]
+      summary: Remove a friend, decline a request, or cancel one you sent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 components:
   responses:
@@ -2287,6 +2396,139 @@ components:
       required:
         - userId
         - name
+
+    FriendSessionSummary:
+      type: object
+      description: The friend's most recent shared session, if they have one.
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        trackId:
+          type: string
+        car:
+          type: string
+        type:
+          type: string
+        bestLap:
+          type: string
+      required:
+        - id
+        - date
+        - trackId
+        - car
+        - type
+        - bestLap
+
+    FriendRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Friendship id — the handle for accept/remove.
+        userId:
+          type: string
+        username:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: pending | accepted
+        direction:
+          type: string
+          description: >
+            incoming (they asked you) | outgoing (you asked them). Set for
+            accepted friendships too, reflecting who originally asked.
+        createdAt:
+          type: string
+        lastActiveAt:
+          type: string
+          nullable: true
+          description: When they last logged a session, shared or not.
+        sharedSessions:
+          type: integer
+        lastSession:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/FriendSessionSummary"
+      required:
+        - id
+        - userId
+        - username
+        - status
+        - direction
+        - createdAt
+        - sharedSessions
+
+    FriendList:
+      type: object
+      properties:
+        friends:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendRecord"
+        incoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendRecord"
+        outgoing:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendRecord"
+      required:
+        - friends
+        - incoming
+        - outgoing
+
+    AddFriendRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          maxLength: 100
+      required:
+        - username
+
+    FriendSessionRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        date:
+          type: string
+        trackId:
+          type: string
+        car:
+          type: string
+        type:
+          type: string
+        bestLap:
+          type: string
+        avgLap:
+          type: string
+        conditions:
+          type: string
+        publicNote:
+          type: string
+          nullable: true
+        sharedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - username
+        - date
+        - trackId
+        - car
+        - type
+        - bestLap
+        - avgLap
+        - conditions
 
     CreateHardwareRequest:
       type: object

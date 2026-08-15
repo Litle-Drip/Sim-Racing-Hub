@@ -47,7 +47,10 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
   const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
 
   const displayName = user?.firstName ?? user?.username ?? 'Driver';
-  const email = user?.primaryEmailAddress?.emailAddress ?? '';
+  // No email address anywhere on this page. It's the one identifier here that
+  // isn't a racing handle, it adds nothing to a profile, and it's the thing
+  // you least want on screen while streaming or sharing a screenshot. Clerk's
+  // own account modal (Manage Account) still owns it.
   const avatarUrl = user?.imageUrl ?? null;
   const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : null;
 
@@ -165,9 +168,6 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.04em', color: 'var(--white)', margin: 0 }}>
               {displayName}
             </h1>
-            {email && (
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4 }}>{email}</div>
-            )}
             {memberSince && (
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginTop: 2 }}>Member since {memberSince}</div>
             )}

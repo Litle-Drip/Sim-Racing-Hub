@@ -14,6 +14,7 @@ import type { RivalChallengeRecord, SessionRecord } from '@workspace/api-client-
 import { F1_TRACKS } from '../data/f1Tracks';
 import { Toast } from '../components/Toast';
 import { EmptyState } from '../components/EmptyState';
+import { isAwaitingMyAttempt } from '../lib/rivalNotifications';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -177,8 +178,17 @@ function NewChallengeModal({
       const result = await lookupRivalChallengeUser({ username: name });
       setOpponent({ userId: result.userId, name: result.name });
     } catch (e) {
-      const status = (e as { status?: number } | null)?.status;
-      setLookupError(status === 404 ? "Couldn't find that username" : 'Something went wrong looking that user up');
+      const err = e as { status?: number; data?: { error?: string } } | null;
+      const serverMessage = err?.data?.error;
+      setLookupError(
+        err?.status === 404
+          ? "Couldn't find that username — check the spelling, it has to match their profile username exactly"
+          // 400 is the "that's you" case; show what the server actually said
+          // rather than a generic failure the driver can't act on.
+          : err?.status === 400 && serverMessage
+          ? serverMessage
+          : 'Something went wrong looking that user up',
+      );
     } finally {
       setLooking(false);
     }
@@ -187,7 +197,10 @@ function NewChallengeModal({
   const { mutate: create, isPending } = useCreateRivalChallenge({
     mutation: {
       onSuccess: onCreated,
-      onError: () => onError('Failed to send challenge'),
+      onError: (e) => {
+        const message = (e as { data?: { error?: string } } | null)?.data?.error;
+        onError(message ? `Failed to send challenge — ${message}` : 'Failed to send challenge');
+      },
     },
   });
 
@@ -196,7 +209,10 @@ function NewChallengeModal({
     create({
       data: {
         sessionId,
-        opponentUsername: username.trim(),
+        // The resolved username from the lookup, not the raw typed text —
+        // the server looks the opponent up again, and this way a casing
+        // difference can't make the second lookup disagree with the first.
+        opponentUsername: opponent.name,
         lapCount: isRace ? lapCount : 1,
         message: message.trim() || undefined,
       },
@@ -396,13 +412,39 @@ export default function Rivals() {
     },
   });
 
-  const yourTurn = challenges.filter(c => c.status === 'pending' && c.opponent.isMe);
+  const yourTurn = challenges.filter(isAwaitingMyAttempt);
   const waiting = challenges.filter(c => c.status === 'pending' && c.creator.isMe);
   const completed = challenges.filter(c => c.status === 'completed');
   const visible = tab === 'yourTurn' ? yourTurn : tab === 'waiting' ? waiting : completed;
 
   return (
     <>
+      {/* Stays put until the attempt is actually submitted — there is no
+          dismiss, and simply opening this tab doesn't clear it. */}
+      {yourTurn.length > 0 && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+            background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)',
+            padding: '10px 14px', marginBottom: 16,
+          }}
+        >
+          <Swords size={14} aria-hidden="true" style={{ color: 'var(--red)', flexShrink: 0 }} />
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--white)' }}>
+            {yourTurn.length === 1
+              ? `${yourTurn[0].creator.name} is waiting on your time at ${trackLabel(yourTurn[0].trackId)}.`
+              : `${yourTurn.length} challenges are waiting on your time.`}
+          </span>
+          <button
+            className="btn btn-primary"
+            style={{ fontSize: 12, marginLeft: 'auto' }}
+            onClick={() => { setTab('yourTurn'); if (yourTurn.length === 1) setAttemptFor(yourTurn[0]); }}
+          >
+            {yourTurn.length === 1 ? 'Submit Your Attempt' : 'See Them'}
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <button className="btn btn-primary" onClick={() => setShowNew(true)}>
           <Swords size={12} /> Challenge Someone

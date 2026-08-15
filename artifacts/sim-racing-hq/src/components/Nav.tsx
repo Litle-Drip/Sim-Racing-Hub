@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, User, Zap, Headphones, Trophy, Lock, Flame } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
-import { useGetSessions, useGetRivalChallenges } from '@workspace/api-client-react';
+import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
+import { useAwaitingMyAttempt } from '../lib/rivalNotifications';
 import { calculateStreak, calculateRank, getRankColor, getRankProgress, estimateSeatTimeMinutes } from '../lib/engagement';
 
 interface NavProps {
@@ -31,11 +32,7 @@ export default function Nav({ page, setPage }: NavProps) {
   const { signOut } = useClerk();
   const { user } = useUser();
   const { data: sessions = [] } = useGetSessions();
-  const { data: rivalChallenges = [] } = useGetRivalChallenges();
-  const pendingRivalChallenges = useMemo(
-    () => rivalChallenges.filter(c => c.status === 'pending' && c.opponent.isMe).length,
-    [rivalChallenges],
-  );
+  const pendingRivalChallenges = useAwaitingMyAttempt().length;
   const [open, setOpen] = useState(false);
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
@@ -81,10 +78,30 @@ export default function Nav({ page, setPage }: NavProps) {
       <div className="mobile-topbar">
         <button
           className="nav-hamburger"
-          aria-label="Open navigation"
+          aria-label={
+            pendingRivalChallenges > 0
+              ? `Open navigation — ${pendingRivalChallenges} rival challenge${pendingRivalChallenges === 1 ? '' : 's'} waiting on you`
+              : 'Open navigation'
+          }
           onClick={() => setOpen(true)}
+          style={{ position: 'relative' }}
         >
           <Menu size={20} />
+          {/* The sidebar badge is invisible on mobile until the menu is
+              opened, so the count rides on the hamburger too. */}
+          {user && pendingRivalChallenges > 0 && (
+            <span
+              aria-hidden="true"
+              style={{
+                position: 'absolute', top: 2, right: 2, minWidth: 15, height: 15, padding: '0 4px',
+                borderRadius: 8, background: 'var(--red)', color: 'var(--on-accent)',
+                fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', lineHeight: 1,
+              }}
+            >
+              {pendingRivalChallenges}
+            </span>
+          )}
         </button>
       </div>
 
