@@ -30,6 +30,13 @@ interface DriverData {
   memberSince: string | null;
   /** ISO timestamp of their most recent logged session, shared or not. */
   lastActiveAt?: string | null;
+  /** Head-to-head record. Absent on responses from an older server. */
+  rivalStats?: {
+    completed: number;
+    wins: number;
+    losses: number;
+    opponents: number;
+  } | null;
   avatarUrl: string | null;
   sessions: number;
   setups: number;
@@ -105,6 +112,9 @@ export default function DriverProfile({ username }: { username: string }) {
   );
 
   const earnedAchievements = achievements.filter(a => a.earned);
+  // An older API response has no rivalStats at all; treat that as a clean
+  // slate rather than crashing the profile.
+  const rivals = driver.rivalStats ?? { completed: 0, wins: 0, losses: 0, opponents: 0 };
 
   return (
     <div className="page" style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -149,6 +159,45 @@ export default function DriverProfile({ username }: { username: string }) {
           </div>
         ))}
       </div>
+
+      {/* Rivals Record */}
+      <div className="section-title" style={{ marginTop: 28 }}>Rivals Record</div>
+      {rivals.completed === 0 ? (
+        <div className="table-wrap">
+          <div className="empty-state">
+            <div className="empty-state-desc">No completed challenges yet.</div>
+          </div>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Wins</th>
+                <th>Losses</th>
+                <th>Win Rate</th>
+                <th>Challenges Completed</th>
+                <th>Drivers Challenged</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ color: 'var(--teal)', fontWeight: 600 }}>{rivals.wins}</td>
+                <td style={{ color: 'var(--red)', fontWeight: 600 }}>{rivals.losses}</td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                  {/* Against decided challenges only — a dead heat belongs in
+                      neither column, so it shouldn't drag the rate down. */}
+                  {rivals.wins + rivals.losses > 0
+                    ? `${Math.round((rivals.wins / (rivals.wins + rivals.losses)) * 100)}%`
+                    : '—'}
+                </td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{rivals.completed}</td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{rivals.opponents}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Achievement Badges */}
       {SHOW_ACHIEVEMENTS && earnedAchievements.length > 0 && (

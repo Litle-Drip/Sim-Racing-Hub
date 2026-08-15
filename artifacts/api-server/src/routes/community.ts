@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { eq, and, avg, count, desc, sql } from "drizzle-orm";
-import { db, setupsTable, setupRatingsTable, sessionsTable } from "@workspace/db";
+import { eq, and, or, avg, count, desc, inArray, sql } from "drizzle-orm";
+import { db, setupsTable, setupRatingsTable, sessionsTable, rivalChallengesTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
+import { lapToSeconds, raceMetricSeconds, decideWinner } from "../lib/rivalResults";
 import { getAuth } from "@clerk/express";
 
 function escapeLike(s: string): string {
@@ -293,18 +294,6 @@ router.post("/community/setups/:id/import", requireAuth, async (req, res) => {
   }
 });
 
-function lapToSeconds(lap: string): number {
-  if (!lap || !lap.includes(":")) {
-    const n = parseFloat(lap);
-    return isNaN(n) ? Infinity : n;
-  }
-  const parts = lap.split(":");
-  const mins = parseFloat(parts[0]);
-  const secs = parseFloat(parts[1]);
-  if (isNaN(mins) || isNaN(secs)) return Infinity;
-  return mins * 60 + secs;
-}
-
 router.get("/community/sessions", async (req, res) => {
   const { userId: currentUserId } = getAuth(req);
   const { sort } = req.query as Record<string, string | undefined>;
@@ -383,6 +372,69 @@ router.get("/community/sessions", async (req, res) => {
 });
 
 // ─── Public Driver Profile ────────────────────────────────────────────────────
+
+// A driver's head-to-head record. Only completed challenges count — a
+// pending one has no result to record — and a challenge whose times don't
+// produce a winner (a dead heat, or a session with no usable time) counts
+// toward `completed` without landing in either column, so wins + losses can
+// legitimately come to less than the total.
+async function getRivalStats(userId: string) {
+  const challenges = await db
+    .select()
+    .from(rivalChallengesTable)
+    .where(
+      and(
+        eq(rivalChallengesTable.status, "completed"),
+        or(eq(rivalChallengesTable.creatorId, userId), eq(rivalChallengesTable.opponentId, userId)),
+      ),
+    );
+
+  const empty = { completed: 0, wins: 0, losses: 0, opponents: 0 };
+  if (challenges.length === 0) return empty;
+
+  const sessionIds = [
+    ...new Set(
+      challenges.flatMap((c) => [c.creatorSessionId, ...(c.opponentSessionId ? [c.opponentSessionId] : [])]),
+    ),
+  ];
+  const sessions = await db
+    .select({
+      id: sessionsTable.id,
+      bestLap: sessionsTable.bestLap,
+      avgLap: sessionsTable.avgLap,
+      laps: sessionsTable.laps,
+    })
+    .from(sessionsTable)
+    .where(inArray(sessionsTable.id, sessionIds));
+  const byId = new Map(sessions.map((s) => [s.id, s]));
+
+  const stats = { ...empty };
+  const opponents = new Set<string>();
+
+  for (const c of challenges) {
+    const creatorSession = byId.get(c.creatorSessionId);
+    const opponentSession = c.opponentSessionId ? byId.get(c.opponentSessionId) : undefined;
+    // A session deleted after the fact leaves a challenge that can no longer
+    // be scored — skip it rather than counting it as a loss for whoever's
+    // session went missing.
+    if (!creatorSession || !opponentSession) continue;
+
+    stats.completed += 1;
+    opponents.add(c.creatorId === userId ? c.opponentId : c.creatorId);
+
+    const winner = decideWinner(
+      raceMetricSeconds(creatorSession, c.lapCount),
+      raceMetricSeconds(opponentSession, c.lapCount),
+      c.creatorId,
+      c.opponentId,
+    );
+    if (winner === userId) stats.wins += 1;
+    else if (winner !== null) stats.losses += 1;
+  }
+
+  stats.opponents = opponents.size;
+  return stats;
+}
 
 router.get("/community/driver/:username", async (req, res) => {
   const { username } = req.params;
@@ -478,6 +530,8 @@ router.get("/community/driver/:username", async (req, res) => {
       .orderBy(desc(sessionsTable.createdAt))
       .limit(1);
 
+    const rivalStats = await getRivalStats(userId);
+
     // Get public setups
     const publicSetups = await db
       .select()
@@ -499,6 +553,7 @@ router.get("/community/driver/:username", async (req, res) => {
       username: displayName,
       memberSince: user.created_at ? new Date(user.created_at).toISOString().slice(0, 10) : null,
       lastActiveAt: lastActivity ? lastActivity.createdAt.toISOString() : null,
+      rivalStats,
       avatarUrl: user.image_url ?? null,
       sessions: publicSessions.length,
       setups: publicSetups.length,

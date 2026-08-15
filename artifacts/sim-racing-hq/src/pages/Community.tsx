@@ -12,9 +12,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, F1_25_CARS, getTypeBadgeClass } from '../data/f1Tracks';
 import { getDailyChallenge } from '../lib/engagement';
-import { useAwaitingMyAttempt } from '../lib/rivalNotifications';
+import { useRivalNotifications } from '../lib/rivalNotifications';
 import Rivals from './Rivals';
-import Friends from './Friends';
 
 const TAG_BADGE: Record<string, string> = {
   Qualifying: 'badge-qualifying',
@@ -150,21 +149,22 @@ function CommunitySetupCard({
   );
 }
 
-type Tab = 'leaderboard' | 'setups' | 'rivals' | 'friends';
+export type CommunityTab = 'leaderboard' | 'rivals' | 'setups';
 
-const TAB_LABELS: Record<Tab, string> = {
+const TAB_LABELS: Record<CommunityTab, string> = {
   leaderboard: 'Leaderboard',
-  setups: 'Setups',
   rivals: 'Rivals',
-  friends: 'Friends',
+  setups: 'Setups',
 };
 
-const TABS: Tab[] = ['leaderboard', 'setups', 'rivals', 'friends'];
+// Rivals sits second — it's the tab with a notification on it, so it reads
+// before Setups rather than after.
+const TABS: CommunityTab[] = ['leaderboard', 'rivals', 'setups'];
 
-export default function Community({ isGuest }: { isGuest?: boolean }) {
+export default function Community({ isGuest, initialTab }: { isGuest?: boolean; initialTab?: CommunityTab }) {
   const qc = useQueryClient();
-  const awaitingMyAttempt = useAwaitingMyAttempt();
-  const [tab, setTab] = useState<Tab>('leaderboard');
+  const { count: rivalNotificationCount } = useRivalNotifications();
+  const [tab, setTab] = useState<CommunityTab>(initialTab ?? 'leaderboard');
 
   // Land on Rivals when a challenge is waiting on you. The challenge list
   // usually hasn't loaded on first render, so this waits for it — but only
@@ -172,10 +172,10 @@ export default function Community({ isGuest }: { isGuest?: boolean }) {
   // never yank the tab out from under someone mid-browse.
   const autoTabbed = useRef(false);
   useEffect(() => {
-    if (autoTabbed.current || awaitingMyAttempt.length === 0) return;
+    if (autoTabbed.current || rivalNotificationCount === 0) return;
     autoTabbed.current = true;
     setTab(current => (current === 'leaderboard' ? 'rivals' : current));
-  }, [awaitingMyAttempt.length]);
+  }, [rivalNotificationCount]);
   const [filterTrack, setFilterTrack] = useState('');
   const [filterCar, setFilterCar] = useState('');
   const [importingId, setImportingId] = useState<string | null>(null);
@@ -309,13 +309,13 @@ export default function Community({ isGuest }: { isGuest?: boolean }) {
             {TAB_LABELS[t]}
             {/* Mirrors the sidebar badge, and clears on the same condition:
                 the challenge is answered, not merely looked at. */}
-            {t === 'rivals' && awaitingMyAttempt.length > 0 && (
+            {t === 'rivals' && rivalNotificationCount > 0 && (
               <span style={{
                 minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
                 background: 'var(--red)', color: 'var(--on-accent)', fontSize: 10, fontWeight: 700,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
               }}>
-                {awaitingMyAttempt.length}
+                {rivalNotificationCount}
               </span>
             )}
           </button>
@@ -508,28 +508,6 @@ export default function Community({ isGuest }: { isGuest?: boolean }) {
           </div>
         ) : (
           <Rivals />
-        )
-      )}
-
-      {tab === 'friends' && (
-        isGuest ? (
-          <div className="card" style={{ padding: 0 }}>
-            <div className="empty-state">
-              <div className="empty-state-title">Sign in to add friends</div>
-              <div className="empty-state-desc">
-                Follow the drivers you race with — see when they were last on, what they've been driving, and open their profile in a click.
-              </div>
-              <button
-                className="btn btn-primary"
-                style={{ marginTop: 16 }}
-                onClick={() => window.dispatchEvent(new CustomEvent('guestSignIn'))}
-              >
-                Create Free Account
-              </button>
-            </div>
-          </div>
-        ) : (
-          <Friends />
         )
       )}
 

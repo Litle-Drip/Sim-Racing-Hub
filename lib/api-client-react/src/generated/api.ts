@@ -2221,6 +2221,76 @@ export const useSubmitRivalChallengeAttempt = <TError = ErrorType<NotFoundRespon
       return useMutation(getSubmitRivalChallengeAttemptMutationOptions(options));
     }
 
+export const getMarkRivalChallengeSeenUrl = (id: string,) => {
+
+
+
+
+  return `/api/rival-challenges/${id}/seen`
+}
+
+/**
+ * @summary Acknowledge the result of a completed rival challenge
+ */
+export const markRivalChallengeSeen = async (id: string, options?: RequestInit): Promise<RivalChallengeRecord> => {
+
+  return customFetch<RivalChallengeRecord>(getMarkRivalChallengeSeenUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getMarkRivalChallengeSeenMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markRivalChallengeSeen>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markRivalChallengeSeen>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['markRivalChallengeSeen'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markRivalChallengeSeen>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  markRivalChallengeSeen(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkRivalChallengeSeenMutationResult = NonNullable<Awaited<ReturnType<typeof markRivalChallengeSeen>>>
+
+    export type MarkRivalChallengeSeenMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Acknowledge the result of a completed rival challenge
+ */
+export const useMarkRivalChallengeSeen = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markRivalChallengeSeen>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markRivalChallengeSeen>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getMarkRivalChallengeSeenMutationOptions(options));
+    }
+
 export const getGetEngineerUsageUrl = () => {
 
 
