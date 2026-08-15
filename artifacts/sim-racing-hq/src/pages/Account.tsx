@@ -19,6 +19,8 @@ import {
 } from '../lib/engagement';
 import type { DriverRank } from '../lib/engagement';
 import { SessionDetailModal } from '../components/SessionDetail';
+import { useRivalRecord } from '../lib/rivalNotifications';
+import Friends from './Friends';
 
 // Companion-app uploads and older imports use a wider variety of raw session
 // type strings than the SESSION_TYPES a driver picks from in the log form
@@ -54,6 +56,7 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
   const avatarUrl = user?.imageUrl ?? null;
   const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : null;
 
+  const rivalRecord = useRivalRecord();
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
   const achievements = useMemo(() => calculateAchievements(sessions, setups.length), [sessions, setups]);
@@ -267,6 +270,30 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Rivals Record */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 16 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>Rivals Record</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+          {[
+            { label: 'Wins', value: rivalRecord.wins, color: 'var(--teal)' },
+            { label: 'Losses', value: rivalRecord.losses, color: 'var(--red)' },
+            { label: 'Completed', value: rivalRecord.completed, color: 'var(--white)' },
+            { label: 'Drivers Faced', value: rivalRecord.opponents, color: 'var(--white)' },
+          ].map(({ label, value, color }) => (
+            <div key={label}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>{label}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color, letterSpacing: '0.04em' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Friends — lives here rather than in Community: it's your list, and
+          this is your page. The component brings its own section headings. */}
+      <div style={{ marginBottom: 24 }}>
+        <Friends />
       </div>
 
       {/* Session Type Breakdown + Top Tracks */}

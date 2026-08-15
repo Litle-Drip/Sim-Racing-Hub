@@ -8,6 +8,7 @@ import { calculateStreak, calculateRank, getDailyChallenge, calculateAchievement
 import type { Achievement } from '../lib/engagement';
 import { SHOW_ACHIEVEMENTS, SHOW_XP, SHOW_NEXT_TARGET } from '../lib/features';
 import { SessionDetailModal } from '../components/SessionDetail';
+import { useRivalNotifications } from '../lib/rivalNotifications';
 import { Flame, Trophy } from 'lucide-react';
 
 const DIFF_COLORS: Record<string, string> = {
@@ -178,6 +179,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   const { data: apiSessions = [] } = useGetSessions(isGuest ? { query: { enabled: false } as never } : undefined);
   const { data: apiSetups = [] } = useGetSetups(isGuest ? { query: { enabled: false } as never } : undefined);
   const { data: communitySessions = [] } = useGetCommunitySessions();
+  const { count: rivalNotificationCount } = useRivalNotifications();
   const { user } = useUser();
 
   const [guestSessions] = useState<SessionRecord[]>(() => {
@@ -674,6 +676,25 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('setups')}>Load Setup</button>
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('progress')}>Compare PB</button>
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('community')}>Community</button>
+        {/* Rivals sits right next to Community and carries the same count as
+            the sidebar, so a waiting challenge or an unread result is
+            visible from the first screen you land on. */}
+        <button
+          className="btn btn-secondary"
+          style={{ fontSize: 11, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          onClick={() => setPage('rivals')}
+        >
+          Rivals
+          {rivalNotificationCount > 0 && (
+            <span style={{
+              minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
+              background: 'var(--red)', color: 'var(--on-accent)', fontSize: 10, fontWeight: 700,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+            }}>
+              {rivalNotificationCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* ── Achievements (tabbed by category) ──────────────────────────── */}

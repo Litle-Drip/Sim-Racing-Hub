@@ -6,6 +6,8 @@ import {
   useCreateRivalChallenge,
   useSubmitRivalChallengeAttempt,
   useCancelRivalChallenge,
+  useMarkRivalChallengeSeen,
+  useGetFriends,
   lookupRivalChallengeUser,
   getGetRivalChallengesQueryKey,
   useGetSessions,
@@ -14,7 +16,7 @@ import type { RivalChallengeRecord, SessionRecord } from '@workspace/api-client-
 import { F1_TRACKS } from '../data/f1Tracks';
 import { Toast } from '../components/Toast';
 import { EmptyState } from '../components/EmptyState';
-import { isAwaitingMyAttempt } from '../lib/rivalNotifications';
+import { isAwaitingMyAttempt, isUnseenResult } from '../lib/rivalNotifications';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +37,39 @@ function lapCountLabel(n: number): string {
 
 function sortedByRecent(sessions: SessionRecord[]): SessionRecord[] {
   return [...sessions].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+}
+
+// The time the challenger set — what the other driver actually has to beat.
+// A 1-lap challenge is judged on best lap, so show the lap itself; anything
+// longer is judged on total race time, so show that.
+function targetTime(c: RivalChallengeRecord): string | null {
+  if (!c.creatorSession) return null;
+  if (c.lapCount <= 1) return c.creatorSession.bestLap || null;
+  return c.creatorSession.raceTimeSeconds != null ? secsToClock(c.creatorSession.raceTimeSeconds) : null;
+}
+
+// How a finished challenge reads to the driver looking at it.
+function resultFor(c: RivalChallengeRecord): 'won' | 'lost' | 'draw' {
+  if (!c.winnerUserId) return 'draw';
+  const me = c.creator.isMe ? c.creator.userId : c.opponent.userId;
+  return c.winnerUserId === me ? 'won' : 'lost';
+}
+
+function resultHeadline(c: RivalChallengeRecord): string {
+  const them = c.creator.isMe ? c.opponent.name : c.creator.name;
+  switch (resultFor(c)) {
+    case 'won': return `You beat ${them}`;
+    case 'lost': return `${them} beat you`;
+    default: return `You and ${them} couldn't be separated`;
+  }
+}
+
+function resultColor(c: RivalChallengeRecord): string {
+  switch (resultFor(c)) {
+    case 'won': return 'var(--teal)';
+    case 'lost': return 'var(--red)';
+    default: return 'var(--gray-mid)';
+  }
 }
 
 // ─── Challenge Card ───────────────────────────────────────────────────────────
@@ -115,28 +150,45 @@ function ChallengeCard({
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.05em', color: winner ? 'var(--teal)' : 'var(--gray-mid)' }}>
-            {winner ? <><Flag size={13} aria-hidden="true" />{`${winner.name}${winner.isMe ? ' (You)' : ''} wins`}</> : "Couldn't determine a winner from the recorded times"}
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.05em', color: resultColor(c) }}>
+            <Flag size={13} aria-hidden="true" />
+            {winner ? `${winner.name}${winner.isMe ? ' (You)' : ''} wins` : 'Dead heat — nothing between them'}
           </div>
         </>
       ) : (
-        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          {isYourTurn && (
-            <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={onSubmitAttempt}>
-              Submit Your Attempt
-            </button>
-          )}
-          {isWaiting && (
-            <>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', alignSelf: 'center', marginRight: 'auto' }}>
-                Waiting for {c.opponent.name} to respond
-              </span>
-              <button className="btn btn-secondary" style={{ fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }} onClick={onCancel} disabled={cancelling}>
-                {cancelling ? 'Cancelling…' : 'Cancel Challenge'}
+        <>
+          {/* The time on the table. Both drivers see it from the moment the
+              challenge is sent — the whole point is knowing what you have to
+              beat before you go out. */}
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
+              Time to beat
+            </span>
+            <span className="lap-time" style={{ fontSize: 18 }}>{targetTime(c) ?? '—'}</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              set by {c.creator.name}{c.creator.isMe ? ' (You)' : ''}
+              {c.lapCount > 1 ? ` across ${c.lapCount} laps` : ''}
+            </span>
+          </div>
+
+          <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            {isYourTurn && (
+              <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={onSubmitAttempt}>
+                Submit Your Attempt
               </button>
-            </>
-          )}
-        </div>
+            )}
+            {isWaiting && (
+              <>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', alignSelf: 'center', marginRight: 'auto' }}>
+                  Waiting for {c.opponent.name} to respond
+                </span>
+                <button className="btn btn-secondary" style={{ fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }} onClick={onCancel} disabled={cancelling}>
+                  {cancelling ? 'Cancelling…' : 'Cancel Challenge'}
+                </button>
+              </>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
@@ -167,6 +219,24 @@ function NewChallengeModal({
   const [message, setMessage] = useState('');
 
   const availableLaps = selectedSession?.laps?.filter(l => l.time && l.time.trim() !== '').length ?? 0;
+
+  // Accepted friends are the people you challenge most, and they're already
+  // resolved — picking one skips the lookup round-trip entirely.
+  const { data: friendData } = useGetFriends();
+  const friends = friendData?.friends ?? [];
+
+  const pickFriend = (name: string) => {
+    setLookupError('');
+    const friend = friends.find(f => f.username === name);
+    if (!friend) {
+      // "Someone else" — fall back to typing a username.
+      setUsername('');
+      setOpponent(null);
+      return;
+    }
+    setUsername(friend.username);
+    setOpponent({ userId: friend.userId, name: friend.username });
+  };
 
   const handleFind = async () => {
     const name = username.trim();
@@ -268,11 +338,24 @@ function NewChallengeModal({
               </div>
 
               <div className="field" style={{ marginBottom: 14 }}>
-                <label className="field-label">Opponent's Username</label>
+                <label className="field-label">Opponent</label>
+                {friends.length > 0 && (
+                  <select
+                    value={opponent && friends.some(f => f.username === opponent.name) ? opponent.name : ''}
+                    onChange={e => pickFriend(e.target.value)}
+                    style={{ marginBottom: 8 }}
+                  >
+                    <option value="">Pick a friend…</option>
+                    {friends.map(f => (
+                      <option key={f.userId} value={f.username}>{f.username}</option>
+                    ))}
+                    <option value="__other__">Someone else (type a username)</option>
+                  </select>
+                )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     type="text"
-                    placeholder="their-username"
+                    placeholder={friends.length > 0 ? 'or type any username' : 'their-username'}
                     value={username}
                     onChange={e => { setUsername(e.target.value); setOpponent(null); setLookupError(''); }}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFind(); } }}
@@ -284,7 +367,7 @@ function NewChallengeModal({
                 </div>
                 {opponent && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--teal)', marginTop: 6 }}>
-                    <Check size={13} aria-hidden="true" /> Found {opponent.name}
+                    <Check size={13} aria-hidden="true" /> Challenging {opponent.name}
                   </div>
                 )}
                 {lookupError && (
@@ -324,7 +407,7 @@ function AttemptModal({
   challenge: RivalChallengeRecord;
   sessions: SessionRecord[];
   onClose: () => void;
-  onSubmitted: () => void;
+  onSubmitted: (result: RivalChallengeRecord) => void;
   onError: (msg: string) => void;
 }) {
   const eligible = useMemo(
@@ -335,6 +418,8 @@ function AttemptModal({
 
   const { mutate: submit, isPending } = useSubmitRivalChallengeAttempt({
     mutation: {
+      // The response carries the scored challenge, so the driver who just
+      // submitted learns whether they won without hunting for it.
       onSuccess: onSubmitted,
       onError: () => onError('Failed to submit your attempt'),
     },
@@ -353,9 +438,22 @@ function AttemptModal({
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginBottom: 14, lineHeight: 1.6 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginBottom: 12, lineHeight: 1.6 }}>
             {challenge.creator.name} is challenging you to beat their {lapCountLabel(challenge.lapCount).toLowerCase()} at {trackLabel(challenge.trackId)} in the {challenge.car}.
           </p>
+          {/* The number they set. Racing blind against an unknown time was
+              the complaint — this is the whole brief for the session. */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
+              Time to beat
+            </span>
+            <span className="lap-time" style={{ fontSize: 22 }}>{targetTime(challenge) ?? '—'}</span>
+            {challenge.lapCount > 1 && (
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+                total across {challenge.lapCount} laps
+              </span>
+            )}
+          </div>
           {eligible.length === 0 ? (
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--yellow)', lineHeight: 1.6 }}>
               You haven't logged a session at {trackLabel(challenge.trackId)} yet. Race it, log the session, then come back here to submit it.
@@ -412,13 +510,64 @@ export default function Rivals() {
     },
   });
 
+  const { mutate: markSeen } = useMarkRivalChallengeSeen({
+    mutation: {
+      onSuccess: () => invalidate(),
+      // Acknowledging is housekeeping — if it fails the banner simply stays,
+      // which is the safe direction. No need to shout about it.
+      onError: () => invalidate(),
+    },
+  });
+
   const yourTurn = challenges.filter(isAwaitingMyAttempt);
   const waiting = challenges.filter(c => c.status === 'pending' && c.creator.isMe);
   const completed = challenges.filter(c => c.status === 'completed');
+  const unseenResults = challenges.filter(isUnseenResult);
   const visible = tab === 'yourTurn' ? yourTurn : tab === 'waiting' ? waiting : completed;
 
   return (
     <>
+      {/* Your challenge came back. Raised for whoever wasn't the one to
+          finish it, and it survives reloads until they acknowledge it —
+          the result is the payoff, so it doesn't get to vanish silently. */}
+      {unseenResults.map(c => {
+        const outcome = resultFor(c);
+        const tint = outcome === 'won' ? '0,210,190' : outcome === 'lost' ? '232,0,45' : '136,136,136';
+        return (
+          <div
+            key={c.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              background: `rgba(${tint},0.12)`, border: `1px solid rgba(${tint},0.4)`,
+              padding: '10px 14px', marginBottom: 10,
+            }}
+          >
+            {outcome === 'won'
+              ? <Trophy size={14} aria-hidden="true" style={{ color: resultColor(c), flexShrink: 0 }} />
+              : <Flag size={14} aria-hidden="true" style={{ color: resultColor(c), flexShrink: 0 }} />}
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--white)' }}>
+              <strong style={{ color: resultColor(c) }}>{resultHeadline(c)}</strong>
+              {' '}at {trackLabel(c.trackId)} — {targetTime(c) ?? '—'} vs{' '}
+              {c.lapCount > 1
+                ? (c.opponentSession?.raceTimeSeconds != null ? secsToClock(c.opponentSession.raceTimeSeconds) : '—')
+                : (c.opponentSession?.bestLap || '—')}
+            </span>
+            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 12 }}
+                onClick={() => { setTab('completed'); markSeen({ id: c.id }); }}
+              >
+                See Result
+              </button>
+              <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => markSeen({ id: c.id })}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
       {/* Stays put until the attempt is actually submitted — there is no
           dismiss, and simply opening this tab doesn't clear it. */}
       {yourTurn.length > 0 && (
@@ -460,6 +609,15 @@ export default function Rivals() {
         </button>
         <button className={`badge-tab${tab === 'completed' ? ' badge-tab-active' : ''}`} onClick={() => setTab('completed')}>
           Completed{completed.length > 0 ? ` (${completed.length})` : ''}
+          {unseenResults.length > 0 && (
+            <span
+              aria-label={`${unseenResults.length} new result${unseenResults.length === 1 ? '' : 's'}`}
+              style={{
+                display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                background: 'var(--red)', marginLeft: 6, verticalAlign: 'middle',
+              }}
+            />
+          )}
         </button>
       </div>
 
@@ -507,7 +665,14 @@ export default function Rivals() {
           challenge={attemptFor}
           sessions={sessions}
           onClose={() => setAttemptFor(null)}
-          onSubmitted={() => { setAttemptFor(null); invalidate(); setToastVariant('success'); setToast('Attempt submitted'); }}
+          onSubmitted={(result) => {
+            setAttemptFor(null);
+            invalidate();
+            setTab('completed');
+            const outcome = resultFor(result);
+            setToastVariant(outcome === 'lost' ? 'error' : 'success');
+            setToast(resultHeadline(result));
+          }}
           onError={(msg) => { setToastVariant('error'); setToast(msg); }}
         />
       )}

@@ -4,38 +4,9 @@ import { db, rivalChallengesTable, sessionsTable, type DbRivalChallenge, type Db
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
 import { CreateRivalChallengeBody, SubmitRivalChallengeAttemptBody } from "@workspace/api-zod";
+import { raceMetricSeconds, decideWinner } from "../lib/rivalResults";
 
 const router = Router();
-
-function lapToSeconds(lap: string): number {
-  if (!lap || !lap.includes(":")) {
-    const n = parseFloat(lap);
-    return isNaN(n) ? Infinity : n;
-  }
-  const parts = lap.split(":");
-  const mins = parseFloat(parts[0]);
-  const secs = parseFloat(parts[1]);
-  if (isNaN(mins) || isNaN(secs)) return Infinity;
-  return mins * 60 + secs;
-}
-
-// Metric used to decide a winner: for a 1-lap challenge it's the best lap,
-// for an N-lap challenge it's the total time across the first N logged
-// laps. If the session doesn't have enough individual laps recorded (e.g.
-// summary-only entries), fall back to avgLap * lapCount as an estimate.
-function raceMetricSeconds(session: DbSession, lapCount: number): number | null {
-  if (lapCount <= 1) {
-    return session.bestLap ? lapToSeconds(session.bestLap) : null;
-  }
-  const laps = (session.laps ?? []).filter((l) => l.time && l.time.trim() !== "");
-  if (laps.length >= lapCount) {
-    return laps.slice(0, lapCount).reduce((sum, l) => sum + lapToSeconds(l.time), 0);
-  }
-  if (session.avgLap) {
-    return lapToSeconds(session.avgLap) * lapCount;
-  }
-  return null;
-}
 
 async function getDisplayNames(userIds: string[]): Promise<Record<string, string>> {
   if (userIds.length === 0) return {};
@@ -134,14 +105,17 @@ async function serializeChallenge(row: DbRivalChallenge, currentUserId: string) 
 
   const nameMap = await getDisplayNames([row.creatorId, row.opponentId]);
 
-  let winnerUserId: string | null = null;
-  if (creatorSession && opponentSession) {
-    const creatorMetric = raceMetricSeconds(creatorSession, row.lapCount);
-    const opponentMetric = raceMetricSeconds(opponentSession, row.lapCount);
-    if (creatorMetric !== null && opponentMetric !== null) {
-      winnerUserId = opponentMetric < creatorMetric ? row.opponentId : row.creatorId;
-    }
-  }
+  const winnerUserId =
+    creatorSession && opponentSession
+      ? decideWinner(
+          raceMetricSeconds(creatorSession, row.lapCount),
+          raceMetricSeconds(opponentSession, row.lapCount),
+          row.creatorId,
+          row.opponentId,
+        )
+      : null;
+
+  const isCreator = row.creatorId === currentUserId;
 
   return {
     id: row.id,
@@ -161,6 +135,11 @@ async function serializeChallenge(row: DbRivalChallenge, currentUserId: string) 
       ? { ...summarizeSession(opponentSession), raceTimeSeconds: raceMetricSeconds(opponentSession, row.lapCount) }
       : null,
     winnerUserId,
+    // Whether *this* viewer has acknowledged the result. Only meaningful
+    // once the challenge is completed; that's what keeps the "you won /
+    // you lost" notification up for the driver who wasn't the one to
+    // finish it.
+    resultSeen: isCreator ? row.creatorSeenResult : row.opponentSeenResult,
   };
 }
 
@@ -296,7 +275,16 @@ router.post("/rival-challenges/:id/attempt", requireAuth, async (req, res) => {
 
     await db
       .update(rivalChallengesTable)
-      .set({ opponentSessionId: session.id, status: "completed", completedAt: new Date() })
+      .set({
+        opponentSessionId: session.id,
+        status: "completed",
+        completedAt: new Date(),
+        // The opponent is looking at the result the instant they submit,
+        // so it's already seen for them. The creator's stays false — that's
+        // the notification telling them their challenge came back.
+        opponentSeenResult: true,
+        creatorSeenResult: false,
+      })
       .where(eq(rivalChallengesTable.id, id));
 
     const [saved] = await db.select().from(rivalChallengesTable).where(eq(rivalChallengesTable.id, id));
@@ -307,6 +295,38 @@ router.post("/rival-challenges/:id/attempt", requireAuth, async (req, res) => {
     res.json(await serializeChallenge(saved, userId));
   } catch (err) {
     req.log.error({ err }, "Failed to submit rival challenge attempt");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/rival-challenges/:id/seen", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).userId as string;
+  const id = req.params.id as string;
+
+  try {
+    const [challenge] = await db.select().from(rivalChallengesTable).where(eq(rivalChallengesTable.id, id));
+    if (!challenge || (challenge.creatorId !== userId && challenge.opponentId !== userId)) {
+      res.status(404).json({ error: "Challenge not found" });
+      return;
+    }
+
+    await db
+      .update(rivalChallengesTable)
+      .set(
+        challenge.creatorId === userId
+          ? { creatorSeenResult: true }
+          : { opponentSeenResult: true },
+      )
+      .where(eq(rivalChallengesTable.id, id));
+
+    const [saved] = await db.select().from(rivalChallengesTable).where(eq(rivalChallengesTable.id, id));
+    if (!saved) {
+      res.status(500).json({ error: "Failed to retrieve challenge" });
+      return;
+    }
+    res.json(await serializeChallenge(saved, userId));
+  } catch (err) {
+    req.log.error({ err }, "Failed to mark rival challenge result as seen");
     res.status(500).json({ error: "Internal server error" });
   }
 });

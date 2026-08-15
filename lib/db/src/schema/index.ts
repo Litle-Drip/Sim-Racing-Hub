@@ -296,6 +296,13 @@ export const rivalChallengesTable = pgTable("rival_challenges", {
   status: text("status").notNull().default("pending"), // pending | completed | cancelled
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
+  // Whether each side has seen the result once the challenge completed.
+  // The opponent's is set when they submit their attempt (they're looking
+  // right at the result), the creator's only when they acknowledge it —
+  // that unseen flag is what keeps the "you won / you lost" notification
+  // alive after the opponent finishes.
+  creatorSeenResult: boolean("creator_seen_result").notNull().default(false),
+  opponentSeenResult: boolean("opponent_seen_result").notNull().default(false),
 });
 
 export type DbRivalChallenge = typeof rivalChallengesTable.$inferSelect;

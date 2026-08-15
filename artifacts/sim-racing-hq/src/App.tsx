@@ -695,6 +695,10 @@ function MainApp({ isGuest, isDemo, onSignIn, initialPage }: { isGuest?: boolean
       case 'progress': return <Progress setPage={handleSetPage} />;
       case 'engineer': return <RaceEngineer />;
       case 'community': return <Community isGuest={isGuest} />;
+      // 'rivals' is Community opened straight onto its Rivals tab, so the
+      // Dashboard shortcut and the notification badge have somewhere to go
+      // without Rivals becoming a second page that duplicates the tab.
+      case 'rivals': return <Community isGuest={isGuest} initialTab="rivals" />;
       case 'companion': return <Companion />;
       case 'account': return <Account setPage={handleSetPage} />;
       default: return <Dashboard setPage={handleSetPage} />;

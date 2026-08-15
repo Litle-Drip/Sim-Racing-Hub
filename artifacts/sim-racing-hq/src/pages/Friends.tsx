@@ -187,6 +187,8 @@ export default function Friends() {
 
   return (
     <>
+      <div className="section-title">Friends</div>
+
       {/* Add by username */}
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
         <label className="field-label">Add a Friend by Username</label>
@@ -225,7 +227,7 @@ export default function Friends() {
         </>
       )}
 
-      <div className="section-title">Friends{friends.length > 0 ? ` (${friends.length})` : ''}</div>
+      <div className="section-title">Your Friends{friends.length > 0 ? ` (${friends.length})` : ''}</div>
       {isLoading ? (
         <div className="table-wrap"><div className="empty-state"><div className="empty-state-title">Loading…</div></div></div>
       ) : friends.length === 0 ? (

@@ -3,7 +3,7 @@ import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Men
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { useAwaitingMyAttempt } from '../lib/rivalNotifications';
+import { useRivalNotifications } from '../lib/rivalNotifications';
 import { calculateStreak, calculateRank, getRankColor, getRankProgress, estimateSeatTimeMinutes } from '../lib/engagement';
 
 interface NavProps {
@@ -32,7 +32,7 @@ export default function Nav({ page, setPage }: NavProps) {
   const { signOut } = useClerk();
   const { user } = useUser();
   const { data: sessions = [] } = useGetSessions();
-  const pendingRivalChallenges = useAwaitingMyAttempt().length;
+  const pendingRivalChallenges = useRivalNotifications().count;
   const [open, setOpen] = useState(false);
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
@@ -134,14 +134,17 @@ export default function Nav({ page, setPage }: NavProps) {
         <ul className="nav-links">
           {NAV_ITEMS.map(({ id, label, Icon, authRequired }) => {
             const isLocked = !user && authRequired;
+            // 'rivals' is Community with its Rivals tab pre-opened, so it
+            // lights up the Community item rather than nothing at all.
+            const isActive = page === id || (id === 'community' && page === 'rivals');
             return (
               <li key={id}>
                 <button
                   type="button"
-                  className={`nav-link${page === id ? ' active' : ''}${isLocked ? ' nav-link--locked' : ''}`}
+                  className={`nav-link${isActive ? ' active' : ''}${isLocked ? ' nav-link--locked' : ''}`}
                   onClick={() => navigate(id)}
                   title={isLocked ? 'Sign in required' : undefined}
-                  aria-current={page === id ? 'page' : undefined}
+                  aria-current={isActive ? 'page' : undefined}
                   style={isLocked ? { opacity: 0.55 } : undefined}
                 >
                   <Icon className="nav-icon" size={16} />

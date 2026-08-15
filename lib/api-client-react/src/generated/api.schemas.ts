@@ -596,6 +596,9 @@ export interface RivalChallengeRecord {
   creatorSession: RivalChallengeSessionSummary;
   opponentSession?: RivalChallengeSessionSummary | null;
   winnerUserId?: string | null;
+  /** Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the "you won / you lost" notification up.
+   */
+  resultSeen: boolean;
 }
 
 export interface CreateRivalChallengeRequest {

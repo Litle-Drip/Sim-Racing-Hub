@@ -1168,7 +1168,8 @@ export const GetRivalChallengesResponseItem = zod.object({
   "s3": zod.string(),
   "raceTimeSeconds": zod.number().nullish()
 }).nullish(),
-  "winnerUserId": zod.string().nullish()
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
 })
 export const GetRivalChallengesResponse = zod.array(GetRivalChallengesResponseItem)
 
@@ -1264,7 +1265,67 @@ export const SubmitRivalChallengeAttemptResponse = zod.object({
   "s3": zod.string(),
   "raceTimeSeconds": zod.number().nullish()
 }).nullish(),
-  "winnerUserId": zod.string().nullish()
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
+})
+
+
+/**
+ * @summary Acknowledge the result of a completed rival challenge
+ */
+export const MarkRivalChallengeSeenParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const markRivalChallengeSeenResponseIdMax = 200;
+
+export const markRivalChallengeSeenResponseCreatorSessionIdMax = 200;
+
+export const markRivalChallengeSeenResponseOpponentSessionOneIdMax = 200;
+
+
+
+export const MarkRivalChallengeSeenResponse = zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseIdMax),
+  "status": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "lapCount": zod.number(),
+  "message": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "creator": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "opponent": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "creatorSession": zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseCreatorSessionIdMax),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}),
+  "opponentSession": zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseOpponentSessionOneIdMax),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}).nullish(),
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
 })
 
 
