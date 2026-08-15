@@ -50,19 +50,34 @@ router.put("/track-notes/:trackId", requireAuth, async (req, res) => {
   const data = parsed.data;
 
   try {
-    const [saved] = await db
-      .insert(trackNotesTable)
-      .values({
-        id: data.id as string,
-        userId,
-        trackId,
-        corners: data.corners,
-      })
-      .onConflictDoUpdate({
-        target: [trackNotesTable.userId, trackNotesTable.trackId],
-        set: { corners: data.corners, updatedAt: new Date() },
-      })
-      .returning();
+    // Deliberately not `ON CONFLICT (user_id, track_id) DO UPDATE`: that
+    // needs a matching unique constraint to exist in the database, and when
+    // it doesn't Postgres rejects the statement outright rather than
+    // degrading to a plain insert — which is what made every note save fail
+    // with a 500. Read-then-write works either way. The constraint is being
+    // added separately (lib/db/sql/2026-08-15-…​.sql) so duplicates can't
+    // accumulate; until then, updating the row we found keeps edits landing
+    // on a single row anyway.
+    const [existing] = await db
+      .select({ id: trackNotesTable.id })
+      .from(trackNotesTable)
+      .where(and(eq(trackNotesTable.userId, userId), eq(trackNotesTable.trackId, trackId)));
+
+    const [saved] = existing
+      ? await db
+          .update(trackNotesTable)
+          .set({ corners: data.corners, updatedAt: new Date() })
+          .where(eq(trackNotesTable.id, existing.id))
+          .returning()
+      : await db
+          .insert(trackNotesTable)
+          .values({
+            id: data.id,
+            userId,
+            trackId,
+            corners: data.corners,
+          })
+          .returning();
 
     if (!saved) {
       res.status(500).json({ error: "Failed to retrieve track notes" });

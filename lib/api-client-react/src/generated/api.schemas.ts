@@ -626,6 +626,61 @@ export interface RivalChallengeUserLookup {
   avatarUrl?: string | null;
 }
 
+/**
+ * The friend's most recent shared session, if they have one.
+ */
+export interface FriendSessionSummary {
+  id: string;
+  date: string;
+  trackId: string;
+  car: string;
+  type: string;
+  bestLap: string;
+}
+
+export interface FriendRecord {
+  /** Friendship id — the handle for accept/remove. */
+  id: string;
+  userId: string;
+  username: string;
+  avatarUrl?: string | null;
+  /** pending | accepted */
+  status: string;
+  /** incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.
+   */
+  direction: string;
+  createdAt: string;
+  /** When they last logged a session, shared or not. */
+  lastActiveAt?: string | null;
+  sharedSessions: number;
+  lastSession?: FriendSessionSummary | null;
+}
+
+export interface FriendList {
+  friends: FriendRecord[];
+  incoming: FriendRecord[];
+  outgoing: FriendRecord[];
+}
+
+export interface AddFriendRequest {
+  /** @maxLength 100 */
+  username: string;
+}
+
+export interface FriendSessionRecord {
+  id: string;
+  username: string;
+  date: string;
+  trackId: string;
+  car: string;
+  type: string;
+  bestLap: string;
+  avgLap: string;
+  conditions: string;
+  publicNote?: string | null;
+  sharedAt?: string | null;
+}
+
 export interface CreateHardwareRequest {
   /** @maxLength 200 */
   id: string;

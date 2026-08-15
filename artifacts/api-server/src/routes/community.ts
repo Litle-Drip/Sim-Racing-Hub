@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, avg, count, sql } from "drizzle-orm";
+import { eq, and, avg, count, desc, sql } from "drizzle-orm";
 import { db, setupsTable, setupRatingsTable, sessionsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
@@ -468,6 +468,16 @@ router.get("/community/driver/:username", async (req, res) => {
       .from(sessionsTable)
       .where(and(eq(sessionsTable.userId, userId), eq(sessionsTable.isPublic, true)));
 
+    // "Last on" — the most recent session they logged, shared or not. It's a
+    // timestamp only, never the session's contents, so a driver who keeps
+    // everything private still shows as active without publishing anything.
+    const [lastActivity] = await db
+      .select({ createdAt: sessionsTable.createdAt })
+      .from(sessionsTable)
+      .where(eq(sessionsTable.userId, userId))
+      .orderBy(desc(sessionsTable.createdAt))
+      .limit(1);
+
     // Get public setups
     const publicSetups = await db
       .select()
@@ -488,6 +498,7 @@ router.get("/community/driver/:username", async (req, res) => {
     res.json({
       username: displayName,
       memberSince: user.created_at ? new Date(user.created_at).toISOString().slice(0, 10) : null,
+      lastActiveAt: lastActivity ? lastActivity.createdAt.toISOString() : null,
       avatarUrl: user.image_url ?? null,
       sessions: publicSessions.length,
       setups: publicSetups.length,

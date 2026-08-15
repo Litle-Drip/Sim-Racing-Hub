@@ -117,6 +117,12 @@ Render's free tier spins down after 15 minutes of inactivity. First request afte
 ### Session type showed "Unknown" for sessions before 2026-07-13 (fixed)
 Real Race and Time Trial sessions were saving as "Unknown". Root cause: F1 25 inserted 5 sprint-weekend session types before Race in its UDP numbering, shifting Race from id 10->15 and Time Trial from 13->18, but the companion's `SESSION_TYPES` lookup table (`session.ts`) still had the old F1 24 ids and had no entries for 15/18 — so those sessions fell through to "Unknown". Fixed in commit `b42a3f1` by updating the table to the shifted F1 25 ids. This was not a byte-offset bug in `udp.ts` (that parser is correct). Sessions from before the fix are permanently stuck with the "Unknown"/"Other" label since the raw numeric session type wasn't stored, only the resolved string — there's no way to backfill them.
 
+### Clerk username lookups return the wrong user if you trust position
+`GET https://api.clerk.com/v1/users?username[]=…` is a *filter*, not a search, and any request Clerk can't apply the filter to degrades into "the first users in the instance" rather than an empty list. Taking `users[0]` therefore hands back an unrelated account — that's how a rival challenge addressed to `slumlordmillionaire` reached a different driver entirely. Every username lookup must confirm `user.username.toLowerCase() === wanted` before using the result, and fall back to `?query=` (Clerk's fuzzy search) for casing differences. Both places that do this — `routes/community.ts` (public driver profile) and `routes/rivalChallenges.ts` (`findUserByUsername`, also used by `routes/friends.ts`) — verify the match.
+
+### `ON CONFLICT` needs the constraint to actually exist in Postgres
+Track-note saves failed with a 500 on every attempt because the route used `INSERT … ON CONFLICT (user_id, track_id) DO UPDATE` while `track_notes_uniq` had never been created in the production database — Postgres rejects that statement outright ("no unique or exclusion constraint matching the ON CONFLICT specification") instead of falling back to a plain insert. The route now reads then writes, and `lib/db/sql/2026-08-15-add-friendships-and-track-notes-constraint.sql` adds the missing index. Constraints, unlike columns, are **not** covered by `scripts/check-schema-sql.mjs` — if you add an `onConflictDoUpdate`, confirm its target constraint exists in the database.
+
 ---
 
 ## Files — Do Not Touch Without Understanding

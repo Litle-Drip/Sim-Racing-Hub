@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
+export * from './addFriendRequest';
 export * from './carSetupSnapshot';
 export * from './communitySessionRecord';
 export * from './communitySetupRecord';
@@ -21,6 +22,10 @@ export * from './createSetupRequest';
 export * from './engineerUsageStatus';
 export * from './engineWear';
 export * from './errorResponse';
+export * from './friendList';
+export * from './friendRecord';
+export * from './friendSessionRecord';
+export * from './friendSessionSummary';
 export * from './getCommunitySessionsParams';
 export * from './getCommunitySetupsParams';
 export * from './hardwareRecord';

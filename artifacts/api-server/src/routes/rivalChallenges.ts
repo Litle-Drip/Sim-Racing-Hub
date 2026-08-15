@@ -64,28 +64,50 @@ async function getDisplayNames(userIds: string[]): Promise<Record<string, string
   }
 }
 
-async function findUserByUsername(
+// Never trust position in a Clerk result set — always confirm the user
+// handed back actually owns the username that was asked for. Clerk returns
+// a plain list, and any request it can't apply the username filter to
+// degrades into "first user in the instance", which is how challenging
+// `slumlordmillionaire` addressed a completely unrelated account. Same
+// verification the public driver profile lookup does.
+export async function findUserByUsername(
   username: string,
 ): Promise<{ id: string; name: string; avatarUrl: string | null } | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) return null;
-  const resp = await fetch(
-    `https://api.clerk.com/v1/users?username[]=${encodeURIComponent(username)}&limit=1`,
-    { headers: { Authorization: `Bearer ${secretKey}` } },
-  );
-  if (!resp.ok) return null;
-  const users = (await resp.json()) as Array<{
+
+  type ClerkUser = {
     id: string;
     username?: string | null;
     first_name?: string | null;
     image_url?: string | null;
-  }>;
-  if (users.length === 0) return null;
-  const u = users[0];
+  };
+
+  const wanted = username.trim().toLowerCase();
+  const matches = (u: ClerkUser) => !!u.username && u.username.toLowerCase() === wanted;
+
+  const lookup = async (query: string): Promise<ClerkUser[]> => {
+    const resp = await fetch(`https://api.clerk.com/v1/users?${query}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    });
+    if (!resp.ok) return [];
+    return (await resp.json()) as ClerkUser[];
+  };
+
+  // Exact filter first. It's case-sensitive, so fall back to Clerk's fuzzy
+  // `query` search for usernames typed with different casing.
+  let user = (await lookup(`username[]=${encodeURIComponent(username.trim())}&limit=10`)).find(matches);
+  if (!user) {
+    user = (await lookup(`query=${encodeURIComponent(username.trim())}&limit=20`)).find(matches);
+  }
+  if (!user) return null;
+
   return {
-    id: u.id,
-    name: u.username ?? (u.first_name ? u.first_name : "Anonymous"),
-    avatarUrl: u.image_url ?? null,
+    id: user.id,
+    // Profiles are addressed by username, so that's the name shown — never
+    // a real name off the account, which the driver never chose to publish.
+    name: user.username ?? "Anonymous",
+    avatarUrl: user.image_url ?? null,
   };
 }
 
