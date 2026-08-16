@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen, CircleDot, Settings2, Trophy, ChevronRight } from 'lucide-react';
-import { EmptyState } from '../components/EmptyState';
 import { Toast } from '../components/Toast';
 import { F1_TRACKS, F1Track, CORNER_NAMES, getTypeBadgeClass } from '../data/f1Tracks';
 import {
@@ -234,14 +233,25 @@ function TrackGrid({
           ))}
         </div>
       </div>
+      {/* The first-run explainer was a full-height empty state with a red
+          primary CTA whose only job was to scroll to the grid already on
+          screen — it out-shouted the circuits it was pointing at. Same copy,
+          same scroll, as the app's inline notice. */}
       {allSessions.length === 0 && (
-        <EmptyState
-          icon={<BookOpen size={40} />}
-          headline="Annotate every circuit"
-          subtext="Each track has a corner-by-corner notes editor — braking points, throttle zones, tyre strategy. Pick a circuit from the grid below to start building your knowledge base."
-          ctaLabel="Explore Circuits"
-          onCta={() => gridRef.current?.scrollIntoView({ behavior: 'smooth' })}
-        />
+        <div className="notice notice--teal">
+          <BookOpen size={16} aria-hidden="true" style={{ color: 'var(--teal)', flexShrink: 0 }} />
+          <span className="notice-text">
+            <strong>Annotate every circuit.</strong> Each track has a corner-by-corner notes editor — braking points, throttle zones, tyre strategy. Pick a circuit below to start your knowledge base.
+          </span>
+          <span className="notice-actions">
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => gridRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              Explore Circuits
+            </button>
+          </span>
+        </div>
       )}
       <div ref={gridRef} className="track-grid">
         {sortedTracks.map(track => {
@@ -692,7 +702,7 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
           <div style={sectionStyle}>{guide.characteristics}</div>
 
           <div style={labelStyle}>DRS Zones</div>
-          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+          <ul style={{ ...sectionStyle, paddingLeft: 'var(--space-4)', margin: 0 }}>
             {guide.drsZones.map((z, i) => <li key={i}>{z}</li>)}
           </ul>
 
@@ -700,7 +710,7 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
           <div style={sectionStyle}>{guide.tyreBehaviour}</div>
 
           <div style={labelStyle}>Common Mistakes</div>
-          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+          <ul style={{ ...sectionStyle, paddingLeft: 'var(--space-4)', margin: 0 }}>
             {guide.commonMistakes.map((m, i) => <li key={i}>{m}</li>)}
           </ul>
 
@@ -708,7 +718,7 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
           <div style={sectionStyle}>{guide.ersTips}</div>
 
           <div style={labelStyle}>Key Corners</div>
-          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+          <ul style={{ ...sectionStyle, paddingLeft: 'var(--space-4)', margin: 0 }}>
             {guide.keyCorners.map((c, i) => <li key={i}>{c}</li>)}
           </ul>
 

@@ -32,7 +32,7 @@ export function Toast({ message, onDone, duration = 3000, variant = 'success' }:
         padding: '11px 18px',
         display: 'flex',
         alignItems: 'center',
-        gap: 9,
+        gap: 'var(--space-2)',
         fontFamily: 'var(--font-display)',
         fontSize: 13,
         letterSpacing: '0.07em',

@@ -793,7 +793,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <div className="stat-label" style={{ marginBottom: 0 }}>Last Session</div>
               {isNew(lastSession.id) && (
-                <span title="Landed since you last looked" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--teal)' }}>
+                <span title="Landed since you last looked" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--teal)' }}>
                   <span className="session-new-dot" />NEW
                 </span>
               )}
@@ -920,7 +920,9 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
         <div className="heatmap-body">
         <div className="heatmap-scroll" ref={heatmapRef}>
-          <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
+          {/* 14px, not a spacing token: this gutter lines the month labels up
+              with the 13px heatmap cell columns below them. */}
+          <div style={{ display: 'flex', marginBottom: 'var(--space-1)', paddingLeft: 14 }}>
             {monthLabels.map(({ label, col }, idx) => {
               const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
               const spanWidth = (nextCol - col) * 13;

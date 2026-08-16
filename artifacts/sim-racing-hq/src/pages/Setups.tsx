@@ -251,7 +251,7 @@ function ImportFromSessionModal({
             </div>
           ) : (
             <>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginBottom: 14 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }}>
                 Pick a session and its car setup is filled into the form — exactly as the game
                 reported it, no typing.
               </div>
@@ -417,7 +417,7 @@ export default function Setups() {
       )}
       <div className="page-header">
         <h1 className="page-title">Setup Vault</h1>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={() => setShowImport(true)}>
             <Download size={12} /> From Session
           </button>
@@ -497,9 +497,9 @@ export default function Setups() {
                 <span className={`badge ${TAG_BADGE[setup.tag] || 'badge-practice'}`}>{setup.tag}</span>
               </div>
               <div className="setup-card-body">
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', marginBottom: 10 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', marginBottom: 'var(--space-2)' }}>
                   {trackName(setup.trackId)}
-                  <span style={{ marginLeft: 8, color: 'var(--gray)' }}>{setup.gameVersion?.trim() || '—'}</span>
+                  <span style={{ marginLeft: 'var(--space-2)', color: 'var(--gray)' }}>{setup.gameVersion?.trim() || '—'}</span>
                 </div>
                 <div className="setup-preview-row">
                   {[
