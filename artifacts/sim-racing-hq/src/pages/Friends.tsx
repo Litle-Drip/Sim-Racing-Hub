@@ -68,24 +68,24 @@ function FriendRow({
       href={profileHref(friend.username)}
       className="card friend-row"
       title={`View ${friend.username}'s profile and sessions`}
-      style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', textDecoration: 'none' }}
+      style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap', textDecoration: 'none' }}
     >
       <Avatar friend={friend} />
       <div className="friend-row-meta">
         <span
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.03em', color: 'var(--white)',
+            display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)',
+            fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, letterSpacing: '0.03em', color: 'var(--white)',
           }}
         >
           {friend.username}
           <ExternalLink size={11} aria-hidden="true" style={{ color: 'var(--gray-mid)' }} />
         </span>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
           Last on {formatLastActive(friend.lastActiveAt).toLowerCase()} · {friend.sharedSessions} shared session{friend.sharedSessions === 1 ? '' : 's'}
         </div>
         {friend.lastSession && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-light)', marginTop: 4 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', marginTop: 'var(--space-1)' }}>
             {trackLabel(friend.lastSession.trackId)} · {friend.lastSession.car}
             {friend.lastSession.bestLap ? <> · <span className="lap-time">{friend.lastSession.bestLap}</span></> : null}
           </div>
@@ -93,8 +93,7 @@ function FriendRow({
       </div>
       <span className="friend-row-view">View sessions →</span>
       <button
-        className="btn btn-secondary"
-        style={{ fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }}
+        className="btn btn-danger"
         onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
         disabled={busy}
       >
@@ -116,25 +115,25 @@ function RequestRow({
   busy: boolean;
 }) {
   return (
-    <div className="card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    <div className="card" style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
       <Avatar friend={friend} size={32} />
       <div style={{ minWidth: 0, flex: 1 }}>
         <a
           href={profileHref(friend.username)}
-          style={{ textDecoration: 'none', fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--white)' }}
+          style={{ textDecoration: 'none', fontFamily: 'var(--font-display)', fontSize: 'var(--fs-body-sm)', fontWeight: 700, color: 'var(--white)' }}
         >
           {friend.username}
         </a>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
           {onAccept ? 'Wants to be friends' : 'Request sent — waiting for them'}
         </div>
       </div>
       {onAccept && (
-        <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={onAccept} disabled={busy}>
+        <button className="btn btn-primary btn-sm" onClick={onAccept} disabled={busy}>
           <Check size={12} aria-hidden="true" /> Accept
         </button>
       )}
-      <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={onDecline} disabled={busy}>
+      <button className="btn btn-secondary btn-sm" onClick={onDecline} disabled={busy}>
         <X size={12} aria-hidden="true" /> {onAccept ? 'Decline' : 'Cancel'}
       </button>
     </div>
@@ -196,9 +195,9 @@ export default function Friends() {
       <div className="section-title">Friends</div>
 
       {/* Add by username */}
-      <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+      <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-5)' }}>
         <label className="field-label">Add a Friend by Username</label>
-        <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)', flexWrap: 'wrap' }}>
           <input
             type="text"
             placeholder="their-username"
@@ -211,7 +210,7 @@ export default function Friends() {
             <UserPlus size={12} aria-hidden="true" /> {adding ? 'Sending…' : 'Send Request'}
           </button>
         </div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 6 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)', marginTop: 'var(--space-2)' }}>
           Their username is the one on their profile — the same one that appears in <span style={{ fontFamily: 'var(--font-mono)' }}>f1simhub.com/driver/…</span>
         </div>
       </div>
@@ -219,7 +218,7 @@ export default function Friends() {
       {incoming.length > 0 && (
         <>
           <div className="section-title">Friend Requests ({incoming.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
             {incoming.map(r => (
               <RequestRow
                 key={r.id}
@@ -245,7 +244,7 @@ export default function Friends() {
           />
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {friends.map(f => (
             <FriendRow
               key={f.id}
@@ -259,8 +258,8 @@ export default function Friends() {
 
       {outgoing.length > 0 && (
         <>
-          <div className="section-title" style={{ marginTop: 24 }}>Sent Requests ({outgoing.length})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="section-title" style={{ marginTop: 'var(--space-5)' }}>Sent Requests ({outgoing.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {outgoing.map(r => (
               <RequestRow
                 key={r.id}
