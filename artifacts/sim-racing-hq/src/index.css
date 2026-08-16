@@ -4099,3 +4099,103 @@ summary:focus-visible,
   font-size: 11px;
   color: var(--gray);
 }
+
+/* =========================================================
+   SINGLE-COLUMN PAGE PRIMITIVES
+   Companion, Download, Driver Profile and the locked states each built
+   their own reading column, card padding, code block and step list
+   inline (720/800px columns, 16/20/24/32px card padding, three radii).
+   These share one set off the existing space and type scales.
+   ========================================================= */
+
+.page--narrow {
+  max-width: 880px;
+}
+
+/* Stacked cards on a single-column page: one gap, set once. */
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card-pad {
+  padding: var(--space-5);
+}
+
+/* Prose inside a card: the body ramp, not a per-screen 12/13px guess. */
+.card-text {
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  color: var(--gray-light);
+  line-height: 1.6;
+}
+
+.card-note {
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  color: var(--gray);
+  line-height: 1.6;
+}
+
+.code-block {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  color: var(--teal);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+/* Numbered setup steps (F1 25 UDP guide). */
+.step-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0;
+  margin: 0;
+}
+
+.step-item {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  color: var(--on-accent);
+}
+
+.step-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-body-sm);
+  letter-spacing: 0.04em;
+  color: var(--white);
+  margin-bottom: var(--space-1);
+}
+
+.step-detail {
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  color: var(--gray-mid);
+  line-height: 1.6;
+}
+
+/* Confirmation dialogs were 420-520px inline; .modal itself is 780px. */
+.modal--sm {
+  max-width: 460px;
+}
