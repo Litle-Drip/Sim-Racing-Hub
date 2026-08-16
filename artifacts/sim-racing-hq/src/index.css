@@ -4199,3 +4199,135 @@ summary:focus-visible,
 .modal--sm {
   max-width: 460px;
 }
+
+/* =========================================================
+   LARGE BUTTON
+   Hero and paywall CTAs were each sized inline (15px type,
+   16/32px padding). One step above .btn, on the same scale.
+   ========================================================= */
+
+.btn-lg {
+  min-height: 44px;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--fs-body-sm);
+}
+
+/* =========================================================
+   GUEST WALL
+   The locked-page paywall was a bare centred stack in a full-height
+   column: on a tall viewport the copy floated near the top with a
+   screen of dead space under it. It now sits in a card, vertically
+   centred in the space the page actually has.
+   ========================================================= */
+
+.guest-wall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: min(70vh, 640px);
+  padding: var(--space-6) 0;
+}
+
+.guest-wall-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--teal);
+  padding: var(--space-7) var(--space-6);
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+}
+
+.guest-wall-eyebrow {
+  font-family: var(--font-display);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: var(--space-3);
+}
+
+.guest-wall-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-page);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--white);
+  margin-bottom: var(--space-2);
+}
+
+.guest-wall-lede {
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  color: var(--gray-mid);
+  line-height: 1.6;
+  max-width: 40ch;
+  margin: 0 auto var(--space-5);
+}
+
+/* Benefit list: left-aligned inside the centred card, and separated from
+   the CTA by a rule so the eye lands on the button last. */
+.guest-wall-bullets {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.guest-wall-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  color: var(--gray-light);
+  line-height: 1.5;
+}
+
+.guest-wall-bullet span:first-child {
+  color: var(--teal);
+  flex-shrink: 0;
+}
+
+.guest-wall-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* =========================================================
+   DEMO BANNER
+   A solid teal bar was the loudest element on every demo screen and
+   out-shouted the page title beneath it. Same teal, used as an accent
+   on the elevated surface instead of a full-bleed fill.
+   ========================================================= */
+
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 700;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--teal);
+  color: var(--gray-light);
+  padding: var(--space-2) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+}
+
+.demo-banner strong {
+  color: var(--teal);
+  font-family: var(--font-display);
+  font-size: var(--fs-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

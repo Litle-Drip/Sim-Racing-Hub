@@ -503,40 +503,32 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
 function GuestWall({ page, onSignIn }: { page: string; onSignIn: () => void }) {
   const unlocks = PAGE_UNLOCKS[page];
   return (
-    <div style={{
-      minHeight: '60vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 0,
-      padding: 'var(--space-7) var(--space-5)',
-    }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 'var(--space-3)' }}>
-        Free Account Required
-      </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 'var(--space-2)' }}>
-        Unlock your {PAGE_LABELS[page] || page}
-      </div>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', textAlign: 'center', maxWidth: 380, lineHeight: 1.6, marginBottom: 'var(--space-5)' }}>
-        Create a free account — no credit card, no waiting. Everything syncs across your devices automatically.
-      </div>
-      {unlocks && (
-        <div style={{ marginBottom: 'var(--space-6)', textAlign: 'left', maxWidth: 340 }}>
-          {unlocks.bullets.map(b => (
-            <div key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-              <span style={{ color: 'var(--teal)', fontSize: 14, marginTop: 1, flexShrink: 0 }}>✓</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>{b}</span>
-            </div>
-          ))}
+    <div className="guest-wall">
+      <div className="guest-wall-card">
+        <div className="guest-wall-eyebrow">Free Account Required</div>
+        <div className="guest-wall-title">Unlock your {PAGE_LABELS[page] || page}</div>
+        <p className="guest-wall-lede">
+          Create a free account — no credit card, no waiting. Everything syncs across your devices automatically.
+        </p>
+        {unlocks && (
+          <div className="guest-wall-bullets">
+            {unlocks.bullets.map(b => (
+              <div key={b} className="guest-wall-bullet">
+                <span>✓</span>
+                <span>{b}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="guest-wall-actions">
+          <button className="btn btn-primary btn-lg" onClick={onSignIn}>
+            Create Free Account
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={onSignIn}>
+            Already have an account? Sign in →
+          </button>
         </div>
-      )}
-      <button className="btn btn-primary" style={{ minWidth: 200, fontSize: 15, padding: 'var(--space-4) var(--space-6)' }} onClick={onSignIn}>
-        Create Free Account
-      </button>
-      <button className="btn btn-ghost" style={{ marginTop: 'var(--space-2)', fontSize: 12, color: 'var(--gray-mid)' }} onClick={onSignIn}>
-        Already have an account? Sign in →
-      </button>
+      </div>
     </div>
   );
 }
@@ -561,10 +553,10 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
       backdropFilter: 'blur(8px)',
     }}>
       <div style={{ flex: 1, minWidth: 200 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--teal)', marginBottom: 3, textTransform: 'uppercase' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-label)', letterSpacing: '0.12em', color: 'var(--teal)', marginBottom: 'var(--space-1)', textTransform: 'uppercase' }}>
           You've been exploring F1 Sim Hub
         </div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', lineHeight: 1.5 }}>
           Create a free account to <strong style={{ color: 'var(--white)' }}>log sessions, save setups, and track your PBs</strong> across every device.
         </div>
       </div>
@@ -572,14 +564,13 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
         <button
           className="btn btn-ghost"
           onClick={onDismiss}
-          style={{ fontSize: 12, color: 'var(--gray-mid)', padding: 'var(--space-2) var(--space-4)' }}
         >
           Maybe Later
         </button>
         <button
           className="btn btn-primary"
           onClick={onSignIn}
-          style={{ fontSize: 13, padding: 'var(--space-2) var(--space-5)', whiteSpace: 'nowrap' }}
+          style={{ whiteSpace: 'nowrap' }}
         >
           Create Free Account
         </button>
@@ -590,28 +581,14 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
 
 function DemoBanner({ onSignIn }: { onSignIn: () => void }) {
   return (
-    <div style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 700,
-      background: 'var(--teal)',
-      color: 'var(--black)',
-      padding: 'var(--space-2) var(--space-5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 'var(--space-4)',
-      flexWrap: 'wrap',
-      fontFamily: 'var(--font-body)',
-      fontSize: 12,
-    }}>
+    <div className="demo-banner">
       <span>
         <strong>Live Demo</strong> — you're viewing sample telemetry, not a real account. Nothing you do here is saved.
       </span>
       <button
-        className="btn btn-primary"
+        className="btn btn-secondary btn-sm"
         onClick={onSignIn}
-        style={{ fontSize: 11, padding: '5px 14px', background: 'var(--black)', color: 'var(--teal)', border: 'none', whiteSpace: 'nowrap' }}
+        style={{ whiteSpace: 'nowrap' }}
       >
         Create Free Account →
       </button>
