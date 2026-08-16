@@ -151,10 +151,18 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
   const trackFlag = (id: string) => F1_TRACKS.find(t => t.id === id)?.flag ?? '';
 
   return (
-    <div className="page" style={{ maxWidth: 800, margin: '0 auto' }}>
+    <div className="page">
+      {/* Every other page announces itself with a title; this one opened
+          straight into a card. The driver's name is data, not the page's
+          name, so the title takes the h1 and the name reads as the card's
+          headline underneath it. */}
+      <div className="page-header">
+        <h1 className="page-title">Account</h1>
+      </div>
+
       {/* Header / Profile */}
-      <div className="card" style={{ padding: '24px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+      <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)', flexWrap: 'wrap' }}>
           {avatarUrl ? (
             <img src={avatarUrl} alt="" style={{ width: 72, height: 72, borderRadius: '50%', border: `2px solid ${getRankColor(rankInfo.rank)}` }} />
           ) : (
@@ -167,32 +175,54 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.04em', color: 'var(--white)', margin: 0 }}>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, letterSpacing: '0.04em', color: 'var(--white)' }}>
               {displayName}
-            </h1>
+            </div>
             {memberSince && (
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginTop: 2 }}>Member since {memberSince}</div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray)', marginTop: 'var(--space-1)' }}>Member since {memberSince}</div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
               <span style={{
-                fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.08em',
+                fontFamily: 'var(--font-display)', fontSize: 'var(--fs-body-sm)', fontWeight: 700, letterSpacing: '0.08em',
                 color: getRankColor(rankInfo.rank), textTransform: 'uppercase',
               }}>
                 {rankInfo.rank}
               </span>
               {streak > 0 && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 12, color: 'var(--amber)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>
                   <Flame size={12} aria-hidden="true" /> {streak} day streak
                 </span>
               )}
             </div>
           </div>
+
+          {/* Your shareable address is part of who you are here, so it sits
+              with your name instead of in a card of its own at the very
+              bottom of the page — which left both this card's right half and
+              that card's right half empty. */}
+          {user?.username && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+              <div>
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Public Profile</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>f1simhub.com/driver/{user.username}</div>
+              </div>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  const url = `${window.location.origin}${basePath}/driver/${user.username}`;
+                  navigator.clipboard.writeText(url).catch(() => {});
+                }}
+              >
+                Copy Link
+              </button>
+            </div>
+          )}
         </div>
 
         {/* XP bar */}
         {SHOW_XP && rankInfo.nextRank && (
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 'var(--space-4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--gray-light)' }}>{rankInfo.rank}</span>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--gray-light)' }}>{rankInfo.nextRank}</span>
@@ -207,14 +237,14 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
           </div>
         )}
         {SHOW_XP && !rankInfo.nextRank && (
-          <div style={{ marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: 11, color: getRankColor(rankInfo.rank) }}>
+          <div style={{ marginTop: 'var(--space-3)', fontFamily: 'var(--font-mono)', fontSize: 11, color: getRankColor(rankInfo.rank) }}>
             {rankInfo.points} XP — World Champion, the highest tier. Keep logging sessions — your XP total still climbs.
           </div>
         )}
       </div>
 
       {/* Stats Grid */}
-      <div className="stat-grid" style={{ marginBottom: 16 }}>
+      <div className="stat-grid" style={{ marginBottom: 'var(--space-4)' }}>
         <div className="stat-card">
           <div className="stat-label">Total Sessions</div>
           <div className="stat-value">{totalSessions}</div>
@@ -236,93 +266,99 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
           <div className="stat-label">Setups Saved</div>
           <div className="stat-value">{setupsSaved}</div>
           {setupsSaved === 0 && (
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--teal)', marginTop: 4 }}>Save your first setup →</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--teal)', marginTop: 'var(--space-1)' }}>Save your first setup →</div>
           )}
         </div>
       </div>
 
-      {/* Driving Stats */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 16 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>Driving Stats</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>Est. Seat Time</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em' }}>
-              {totalHours > 0 ? `${totalHours}h ${remainingMinutes}m` : `${remainingMinutes}m`}
+      {/* Driving Stats + Rivals Record — four figures each, so on a desktop
+          they share a row rather than each taking a full-width card with two
+          thirds of it empty. */}
+      <div className="grid-2" style={{ marginBottom: 'var(--space-4)' }}>
+        <div className="card" style={{ padding: 'var(--space-5)' }}>
+          <div className="section-title">Driving Stats</div>
+          <div className="metric-grid">
+            <div>
+              <div className="stat-label">Est. Seat Time</div>
+              <div className="metric-value">
+                {totalHours > 0 ? `${totalHours}h ${remainingMinutes}m` : `${remainingMinutes}m`}
+              </div>
             </div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>Avg Consistency</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: avgConsistency && avgConsistency >= 96 ? 'var(--teal)' : 'var(--white)', letterSpacing: '0.04em' }}>
-              {avgConsistency !== null ? `${avgConsistency.toFixed(1)}%` : '—'}
+            <div>
+              <div className="stat-label">Avg Consistency</div>
+              <div className="metric-value" style={{ color: avgConsistency && avgConsistency >= 96 ? 'var(--teal)' : 'var(--white)' }}>
+                {avgConsistency !== null ? `${avgConsistency.toFixed(1)}%` : '—'}
+              </div>
             </div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>Avg Rating</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em' }}>
-              {avgRating !== null ? `${avgRating.toFixed(1)} / 5` : '—'}
+            <div>
+              <div className="stat-label">Avg Rating</div>
+              <div className="metric-value">
+                {avgRating !== null ? `${avgRating.toFixed(1)} / 5` : '—'}
+              </div>
             </div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>Sessions This Week</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em' }}>
-              {sessionsThisWeek}
+            <div>
+              <div className="stat-label">Sessions This Week</div>
+              <div className="metric-value">{sessionsThisWeek}</div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Rivals Record */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 16 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>Rivals Record</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
-          {[
-            { label: 'Wins', value: rivalRecord.wins, color: 'var(--teal)' },
-            { label: 'Losses', value: rivalRecord.losses, color: 'var(--red)' },
-            { label: 'Completed', value: rivalRecord.completed, color: 'var(--white)' },
-            { label: 'Drivers Faced', value: rivalRecord.opponents, color: 'var(--white)' },
-          ].map(({ label, value, color }) => (
-            <div key={label}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray)' }}>{label}</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color, letterSpacing: '0.04em' }}>{value}</div>
-            </div>
-          ))}
+        <div className="card" style={{ padding: 'var(--space-5)' }}>
+          <div className="section-title">Rivals Record</div>
+          <div className="metric-grid">
+            {[
+              { label: 'Wins', value: rivalRecord.wins, color: 'var(--teal)' },
+              { label: 'Losses', value: rivalRecord.losses, color: 'var(--red)' },
+              { label: 'Completed', value: rivalRecord.completed, color: 'var(--white)' },
+              { label: 'Drivers Faced', value: rivalRecord.opponents, color: 'var(--white)' },
+            ].map(({ label, value, color }) => (
+              <div key={label}>
+                <div className="stat-label">{label}</div>
+                <div className="metric-value" style={{ color }}>{value}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Friends — lives here rather than in Community: it's your list, and
           this is your page. The component brings its own section headings. */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 'var(--space-5)' }}>
         <Friends />
       </div>
 
       {/* Session Type Breakdown + Top Tracks */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="grid-2" style={{ marginBottom: 'var(--space-4)' }}>
         {typeBreakdown.length > 0 && (
-          <div className="card" style={{ padding: '16px 20px' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 10 }}>Session Types</div>
-            {typeBreakdown.map(([type, count]) => (
-              <div key={type} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontFamily: 'var(--font-body)', fontSize: 12 }}>
-                <span style={{ color: 'var(--gray-light)' }}>{type}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--white)' }}>{count}</span>
-              </div>
-            ))}
+          <div className="card" style={{ padding: 'var(--space-5)' }}>
+            <div className="section-title">Session Types</div>
+            <div className="stat-list">
+              {typeBreakdown.map(([type, count]) => (
+                <div key={type} className="stat-list-row">
+                  <span>{type}</span>
+                  <span className="stat-list-row-value">{count}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {topTracks.length > 0 && (
-          <div className="card" style={{ padding: '16px 20px' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 10 }}>Most Driven</div>
-            {topTracks.map(t => (
-              <div
-                key={t.id}
-                onClick={() => setPage?.('tracks')}
-                style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer' }}
-                title={`View ${t.name} in the Track Bible`}
-              >
-                <span style={{ color: 'var(--gray-light)' }}>{t.flag} {t.name}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--white)' }}>{t.count} sessions</span>
-              </div>
-            ))}
+          <div className="card" style={{ padding: 'var(--space-5)' }}>
+            <div className="section-title">Most Driven</div>
+            <div className="stat-list">
+              {topTracks.map(t => (
+                <div
+                  key={t.id}
+                  className="stat-list-row"
+                  onClick={() => setPage?.('tracks')}
+                  style={{ cursor: 'pointer' }}
+                  title={`View ${t.name} in the Track Bible`}
+                >
+                  <span>{t.flag} {t.name}</span>
+                  <span className="stat-list-row-value">{t.count} sessions</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -330,10 +366,10 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
       {/* Achievements */}
       {SHOW_ACHIEVEMENTS && (
         <>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>
+          <div className="section-title">
             Achievements — {earnedAchievements.length}/{achievements.length}
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
             {achievements.map(a => {
               const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
               const BadgeIcon = a.icon;
@@ -362,13 +398,13 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
       {/* Personal Bests */}
       <div className="section-title">Personal Bests</div>
       {trackPBs.length === 0 ? (
-        <div className="card" style={{ padding: '20px', textAlign: 'center', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)' }}>
+        <div className="card" style={{ padding: 'var(--space-5)', textAlign: 'center', marginBottom: 'var(--space-4)' }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)' }}>
             No PBs set yet. Start logging sessions to track your fastest laps.
           </div>
         </div>
       ) : (
-        <div className="table-wrap" style={{ marginBottom: 16 }}>
+        <div className="table-wrap" style={{ marginBottom: 'var(--space-4)' }}>
           <table className="data-table">
             <thead>
               <tr>
@@ -400,80 +436,63 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
         </div>
       )}
 
-      {/* Public Profile Link */}
-      {user?.username && (
-        <div className="card" style={{ padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Public Profile</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>f1simhub.com/driver/{user.username}</div>
-          </div>
-          <button
-            className="btn btn-secondary"
-            style={{ fontSize: 11, padding: '5px 14px' }}
-            onClick={() => {
-              const url = `${window.location.origin}${basePath}/driver/${user.username}`;
-              navigator.clipboard.writeText(url).catch(() => {});
-            }}
-          >
-            Copy Link
-          </button>
-        </div>
-      )}
-
-      {/* Preferences — units and theme, both moved off the sidebar where they
-          occupied permanent space on every page for a choice made once. */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 16 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>Preferences</div>
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginBottom: 6 }}>Units</div>
-            <div className="units-toggle" role="group" aria-label="Unit system" style={{ minWidth: 200, marginBottom: 0 }}>
-              <button
-                type="button"
-                aria-pressed={system === 'us'}
-                className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
-                onClick={() => setSystem('us')}
-              >
-                US <span className="units-toggle-sub">mph · °F</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={system === 'uk'}
-                className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
-                onClick={() => setSystem('uk')}
-              >
-                UK <span className="units-toggle-sub">mph · °C</span>
+      {/* Preferences and Account — two short cards that each left most of a
+          row empty; they share one now. Units and theme both moved off the
+          sidebar, where they occupied permanent space on every page for a
+          choice made once. */}
+      <div className="grid-2">
+        <div className="card" style={{ padding: 'var(--space-5)' }}>
+          <div className="section-title">Preferences</div>
+          <div style={{ display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div>
+              <div className="stat-label">Units</div>
+              <div className="units-toggle" role="group" aria-label="Unit system" style={{ minWidth: 200, marginBottom: 0 }}>
+                <button
+                  type="button"
+                  aria-pressed={system === 'us'}
+                  className={`units-toggle-btn${system === 'us' ? ' active' : ''}`}
+                  onClick={() => setSystem('us')}
+                >
+                  US <span className="units-toggle-sub">mph · °F</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={system === 'uk'}
+                  className={`units-toggle-btn${system === 'uk' ? ' active' : ''}`}
+                  onClick={() => setSystem('uk')}
+                >
+                  UK <span className="units-toggle-sub">mph · °C</span>
+                </button>
+              </div>
+            </div>
+            <div>
+              <div className="stat-label">Appearance</div>
+              <button className="btn btn-secondary" onClick={toggleTheme}>
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
               </button>
             </div>
           </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginBottom: 6 }}>Appearance</div>
-            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={toggleTheme}>
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        </div>
+
+        {/* Account Actions */}
+        <div className="card" style={{ padding: 'var(--space-5)' }}>
+          <div className="section-title">Account</div>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => openUserProfile()}
+            >
+              Manage Account
+            </button>
+            <button
+              className="btn btn-secondary nav-footer-btn--danger"
+              style={{ border: '1px solid var(--red)', color: 'var(--red)' }}
+              onClick={() => signOut({ redirectUrl: basePath || '/' })}
+            >
+              Sign Out
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Account Actions */}
-      <div className="card" style={{ padding: '16px 20px' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>Account</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            className="btn btn-secondary"
-            style={{ fontSize: 12 }}
-            onClick={() => openUserProfile()}
-          >
-            Manage Account
-          </button>
-          <button
-            className="btn btn-secondary nav-footer-btn--danger"
-            style={{ fontSize: 12, border: '1px solid var(--red)', color: 'var(--red)' }}
-            onClick={() => signOut({ redirectUrl: basePath || '/' })}
-          >
-            Sign Out
-          </button>
         </div>
       </div>
 

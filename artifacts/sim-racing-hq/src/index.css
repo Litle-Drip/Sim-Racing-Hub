@@ -1316,6 +1316,71 @@ summary:focus-visible,
 }
 
 /* =========================================================
+   TWO-UP
+   A pair of cards that would each leave half a row empty on their own.
+   Collapses to one column before the pair gets too narrow to read.
+   ========================================================= */
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* =========================================================
+   METRICS
+   A row of small figures inside a card (Driving Stats, Rivals Record) —
+   the same object as .stat-card, one step down in the hierarchy. Labels
+   reuse .stat-label so the two never drift apart.
+   ========================================================= */
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-4);
+}
+
+.metric-value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  color: var(--white);
+}
+
+/* A label/count list (Session Types, Most Driven). Wraps into columns so the
+   count stays beside its label instead of being flung to the far edge of a
+   wide card. */
+.stat-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0 var(--space-5);
+}
+
+.stat-list-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  color: var(--gray-light);
+}
+
+.stat-list-row-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--white);
+  white-space: nowrap;
+}
+
+/* =========================================================
    TABLES
    ========================================================= */
 
