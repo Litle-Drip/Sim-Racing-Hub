@@ -27,6 +27,12 @@ function serializeSetup(r: typeof setupsTable.$inferSelect) {
     brakePressure: r.brakePressure,
     onThrottle: r.onThrottle,
     offThrottle: r.offThrottle,
+    frontCamber: r.frontCamber,
+    rearCamber: r.rearCamber,
+    frontToe: r.frontToe,
+    rearToe: r.rearToe,
+    frontTyrePressure: r.frontTyrePressure,
+    rearTyrePressure: r.rearTyrePressure,
     notes: r.notes,
     gameVersion: r.gameVersion,
     isPublic: r.isPublic,
@@ -78,6 +84,14 @@ router.post("/setups", requireAuth, async (req, res) => {
       brakePressure: String(data.brakePressure),
       onThrottle: String(data.onThrottle),
       offThrottle: String(data.offThrottle),
+      // Optional in the request — a setup typed in by hand may not carry
+      // geometry, and setups created before these fields existed never did.
+      frontCamber: data.frontCamber ?? "",
+      rearCamber: data.rearCamber ?? "",
+      frontToe: data.frontToe ?? "",
+      rearToe: data.rearToe ?? "",
+      frontTyrePressure: data.frontTyrePressure ?? "",
+      rearTyrePressure: data.rearTyrePressure ?? "",
       notes: data.notes,
       gameVersion: data.gameVersion ?? "",
     });

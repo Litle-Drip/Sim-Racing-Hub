@@ -1730,6 +1730,18 @@ components:
           type: string
         offThrottle:
           type: string
+        frontCamber:
+          type: string
+        rearCamber:
+          type: string
+        frontToe:
+          type: string
+        rearToe:
+          type: string
+        frontTyrePressure:
+          type: string
+        rearTyrePressure:
+          type: string
         notes:
           type: string
           maxLength: 5000
@@ -1802,6 +1814,18 @@ components:
         onThrottle:
           type: string
         offThrottle:
+          type: string
+        frontCamber:
+          type: string
+        rearCamber:
+          type: string
+        frontToe:
+          type: string
+        rearToe:
+          type: string
+        frontTyrePressure:
+          type: string
+        rearTyrePressure:
           type: string
         notes:
           type: string
@@ -1917,6 +1941,18 @@ components:
         onThrottle:
           type: string
         offThrottle:
+          type: string
+        frontCamber:
+          type: string
+        rearCamber:
+          type: string
+        frontToe:
+          type: string
+        rearToe:
+          type: string
+        frontTyrePressure:
+          type: string
+        rearTyrePressure:
           type: string
         notes:
           type: string

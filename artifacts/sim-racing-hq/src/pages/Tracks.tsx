@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useLocation } from 'wouter';
 import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen, CircleDot, Settings2, Trophy, ChevronRight } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { Toast } from '../components/Toast';
@@ -848,10 +849,28 @@ function VideoClipLibrary({ trackId }: { trackId: string }) {
   );
 }
 
-export default function Tracks({ isGuest }: { isGuest?: boolean }) {
+export default function Tracks({ isGuest, initialTrackId }: { isGuest?: boolean; initialTrackId?: string }) {
   const { data: sessions = [] } = useGetSessions();
-  const [selectedTrack, setSelectedTrack] = useState<F1Track | null>(null);
+  const [, setLocation] = useLocation();
+  // Opened straight onto a circuit when the URL names one. An id that matches
+  // no circuit falls through to the grid rather than erroring.
+  const [selectedTrack, setSelectedTrack] = useState<F1Track | null>(
+    () => F1_TRACKS.find(t => t.id === initialTrackId) ?? null,
+  );
   const qc = useQueryClient();
+
+  // Each circuit has its own address, so a track page can be linked, shared
+  // and indexed. Selection drives the URL rather than the other way round —
+  // the rest of the app navigates by page state, not by route.
+  const openTrack = useCallback((track: F1Track) => {
+    setSelectedTrack(track);
+    setLocation(`/tracks/${track.id}`);
+  }, [setLocation]);
+
+  const closeTrack = useCallback(() => {
+    setSelectedTrack(null);
+    setLocation('/tracks');
+  }, [setLocation]);
 
   const { data: difficultyData = [] } = useGetTrackDifficulty();
 
@@ -892,7 +911,7 @@ export default function Tracks({ isGuest }: { isGuest?: boolean }) {
     return (
       <TrackDetail
         track={selectedTrack}
-        onBack={() => setSelectedTrack(null)}
+        onBack={closeTrack}
         sessions={sessions}
         ratingsMap={ratingsMap}
         onRate={handleRate}
@@ -902,7 +921,7 @@ export default function Tracks({ isGuest }: { isGuest?: boolean }) {
   }
   return (
     <TrackGrid
-      onSelect={setSelectedTrack}
+      onSelect={openTrack}
       sessions={sessions}
       ratingsMap={ratingsMap}
       onRate={handleRate}
