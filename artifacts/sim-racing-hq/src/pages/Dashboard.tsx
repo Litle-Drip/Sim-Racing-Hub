@@ -920,7 +920,9 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
         <div className="heatmap-body">
         <div className="heatmap-scroll" ref={heatmapRef}>
-          <div style={{ display: 'flex', marginBottom: 'var(--space-1)', paddingLeft: 'var(--space-4)' }}>
+          {/* 14px, not a spacing token: this gutter lines the month labels up
+              with the 13px heatmap cell columns below them. */}
+          <div style={{ display: 'flex', marginBottom: 'var(--space-1)', paddingLeft: 14 }}>
             {monthLabels.map(({ label, col }, idx) => {
               const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
               const spanWidth = (nextCol - col) * 13;
