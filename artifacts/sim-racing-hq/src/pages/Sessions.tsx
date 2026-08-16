@@ -23,7 +23,7 @@ import {
   SessionDetailFields,
   type LapEntry,
 } from '../components/SessionDetail';
-import { FOCUS_SESSION_KEY, OPEN_LOG_KEY } from '../lib/storage';
+import { FOCUS_SESSION_KEY, OPEN_LOG_KEY, takeFocusTrack } from '../lib/storage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -423,7 +423,8 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [lockedSummary, setLockedSummary] = useState<Set<string>>(new Set());
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState('');
-  const [filterTrack, setFilterTrack] = useState('');
+  // Pre-filtered when arrived at from a track page's "Sessions" quick-link.
+  const [filterTrack, setFilterTrack] = useState(() => takeFocusTrack());
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
   const [telemetryLap, setTelemetryLap] = useState<{ sessionId: string; lap: LapEntry } | null>(null);

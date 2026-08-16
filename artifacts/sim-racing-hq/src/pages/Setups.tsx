@@ -7,6 +7,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { SetupRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, SETUP_TAGS } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
+import { SetupSpecSheet } from '../components/SetupSpecSheet';
+import { takeFocusTrack } from '../lib/storage';
 
 const defaultForm = (): Omit<SetupRecord, 'id'> => ({
   label: '',
@@ -76,28 +78,28 @@ function SetupViewModal({
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
-          <table className="data-table">
-            <tbody>
-              {COMPARE_FIELDS.map(({ key, label }) => (
-                <tr key={key}>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>{label}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>
-                    {key === 'trackId' ? trackName(String(setup[key])) : String(setup[key] ?? '—')}
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Game Version</td>
-                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>{setup.gameVersion?.trim() || '—'}</td>
-              </tr>
-              {setup.notes && (
-                <tr>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
-                  <td style={{ fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{setup.notes}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <div className="setup-spec-meta">
+            {[
+              { label: 'Car', value: setup.car },
+              { label: 'Track', value: trackName(setup.trackId) },
+              { label: 'Tag', value: setup.tag },
+              { label: 'Game Version', value: setup.gameVersion?.trim() || '—' },
+            ].map(({ label, value }) => (
+              <div key={label} className="setup-spec-meta-item">
+                <div className="setup-spec-meta-label">{label}</div>
+                <div className="setup-spec-meta-value">{value || '—'}</div>
+              </div>
+            ))}
+          </div>
+
+          <SetupSpecSheet setup={setup} />
+
+          {setup.notes && (
+            <div className="setup-spec-notes">
+              <div className="setup-spec-meta-label" style={{ marginBottom: 6 }}>Notes</div>
+              {setup.notes}
+            </div>
+          )}
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Close</button>
@@ -163,7 +165,8 @@ export default function Setups() {
   const [form, setForm] = useState<Omit<SetupRecord, 'id'>>(defaultForm());
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState('');
-  const [filterTrack, setFilterTrack] = useState('');
+  // Pre-filtered when arrived at from a track page's "Setups" quick-link.
+  const [filterTrack, setFilterTrack] = useState(() => takeFocusTrack());
   const [filterTag, setFilterTag] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [viewSetup, setViewSetup] = useState<SetupRecord | null>(null);
