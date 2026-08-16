@@ -1877,7 +1877,7 @@ summary:focus-visible,
 .expanded-content {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px 16px;
+  gap: var(--space-4);
 }
 
 /* Each telemetry group (Fuel & Tyres, Car Setup, ERS, Damage, …) renders as
@@ -1887,24 +1887,24 @@ summary:focus-visible,
 .expanded-group {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0 14px;
+  border-radius: var(--radius-lg);
+  padding: 0 var(--space-4);
 }
 
 .expanded-group[open] {
-  padding-bottom: 14px;
+  padding-bottom: var(--space-4);
 }
 
 .expanded-group-summary {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 0;
+  padding: var(--space-3) 0;
   cursor: pointer;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gray-light);
   list-style: none;
@@ -1932,7 +1932,7 @@ summary:focus-visible,
 .expanded-group-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 14px 20px;
+  gap: var(--space-4) var(--space-5);
 }
 
 .expanded-item {
@@ -1941,18 +1941,20 @@ summary:focus-visible,
   gap: 4px;
 }
 
+/* Same treatment as .stat-label — these were 10px/--gray, the last labels
+   still sitting a step below the scale everything else now uses. */
 .expanded-label {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: var(--fs-label);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--gray);
+  color: var(--gray-mid);
 }
 
 .expanded-value {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-body-sm);
   font-weight: 600;
   color: var(--gray-light);
 }
@@ -3802,25 +3804,32 @@ summary:focus-visible,
 .lap-stat-strip {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
+/* Column with the value pinned to the bottom: the labels aren't all the same
+   length ("Avg. Throttle" wraps where "Top Speed" doesn't), and grid stretches
+   the tiles to equal height, so bottom-aligning keeps every value on one line
+   across the strip. */
 .lap-stat {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-4);
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-1);
 }
 
 .lap-stat-label {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: var(--fs-label);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--gray);
-  margin-bottom: 3px;
+  color: var(--gray-mid);
 }
 
 .lap-stat-value {
@@ -3840,20 +3849,20 @@ summary:focus-visible,
 .lap-compare-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   flex-wrap: wrap;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 10px 12px;
-  margin-bottom: 18px;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
   color: var(--gray-mid);
 }
 
 .lap-compare-bar label {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gray-mid);
 }
