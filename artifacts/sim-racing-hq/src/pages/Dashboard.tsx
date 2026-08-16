@@ -4,9 +4,12 @@ import type { SessionRecord } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
-import { calculateStreak, calculateRank, getRankColor, getRankProgress, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
-import type { DriverRank, Achievement } from '../lib/engagement';
-import { SessionDetailModal } from '../components/SessionDetail';
+import { calculateStreak, calculateRank, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
+import type { Achievement } from '../lib/engagement';
+import { SHOW_ACHIEVEMENTS, SHOW_XP, SHOW_NEXT_TARGET } from '../lib/features';
+import { SessionDetailModal, validLaps } from '../components/SessionDetail';
+import { useRivalNotifications } from '../lib/rivalNotifications';
+import { useUnseenSessions } from '../lib/newSessions';
 import { Flame, Trophy } from 'lucide-react';
 
 const DIFF_COLORS: Record<string, string> = {
@@ -177,6 +180,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   const { data: apiSessions = [] } = useGetSessions(isGuest ? { query: { enabled: false } as never } : undefined);
   const { data: apiSetups = [] } = useGetSetups(isGuest ? { query: { enabled: false } as never } : undefined);
   const { data: communitySessions = [] } = useGetCommunitySessions();
+  const { count: rivalNotificationCount } = useRivalNotifications();
   const { user } = useUser();
 
   const [guestSessions] = useState<SessionRecord[]>(() => {
@@ -192,6 +196,12 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   const [badgeTab, setBadgeTab] = useState('Skill');
   const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
 
+  // Sessions that landed since the driver last looked glow here too — a live
+  // session arriving should be visible from whichever page they're on.
+  const { isNew, markSeen } = useUnseenSessions(sessions);
+
+  const openSession = (s: SessionRecord) => { markSeen(s.id); setDetailSession(s); };
+
   const startChallenge = () => {
     try {
       sessionStorage.setItem(PENDING_CHALLENGE_KEY, JSON.stringify({ trackId: daily.track.id, car: daily.car }));
@@ -200,14 +210,20 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   };
 
   const totalSessions = sessions.length;
-  const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
+  // Only circuits on the current calendar count. Companion uploads and older
+  // imports can carry ids F1_TRACKS doesn't know (e.g. "track_42"), which
+  // pushed this past the 24-circuit total — the dashboard read "25/24".
+  // Sessions.tsx already filters its own count the same way.
+  const tracksPracticed = useMemo(
+    () => new Set(sessions.map(s => s.trackId).filter(id => F1_TRACKS.some(t => t.id === id))).size,
+    [sessions],
+  );
   const pbsSet = sessions.filter(s => s.isPB).length;
   const setupsSaved = setups.length;
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
   const rankInfo = useMemo(() => calculateRank(sessions), [sessions]);
   const achievements = useMemo(() => calculateAchievements(sessions, setups.length), [sessions, setups]);
-  const earnedCount = achievements.filter(a => a.earned).length;
 
   const sessionsThisWeek = useMemo(() => {
     const today = new Date();
@@ -232,8 +248,11 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     const monthStr = monthAgo.toISOString().slice(0, 10);
     const prevMonthAgo = new Date(today); prevMonthAgo.setDate(today.getDate() - 60);
     const prevStr = prevMonthAgo.toISOString().slice(0, 10);
-    const curr = new Set(sessions.filter(s => s.date >= monthStr).map(s => s.trackId)).size;
-    const prev = new Set(sessions.filter(s => s.date >= prevStr && s.date < monthStr).map(s => s.trackId)).size;
+    // Filtered to known circuits for the same reason as tracksPracticed above,
+    // so the delta can't count a circuit the total doesn't.
+    const known = (ids: string[]) => new Set(ids.filter(id => F1_TRACKS.some(t => t.id === id))).size;
+    const curr = known(sessions.filter(s => s.date >= monthStr).map(s => s.trackId));
+    const prev = known(sessions.filter(s => s.date >= prevStr && s.date < monthStr).map(s => s.trackId));
     return { current: curr, delta: curr - prev };
   }, [sessions]);
 
@@ -276,6 +295,50 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       b.date.localeCompare(a.date) || (b.createdAt ?? '').localeCompare(a.createdAt ?? '')
     )[0];
   }, [sessions]);
+
+  // The Last Session card runs the full content width, and on desktop most of
+  // it was empty. These are the numbers worth knowing before deciding whether
+  // to open the session; CSS drops them on narrow screens so the card stays a
+  // one-line summary on a phone.
+  const lastSessionMetrics = useMemo(() => {
+    if (!lastSession) return [];
+    const out: { label: string; value: string; color?: string }[] = [];
+
+    if (lastSession.avgLap && lastSession.avgLap.trim() !== '') {
+      out.push({ label: 'Avg Lap', value: lastSession.avgLap });
+    }
+
+    const lapCount = validLaps(lastSession.laps).length;
+    if (lapCount > 0) out.push({ label: 'Laps', value: String(lapCount) });
+
+    const cons = sessionConsistency(lastSession);
+    if (cons !== null) {
+      out.push({
+        label: 'Consistency',
+        value: `${cons.toFixed(1)}%`,
+        color: cons >= 98 ? 'var(--teal)' : cons >= 95 ? 'var(--white)' : 'var(--amber)',
+      });
+    }
+
+    // Gap to the driver's own best at this circuit — the one number that says
+    // whether the run was actually any good.
+    const trackBest = sessions
+      .filter(s => s.trackId === lastSession.trackId && s.bestLap && s.bestLap.trim() !== '')
+      .map(s => lapToSeconds(s.bestLap))
+      .filter(v => isFinite(v) && v > 0);
+    const lastSecs = lapToSeconds(lastSession.bestLap);
+    if (trackBest.length > 0 && isFinite(lastSecs) && lastSecs > 0) {
+      const gap = lastSecs - Math.min(...trackBest);
+      out.push({
+        label: 'Δ PB',
+        value: gap <= 0 ? 'PB' : `+${gap.toFixed(3)}`,
+        color: gap <= 0 ? 'var(--teal)' : gap < 0.5 ? 'var(--amber)' : 'var(--red)',
+      });
+    }
+
+    // The grid is four columns wide; the best lap always takes the first.
+    return out.slice(0, 3);
+  }, [lastSession, sessions]);
 
   const mostDrivenTrack = useMemo(() => {
     if (sessions.length === 0) return null;
@@ -404,9 +467,11 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         coachingInsight = `You're ${gap}s off your ${name} PB`;
       }
     }
-    // Fallback coaching lines
+    // Fallback coaching lines. The XP-distance line is skipped while XP is
+    // hidden \u2014 it quotes a number the driver has no way to see \u2014 so the
+    // consistency prompt below becomes the fallback instead.
     if (!coachingInsight) {
-      if (rankInfo.nextRank) {
+      if (SHOW_XP && rankInfo.nextRank) {
         coachingInsight = `${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
       } else if (weakest) {
         const name = F1_TRACKS.find(t => t.id === weakest.id)?.short ?? weakest.id;
@@ -415,14 +480,35 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     }
 
     // Build sub-line with streak + rank distance
+    const showRankDistance = SHOW_XP && rankInfo.nextRank;
     let subInsight = '';
-    if (streak > 0 && rankInfo.nextRank) {
+    if (streak > 0 && showRankDistance) {
       subInsight = `PB streak: ${streak} day${streak !== 1 ? 's' : ''} \u2022 ${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
     } else if (streak > 0) {
       subInsight = `PB streak: ${streak} day${streak !== 1 ? 's' : ''}`;
-    } else if (rankInfo.nextRank) {
+    } else if (showRankDistance) {
       subInsight = `${rankInfo.pointsToNext} XP until ${rankInfo.nextRank}`;
     }
+
+    // Overall consistency across every session that has both a best and an
+    // average lap to compare.
+    const consistencyScores = sessions
+      .map(s => sessionConsistency(s))
+      .filter((c): c is number => c !== null);
+    const avgConsistency = consistencyScores.length > 0
+      ? consistencyScores.reduce((a, b) => a + b, 0) / consistencyScores.length
+      : null;
+
+    // Outright fastest lap on record, and where it was set.
+    let fastestLap: { time: string; track: string } | null = null;
+    sessions.forEach(s => {
+      if (!s.bestLap || s.bestLap.trim() === '') return;
+      const secs = lapToSeconds(s.bestLap);
+      if (!isFinite(secs) || secs <= 0) return;
+      if (!fastestLap || secs < lapToSeconds(fastestLap.time)) {
+        fastestLap = { time: s.bestLap, track: F1_TRACKS.find(t => t.id === s.trackId)?.short ?? s.trackId };
+      }
+    });
 
     return {
       strongestTrack: strongest ? F1_TRACKS.find(t => t.id === strongest.id)?.short ?? strongest.id : null,
@@ -431,6 +517,8 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       weakestScore: weakest && weakest.id !== strongest?.id ? weakest.avg : null,
       bestSector,
       worstSector,
+      avgConsistency,
+      fastestLap: fastestLap as { time: string; track: string } | null,
       coachingInsight,
       subInsight,
     };
@@ -450,6 +538,34 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
   const { cells } = useMemo(() => buildHeatmap(sessions), [sessions]);
   const monthLabels = useMemo(() => buildMonthLabels(cells), [cells]);
+
+  // Summary rail beside the calendar — reads off the same 365-day cells the
+  // grid is drawn from, so the two can't disagree. Columns are weeks and each
+  // column runs Sun→Sat, so flattening in order gives chronological days.
+  const heatmapStats = useMemo(() => {
+    const days = cells.flat();
+    let activeDays = 0;
+    let totalSessions = 0;
+    let pbs = 0;
+    let longestStreak = 0;
+    let run = 0;
+    let busiest: { date: string; count: number } | null = null;
+
+    for (const d of days) {
+      totalSessions += d.count;
+      pbs += d.pbs;
+      if (d.count > 0) {
+        activeDays++;
+        run++;
+        if (run > longestStreak) longestStreak = run;
+        if (!busiest || d.count > busiest.count) busiest = { date: d.date, count: d.count };
+      } else {
+        run = 0;
+      }
+    }
+
+    return { activeDays, totalSessions, pbs, longestStreak, busiest: busiest as { date: string; count: number } | null };
+  }, [cells]);
 
   const heatmapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -474,8 +590,6 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   const userName = capitalize(rawName);
 
   // Rank progress bar
-  const nextTier = rankInfo.nextRank;
-  const { pct: progressToNext } = getRankProgress(rankInfo);
 
   // #6 Next Goal
   const nextGoal = useMemo(() => {
@@ -523,61 +637,17 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     return null;
   }, [sessions, achievements]);
 
-  // #10 Session Recommendation Engine
-  const recommendation = useMemo(() => {
-    if (sessions.length < 3) return null;
-    // Find track with best consistency + most sessions (good track to improve on)
-    const trackData: Record<string, { count: number; consistency: number[]; pb: number }> = {};
-    sessions.forEach(s => {
-      if (!trackData[s.trackId]) trackData[s.trackId] = { count: 0, consistency: [], pb: Infinity };
-      trackData[s.trackId].count++;
-      const c = sessionConsistency(s);
-      if (c !== null) trackData[s.trackId].consistency.push(c);
-      const secs = lapToSeconds(s.bestLap);
-      if (isFinite(secs) && secs > 0 && secs < trackData[s.trackId].pb) trackData[s.trackId].pb = secs;
-    });
-    // Score each track: high consistency + enough sessions = PB opportunity
-    let best: { trackId: string; score: number; avgCons: number; count: number } | null = null;
-    for (const [trackId, data] of Object.entries(trackData)) {
-      if (data.consistency.length < 2) continue;
-      const avgCons = data.consistency.reduce((a, b) => a + b, 0) / data.consistency.length;
-      const score = avgCons * 0.6 + Math.min(data.count, 10) * 4;
-      if (!best || score > best.score) {
-        best = { trackId, score, avgCons, count: data.count };
-      }
-    }
-    if (!best) return null;
-    const track = F1_TRACKS.find(t => t.id === best!.trackId);
-    // Pick a recent car used on that track
-    const trackSessions = sessions.filter(s => s.trackId === best!.trackId).sort((a, b) => b.date.localeCompare(a.date));
-    const car = trackSessions[0]?.car ?? 'Any car';
-    // Estimated gain: if high consistency, more likely to PB
-    const gain = best.avgCons >= 96 ? '0.05–0.15' : best.avgCons >= 92 ? '0.15–0.30' : '0.30+';
-    const confidence = Math.min(99, Math.round(best.avgCons * 0.85 + Math.min(best.count, 10) * 1.5));
-    const lastAttempt = trackSessions[0]?.date ?? '';
-    const lastDaysAgo = lastAttempt ? Math.floor((Date.now() - new Date(lastAttempt).getTime()) / 86400000) : null;
-    return {
-      trackName: track?.short ?? best.trackId,
-      trackFlag: track?.flag ?? '',
-      car,
-      reason: best.avgCons >= 96 ? 'Strong consistency, PB opportunity detected' : 'Good consistency, room to improve',
-      gain: `+${gain}s`,
-      confidence,
-      avgConsistency: best.avgCons,
-      lastDaysAgo,
-    };
-  }, [sessions]);
-
-  // Determine primary CTA priority
+  // Determine primary CTA priority. The session recommendation moved to the
+  // Race Engineer, so the Daily Challenge is the fallback the pulse lands on.
   const primaryCTA = useMemo(() => {
     // If daily challenge has no entries, push that
     if (daily.entries.length === 0) return 'challenge';
-    // If a next goal with close gap exists, push that
-    if (nextGoal?.gap) return 'goal';
-    // Otherwise recommendation
-    if (recommendation) return 'recommendation';
+    // If a next goal with close gap exists, push that — but not while the
+    // Next Target card is hidden, or the pulse would mark a card that
+    // never renders and no CTA would be highlighted at all.
+    if (SHOW_NEXT_TARGET && nextGoal?.gap) return 'goal';
     return 'challenge';
-  }, [daily.entries.length, nextGoal, recommendation]);
+  }, [daily.entries.length, nextGoal]);
 
   // Badge tab filter
   const filteredBadges: Achievement[] = useMemo(() => {
@@ -587,70 +657,84 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   }, [achievements, badgeTab]);
 
   return (
-    <div className="page" style={{ gap: 0 }}>
+    <div className="page">
       {/* ── Personalization Greeting (smarter coaching copy) ────────────── */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.04em', color: 'var(--white)' }}>
-          {getGreeting()}, {userName}
+      {/* The greeting is this page's title, so it uses the page header every
+          other screen uses rather than its own 18px heading. The streak line
+          moves opposite it, where a page's supporting figure already sits. */}
+      <div className="page-header" style={{ marginBottom: 'var(--space-4)' }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 className="page-title">{getGreeting()}, {userName}</h1>
+          {perfSnapshot?.coachingInsight && (
+            <div className="page-subtitle">{perfSnapshot.coachingInsight}</div>
+          )}
         </div>
-        {perfSnapshot?.coachingInsight && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4, lineHeight: 1.5 }}>
-            {perfSnapshot.coachingInsight}
-          </div>
-        )}
         {perfSnapshot?.subInsight && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2 }}>
+          <div className="page-header-meta" style={{ fontFamily: 'var(--font-mono)' }}>
             {perfSnapshot.subInsight}
           </div>
         )}
       </div>
 
       {/* ── Quick Action Buttons ────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-        <button className="btn btn-primary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('sessions')}>+ Session</button>
-        <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('setups')}>Load Setup</button>
-        <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('progress')}>Compare PB</button>
-        <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('community')}>Community</button>
+      <div className="toolbar">
+        <button className="btn btn-primary" onClick={() => setPage('sessions')}>+ Session</button>
+        <button className="btn btn-secondary" onClick={() => setPage('setups')}>Load Setup</button>
+        <button className="btn btn-secondary" onClick={() => setPage('progress')}>Compare PB</button>
+        <button className="btn btn-secondary" onClick={() => setPage('community')}>Community</button>
+        {/* Rivals sits right next to Community and carries the same count as
+            the sidebar, so a waiting challenge or an unread result is
+            visible from the first screen you land on. */}
+        <button className="btn btn-secondary" onClick={() => setPage('rivals')}>
+          Rivals
+          {rivalNotificationCount > 0 && (
+            <span className="page-tab-count">{rivalNotificationCount}</span>
+          )}
+        </button>
       </div>
 
       {/* ── Achievements (tabbed by category) ──────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {BADGE_CATEGORIES.map(cat => (
-            <button
-              key={cat.label}
-              onClick={() => setBadgeTab(cat.label)}
-              className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
-        {filteredBadges.map(a => {
-          const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
-          const BadgeIcon = a.icon;
-          return (
-            <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
-              title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
-              <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
-              <div className="dash-badge-info">
-                <span className="dash-badge-name">{a.name}</span>
-                {!a.earned && a.target > 1 && (
-                  <div className="dash-badge-progress">
-                    <div className="dash-badge-bar">
-                      <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
-                    </div>
-                    <span className="dash-badge-count">{a.progress}/{a.target}</span>
-                  </div>
-                )}
-              </div>
+      {SHOW_ACHIEVEMENTS && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+            <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              {BADGE_CATEGORIES.map(cat => (
+                <button
+                  key={cat.label}
+                  onClick={() => setBadgeTab(cat.label)}
+                  className={`badge-tab${badgeTab === cat.label ? ' badge-tab-active' : ''}`}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
-          );
-        })}
-      </div>
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-5)' }}>
+            {filteredBadges.map(a => {
+              const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
+              const BadgeIcon = a.icon;
+              return (
+                <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
+                  title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
+                  <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
+                  <div className="dash-badge-info">
+                    <span className="dash-badge-name">{a.name}</span>
+                    {!a.earned && a.target > 1 && (
+                      <div className="dash-badge-progress">
+                        <div className="dash-badge-bar">
+                          <div className="dash-badge-bar-fill" style={{ width: `${(a.progress / a.target) * 100}%` }} />
+                        </div>
+                        <span className="dash-badge-count">{a.progress}/{a.target}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* ── Stat Cards with micro-context ───────────────────────────────── */}
       <div className="stat-grid">
@@ -700,70 +784,104 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       {/* ── Last Session Summary ─────────────────────────────────────────── */}
       {lastSession && (
         <div
-          className="card dash-stat-hover"
-          style={{ padding: '14px 20px', marginBottom: 16, cursor: 'pointer' }}
-          onClick={() => setDetailSession(lastSession)}
+          className={`card dash-stat-hover${isNew(lastSession.id) ? ' session-card--new' : ''}`}
+          style={{ padding: 'var(--space-4) var(--space-5)', marginBottom: 'var(--space-4)', cursor: 'pointer' }}
+          onClick={() => openSession(lastSession)}
           title="Click to view full session details"
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
-            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <div className="stat-label" style={{ marginBottom: 0 }}>Last Session</div>
+              {isNew(lastSession.id) && (
+                <span title="Landed since you last looked" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--teal)' }}>
+                  <span className="session-new-dot" />NEW
+                </span>
+              )}
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)' }}>
+          <div className="last-session-body">
+            <div className="last-session-meta">
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, color: 'var(--white)' }}>
                 {F1_TRACKS.find(t => t.id === lastSession.trackId)?.flag} {trackName(lastSession.trackId)}
               </div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
                 {lastSession.car} · {lastSession.type} · {lastSession.date}
                 {lastSession.createdAt && !isNaN(new Date(lastSession.createdAt).getTime()) && (
                   <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
                 )}
               </div>
+              {lastSession.notes && <div className="last-session-notes">{lastSession.notes}</div>}
             </div>
-            {lastSession.bestLap && (
-              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 18, color: lastSession.isPB ? 'var(--yellow)' : 'var(--teal)', fontWeight: 700 }}>
-                  {lastSession.bestLap}{lastSession.isPB && <Trophy size={15} aria-label="Personal best" />}
+            <div className="last-session-metrics">
+              {lastSession.bestLap && (
+                <div className="last-session-metric">
+                  <div className="last-session-metric-label">Best Lap</div>
+                  <div className="last-session-metric-value" style={{ color: lastSession.isPB ? 'var(--yellow)' : 'var(--teal)' }}>
+                    {lastSession.bestLap}{lastSession.isPB && <Trophy size={13} aria-label="Personal best" />}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {lastSessionMetrics.map(m => (
+                <div key={m.label} className="last-session-metric last-session-metric--secondary">
+                  <div className="last-session-metric-label">{m.label}</div>
+                  <div className="last-session-metric-value" style={{ color: m.color }}>{m.value}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── Performance Snapshot — 4 metric cards ──────────────────────── */}
+      {/* ── Performance Snapshot — one row of measures the stat cards above
+             don't already carry. Session/PB/circuit counts live up there; if a
+             number is on both, it was cut from here. ──────────────────────── */}
       {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <div className="section-title">Performance Snapshot</div>
           <div className="perf-snap-grid">
             {perfSnapshot.strongestTrack && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Strongest Track</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.strongestTrack}</div>
-                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Strongest Track</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em' }}>{perfSnapshot.strongestTrack}</div>
+                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
               </div>
             )}
             {perfSnapshot.weakestTrack && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Needs Work</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.weakestTrack}</div>
-                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Needs Work</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em' }}>{perfSnapshot.weakestTrack}</div>
+                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
               </div>
             )}
             {perfSnapshot.bestSector && (
-              <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Sector</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
+              <div className="card perf-snap-card perf-snap-card--secondary">
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Best Sector</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em' }}>{perfSnapshot.bestSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Most consistent</div>
               </div>
             )}
             {perfSnapshot.worstSector && (
+              <div className="card perf-snap-card perf-snap-card--secondary">
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Biggest Time Loss</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--amber)', letterSpacing: '0.04em' }}>{perfSnapshot.worstSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Most variance</div>
+              </div>
+            )}
+            {perfSnapshot.fastestLap && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--amber)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Fastest Lap</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.02em' }}>{perfSnapshot.fastestLap.time}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{perfSnapshot.fastestLap.track}</div>
+              </div>
+            )}
+            {perfSnapshot.avgConsistency !== null && (
+              <div className="card perf-snap-card">
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Avg Consistency</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '0.04em', color: perfSnapshot.avgConsistency >= 98 ? 'var(--teal)' : perfSnapshot.avgConsistency >= 95 ? 'var(--white)' : 'var(--amber)' }}>
+                  {perfSnapshot.avgConsistency.toFixed(1)}%
+                </div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Best vs average lap</div>
               </div>
             )}
           </div>
@@ -772,9 +890,9 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
       {/* ── Activity Heatmap (with rich tooltips + weekly summary) ──────── */}
       {/* #polish: tightened spacing before heatmap */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
         <div className="section-title" style={{ marginBottom: 0 }}>Activity — Last 365 Days</div>
-        <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-4)', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>
           <span>This week: <strong style={{ color: 'var(--white)' }}>{weeklySummary.sessions}</strong> sessions</span>
           <span><strong style={{ color: 'var(--teal)' }}>{weeklySummary.pbs}</strong> PBs</span>
           <span>~<strong style={{ color: 'var(--white)' }}>{weeklySummary.seatTime}</strong> min</span>
@@ -784,14 +902,23 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         <div className="heatmap-header">
           <div className="heatmap-legend">
             <span className="legend-dot" style={{ background: 'var(--border)', border: '1px solid var(--border-accent)' }} />
-            <span style={{ fontSize: 10 }}>None</span>
+            <span style={{ fontSize: 'var(--fs-label)' }}>None</span>
             <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.35)' }} />
             <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.6)' }} />
             <span className="legend-dot" style={{ background: 'var(--red)' }} />
-            <span style={{ fontSize: 10 }}>Active</span>
+            <span style={{ fontSize: 'var(--fs-label)' }}>Active</span>
           </div>
+          {/* The streak belongs against the calendar it's counted from,
+              rather than in a card of its own. */}
+          {streak > 0 && (
+            <span className="heatmap-streak" title={`${streak} consecutive days with a logged session`}>
+              <Flame size={13} aria-hidden="true" />
+              {streak} day streak
+            </span>
+          )}
         </div>
 
+        <div className="heatmap-body">
         <div className="heatmap-scroll" ref={heatmapRef}>
           <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
             {monthLabels.map(({ label, col }, idx) => {
@@ -833,61 +960,94 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Rank + XP Progress Bar ──────────────────────────────────────── */}
-      <div className="card dash-rank-card" style={{ padding: '14px 20px', marginTop: 16, marginBottom: 16, border: `1px solid ${getRankColor(rankInfo.rank)}33` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
-              {rankInfo.rank}
-            </span>
-            {streak > 0 && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--amber)' }}>
-                <Flame size={13} aria-hidden="true" /> {streak} day streak
-              </span>
-            )}
+        {/* Year summary — fills the space left over beside a 53-week grid on
+            wide screens, and stacks under it on narrow ones. */}
+        <div className="heatmap-stats">
+          <div className="heatmap-stat">
+            <div className="heatmap-stat-label">Active Days</div>
+            <div className="heatmap-stat-value">{heatmapStats.activeDays}</div>
+            <div className="heatmap-stat-sub">of last 365</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              {rankInfo.points} XP
-            </span>
-            {earnedCount > 0 && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
-                {earnedCount}/{achievements.length} badges
-              </span>
-            )}
+          <div className="heatmap-stat">
+            <div className="heatmap-stat-label">Longest Streak</div>
+            <div className="heatmap-stat-value">{heatmapStats.longestStreak}<span className="heatmap-stat-unit">d</span></div>
+            <div className="heatmap-stat-sub">{streak === heatmapStats.longestStreak && streak > 0 ? 'Current run' : 'Personal best'}</div>
+          </div>
+          <div className="heatmap-stat">
+            <div className="heatmap-stat-label">PBs This Year</div>
+            <div className="heatmap-stat-value" style={{ color: 'var(--teal)' }}>{heatmapStats.pbs}</div>
+            <div className="heatmap-stat-sub">{heatmapStats.totalSessions} sessions</div>
+          </div>
+          <div className="heatmap-stat">
+            <div className="heatmap-stat-label">Busiest Day</div>
+            <div className="heatmap-stat-value">
+              {heatmapStats.busiest ? heatmapStats.busiest.count : '—'}
+              {heatmapStats.busiest && <span className="heatmap-stat-unit">runs</span>}
+            </div>
+            <div className="heatmap-stat-sub">
+              {heatmapStats.busiest
+                ? new Date(heatmapStats.busiest.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : 'No sessions yet'}
+            </div>
           </div>
         </div>
-        {nextTier && (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{rankInfo.rank}</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: getRankColor(nextTier as DriverRank) }}>{nextTier}</span>
-            </div>
-            <div className="xp-bar-bg">
-              <div className="xp-bar-fill" style={{ width: `${progressToNext}%`, background: getRankColor(rankInfo.rank) }} />
-            </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2, textAlign: 'right' }}>
-              {rankInfo.pointsToNext} XP to {nextTier}
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
+      {/* Tracks needing attention — moved right after heatmap */}
+      {neglectedTracks.length > 0 && (
+        <>
+          <div className="section-title" style={{ marginTop: 'var(--space-5)' }}>Needs Practice — 14+ Days</div>
+          <div style={{
+            display: 'flex',
+            gap: 'var(--space-3)',
+            flexWrap: 'wrap',
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            marginBottom: 'var(--space-4)',
+          }}>
+            {neglectedTracks.map(t => (
+              <div
+                key={t.id}
+                title={`${t.short} — ${t.daysSince} day${t.daysSince !== 1 ? 's' : ''} ago`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 'var(--space-1)',
+                  cursor: 'pointer',
+                  opacity: 0.85,
+                }}
+                onClick={() => setPage('tracks')}
+              >
+                <span style={{ fontSize: 24 }}>{t.flag}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* The rank card that sat here is gone. Once XP and badges were hidden
+          it held nothing but the tier name and the streak, and the streak now
+          lives on the heatmap it is counted from. Rank is still shown on the
+          sidebar profile card. */}
+
       {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
-      {nextGoal && (
-        <div className="card dash-next-goal card-accent card-accent--teal" style={{ padding: '14px 20px', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
+      {SHOW_NEXT_TARGET && nextGoal && (
+        <div className="card dash-next-goal card-accent card-accent--teal" style={{ padding: 'var(--space-4) var(--space-5)', marginBottom: 'var(--space-4)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 'var(--space-2)' }}>Next Target</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 'var(--space-2)' }}>
             {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
           </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
             {nextGoal.badge && (
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
             )}
-            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
               Start Attempt
             </button>
           </div>
@@ -895,84 +1055,68 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       )}
 
       {/* ── Daily Challenge ─────────────────────────────────────────────── */}
-      <div className="card dash-challenge card-accent card-accent--teal" style={{ padding: 0, marginBottom: 16, overflow: 'hidden' }}>
-        <div style={{ background: 'var(--bg-elevated)', padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+      <div className="card dash-challenge card-accent card-accent--teal" style={{ padding: 0, marginBottom: 'var(--space-4)', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-elevated)', padding: 'var(--space-3) var(--space-5)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 2, color: DIFF_COLORS[daily.difficulty], border: `1px solid ${DIFF_COLORS[daily.difficulty]}44`, textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 'var(--radius)', color: DIFF_COLORS[daily.difficulty], border: `1px solid ${DIFF_COLORS[daily.difficulty]}44`, textTransform: 'uppercase' }}>
                 {daily.difficulty}
               </span>
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 'var(--space-1)' }}>
               {daily.track.flag} {daily.track.short} — {daily.car}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Resets in <CountdownTimer /></div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.05em', color: 'var(--teal)', marginTop: 2 }}>+{daily.xpReward} XP</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Resets in <CountdownTimer /></div>
+            {/* The reward reads off the XP system; with XP hidden it would
+                point at something the driver can no longer see. */}
+            {SHOW_XP && <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.05em', color: 'var(--teal)', marginTop: 2 }}>+{daily.xpReward} XP</div>}
           </div>
         </div>
-        {daily.entries.length > 0 ? (
-          <div style={{ padding: '8px 20px' }}>
+        {daily.entries.length > 0 && (
+          <div style={{ padding: 'var(--space-3) var(--space-5)', borderBottom: '1px solid var(--border)' }}>
             {daily.entries.map((s, i) => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12, padding: '3px 0' }}>
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', padding: '3px 0' }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
                 <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
                 <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
               </div>
             ))}
           </div>
-        ) : (
-          <div style={{ padding: '14px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-            Be first on the board today.
-          </div>
         )}
-        <div style={{ padding: '8px 20px 12px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
-          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={startChallenge}>
+        {/* The action used to sit centred in a strip of its own, with a band
+            of empty card either side of it and — on an empty board — a lone
+            line of text in the strip above. Hint and action share one row,
+            action right, like every other card on the page. */}
+        <div style={{ padding: 'var(--space-3) var(--space-5)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          {daily.entries.length === 0 && (
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)' }}>
+              Be first on the board today.
+            </span>
+          )}
+          <button
+            className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`}
+            style={{ marginLeft: 'auto' }}
+            onClick={startChallenge}
+          >
             Start Challenge
           </button>
         </div>
       </div>
 
-      {/* ── #10 Session Recommendation Engine ──────────────────────────── */}
-      {recommendation && (
-        <div className="card dash-stat-hover card-accent card-accent--red" style={{ padding: '14px 20px', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>Recommended Session</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
-            {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
-          </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginBottom: 6 }}>
-            {recommendation.reason}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 4 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>Est. gain: {recommendation.gain}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Confidence: {recommendation.confidence}%</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Consistency: {recommendation.avgConsistency.toFixed(1)}%</span>
-            {recommendation.lastDaysAgo !== null && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)' }}>
-                Last: {recommendation.lastDaysAgo === 0 ? 'Today' : recommendation.lastDaysAgo === 1 ? 'Yesterday' : `${recommendation.lastDaysAgo}d ago`}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <button className={`btn ${primaryCTA === 'recommendation' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px' }} onClick={() => setPage('sessions')}>
-              Run Session
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Recent Sessions (enhanced table with mini bars) ─────────────── */}
       {/* #polish: tightened spacing between heatmap and sessions */}
-      <div className="section-title" style={{ marginTop: 8 }}>Recent Sessions</div>
+      <div className="section-title" style={{ marginTop: 'var(--space-5)' }}>Recent Sessions</div>
       {recentSessions.length === 0 ? (
         <div className="table-wrap">
           <div className="empty-state">
             <div className="empty-state-title">No Sessions Yet</div>
             <div className="empty-state-desc">Head to the Sessions page to log your first session.</div>
           </div>
-          <div style={{ textAlign: 'center', paddingBottom: 16 }}>
+          <div style={{ textAlign: 'center', paddingBottom: 'var(--space-5)' }}>
             <button className="btn btn-primary" onClick={() => setPage('sessions')}>Log Your First Session</button>
           </div>
         </div>
@@ -993,7 +1137,13 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             </thead>
             <tbody>
               {recentWithDelta.map(s => (
-                <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => setDetailSession(s)} title="Click to view full session details">
+                <tr
+                  key={s.id}
+                  className={isNew(s.id) ? 'session-row--new' : undefined}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => openSession(s)}
+                  title="Click to view full session details"
+                >
                   <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
                   <td data-label="Track">{trackName(s.trackId)}</td>
                   <td data-label="Car" style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
@@ -1040,40 +1190,6 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             </tbody>
           </table>
         </div>
-      )}
-
-      {/* Tracks needing attention */}
-      {neglectedTracks.length > 0 && (
-        <>
-          <div className="section-title" style={{ marginTop: 12 }}>Needs Practice — 14+ Days</div>
-          <div style={{
-            display: 'flex',
-            gap: 10,
-            flexWrap: 'wrap',
-            padding: '12px 16px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-          }}>
-            {neglectedTracks.map(t => (
-              <div
-                key={t.id}
-                title={`${t.short} — ${t.daysSince} day${t.daysSince !== 1 ? 's' : ''} ago`}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 4,
-                  cursor: 'pointer',
-                  opacity: 0.85,
-                }}
-                onClick={() => setPage('tracks')}
-              >
-                <span style={{ fontSize: 24 }}>{t.flag}</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
-              </div>
-            ))}
-          </div>
-        </>
       )}
 
       {detailSession && (

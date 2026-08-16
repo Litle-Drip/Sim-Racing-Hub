@@ -27,6 +27,12 @@ export interface SetupRecord {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  frontCamber?: string;
+  rearCamber?: string;
+  frontToe?: string;
+  rearToe?: string;
+  frontTyrePressure?: string;
+  rearTyrePressure?: string;
   /** @maxLength 5000 */
   notes: string;
   isPublic?: boolean;

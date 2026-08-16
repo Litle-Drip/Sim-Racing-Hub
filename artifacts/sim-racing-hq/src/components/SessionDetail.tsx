@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Activity, ChevronDown, Fuel, Disc, Settings2, Thermometer, Gauge, BatteryCharging, AlertTriangle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Activity, ChevronDown, Fuel, Disc, Settings2, Thermometer, Gauge, BatteryCharging, AlertTriangle, GitCompare } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
+  Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { useGetSessionDetail, type SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
@@ -94,15 +94,13 @@ export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessio
   }, 0);
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto', marginTop: 12 }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
-        Lap Data
-      </div>
+    <div style={{ width: '100%', overflowX: 'auto', marginTop: 'var(--space-4)' }}>
+      <div className="panel-title" style={{ marginBottom: 'var(--space-3)' }}>Lap Data</div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
             {['Lap', 'Time', 'S1', 'S2', 'S3', 'Tires', 'Penalty', ''].map(h => (
-              <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase' }}>{h}</th>
+              <th key={h} style={{ padding: 'var(--space-2) var(--space-3)', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -111,18 +109,17 @@ export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessio
             const isFastest = i === fastestIdx && laps.length > 1;
             return (
               <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: isFastest ? 'rgba(0,210,190,0.07)' : undefined }}>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.lap}</td>
-                <td style={{ padding: '5px 8px', color: isFastest ? 'var(--teal)' : 'var(--white)', fontWeight: isFastest ? 700 : 400 }}>{l.time || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s1 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s2 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s3 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.tires || '—'}</td>
-                <td style={{ padding: '5px 8px', color: l.penalty ? 'var(--red)' : 'var(--gray-mid)' }}>{l.penalty || '—'}</td>
-                <td style={{ padding: '5px 8px' }}>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-mid)' }}>{l.lap}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: isFastest ? 'var(--teal)' : 'var(--white)', fontWeight: isFastest ? 700 : 400 }}>{l.time || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-light)' }}>{l.s1 || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-light)' }}>{l.s2 || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-light)' }}>{l.s3 || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-mid)' }}>{l.tires || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: l.penalty ? 'var(--red)' : 'var(--gray-mid)' }}>{l.penalty || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)' }}>
                   {/* Trace presence is unknown until LapTelemetryModal fetches full detail — list responses omit traces. */}
                   <button
-                    className="btn btn-secondary"
-                    style={{ fontSize: 10, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+                    className="btn btn-secondary btn-sm"
                     onClick={() => onViewTelemetry(sessionId, l)}
                     title="View speed/throttle/brake telemetry for this lap"
                   >
@@ -138,7 +135,148 @@ export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessio
   );
 }
 
-// ─── Lap telemetry modal (speed/throttle/brake/steer vs. distance) ────────────
+// ─── Lap telemetry modal (speed/throttle/brake/gear/steer vs. distance) ───────
+
+type Trace = NonNullable<LapEntry['trace']>;
+type TraceKey = 'speed' | 'throttle' | 'brake' | 'steer' | 'gear';
+
+/** A row of the merged chart series: the lap's values plus, when a comparison
+ *  lap is selected, that lap's values resampled onto the same distance. */
+type ChartRow = { d: number } & Partial<Record<TraceKey, number>> & Partial<Record<`cmp_${TraceKey}`, number>> & { delta?: number };
+
+/**
+ * Value of one channel at an arbitrary lap distance, linearly interpolated
+ * between the two surrounding samples. Traces are recorded every Nth frame,
+ * so two laps never share sample points — comparing them means resampling
+ * both onto a common distance grid.
+ */
+function interpAt(trace: Trace, key: TraceKey, d: number): number {
+  if (trace.length === 0) return 0;
+  if (d <= trace[0].d) return trace[0][key] ?? 0;
+  const last = trace[trace.length - 1];
+  if (d >= last.d) return last[key] ?? 0;
+  // Binary search for the sample pair bracketing d.
+  let lo = 0;
+  let hi = trace.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (trace[mid].d <= d) lo = mid; else hi = mid;
+  }
+  const a = trace[lo];
+  const b = trace[hi];
+  const span = b.d - a.d;
+  const av = a[key] ?? 0;
+  const bv = b[key] ?? 0;
+  if (span <= 0) return av;
+  return av + (bv - av) * ((d - a.d) / span);
+}
+
+/**
+ * Elapsed time at each grid point, integrated from the speed trace as
+ * Σ Δdistance / speed. This is an approximation — the trace is sampled
+ * coarsely and speed between samples is taken as linear — so the delta it
+ * produces is a guide to where time is going, not a timing-loop-accurate
+ * figure. Speed is clamped above zero so a standing start or a spin can't
+ * divide by zero and blow the whole curve out.
+ */
+function cumulativeTime(trace: Trace, grid: number[]): number[] {
+  const out = new Array<number>(grid.length);
+  out[0] = 0;
+  for (let i = 1; i < grid.length; i++) {
+    const dd = grid[i] - grid[i - 1];
+    const v0 = Math.max(interpAt(trace, 'speed', grid[i - 1]), 5) / 3.6;
+    const v1 = Math.max(interpAt(trace, 'speed', grid[i]), 5) / 3.6;
+    out[i] = out[i - 1] + dd / ((v0 + v1) / 2);
+  }
+  return out;
+}
+
+const GRID_STEPS = 400;
+
+/**
+ * Chart rows for one lap, optionally overlaid with a comparison lap. Without
+ * a comparison the raw samples are used as-is; with one, both laps are
+ * resampled onto an even grid spanning the distance they have in common.
+ */
+function buildChartRows(trace: Trace, compare: Trace | null, convertSpeed: (v: number) => number): ChartRow[] {
+  if (!compare || compare.length < 2 || trace.length < 2) {
+    return trace.map(p => ({
+      d: p.d,
+      speed: convertSpeed(p.speed),
+      throttle: p.throttle,
+      brake: p.brake,
+      steer: p.steer,
+      gear: p.gear,
+    }));
+  }
+
+  const maxD = Math.min(trace[trace.length - 1].d, compare[compare.length - 1].d);
+  const minD = Math.max(trace[0].d, compare[0].d);
+  if (!(maxD > minD)) return [];
+
+  const grid: number[] = [];
+  for (let i = 0; i <= GRID_STEPS; i++) {
+    grid.push(minD + ((maxD - minD) * i) / GRID_STEPS);
+  }
+
+  const tLap = cumulativeTime(trace, grid);
+  const tCmp = cumulativeTime(compare, grid);
+
+  return grid.map((d, i) => ({
+    d: Math.round(d),
+    speed: convertSpeed(interpAt(trace, 'speed', d)),
+    throttle: interpAt(trace, 'throttle', d),
+    brake: interpAt(trace, 'brake', d),
+    steer: interpAt(trace, 'steer', d),
+    gear: Math.round(interpAt(trace, 'gear', d)),
+    cmp_speed: convertSpeed(interpAt(compare, 'speed', d)),
+    cmp_throttle: interpAt(compare, 'throttle', d),
+    cmp_brake: interpAt(compare, 'brake', d),
+    cmp_steer: interpAt(compare, 'steer', d),
+    cmp_gear: Math.round(interpAt(compare, 'gear', d)),
+    delta: tLap[i] - tCmp[i],
+  }));
+}
+
+/** Shared crosshair id — every chart in the modal syncs its hover to this. */
+const TELEMETRY_SYNC_ID = 'lap-telemetry';
+
+/** Recharts hands its tooltip content whatever it has for the hovered point;
+ *  only these three fields are ever read here. */
+type TooltipPoint = { value?: unknown; dataKey?: string | number; color?: string };
+
+function ChartTooltip({
+  active,
+  payload,
+  label: d,
+  unit,
+  digits = 0,
+  compareLabel,
+}: {
+  active?: boolean;
+  payload?: TooltipPoint[];
+  label?: unknown;
+  unit: string;
+  digits?: number;
+  compareLabel?: string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const fmt = (v: unknown) => {
+    const n = typeof v === 'number' ? v : parseFloat(String(v));
+    return isFinite(n) ? n.toFixed(digits) : '—';
+  };
+  return (
+    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '8px 12px' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>{String(d ?? '')}m</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: p.color ?? 'var(--white)' }}>
+          {String(p.dataKey).startsWith('cmp_') && compareLabel ? `${compareLabel}: ` : ''}
+          {fmt(p.value)}{unit}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function TelemetryTraceChart({
   dataKey,
@@ -147,24 +285,38 @@ function TelemetryTraceChart({
   unit,
   domain,
   data,
-  convert,
+  step,
+  digits,
+  compareLabel,
+  height = 140,
 }: {
-  dataKey: 'speed' | 'throttle' | 'brake' | 'steer';
+  dataKey: TraceKey;
   label: string;
   color: string;
   unit: string;
-  domain?: [number, number];
-  data: NonNullable<LapEntry['trace']>;
-  convert?: (v: number) => number;
+  domain?: [number | string, number | string];
+  data: ChartRow[];
+  step?: boolean;
+  digits?: number;
+  compareLabel?: string;
+  height?: number;
 }) {
-  const chartData = convert ? data.map(p => ({ ...p, [dataKey]: convert(p[dataKey]) })) : data;
+  const hasCompare = data.length > 0 && data[0][`cmp_${dataKey}`] !== undefined;
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
-        {label}
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
+          {label}
+        </div>
+        {hasCompare && compareLabel && (
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 14, height: 2, background: 'var(--amber)', display: 'inline-block' }} />
+            {compareLabel}
+          </div>
+        )}
       </div>
-      <ResponsiveContainer width="100%" height={140}>
-        <LineChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
+      <ResponsiveContainer width="100%" height={height}>
+        <LineChart data={data} margin={{ top: 4, right: 12, bottom: 0, left: 0 }} syncId={TELEMETRY_SYNC_ID}>
           <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
           <XAxis
             dataKey="d"
@@ -173,7 +325,7 @@ function TelemetryTraceChart({
             tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
             axisLine={{ stroke: 'var(--border)' }}
             tickLine={false}
-            tickFormatter={v => `${v}m`}
+            tickFormatter={v => `${Math.round(v)}m`}
             tickCount={6}
           />
           <YAxis
@@ -182,16 +334,110 @@ function TelemetryTraceChart({
             axisLine={{ stroke: 'var(--border)' }}
             tickLine={false}
             width={36}
+            allowDecimals={!step}
           />
-          <Tooltip content={({ active, payload, label: d }) => active && payload && payload.length > 0 ? (
-            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '8px 12px' }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>{d}m</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color }}>{Math.round(payload[0].value as number)}{unit}</div>
-            </div>
-          ) : null} />
-          <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          <Tooltip content={props => <ChartTooltip {...props} unit={unit} digits={digits} compareLabel={compareLabel} />} />
+          {hasCompare && (
+            <Line
+              type={step ? 'stepAfter' : 'monotone'}
+              dataKey={`cmp_${dataKey}`}
+              stroke="var(--amber)"
+              strokeWidth={1.2}
+              strokeDasharray="3 2"
+              dot={false}
+              isAnimationActive={false}
+            />
+          )}
+          <Line
+            type={step ? 'stepAfter' : 'monotone'}
+            dataKey={dataKey}
+            stroke={color}
+            strokeWidth={1.5}
+            dot={false}
+            isAnimationActive={false}
+          />
         </LineChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Delta chart — time gained/lost against the comparison lap, by distance. */
+function DeltaChart({ data, compareLabel }: { data: ChartRow[]; compareLabel: string }) {
+  const finalDelta = data.length > 0 ? data[data.length - 1].delta ?? 0 : 0;
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
+          Delta vs {compareLabel}
+        </div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: finalDelta <= 0 ? 'var(--teal)' : 'var(--red)' }}>
+          {finalDelta > 0 ? '+' : ''}{finalDelta.toFixed(3)}s
+        </div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)' }}>
+          below the line = gaining · approximate, integrated from the speed trace
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <LineChart data={data} margin={{ top: 4, right: 12, bottom: 0, left: 0 }} syncId={TELEMETRY_SYNC_ID}>
+          <CartesianGrid stroke="var(--border)" strokeDasharray="0" />
+          <XAxis
+            dataKey="d"
+            type="number"
+            domain={['dataMin', 'dataMax']}
+            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+            axisLine={{ stroke: 'var(--border)' }}
+            tickLine={false}
+            tickFormatter={v => `${Math.round(v)}m`}
+            tickCount={6}
+          />
+          <YAxis
+            tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }}
+            axisLine={{ stroke: 'var(--border)' }}
+            tickLine={false}
+            width={44}
+            tickFormatter={v => `${v > 0 ? '+' : ''}${Number(v).toFixed(1)}`}
+          />
+          <ReferenceLine y={0} stroke="var(--border-accent)" />
+          <Tooltip content={props => <ChartTooltip {...props} unit="s" digits={3} />} />
+          <Line type="monotone" dataKey="delta" stroke="var(--purple)" strokeWidth={1.6} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Headline numbers for the lap, mirroring what the lap table can't show. */
+function LapStatStrip({ lap, trace }: { lap: LapEntry; trace: Trace }) {
+  const { formatSpeed } = useUnits();
+
+  // Prefer the figures the companion computed over the full lap; fall back to
+  // the trace for laps uploaded before those fields existed.
+  const topSpeed = lap.topSpeedKph ?? (trace.length > 0 ? Math.max(...trace.map(p => p.speed)) : null);
+  const avgThrottle = lap.avgThrottlePct ?? (trace.length > 0 ? trace.reduce((a, p) => a + p.throttle, 0) / trace.length : null);
+  const avgBrake = lap.avgBrakePct ?? (trace.length > 0 ? trace.reduce((a, p) => a + p.brake, 0) / trace.length : null);
+  const lapSeconds = lap.lapTimeMs ? lap.lapTimeMs / 1000 : secsFromLap(lap.time);
+  const lapDistance = trace.length > 0 ? trace[trace.length - 1].d : 0;
+  const avgSpeed = isFinite(lapSeconds) && lapSeconds > 0 && lapDistance > 0
+    ? (lapDistance / lapSeconds) * 3.6
+    : null;
+
+  const stats: { label: string; value: string; accent?: boolean }[] = [
+    { label: 'Lap Time', value: lap.time || '—', accent: true },
+    { label: 'Top Speed', value: topSpeed != null ? formatSpeed(topSpeed) : '—' },
+    { label: 'Avg. Speed', value: avgSpeed != null ? formatSpeed(avgSpeed) : '—' },
+    { label: 'Avg. Throttle', value: avgThrottle != null ? `${Math.round(avgThrottle)}%` : '—' },
+    { label: 'Avg. Brake', value: avgBrake != null ? `${Math.round(avgBrake)}%` : '—' },
+  ];
+
+  return (
+    <div className="lap-stat-strip">
+      {stats.map(s => (
+        <div key={s.label} className="lap-stat">
+          <div className="lap-stat-label">{s.label}</div>
+          <div className={`lap-stat-value${s.accent ? ' accent' : ''}`}>{s.value}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -201,26 +447,66 @@ export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: stri
   // The session list omits lap traces to stay fast/cheap to load, so the full
   // trace for this one lap is fetched on demand when the modal opens.
   const { data: fullSession, isLoading } = useGetSessionDetail(sessionId);
-  const trace = fullSession?.laps?.find(l => l.lap === lap.lap)?.trace ?? [];
+  const [compareLapNum, setCompareLapNum] = useState<number | null>(null);
+
+  const trace: Trace = fullSession?.laps?.find(l => l.lap === lap.lap)?.trace ?? [];
+
+  // Only laps that carry a trace of their own can be compared against.
+  const comparableLaps = (fullSession?.laps ?? []).filter(
+    l => l.lap !== lap.lap && (l.trace?.length ?? 0) > 1,
+  );
+  const compareLap = comparableLaps.find(l => l.lap === compareLapNum) ?? null;
+  const compareTrace: Trace | null = compareLap?.trace ?? null;
+  const compareLabel = compareLap ? `Lap ${compareLap.lap}${compareLap.time ? ` (${compareLap.time})` : ''}` : '';
+
+  const rows = useMemo(
+    () => buildChartRows(trace, compareTrace, convertSpeed),
+    [trace, compareTrace, convertSpeed],
+  );
+  const hasGear = trace.some(p => p.gear != null);
 
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ maxWidth: 640 }}>
+      <div className="modal" style={{ maxWidth: 760, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
         <div className="modal-header">
           <span className="modal-title">Lap {lap.lap} Telemetry{lap.time ? ` — ${lap.time}` : ''}</span>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body" style={{ overflowY: 'auto' }}>
           {isLoading ? (
-            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>Loading telemetry…</div>
+            <div style={{ padding: 'var(--space-5) 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>Loading telemetry…</div>
           ) : trace.length === 0 ? (
-            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>No telemetry data recorded for this lap.</div>
+            <div style={{ padding: 'var(--space-5) 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>No telemetry data recorded for this lap.</div>
           ) : (
             <>
-              <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="var(--teal)" unit={` ${speedUnit}`} data={trace} convert={convertSpeed} />
-              <TelemetryTraceChart dataKey="throttle" label="Throttle" color="var(--green)" unit="%" domain={[0, 100]} data={trace} />
-              <TelemetryTraceChart dataKey="brake" label="Brake" color="var(--red)" unit="%" domain={[0, 100]} data={trace} />
-              <TelemetryTraceChart dataKey="steer" label="Steering" color="var(--purple)" unit="%" domain={[-100, 100]} data={trace} />
+              <LapStatStrip lap={lap} trace={trace} />
+
+              {comparableLaps.length > 0 && (
+                <div className="lap-compare-bar">
+                  <GitCompare size={13} aria-hidden="true" />
+                  <label htmlFor="lap-compare-select">Compare with</label>
+                  <select
+                    id="lap-compare-select"
+                    value={compareLapNum ?? ''}
+                    onChange={e => setCompareLapNum(e.target.value === '' ? null : Number(e.target.value))}
+                  >
+                    <option value="">No comparison</option>
+                    {comparableLaps.map(l => (
+                      <option key={l.lap} value={l.lap}>Lap {l.lap}{l.time ? ` — ${l.time}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {compareTrace && rows.length > 0 && <DeltaChart data={rows} compareLabel={compareLabel} />}
+
+              <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="var(--teal)" unit={` ${speedUnit}`} data={rows} compareLabel={compareLabel} />
+              <TelemetryTraceChart dataKey="throttle" label="Throttle" color="var(--green)" unit="%" domain={[0, 100]} data={rows} compareLabel={compareLabel} />
+              <TelemetryTraceChart dataKey="brake" label="Brake" color="var(--red)" unit="%" domain={[0, 100]} data={rows} compareLabel={compareLabel} />
+              {hasGear && (
+                <TelemetryTraceChart dataKey="gear" label="Gear" color="var(--teal)" unit="" domain={['dataMin', 'dataMax']} data={rows} step height={120} compareLabel={compareLabel} />
+              )}
+              <TelemetryTraceChart dataKey="steer" label="Steering" color="var(--purple)" unit="%" domain={[-100, 100]} data={rows} compareLabel={compareLabel} />
             </>
           )}
         </div>

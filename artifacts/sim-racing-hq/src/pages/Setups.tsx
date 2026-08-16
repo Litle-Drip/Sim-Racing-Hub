@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
-import { Plus, Eye, Trash2, Share2, Lock, Wrench } from 'lucide-react';
+import { Plus, Eye, Trash2, Share2, Lock, Wrench, Download } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { Toast } from '../components/Toast';
-import { useGetSetups, useCreateSetup, useDeleteSetup, useShareSetup, getGetSetupsQueryKey } from '@workspace/api-client-react';
+import { useGetSetups, useCreateSetup, useDeleteSetup, useShareSetup, useGetSessions, getGetSetupsQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { SetupRecord } from '@workspace/api-client-react';
+import type { SetupRecord, SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, SETUP_TAGS } from '../data/f1Tracks';
 import { CarCombobox } from '../components/CarCombobox';
+import { SetupSpecSheet } from '../components/SetupSpecSheet';
+import { takeFocusTrack } from '../lib/storage';
 
 const defaultForm = (): Omit<SetupRecord, 'id'> => ({
   label: '',
@@ -26,6 +28,12 @@ const defaultForm = (): Omit<SetupRecord, 'id'> => ({
   brakePressure: '',
   onThrottle: '',
   offThrottle: '',
+  frontCamber: '',
+  rearCamber: '',
+  frontToe: '',
+  rearToe: '',
+  frontTyrePressure: '',
+  rearTyrePressure: '',
   notes: '',
   gameVersion: '',
 });
@@ -47,6 +55,12 @@ const COMPARE_FIELDS: { key: keyof SetupRecord; label: string }[] = [
   { key: 'brakePressure', label: 'Brake Pressure %' },
   { key: 'onThrottle', label: 'On Throttle %' },
   { key: 'offThrottle', label: 'Off Throttle %' },
+  { key: 'frontCamber', label: 'Front Camber' },
+  { key: 'rearCamber', label: 'Rear Camber' },
+  { key: 'frontToe', label: 'Front Toe' },
+  { key: 'rearToe', label: 'Rear Toe' },
+  { key: 'frontTyrePressure', label: 'Front Tyre Pressure' },
+  { key: 'rearTyrePressure', label: 'Rear Tyre Pressure' },
 ];
 
 const TAG_BADGE: Record<string, string> = {
@@ -76,28 +90,28 @@ function SetupViewModal({
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
-          <table className="data-table">
-            <tbody>
-              {COMPARE_FIELDS.map(({ key, label }) => (
-                <tr key={key}>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>{label}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>
-                    {key === 'trackId' ? trackName(String(setup[key])) : String(setup[key] ?? '—')}
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', width: '40%' }}>Game Version</td>
-                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--teal)' }}>{setup.gameVersion?.trim() || '—'}</td>
-              </tr>
-              {setup.notes && (
-                <tr>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
-                  <td style={{ fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{setup.notes}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <div className="setup-spec-meta">
+            {[
+              { label: 'Car', value: setup.car },
+              { label: 'Track', value: trackName(setup.trackId) },
+              { label: 'Tag', value: setup.tag },
+              { label: 'Game Version', value: setup.gameVersion?.trim() || '—' },
+            ].map(({ label, value }) => (
+              <div key={label} className="setup-spec-meta-item">
+                <div className="setup-spec-meta-label">{label}</div>
+                <div className="setup-spec-meta-value">{value || '—'}</div>
+              </div>
+            ))}
+          </div>
+
+          <SetupSpecSheet setup={setup} />
+
+          {setup.notes && (
+            <div className="setup-spec-notes">
+              <div className="setup-spec-meta-label" style={{ marginBottom: 6 }}>Notes</div>
+              {setup.notes}
+            </div>
+          )}
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Close</button>
@@ -155,19 +169,132 @@ function CompareView({ setups, onBack }: { setups: [SetupRecord, SetupRecord]; o
   );
 }
 
+/** The setup fields a session's telemetry snapshot can fill in. */
+type SetupFormValues = Omit<SetupRecord, 'id'>;
+
+/**
+ * Turns the setup the companion captured off the game's CarSetup packet into
+ * setup-form values. The snapshot is numeric and the form is all strings, and
+ * the springs are named differently on each side — the game calls them
+ * "suspension", this vault has always called them springs.
+ */
+function formFromSnapshot(session: SessionRecord): Partial<SetupFormValues> | null {
+  const snap = session.setupSnapshot;
+  if (!snap) return null;
+  const n = (v: number, digits = 0) => (typeof v === 'number' && isFinite(v) ? v.toFixed(digits) : '');
+  return {
+    car: session.car,
+    trackId: session.trackId,
+    gameVersion: session.gameVersion || '',
+    frontWing: n(snap.frontWing),
+    rearWing: n(snap.rearWing),
+    onThrottle: n(snap.onThrottle),
+    offThrottle: n(snap.offThrottle),
+    frontCamber: n(snap.frontCamber, 2),
+    rearCamber: n(snap.rearCamber, 2),
+    frontToe: n(snap.frontToe, 2),
+    rearToe: n(snap.rearToe, 2),
+    frontSprings: n(snap.frontSuspension),
+    rearSprings: n(snap.rearSuspension),
+    frontARB: n(snap.frontAntiRollBar),
+    rearARB: n(snap.rearAntiRollBar),
+    frontRideHeight: n(snap.frontRideHeight),
+    rearRideHeight: n(snap.rearRideHeight),
+    brakePressure: n(snap.brakePressure),
+    brakeBias: n(snap.brakeBias),
+    frontTyrePressure: n(snap.frontTyrePressure, 1),
+    rearTyrePressure: n(snap.rearTyrePressure, 1),
+  };
+}
+
+/**
+ * Picks one of the driver's own sessions to lift a setup from. Only sessions
+ * the companion recorded a setup snapshot for can be used — manually logged
+ * sessions have nothing to copy.
+ */
+function ImportFromSessionModal({
+  sessions,
+  isLoading,
+  onPick,
+  onClose,
+}: {
+  sessions: SessionRecord[];
+  isLoading: boolean;
+  onPick: (session: SessionRecord) => void;
+  onClose: () => void;
+}) {
+  const withSetup = useMemo(
+    () => sessions
+      .filter(s => !!s.setupSnapshot)
+      .sort((a, b) => b.date.localeCompare(a.date)),
+    [sessions],
+  );
+  const trackName = (id: string) => F1_TRACKS.find(t => t.id === id)?.short || id;
+
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-header">
+          <span className="modal-title">Save Setup From a Session</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body" style={{ overflowY: 'auto' }}>
+          {isLoading ? (
+            <div className="empty-state"><div className="empty-state-title">Loading sessions…</div></div>
+          ) : withSetup.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-title">No Setups To Import</div>
+              <div className="empty-state-desc">
+                The companion app records the car setup alongside your telemetry. Once you've
+                run a session with it connected, that setup shows up here ready to save.
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginBottom: 14 }}>
+                Pick a session and its car setup is filled into the form — exactly as the game
+                reported it, no typing.
+              </div>
+              <div className="import-session-list">
+                {withSetup.map(s => (
+                  <button key={s.id} className="import-session-row" onClick={() => onPick(s)}>
+                    <span className="import-session-main">
+                      <span className="import-session-track">{trackName(s.trackId)}</span>
+                      <span className="import-session-car">{s.car}</span>
+                    </span>
+                    <span className="import-session-meta">
+                      {s.bestLap && <span className="lap-time">{s.bestLap}</span>}
+                      <span className="import-session-date">{s.date}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Setups() {
   const qc = useQueryClient();
   const { data: setups = [], isLoading } = useGetSetups();
+  // Only fetched to offer setups captured from telemetry; the picker is the
+  // only thing on this page that reads sessions.
+  const { data: sessions = [], isLoading: sessionsLoading } = useGetSessions();
 
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<Omit<SetupRecord, 'id'>>(defaultForm());
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState('');
-  const [filterTrack, setFilterTrack] = useState('');
+  // Pre-filtered when arrived at from a track page's "Setups" quick-link.
+  const [filterTrack, setFilterTrack] = useState(() => takeFocusTrack());
   const [filterTag, setFilterTag] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [viewSetup, setViewSetup] = useState<SetupRecord | null>(null);
   const [comparing, setComparing] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
 
   const { mutate: createSetup, isPending: saving } = useCreateSetup({
@@ -247,6 +374,12 @@ export default function Setups() {
         brakePressure: String(form.brakePressure),
         onThrottle: String(form.onThrottle),
         offThrottle: String(form.offThrottle),
+        frontCamber: String(form.frontCamber ?? ''),
+        rearCamber: String(form.rearCamber ?? ''),
+        frontToe: String(form.frontToe ?? ''),
+        rearToe: String(form.rearToe ?? ''),
+        frontTyrePressure: String(form.frontTyrePressure ?? ''),
+        rearTyrePressure: String(form.rearTyrePressure ?? ''),
         notes: form.notes,
         gameVersion: form.gameVersion ?? undefined,
       },
@@ -284,9 +417,14 @@ export default function Setups() {
       )}
       <div className="page-header">
         <h1 className="page-title">Setup Vault</h1>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <Plus size={12} /> Add Setup
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-secondary" onClick={() => setShowImport(true)}>
+            <Download size={12} /> From Session
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <Plus size={12} /> Add Setup
+          </button>
+        </div>
       </div>
 
       {/* Compare bar */}
@@ -413,6 +551,30 @@ export default function Setups() {
         />
       )}
 
+      {/* Import from a telemetry-captured session */}
+      {showImport && (
+        <ImportFromSessionModal
+          sessions={sessions}
+          isLoading={sessionsLoading}
+          onClose={() => setShowImport(false)}
+          onPick={(session) => {
+            const values = formFromSnapshot(session);
+            if (!values) return;
+            const track = F1_TRACKS.find(t => t.id === session.trackId);
+            setForm({
+              ...defaultForm(),
+              ...values,
+              // A name the driver can recognise in the vault, editable before saving.
+              label: `${track?.short ?? session.trackId} — ${session.date}`,
+            });
+            setFormErrors({});
+            setSaveError('');
+            setShowImport(false);
+            setShowModal(true);
+          }}
+        />
+      )}
+
       {/* Add Setup Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
@@ -423,9 +585,7 @@ export default function Setups() {
             </div>
             <div className="modal-body">
               {saveError && (
-                <div style={{ background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)', color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '10px 14px', marginBottom: 16 }}>
-                  {saveError}
-                </div>
+                <div className="notice notice--error">{saveError}</div>
               )}
               <div className="form-grid">
                 <div className="field">
@@ -497,6 +657,34 @@ export default function Setups() {
                 <div className="field">
                   <label className="field-label">Brake Pressure %</label>
                   <input type="number" value={form.brakePressure} onChange={e => setField('brakePressure', e.target.value)} />
+                </div>
+
+                <div className="form-section-title">Suspension Geometry</div>
+                <div className="field">
+                  <label className="field-label">Front Camber (-3.50 to -2.50)</label>
+                  <input type="number" step={0.01} value={form.frontCamber ?? ''} onChange={e => setField('frontCamber', e.target.value)} />
+                </div>
+                <div className="field">
+                  <label className="field-label">Rear Camber (-2.00 to -1.00)</label>
+                  <input type="number" step={0.01} value={form.rearCamber ?? ''} onChange={e => setField('rearCamber', e.target.value)} />
+                </div>
+                <div className="field">
+                  <label className="field-label">Front Toe (0.00 to 0.20)</label>
+                  <input type="number" step={0.01} value={form.frontToe ?? ''} onChange={e => setField('frontToe', e.target.value)} />
+                </div>
+                <div className="field">
+                  <label className="field-label">Rear Toe (0.10 to 0.50)</label>
+                  <input type="number" step={0.01} value={form.rearToe ?? ''} onChange={e => setField('rearToe', e.target.value)} />
+                </div>
+
+                <div className="form-section-title">Tyres</div>
+                <div className="field">
+                  <label className="field-label">Front Tyre Pressure (psi)</label>
+                  <input type="number" step={0.1} value={form.frontTyrePressure ?? ''} onChange={e => setField('frontTyrePressure', e.target.value)} />
+                </div>
+                <div className="field">
+                  <label className="field-label">Rear Tyre Pressure (psi)</label>
+                  <input type="number" step={0.1} value={form.rearTyrePressure ?? ''} onChange={e => setField('rearTyrePressure', e.target.value)} />
                 </div>
 
                 <div className="form-section-title">Differential</div>

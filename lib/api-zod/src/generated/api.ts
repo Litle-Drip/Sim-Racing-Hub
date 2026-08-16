@@ -586,6 +586,12 @@ export const GetSetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
+  "frontCamber": zod.string().optional(),
+  "rearCamber": zod.string().optional(),
+  "frontToe": zod.string().optional(),
+  "rearToe": zod.string().optional(),
+  "frontTyrePressure": zod.string().optional(),
+  "rearTyrePressure": zod.string().optional(),
   "notes": zod.string().max(getSetupsResponseNotesMax),
   "isPublic": zod.boolean().optional(),
   "sharedAt": zod.string().nullish(),
@@ -624,6 +630,12 @@ export const CreateSetupBody = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
+  "frontCamber": zod.string().optional(),
+  "rearCamber": zod.string().optional(),
+  "frontToe": zod.string().optional(),
+  "rearToe": zod.string().optional(),
+  "frontTyrePressure": zod.string().optional(),
+  "rearTyrePressure": zod.string().optional(),
   "notes": zod.string().max(createSetupBodyNotesMax),
   "gameVersion": zod.string().optional()
 })
@@ -721,6 +733,12 @@ export const GetCommunitySetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
+  "frontCamber": zod.string().optional(),
+  "rearCamber": zod.string().optional(),
+  "frontToe": zod.string().optional(),
+  "rearToe": zod.string().optional(),
+  "frontTyrePressure": zod.string().optional(),
+  "rearTyrePressure": zod.string().optional(),
   "notes": zod.string().max(getCommunitySetupsResponseNotesMax),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
@@ -766,6 +784,12 @@ export const GetCommunitySetupResponse = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
+  "frontCamber": zod.string().optional(),
+  "rearCamber": zod.string().optional(),
+  "frontToe": zod.string().optional(),
+  "rearToe": zod.string().optional(),
+  "frontTyrePressure": zod.string().optional(),
+  "rearTyrePressure": zod.string().optional(),
   "notes": zod.string().max(getCommunitySetupResponseNotesMax),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
@@ -1168,7 +1192,8 @@ export const GetRivalChallengesResponseItem = zod.object({
   "s3": zod.string(),
   "raceTimeSeconds": zod.number().nullish()
 }).nullish(),
-  "winnerUserId": zod.string().nullish()
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
 })
 export const GetRivalChallengesResponse = zod.array(GetRivalChallengesResponseItem)
 
@@ -1264,7 +1289,67 @@ export const SubmitRivalChallengeAttemptResponse = zod.object({
   "s3": zod.string(),
   "raceTimeSeconds": zod.number().nullish()
 }).nullish(),
-  "winnerUserId": zod.string().nullish()
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
+})
+
+
+/**
+ * @summary Acknowledge the result of a completed rival challenge
+ */
+export const MarkRivalChallengeSeenParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const markRivalChallengeSeenResponseIdMax = 200;
+
+export const markRivalChallengeSeenResponseCreatorSessionIdMax = 200;
+
+export const markRivalChallengeSeenResponseOpponentSessionOneIdMax = 200;
+
+
+
+export const MarkRivalChallengeSeenResponse = zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseIdMax),
+  "status": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "lapCount": zod.number(),
+  "message": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "creator": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "opponent": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "creatorSession": zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseCreatorSessionIdMax),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}),
+  "opponentSession": zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseOpponentSessionOneIdMax),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}).nullish(),
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
 })
 
 
@@ -1385,6 +1470,137 @@ export const UpsertTrackNotesResponse = zod.object({
   "lineNotes": zod.string(),
   "myNotes": zod.string()
 })).max(upsertTrackNotesResponseCornersMax)
+})
+
+
+/**
+ * @summary Get the current user's friends and pending friend requests
+ */
+export const GetFriendsResponse = zod.object({
+  "friends": zod.array(zod.object({
+  "id": zod.string().describe('Friendship id — the handle for accept\/remove.'),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "status": zod.string().describe('pending | accepted'),
+  "direction": zod.string().describe('incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.\n'),
+  "createdAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session, shared or not.'),
+  "sharedSessions": zod.number(),
+  "lastSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string()
+}).describe('The friend\'s most recent shared session, if they have one.').nullish()
+})),
+  "incoming": zod.array(zod.object({
+  "id": zod.string().describe('Friendship id — the handle for accept\/remove.'),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "status": zod.string().describe('pending | accepted'),
+  "direction": zod.string().describe('incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.\n'),
+  "createdAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session, shared or not.'),
+  "sharedSessions": zod.number(),
+  "lastSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string()
+}).describe('The friend\'s most recent shared session, if they have one.').nullish()
+})),
+  "outgoing": zod.array(zod.object({
+  "id": zod.string().describe('Friendship id — the handle for accept\/remove.'),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "status": zod.string().describe('pending | accepted'),
+  "direction": zod.string().describe('incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.\n'),
+  "createdAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session, shared or not.'),
+  "sharedSessions": zod.number(),
+  "lastSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string()
+}).describe('The friend\'s most recent shared session, if they have one.').nullish()
+}))
+})
+
+
+/**
+ * @summary Send a friend request by username
+ */
+export const addFriendBodyUsernameMax = 100;
+
+
+
+export const AddFriendBody = zod.object({
+  "username": zod.string().max(addFriendBodyUsernameMax)
+})
+
+
+/**
+ * @summary Recent shared sessions from the current user's friends
+ */
+export const GetFriendSessionsResponseItem = zod.object({
+  "id": zod.string(),
+  "username": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "conditions": zod.string(),
+  "publicNote": zod.string().nullish(),
+  "sharedAt": zod.string().nullish()
+})
+export const GetFriendSessionsResponse = zod.array(GetFriendSessionsResponseItem)
+
+
+/**
+ * @summary Accept a friend request sent to you
+ */
+export const AcceptFriendRequestParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AcceptFriendRequestResponse = zod.object({
+  "id": zod.string().describe('Friendship id — the handle for accept\/remove.'),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "status": zod.string().describe('pending | accepted'),
+  "direction": zod.string().describe('incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.\n'),
+  "createdAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session, shared or not.'),
+  "sharedSessions": zod.number(),
+  "lastSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string()
+}).describe('The friend\'s most recent shared session, if they have one.').nullish()
+})
+
+
+/**
+ * @summary Remove a friend, decline a request, or cancel one you sent
+ */
+export const RemoveFriendParams = zod.object({
+  "id": zod.coerce.string()
 })
 
 

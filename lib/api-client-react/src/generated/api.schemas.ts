@@ -333,6 +333,12 @@ export interface SetupRecord {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  frontCamber?: string;
+  rearCamber?: string;
+  frontToe?: string;
+  rearToe?: string;
+  frontTyrePressure?: string;
+  rearTyrePressure?: string;
   /** @maxLength 5000 */
   notes: string;
   isPublic?: boolean;
@@ -361,6 +367,12 @@ export interface CommunitySetupRecord {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  frontCamber?: string;
+  rearCamber?: string;
+  frontToe?: string;
+  rearToe?: string;
+  frontTyrePressure?: string;
+  rearTyrePressure?: string;
   /** @maxLength 5000 */
   notes: string;
   authorName: string;
@@ -410,6 +422,12 @@ export interface CreateSetupRequest {
   brakePressure: string;
   onThrottle: string;
   offThrottle: string;
+  frontCamber?: string;
+  rearCamber?: string;
+  frontToe?: string;
+  rearToe?: string;
+  frontTyrePressure?: string;
+  rearTyrePressure?: string;
   /** @maxLength 5000 */
   notes: string;
   gameVersion?: string;
@@ -596,6 +614,9 @@ export interface RivalChallengeRecord {
   creatorSession: RivalChallengeSessionSummary;
   opponentSession?: RivalChallengeSessionSummary | null;
   winnerUserId?: string | null;
+  /** Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the "you won / you lost" notification up.
+   */
+  resultSeen: boolean;
 }
 
 export interface CreateRivalChallengeRequest {
@@ -624,6 +645,61 @@ export interface RivalChallengeUserLookup {
   userId: string;
   name: string;
   avatarUrl?: string | null;
+}
+
+/**
+ * The friend's most recent shared session, if they have one.
+ */
+export interface FriendSessionSummary {
+  id: string;
+  date: string;
+  trackId: string;
+  car: string;
+  type: string;
+  bestLap: string;
+}
+
+export interface FriendRecord {
+  /** Friendship id — the handle for accept/remove. */
+  id: string;
+  userId: string;
+  username: string;
+  avatarUrl?: string | null;
+  /** pending | accepted */
+  status: string;
+  /** incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.
+   */
+  direction: string;
+  createdAt: string;
+  /** When they last logged a session, shared or not. */
+  lastActiveAt?: string | null;
+  sharedSessions: number;
+  lastSession?: FriendSessionSummary | null;
+}
+
+export interface FriendList {
+  friends: FriendRecord[];
+  incoming: FriendRecord[];
+  outgoing: FriendRecord[];
+}
+
+export interface AddFriendRequest {
+  /** @maxLength 100 */
+  username: string;
+}
+
+export interface FriendSessionRecord {
+  id: string;
+  username: string;
+  date: string;
+  trackId: string;
+  car: string;
+  type: string;
+  bestLap: string;
+  avgLap: string;
+  conditions: string;
+  publicNote?: string | null;
+  sharedAt?: string | null;
 }
 
 export interface CreateHardwareRequest {

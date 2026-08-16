@@ -206,6 +206,17 @@ export const setupsTable = pgTable("setups", {
   brakePressure: text("brake_pressure").notNull().default(""),
   onThrottle: text("on_throttle").notNull().default(""),
   offThrottle: text("off_throttle").notNull().default(""),
+  // Suspension geometry and tyre pressures. Added later than the rest, so
+  // setups saved before this default to "" rather than carrying a value —
+  // the UI renders those as "—" like any other blank field. The companion
+  // captures all six off the game's CarSetup packet, which is what makes
+  // "save setup from a session" able to fill them in without typing.
+  frontCamber: text("front_camber").notNull().default(""),
+  rearCamber: text("rear_camber").notNull().default(""),
+  frontToe: text("front_toe").notNull().default(""),
+  rearToe: text("rear_toe").notNull().default(""),
+  frontTyrePressure: text("front_tyre_pressure").notNull().default(""),
+  rearTyrePressure: text("rear_tyre_pressure").notNull().default(""),
   notes: text("notes").notNull().default(""),
   gameVersion: text("game_version").notNull().default(""),
   isPublic: boolean("is_public").notNull().default(false),
@@ -296,10 +307,39 @@ export const rivalChallengesTable = pgTable("rival_challenges", {
   status: text("status").notNull().default("pending"), // pending | completed | cancelled
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
+  // Whether each side has seen the result once the challenge completed.
+  // The opponent's is set when they submit their attempt (they're looking
+  // right at the result), the creator's only when they acknowledge it —
+  // that unseen flag is what keeps the "you won / you lost" notification
+  // alive after the opponent finishes.
+  creatorSeenResult: boolean("creator_seen_result").notNull().default(false),
+  opponentSeenResult: boolean("opponent_seen_result").notNull().default(false),
 });
 
 export type DbRivalChallenge = typeof rivalChallengesTable.$inferSelect;
 export type InsertDbRivalChallenge = typeof rivalChallengesTable.$inferInsert;
+
+// A friendship is one row per pair, owned by whoever sent the request.
+// `status` is "pending" until the addressee accepts, then "accepted".
+// Declining or removing deletes the row outright, so a pair can always
+// start over. The unique constraint is on (requester_id, addressee_id) —
+// the reverse direction is prevented in the route, which checks for an
+// existing row in either direction before inserting.
+export const friendshipsTable = pgTable("friendships", {
+  id: text("id").primaryKey(),
+  requesterId: text("requester_id").notNull(),
+  addresseeId: text("addressee_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending | accepted
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  respondedAt: timestamp("responded_at"),
+}, (t) => [
+  unique("friendships_uniq").on(t.requesterId, t.addresseeId),
+  index("friendships_requester_idx").on(t.requesterId),
+  index("friendships_addressee_idx").on(t.addresseeId),
+]);
+
+export type DbFriendship = typeof friendshipsTable.$inferSelect;
+export type InsertDbFriendship = typeof friendshipsTable.$inferInsert;
 
 // Tracks each user's lifetime AI Race Engineer message count so the free
 // tier can be capped. Entering the shared unlock password sets

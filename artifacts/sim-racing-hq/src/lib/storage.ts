@@ -24,3 +24,24 @@ export function isFasterLap(a: string, b: string): boolean {
 // Handoff key used to jump from another page (e.g. Tracks' PB tile) straight
 // to a specific session on the Sessions page, expanded and scrolled into view.
 export const FOCUS_SESSION_KEY = 'f1simhub-focus-session';
+
+// Handoff key used by the track page's quick-links, so jumping to Setups or
+// the Community leaderboard lands on the track you were just looking at
+// rather than the full unfiltered list. Read once and cleared by whoever
+// consumes it.
+export const FOCUS_TRACK_KEY = 'f1simhub-focus-track';
+
+export function takeFocusTrack(): string {
+  try {
+    const v = sessionStorage.getItem(FOCUS_TRACK_KEY);
+    if (v) sessionStorage.removeItem(FOCUS_TRACK_KEY);
+    return v ?? '';
+  } catch {
+    return '';
+  }
+}
+
+// Set by the /log deep link so the Sessions page opens with its log form
+// already up. /log used to render a separate Quick Log screen with its own
+// cut-down copy of the same form; now it's one form, reached one way.
+export const OPEN_LOG_KEY = 'f1simhub-open-log';

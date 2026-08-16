@@ -4,38 +4,9 @@ import { db, rivalChallengesTable, sessionsTable, type DbRivalChallenge, type Db
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
 import { CreateRivalChallengeBody, SubmitRivalChallengeAttemptBody } from "@workspace/api-zod";
+import { raceMetricSeconds, decideWinner } from "../lib/rivalResults";
 
 const router = Router();
-
-function lapToSeconds(lap: string): number {
-  if (!lap || !lap.includes(":")) {
-    const n = parseFloat(lap);
-    return isNaN(n) ? Infinity : n;
-  }
-  const parts = lap.split(":");
-  const mins = parseFloat(parts[0]);
-  const secs = parseFloat(parts[1]);
-  if (isNaN(mins) || isNaN(secs)) return Infinity;
-  return mins * 60 + secs;
-}
-
-// Metric used to decide a winner: for a 1-lap challenge it's the best lap,
-// for an N-lap challenge it's the total time across the first N logged
-// laps. If the session doesn't have enough individual laps recorded (e.g.
-// summary-only entries), fall back to avgLap * lapCount as an estimate.
-function raceMetricSeconds(session: DbSession, lapCount: number): number | null {
-  if (lapCount <= 1) {
-    return session.bestLap ? lapToSeconds(session.bestLap) : null;
-  }
-  const laps = (session.laps ?? []).filter((l) => l.time && l.time.trim() !== "");
-  if (laps.length >= lapCount) {
-    return laps.slice(0, lapCount).reduce((sum, l) => sum + lapToSeconds(l.time), 0);
-  }
-  if (session.avgLap) {
-    return lapToSeconds(session.avgLap) * lapCount;
-  }
-  return null;
-}
 
 async function getDisplayNames(userIds: string[]): Promise<Record<string, string>> {
   if (userIds.length === 0) return {};
@@ -64,28 +35,50 @@ async function getDisplayNames(userIds: string[]): Promise<Record<string, string
   }
 }
 
-async function findUserByUsername(
+// Never trust position in a Clerk result set — always confirm the user
+// handed back actually owns the username that was asked for. Clerk returns
+// a plain list, and any request it can't apply the username filter to
+// degrades into "first user in the instance", which is how challenging
+// `slumlordmillionaire` addressed a completely unrelated account. Same
+// verification the public driver profile lookup does.
+export async function findUserByUsername(
   username: string,
 ): Promise<{ id: string; name: string; avatarUrl: string | null } | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) return null;
-  const resp = await fetch(
-    `https://api.clerk.com/v1/users?username[]=${encodeURIComponent(username)}&limit=1`,
-    { headers: { Authorization: `Bearer ${secretKey}` } },
-  );
-  if (!resp.ok) return null;
-  const users = (await resp.json()) as Array<{
+
+  type ClerkUser = {
     id: string;
     username?: string | null;
     first_name?: string | null;
     image_url?: string | null;
-  }>;
-  if (users.length === 0) return null;
-  const u = users[0];
+  };
+
+  const wanted = username.trim().toLowerCase();
+  const matches = (u: ClerkUser) => !!u.username && u.username.toLowerCase() === wanted;
+
+  const lookup = async (query: string): Promise<ClerkUser[]> => {
+    const resp = await fetch(`https://api.clerk.com/v1/users?${query}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    });
+    if (!resp.ok) return [];
+    return (await resp.json()) as ClerkUser[];
+  };
+
+  // Exact filter first. It's case-sensitive, so fall back to Clerk's fuzzy
+  // `query` search for usernames typed with different casing.
+  let user = (await lookup(`username[]=${encodeURIComponent(username.trim())}&limit=10`)).find(matches);
+  if (!user) {
+    user = (await lookup(`query=${encodeURIComponent(username.trim())}&limit=20`)).find(matches);
+  }
+  if (!user) return null;
+
   return {
-    id: u.id,
-    name: u.username ?? (u.first_name ? u.first_name : "Anonymous"),
-    avatarUrl: u.image_url ?? null,
+    id: user.id,
+    // Profiles are addressed by username, so that's the name shown — never
+    // a real name off the account, which the driver never chose to publish.
+    name: user.username ?? "Anonymous",
+    avatarUrl: user.image_url ?? null,
   };
 }
 
@@ -112,14 +105,17 @@ async function serializeChallenge(row: DbRivalChallenge, currentUserId: string) 
 
   const nameMap = await getDisplayNames([row.creatorId, row.opponentId]);
 
-  let winnerUserId: string | null = null;
-  if (creatorSession && opponentSession) {
-    const creatorMetric = raceMetricSeconds(creatorSession, row.lapCount);
-    const opponentMetric = raceMetricSeconds(opponentSession, row.lapCount);
-    if (creatorMetric !== null && opponentMetric !== null) {
-      winnerUserId = opponentMetric < creatorMetric ? row.opponentId : row.creatorId;
-    }
-  }
+  const winnerUserId =
+    creatorSession && opponentSession
+      ? decideWinner(
+          raceMetricSeconds(creatorSession, row.lapCount),
+          raceMetricSeconds(opponentSession, row.lapCount),
+          row.creatorId,
+          row.opponentId,
+        )
+      : null;
+
+  const isCreator = row.creatorId === currentUserId;
 
   return {
     id: row.id,
@@ -139,6 +135,11 @@ async function serializeChallenge(row: DbRivalChallenge, currentUserId: string) 
       ? { ...summarizeSession(opponentSession), raceTimeSeconds: raceMetricSeconds(opponentSession, row.lapCount) }
       : null,
     winnerUserId,
+    // Whether *this* viewer has acknowledged the result. Only meaningful
+    // once the challenge is completed; that's what keeps the "you won /
+    // you lost" notification up for the driver who wasn't the one to
+    // finish it.
+    resultSeen: isCreator ? row.creatorSeenResult : row.opponentSeenResult,
   };
 }
 
@@ -274,7 +275,16 @@ router.post("/rival-challenges/:id/attempt", requireAuth, async (req, res) => {
 
     await db
       .update(rivalChallengesTable)
-      .set({ opponentSessionId: session.id, status: "completed", completedAt: new Date() })
+      .set({
+        opponentSessionId: session.id,
+        status: "completed",
+        completedAt: new Date(),
+        // The opponent is looking at the result the instant they submit,
+        // so it's already seen for them. The creator's stays false — that's
+        // the notification telling them their challenge came back.
+        opponentSeenResult: true,
+        creatorSeenResult: false,
+      })
       .where(eq(rivalChallengesTable.id, id));
 
     const [saved] = await db.select().from(rivalChallengesTable).where(eq(rivalChallengesTable.id, id));
@@ -285,6 +295,38 @@ router.post("/rival-challenges/:id/attempt", requireAuth, async (req, res) => {
     res.json(await serializeChallenge(saved, userId));
   } catch (err) {
     req.log.error({ err }, "Failed to submit rival challenge attempt");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/rival-challenges/:id/seen", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).userId as string;
+  const id = req.params.id as string;
+
+  try {
+    const [challenge] = await db.select().from(rivalChallengesTable).where(eq(rivalChallengesTable.id, id));
+    if (!challenge || (challenge.creatorId !== userId && challenge.opponentId !== userId)) {
+      res.status(404).json({ error: "Challenge not found" });
+      return;
+    }
+
+    await db
+      .update(rivalChallengesTable)
+      .set(
+        challenge.creatorId === userId
+          ? { creatorSeenResult: true }
+          : { opponentSeenResult: true },
+      )
+      .where(eq(rivalChallengesTable.id, id));
+
+    const [saved] = await db.select().from(rivalChallengesTable).where(eq(rivalChallengesTable.id, id));
+    if (!saved) {
+      res.status(500).json({ error: "Failed to retrieve challenge" });
+      return;
+    }
+    res.json(await serializeChallenge(saved, userId));
+  } catch (err) {
+    req.log.error({ err }, "Failed to mark rival challenge result as seen");
     res.status(500).json({ error: "Internal server error" });
   }
 });
