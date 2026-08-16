@@ -160,6 +160,16 @@ textarea {
   min-height: var(--control-height);
 }
 
+/* Tick boxes are not text fields: the shared `width: 100%` above stretched
+   them across their row, which pushed the label text hard against the far
+   edge (visible on the Rivals challenge modal). They size to their glyph. */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  flex: none;
+  accent-color: var(--red);
+}
+
 input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) {
   border-color: var(--gray);
 }
@@ -694,6 +704,160 @@ summary:focus-visible,
   margin-top: var(--space-1);
 }
 
+/* Counts and status text that sit opposite the page title. */
+.page-header-meta {
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  color: var(--gray-mid);
+  white-space: nowrap;
+}
+
+/* =========================================================
+   PAGE TABS
+   Underlined section switcher (Community, and anywhere else a page
+   splits into sections). Sized off the same display-font ramp as .btn
+   and .nav-link so the three don't drift apart.
+   ========================================================= */
+
+.page-tabs {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-5);
+}
+
+.page-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  margin-bottom: -1px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-mid);
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.page-tab:hover {
+  color: var(--gray-light);
+}
+
+.page-tab--active {
+  color: var(--white);
+  border-bottom-color: var(--red);
+}
+
+.page-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 var(--space-1);
+  border-radius: 8px;
+  background: var(--red);
+  color: var(--on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* =========================================================
+   TOOLBAR
+   One row for a section's filters and its actions, so a lone
+   right-aligned button never gets a band of empty page to itself.
+   ========================================================= */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.toolbar-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* =========================================================
+   NOTICES
+   Inline banners (a challenge waiting on you, a result to read, an
+   import that failed). These were hand-rolled per page and had drifted
+   to four paddings and three corner radii between them.
+   ========================================================= */
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  color: var(--white);
+  line-height: 1.5;
+}
+
+.notice-text {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.notice-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.notice--red {
+  background: rgba(232, 0, 45, 0.12);
+  border-color: rgba(232, 0, 45, 0.4);
+}
+
+.notice--teal {
+  background: rgba(0, 210, 190, 0.08);
+  border-color: rgba(0, 210, 190, 0.3);
+}
+
+.notice--gray {
+  background: var(--hover);
+  border-color: var(--border-accent);
+}
+
+/* Error text, as opposed to an error-flavoured banner with its own actions. */
+.notice--error {
+  background: rgba(232, 0, 45, 0.12);
+  border-color: rgba(232, 0, 45, 0.4);
+  color: var(--red);
+}
+
 /* =========================================================
    CARDS
    ========================================================= */
@@ -945,7 +1109,7 @@ summary:focus-visible,
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-top: 2px solid var(--red);
-  padding: 24px;
+  padding: var(--space-5);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -1121,12 +1285,16 @@ summary:focus-visible,
   font-size: 11px;
 }
 
+/* Destructive actions always sit beside a `btn-ghost btn-sm` (Delete next to
+   Share, Delete next to View). It kept .btn's 36px height against their 28px,
+   so the pair never lined up — it now carries the small metrics itself. */
 .btn-danger {
   background: transparent;
   color: var(--red);
   border: 1px solid rgba(232,0,45,0.3);
+  min-height: 28px;
+  padding: 5px var(--space-3);
   font-size: 11px;
-  padding: 4px 10px;
 }
 
 .btn-danger:hover {
@@ -1144,7 +1312,7 @@ summary:focus-visible,
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gray-light);
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 /* =========================================================
@@ -1323,7 +1491,7 @@ summary:focus-visible,
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gray-mid);
-  padding: 11px 14px;
+  padding: var(--space-3) var(--space-4);
   text-align: left;
   border-bottom: 1px solid var(--border-accent);
   background: var(--bg-elevated);
@@ -1331,7 +1499,7 @@ summary:focus-visible,
 }
 
 .data-table td {
-  padding: 13px 14px;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border);
   font-family: var(--font-body);
   font-size: 14px;
@@ -1353,6 +1521,22 @@ summary:focus-visible,
   background: var(--bg-card);
   border: 1px solid var(--border);
   overflow-x: auto;
+}
+
+/* A title strip that belongs to the table below it. Keeps a labelled table
+   (leaderboard circuits) reading as one object instead of a floating caption
+   with a separate card underneath. */
+.table-wrap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--white);
 }
 
 /* =========================================================
@@ -1434,8 +1618,8 @@ summary:focus-visible,
 .filter-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
   flex-wrap: wrap;
 }
 
@@ -1500,7 +1684,7 @@ summary:focus-visible,
 }
 
 .modal-header {
-  padding: 24px 28px 16px;
+  padding: var(--space-5) var(--space-5) var(--space-4);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1532,15 +1716,15 @@ summary:focus-visible,
 .modal-close:hover { color: var(--white); }
 
 .modal-body {
-  padding: 24px 28px;
+  padding: var(--space-5);
 }
 
 .modal-footer {
-  padding: 16px 28px;
+  padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 /* =========================================================
@@ -1550,7 +1734,15 @@ summary:focus-visible,
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--space-4);
+}
+
+/* Vertical stack of fields inside a modal — one rhythm instead of a
+   per-field margin repeated by hand at three different values. */
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 .form-grid.full { grid-column: 1 / -1; }
@@ -1715,8 +1907,8 @@ summary:focus-visible,
 .heatmap-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 24px;
-  margin-bottom: 32px;
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .heatmap-header {
@@ -2094,19 +2286,26 @@ summary:focus-visible,
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Badge category tabs */
+/* Filter chips (dashboard badge categories, Rivals challenge states).
+   Sized to match .btn-sm — same height, same type size, same radius — so a
+   chip row sitting next to a button row reads as one control scale. */
 .badge-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 28px;
+  padding: 0 var(--space-3);
   font-family: var(--font-display);
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--gray);
   background: transparent;
   border: 1px solid var(--border);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
 }
 
 .badge-tab:hover {
@@ -2159,7 +2358,7 @@ summary:focus-visible,
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-top: 2px solid transparent;
-  padding: 18px;
+  padding: var(--space-4);
   cursor: pointer;
   transition: border-top-color 0.15s, transform 0.15s;
   position: relative;
@@ -2324,7 +2523,7 @@ summary:focus-visible,
 .setup-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  gap: var(--space-4);
 }
 
 .setup-card {
@@ -2341,7 +2540,7 @@ summary:focus-visible,
 .setup-card-header {
   /* Extra right padding keeps the tag badge clear of the absolutely
      positioned selection checkbox (top:14/right:14, ~30px wide zone). */
-  padding: 16px 40px 16px 20px;
+  padding: var(--space-4) 40px var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: flex-start;
@@ -2366,7 +2565,7 @@ summary:focus-visible,
 }
 
 .setup-card-body {
-  padding: 16px 20px;
+  padding: var(--space-4) var(--space-5);
 }
 
 .setup-preview-row {
@@ -2397,7 +2596,7 @@ summary:focus-visible,
 }
 
 .setup-card-actions {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -2441,10 +2640,10 @@ summary:focus-visible,
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-top: 2px solid var(--border-accent);
-  padding: 20px;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
   transition: border-top-color 0.15s;
 }
 
@@ -2584,10 +2783,10 @@ summary:focus-visible,
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-top: 2px solid var(--border-accent);
-  padding: 20px;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
   transition: border-top-color 0.15s;
 }
 
@@ -2779,8 +2978,8 @@ summary:focus-visible,
 .chart-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 24px;
-  margin-bottom: 24px;
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
 }
 
 .chart-section .section-title {
@@ -2796,7 +2995,7 @@ summary:focus-visible,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: var(--space-7) var(--space-5);
   text-align: center;
 }
 
@@ -2832,7 +3031,7 @@ summary:focus-visible,
 .divider {
   height: 1px;
   background: var(--border);
-  margin: 24px 0;
+  margin: var(--space-5) 0;
 }
 
 .back-btn {
@@ -2848,7 +3047,7 @@ summary:focus-visible,
   cursor: pointer;
   background: transparent;
   border: none;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-5);
   transition: color 0.15s;
 }
 
@@ -2857,11 +3056,11 @@ summary:focus-visible,
 .compare-bar {
   background: var(--bg-elevated);
   border: 1px solid var(--border-accent);
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .compare-bar-text {

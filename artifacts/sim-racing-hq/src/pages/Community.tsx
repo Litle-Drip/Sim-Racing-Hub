@@ -124,7 +124,7 @@ function CommunitySetupCard({
         ))}
       </div>
 
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4 }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)' }}>
         {setup.gameVersion?.trim() || '—'}
       </div>
 
@@ -285,96 +285,59 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Community</h1>
-        {headerCount && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-            {headerCount}
-          </div>
-        )}
+        {headerCount && <div className="page-header-meta">{headerCount}</div>}
       </div>
 
       {/* Tab switcher */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
+      <div className="page-tabs">
         {TABS.map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            style={{
-              background: 'none',
-              border: 'none',
-              borderBottom: tab === t ? '2px solid var(--red)' : '2px solid transparent',
-              color: tab === t ? 'var(--white)' : 'var(--gray-mid)',
-              fontFamily: 'var(--font-display)',
-              fontSize: 13,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              padding: '8px 16px',
-              cursor: 'pointer',
-              marginBottom: -1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
+            className={`page-tab${tab === t ? ' page-tab--active' : ''}`}
           >
             {TAB_LABELS[t]}
             {/* Mirrors the sidebar badge, and clears on the same condition:
                 the challenge is answered, not merely looked at. */}
             {t === 'rivals' && rivalNotificationCount > 0 && (
-              <span style={{
-                minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
-                background: 'var(--red)', color: 'var(--on-accent)', fontSize: 10, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-              }}>
-                {rivalNotificationCount}
-              </span>
+              <span className="page-tab-count">{rivalNotificationCount}</span>
             )}
           </button>
         ))}
       </div>
 
-      {importError && (
-        <div style={{
-          background: 'rgba(232,0,45,0.12)',
-          border: '1px solid rgba(232,0,45,0.4)',
-          color: 'var(--red)',
-          fontFamily: 'var(--font-body)',
-          fontSize: 13,
-          padding: '10px 14px',
-          marginBottom: 16,
-        }}>
-          {importError}
-        </div>
-      )}
+      {importError && <div className="notice notice--error">{importError}</div>}
 
       {tab === 'leaderboard' && (
         <>
           {/* Today's Challenge — pinned above the board */}
-          <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
-            <div style={{ background: 'rgba(0,210,190,0.06)', padding: '14px 20px', borderBottom: '1px solid rgba(0,210,190,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Today's Challenge</span>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
-                  {daily.track.flag} {daily.track.name} — {daily.car}
-                </div>
+          {/* Label, then track, then what to do about it — one column, read
+              top to bottom. The instruction used to sit off on the far right
+              edge of the header, where it competed with the track name for
+              first read and left a gap between them. */}
+          <div className="card" style={{ padding: 0, marginBottom: 'var(--space-5)', overflow: 'hidden', border: '1px solid rgba(0,210,190,0.3)' }}>
+            <div style={{ background: 'rgba(0,210,190,0.06)', padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid rgba(0,210,190,0.15)' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Today's Challenge</span>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', letterSpacing: '0.06em', color: 'var(--white)', marginTop: 'var(--space-1)' }}>
+                {daily.track.flag} {daily.track.name} — {daily.car}
               </div>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
                 Log and share a session here today to compete
-              </span>
+              </div>
             </div>
             {daily.entries.length > 0 ? (
-              <div style={{ padding: '12px 20px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {daily.entries.map((s, i) => (
-                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12 }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
-                      <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
-                      <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
-                      <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
-                    </div>
-                  ))}
-                </div>
+              <div style={{ padding: 'var(--space-3) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {daily.entries.map((s, i) => (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
+                    <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
+                    <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
+                    <span style={{ color: 'var(--gray-mid)', marginLeft: 'auto' }}>{s.car}</span>
+                  </div>
+                ))}
               </div>
             ) : (
-              <div style={{ padding: '16px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
+              <div style={{ padding: 'var(--space-4) var(--space-5)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)' }}>
                 No times submitted today yet — be the first on the board.
               </div>
             )}
@@ -396,13 +359,17 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               {leaderboard.slice(0, visibleCircuits).map(({ track, entries }) => (
                 <div key={track.id}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 8 }}>
-                    {track.flag} {track.name}
-                  </div>
+                  {/* The circuit name is the table's title, so it lives inside
+                      the same card rather than floating above it — ten circuits
+                      of caption-then-gap-then-card was most of the page's
+                      vertical drift. */}
                   <div className="table-wrap">
+                    <div className="table-wrap-header">
+                      <span>{track.flag} {track.name}</span>
+                    </div>
                     <table className="data-table">
                       <thead>
                         <tr>
@@ -436,10 +403,9 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
                 </div>
               ))}
               {leaderboard.length > visibleCircuits && (
-                <div style={{ textAlign: 'center', paddingTop: 8 }}>
+                <div style={{ textAlign: 'center' }}>
                   <button
                     className="btn btn-secondary"
-                    style={{ fontSize: 13, padding: '10px 24px' }}
                     onClick={() => setVisibleCircuits(c => c + LEADERBOARD_PAGE_SIZE)}
                   >
                     Show More Circuits ({leaderboard.length - visibleCircuits} remaining)
@@ -453,7 +419,7 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
 
       {tab === 'setups' && (
         <>
-          <div className="filter-bar" style={{ marginBottom: 24 }}>
+          <div className="filter-bar">
             <select className="filter-select" value={filterTrack} onChange={(e) => setFilterTrack(e.target.value)}>
               <option value="">All Tracks</option>
               {F1_TRACKS.map((t) => (
@@ -508,7 +474,7 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
               </div>
               <button
                 className="btn btn-primary"
-                style={{ marginTop: 16 }}
+                style={{ marginTop: 'var(--space-5)' }}
                 onClick={() => window.dispatchEvent(new CustomEvent('guestSignIn'))}
               >
                 Create Free Account
@@ -529,14 +495,14 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
               <button className="modal-close" onClick={() => setDetailSession(null)}>×</button>
             </div>
             <div className="modal-body">
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 28, color: 'var(--teal)' }}>
                   {detailSession.bestLap || '—'}
                 </span>
                 <span className={`badge ${getTypeBadgeClass(detailSession.type)}`}>{detailSession.type}</span>
               </div>
 
-              <div className="form-grid" style={{ gap: '12px 24px' }}>
+              <div className="form-grid" style={{ gap: 'var(--space-4) var(--space-5)' }}>
                 {[
                   { label: 'Track', value: trackLabel(detailSession.trackId) },
                   { label: 'Car', value: detailSession.car },
@@ -552,16 +518,16 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
                   ...(detailSession.penalty && detailSession.penalty.trim() !== '' ? [{ label: 'Penalty', value: detailSession.penalty }] : []),
                 ].map(({ label, value }) => (
                   <div key={label}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)' }}>{value}</div>
+                    <div className="field-label" style={{ marginBottom: 'var(--space-1)' }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body)', color: 'var(--white)' }}>{value}</div>
                   </div>
                 ))}
               </div>
 
               {detailSession.publicNote && (
-                <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 4 }}>Note</div>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{detailSession.publicNote}</div>
+                <div style={{ marginTop: 'var(--space-5)', borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)' }}>
+                  <div className="field-label" style={{ marginBottom: 'var(--space-1)' }}>Note</div>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', lineHeight: 1.6 }}>{detailSession.publicNote}</div>
                 </div>
               )}
             </div>

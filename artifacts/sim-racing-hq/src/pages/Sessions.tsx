@@ -844,27 +844,31 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       )}
 
       {isGuest && (
-        <div style={{ background: 'rgba(0,210,190,0.07)', border: '1px solid rgba(0,210,190,0.22)', borderRadius: 4, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
+        <div className="notice notice--teal">
+          <div className="notice-text" style={{ color: 'var(--gray-light)' }}>
             <span style={{ color: 'var(--teal)', fontWeight: 600 }}>Saved in this browser only.</span> Sessions will persist across refreshes on this device. Create a free account to sync across all your devices.
           </div>
-          <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px', whiteSpace: 'nowrap', flexShrink: 0 }} onClick={() => window.dispatchEvent(new CustomEvent('guestSignIn'))}>
-            Create Account
-          </button>
+          <div className="notice-actions">
+            <button className="btn btn-secondary btn-sm" onClick={() => window.dispatchEvent(new CustomEvent('guestSignIn'))}>
+              Create Account
+            </button>
+          </div>
         </div>
       )}
 
       {/* Sessions that arrived while the driver was elsewhere. The rows glow on
           their own; this is the way out when several land at once. */}
       {newCount > 0 && (
-        <div style={{ background: 'rgba(0,210,190,0.07)', border: '1px solid rgba(0,210,190,0.28)', borderRadius: 4, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)' }}>
-            <span className="session-new-dot" />
-            <span><span style={{ color: 'var(--teal)', fontWeight: 600 }}>{newCount} new session{newCount === 1 ? '' : 's'}</span> since you last looked — open one to clear it.</span>
+        <div className="notice notice--teal">
+          <span className="session-new-dot" />
+          <span className="notice-text" style={{ color: 'var(--gray-light)' }}>
+            <span style={{ color: 'var(--teal)', fontWeight: 600 }}>{newCount} new session{newCount === 1 ? '' : 's'}</span> since you last looked — open one to clear it.
+          </span>
+          <div className="notice-actions">
+            <button className="btn btn-secondary btn-sm" onClick={markAllSeen}>
+              Mark All Read
+            </button>
           </div>
-          <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px', whiteSpace: 'nowrap', flexShrink: 0 }} onClick={markAllSeen}>
-            Mark All Read
-          </button>
         </div>
       )}
 
@@ -1257,17 +1261,15 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               </div>
             </div>
 
-            <div className="modal-footer" style={{ flexWrap: 'wrap', gap: 10 }}>
+            <div className="modal-footer" style={{ flexWrap: 'wrap' }}>
               {saveError && (
-                <div style={{ width: '100%', background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.45)', borderRadius: 3, color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 12, padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <span>{saveError}</span>
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    style={{ background: 'none', border: '1px solid rgba(232,0,45,0.5)', color: 'var(--red)', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', padding: '4px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: 2, flexShrink: 0 }}
-                  >
-                    Try Again
-                  </button>
+                <div className="notice notice--error" style={{ width: '100%', marginBottom: 0 }}>
+                  <span className="notice-text">{saveError}</span>
+                  <div className="notice-actions">
+                    <button type="button" className="btn btn-danger" onClick={handleSave}>
+                      Try Again
+                    </button>
+                  </div>
                 </div>
               )}
               <button className="btn btn-secondary" onClick={closeModal}>Cancel</button>
