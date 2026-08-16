@@ -922,9 +922,9 @@ summary:focus-visible,
 
 .stat-micro {
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: var(--fs-label);
   color: var(--gray-mid);
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 
 .stat-trend {
@@ -1503,8 +1503,8 @@ summary:focus-visible,
 .last-session-metrics {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(84px, max-content);
-  gap: 20px;
+  grid-auto-columns: minmax(92px, max-content);
+  gap: var(--space-5);
   margin-left: auto;
 }
 
@@ -1512,13 +1512,16 @@ summary:focus-visible,
   text-align: right;
 }
 
+/* Same label treatment as .stat-label, which sits directly above it on the
+   dashboard — this was 9px, the smallest type anywhere in the app. */
 .last-session-metric-label {
   font-family: var(--font-display);
-  font-size: 9px;
+  font-size: var(--fs-label);
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--gray-mid);
-  margin-bottom: 3px;
+  margin-bottom: var(--space-1);
   white-space: nowrap;
 }
 
@@ -2035,19 +2038,21 @@ summary:focus-visible,
 }
 
 .heatmap-stat-label {
-  font-family: var(--font-body);
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-display);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--gray);
+  color: var(--gray-mid);
 }
 
 .heatmap-stat-value {
   font-family: var(--font-display);
   font-size: 20px;
+  font-weight: 700;
   line-height: 1.1;
   color: var(--white);
-  margin-top: 3px;
+  margin-top: var(--space-1);
 }
 
 .heatmap-stat-unit {
@@ -2059,9 +2064,9 @@ summary:focus-visible,
 
 .heatmap-stat-sub {
   font-family: var(--font-body);
-  font-size: 10px;
-  color: var(--gray-mid);
-  margin-top: 2px;
+  font-size: var(--fs-label);
+  color: var(--gray);
+  margin-top: var(--space-1);
 }
 
 @media (max-width: 900px) {
@@ -2310,9 +2315,10 @@ summary:focus-visible,
   }
 }
 
+/* Left-aligned, like the .stat-card row directly above it — the two rows of
+   cards read as one family instead of two conventions stacked. */
 .perf-snap-card {
-  padding: 12px 16px !important;
-  text-align: center;
+  padding: var(--space-4) !important;
 }
 
 /* Mini rating bars (replacing dots) */

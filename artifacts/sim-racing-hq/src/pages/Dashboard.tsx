@@ -657,47 +657,38 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   }, [achievements, badgeTab]);
 
   return (
-    <div className="page" style={{ gap: 0 }}>
+    <div className="page">
       {/* ── Personalization Greeting (smarter coaching copy) ────────────── */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.04em', color: 'var(--white)' }}>
-          {getGreeting()}, {userName}
+      {/* The greeting is this page's title, so it uses the page header every
+          other screen uses rather than its own 18px heading. The streak line
+          moves opposite it, where a page's supporting figure already sits. */}
+      <div className="page-header" style={{ marginBottom: 'var(--space-4)' }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 className="page-title">{getGreeting()}, {userName}</h1>
+          {perfSnapshot?.coachingInsight && (
+            <div className="page-subtitle">{perfSnapshot.coachingInsight}</div>
+          )}
         </div>
-        {perfSnapshot?.coachingInsight && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 4, lineHeight: 1.5 }}>
-            {perfSnapshot.coachingInsight}
-          </div>
-        )}
         {perfSnapshot?.subInsight && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)', marginTop: 2 }}>
+          <div className="page-header-meta" style={{ fontFamily: 'var(--font-mono)' }}>
             {perfSnapshot.subInsight}
           </div>
         )}
       </div>
 
       {/* ── Quick Action Buttons ────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
-        <button className="btn btn-primary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('sessions')}>+ Session</button>
-        <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('setups')}>Load Setup</button>
-        <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('progress')}>Compare PB</button>
-        <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('community')}>Community</button>
+      <div className="toolbar">
+        <button className="btn btn-primary" onClick={() => setPage('sessions')}>+ Session</button>
+        <button className="btn btn-secondary" onClick={() => setPage('setups')}>Load Setup</button>
+        <button className="btn btn-secondary" onClick={() => setPage('progress')}>Compare PB</button>
+        <button className="btn btn-secondary" onClick={() => setPage('community')}>Community</button>
         {/* Rivals sits right next to Community and carries the same count as
             the sidebar, so a waiting challenge or an unread result is
             visible from the first screen you land on. */}
-        <button
-          className="btn btn-secondary"
-          style={{ fontSize: 11, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          onClick={() => setPage('rivals')}
-        >
+        <button className="btn btn-secondary" onClick={() => setPage('rivals')}>
           Rivals
           {rivalNotificationCount > 0 && (
-            <span style={{
-              minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
-              background: 'var(--red)', color: 'var(--on-accent)', fontSize: 10, fontWeight: 700,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-            }}>
-              {rivalNotificationCount}
-            </span>
+            <span className="page-tab-count">{rivalNotificationCount}</span>
           )}
         </button>
       </div>
@@ -799,22 +790,22 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
           title="Click to view full session details"
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <div className="stat-label" style={{ marginBottom: 0 }}>Last Session</div>
               {isNew(lastSession.id) && (
                 <span title="Landed since you last looked" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--teal)' }}>
                   <span className="session-new-dot" />NEW
                 </span>
               )}
             </div>
-            <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
+            <button className="btn btn-secondary btn-sm" onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
           </div>
           <div className="last-session-body">
             <div className="last-session-meta">
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, color: 'var(--white)' }}>
                 {F1_TRACKS.find(t => t.id === lastSession.trackId)?.flag} {trackName(lastSession.trackId)}
               </div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
                 {lastSession.car} · {lastSession.type} · {lastSession.date}
                 {lastSession.createdAt && !isNaN(new Date(lastSession.createdAt).getTime()) && (
                   <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
@@ -847,50 +838,50 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
              number is on both, it was cut from here. ──────────────────────── */}
       {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
         <div style={{ marginBottom: 'var(--space-4)' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
+          <div className="section-title">Performance Snapshot</div>
           <div className="perf-snap-grid">
             {perfSnapshot.strongestTrack && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Strongest Track</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.strongestTrack}</div>
-                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Strongest Track</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.04em' }}>{perfSnapshot.strongestTrack}</div>
+                {perfSnapshot.strongestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{perfSnapshot.strongestScore.toFixed(1)}%</div>}
               </div>
             )}
             {perfSnapshot.weakestTrack && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Needs Work</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.weakestTrack}</div>
-                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Needs Work</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--red)', letterSpacing: '0.04em' }}>{perfSnapshot.weakestTrack}</div>
+                {perfSnapshot.weakestScore !== null && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{perfSnapshot.weakestScore.toFixed(1)}%</div>}
               </div>
             )}
             {perfSnapshot.bestSector && (
               <div className="card perf-snap-card perf-snap-card--secondary">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Sector</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.bestSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most consistent</div>
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Best Sector</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)', letterSpacing: '0.04em' }}>{perfSnapshot.bestSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Most consistent</div>
               </div>
             )}
             {perfSnapshot.worstSector && (
               <div className="card perf-snap-card perf-snap-card--secondary">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Biggest Time Loss</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--amber)', letterSpacing: '0.04em', marginTop: 4 }}>{perfSnapshot.worstSector}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Most variance</div>
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Biggest Time Loss</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--amber)', letterSpacing: '0.04em' }}>{perfSnapshot.worstSector}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Most variance</div>
               </div>
             )}
             {perfSnapshot.fastestLap && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Fastest Lap</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.02em', marginTop: 4 }}>{perfSnapshot.fastestLap.time}</div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{perfSnapshot.fastestLap.track}</div>
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Fastest Lap</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: 'var(--teal)', letterSpacing: '0.02em' }}>{perfSnapshot.fastestLap.time}</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{perfSnapshot.fastestLap.track}</div>
               </div>
             )}
             {perfSnapshot.avgConsistency !== null && (
               <div className="card perf-snap-card">
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Avg Consistency</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '0.04em', marginTop: 4, color: perfSnapshot.avgConsistency >= 98 ? 'var(--teal)' : perfSnapshot.avgConsistency >= 95 ? 'var(--white)' : 'var(--amber)' }}>
+                <div className="stat-label" style={{ marginBottom: 'var(--space-1)' }}>Avg Consistency</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '0.04em', color: perfSnapshot.avgConsistency >= 98 ? 'var(--teal)' : perfSnapshot.avgConsistency >= 95 ? 'var(--white)' : 'var(--amber)' }}>
                   {perfSnapshot.avgConsistency.toFixed(1)}%
                 </div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>Best vs average lap</div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Best vs average lap</div>
               </div>
             )}
           </div>
@@ -899,9 +890,9 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
       {/* ── Activity Heatmap (with rich tooltips + weekly summary) ──────── */}
       {/* #polish: tightened spacing before heatmap */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
         <div className="section-title" style={{ marginBottom: 0 }}>Activity — Last 365 Days</div>
-        <div style={{ display: 'flex', gap: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-4)', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>
           <span>This week: <strong style={{ color: 'var(--white)' }}>{weeklySummary.sessions}</strong> sessions</span>
           <span><strong style={{ color: 'var(--teal)' }}>{weeklySummary.pbs}</strong> PBs</span>
           <span>~<strong style={{ color: 'var(--white)' }}>{weeklySummary.seatTime}</strong> min</span>
@@ -911,11 +902,11 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         <div className="heatmap-header">
           <div className="heatmap-legend">
             <span className="legend-dot" style={{ background: 'var(--border)', border: '1px solid var(--border-accent)' }} />
-            <span style={{ fontSize: 10 }}>None</span>
+            <span style={{ fontSize: 'var(--fs-label)' }}>None</span>
             <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.35)' }} />
             <span className="legend-dot" style={{ background: 'rgba(232,0,45,0.6)' }} />
             <span className="legend-dot" style={{ background: 'var(--red)' }} />
-            <span style={{ fontSize: 10 }}>Active</span>
+            <span style={{ fontSize: 'var(--fs-label)' }}>Active</span>
           </div>
           {/* The streak belongs against the calendar it's counted from,
               rather than in a card of its own. */}
@@ -1007,7 +998,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       {/* Tracks needing attention — moved right after heatmap */}
       {neglectedTracks.length > 0 && (
         <>
-          <div className="section-title" style={{ marginTop: 8 }}>Needs Practice — 14+ Days</div>
+          <div className="section-title" style={{ marginTop: 'var(--space-5)' }}>Needs Practice — 14+ Days</div>
           <div style={{
             display: 'flex',
             gap: 'var(--space-3)',
@@ -1025,14 +1016,14 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: 4,
+                  gap: 'var(--space-1)',
                   cursor: 'pointer',
                   opacity: 0.85,
                 }}
                 onClick={() => setPage('tracks')}
               >
                 <span style={{ fontSize: 24 }}>{t.flag}</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
               </div>
             ))}
           </div>
@@ -1048,15 +1039,15 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       {SHOW_NEXT_TARGET && nextGoal && (
         <div className="card dash-next-goal card-accent card-accent--teal" style={{ padding: 'var(--space-4) var(--space-5)', marginBottom: 'var(--space-4)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 'var(--space-2)' }}>Next Target</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 'var(--space-2)' }}>
             {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
           </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--teal)' }}>+{nextGoal.xpReward} XP</span>
             {nextGoal.badge && (
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Unlock: "{nextGoal.badge}"</span>
             )}
-            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px', marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
+            <button className={`btn ${primaryCTA === 'goal' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ marginLeft: 'auto' }} onClick={() => setPage('sessions')}>
               Start Attempt
             </button>
           </div>
@@ -1065,42 +1056,51 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
       {/* ── Daily Challenge ─────────────────────────────────────────────── */}
       <div className="card dash-challenge card-accent card-accent--teal" style={{ padding: 0, marginBottom: 'var(--space-4)', overflow: 'hidden' }}>
-        <div style={{ background: 'var(--bg-elevated)', padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ background: 'var(--bg-elevated)', padding: 'var(--space-3) var(--space-5)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)' }}>Daily Challenge</span>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 2, color: DIFF_COLORS[daily.difficulty], border: `1px solid ${DIFF_COLORS[daily.difficulty]}44`, textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 'var(--radius)', color: DIFF_COLORS[daily.difficulty], border: `1px solid ${DIFF_COLORS[daily.difficulty]}44`, textTransform: 'uppercase' }}>
                 {daily.difficulty}
               </span>
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 2 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--white)', marginTop: 'var(--space-1)' }}>
               {daily.track.flag} {daily.track.short} — {daily.car}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Resets in <CountdownTimer /></div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Resets in <CountdownTimer /></div>
             {/* The reward reads off the XP system; with XP hidden it would
                 point at something the driver can no longer see. */}
             {SHOW_XP && <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.05em', color: 'var(--teal)', marginTop: 2 }}>+{daily.xpReward} XP</div>}
           </div>
         </div>
-        {daily.entries.length > 0 ? (
-          <div style={{ padding: '8px 20px' }}>
+        {daily.entries.length > 0 && (
+          <div style={{ padding: 'var(--space-3) var(--space-5)', borderBottom: '1px solid var(--border)' }}>
             {daily.entries.map((s, i) => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-body)', fontSize: 12, padding: '3px 0' }}>
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', padding: '3px 0' }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: i === 0 ? 'var(--teal)' : 'var(--gray-mid)', width: 16 }}>{i + 1}.</span>
                 <span className={i === 0 ? 'pb-time' : 'lap-time'}>{s.bestLap}</span>
                 <span style={{ color: 'var(--gray-light)' }}>{s.authorName}</span>
               </div>
             ))}
           </div>
-        ) : (
-          <div style={{ padding: '14px 20px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-            Be first on the board today.
-          </div>
         )}
-        <div style={{ padding: '8px 20px 12px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
-          <button className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '6px 28px' }} onClick={startChallenge}>
+        {/* The action used to sit centred in a strip of its own, with a band
+            of empty card either side of it and — on an empty board — a lone
+            line of text in the strip above. Hint and action share one row,
+            action right, like every other card on the page. */}
+        <div style={{ padding: 'var(--space-3) var(--space-5)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          {daily.entries.length === 0 && (
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)' }}>
+              Be first on the board today.
+            </span>
+          )}
+          <button
+            className={`btn ${primaryCTA === 'challenge' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`}
+            style={{ marginLeft: 'auto' }}
+            onClick={startChallenge}
+          >
             Start Challenge
           </button>
         </div>
@@ -1109,14 +1109,14 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
       {/* ── Recent Sessions (enhanced table with mini bars) ─────────────── */}
       {/* #polish: tightened spacing between heatmap and sessions */}
-      <div className="section-title" style={{ marginTop: 8 }}>Recent Sessions</div>
+      <div className="section-title" style={{ marginTop: 'var(--space-5)' }}>Recent Sessions</div>
       {recentSessions.length === 0 ? (
         <div className="table-wrap">
           <div className="empty-state">
             <div className="empty-state-title">No Sessions Yet</div>
             <div className="empty-state-desc">Head to the Sessions page to log your first session.</div>
           </div>
-          <div style={{ textAlign: 'center', paddingBottom: 16 }}>
+          <div style={{ textAlign: 'center', paddingBottom: 'var(--space-5)' }}>
             <button className="btn btn-primary" onClick={() => setPage('sessions')}>Log Your First Session</button>
           </div>
         </div>
