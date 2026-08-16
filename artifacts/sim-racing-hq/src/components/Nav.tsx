@@ -115,7 +115,7 @@ export default function Nav({ page, setPage }: NavProps) {
       <nav className={`nav-sidebar${open ? ' nav-sidebar--open' : ''}`}>
         <div className="nav-logo">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <Trophy size={18} style={{ color: 'var(--red)', flexShrink: 0 }} />
               <div>
                 <div className="nav-logo-title">F1 Sim Hub</div>

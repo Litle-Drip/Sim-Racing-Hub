@@ -105,9 +105,9 @@ export default function DriverProfile({ username }: { username: string }) {
   if (loading) return <div className="page" style={{ textAlign: 'center', padding: 60 }}><div style={{ color: 'var(--gray-mid)' }}>Loading...</div></div>;
   if (error || !driver) return (
     <div className="page" style={{ textAlign: 'center', padding: 60 }}>
-      <Flag size={40} aria-hidden="true" style={{ color: 'var(--gray-mid)', marginBottom: 16 }} />
+      <Flag size={40} aria-hidden="true" style={{ color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }} />
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '0.08em', color: 'var(--white)' }}>Driver Not Found</div>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginTop: 8 }}>The driver "{username}" doesn't exist or hasn't shared any data publicly.</div>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginTop: 'var(--space-2)' }}>The driver "{username}" doesn't exist or hasn't shared any data publicly.</div>
     </div>
   );
 
@@ -119,7 +119,7 @@ export default function DriverProfile({ username }: { username: string }) {
   return (
     <div className="page" style={{ maxWidth: 800, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)', marginBottom: 'var(--space-6)' }}>
         {driver.avatarUrl ? (
           <img src={driver.avatarUrl} alt="" style={{ width: 64, height: 64, borderRadius: '50%', border: '2px solid var(--border)' }} />
         ) : (
@@ -128,7 +128,7 @@ export default function DriverProfile({ username }: { username: string }) {
           </div>
         )}
         <div style={{ minWidth: 0 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: 'var(--white)', margin: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '0.06em', color: 'var(--white)', margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
             {driver.username}
             {rankInfo && (
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', color: getRankColor(rankInfo.rank), textTransform: 'uppercase' }}>
@@ -136,7 +136,7 @@ export default function DriverProfile({ username }: { username: string }) {
               </span>
             )}
           </h1>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 4 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
             {driver.memberSince && <>Member since {driver.memberSince} · </>}
             {driver.lastActiveAt
               ? `Last session ${formatLastActive(driver.lastActiveAt).toLowerCase()}`
@@ -161,7 +161,7 @@ export default function DriverProfile({ username }: { username: string }) {
       </div>
 
       {/* Rivals Record */}
-      <div className="section-title" style={{ marginTop: 28 }}>Rivals Record</div>
+      <div className="section-title" style={{ marginTop: 'var(--space-6)' }}>Rivals Record</div>
       {rivals.completed === 0 ? (
         <div className="table-wrap">
           <div className="empty-state">
@@ -202,8 +202,8 @@ export default function DriverProfile({ username }: { username: string }) {
       {/* Achievement Badges */}
       {SHOW_ACHIEVEMENTS && earnedAchievements.length > 0 && (
         <>
-          <div className="section-title" style={{ marginTop: 28 }}>Achievements</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="section-title" style={{ marginTop: 'var(--space-6)' }}>Achievements</div>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
             {earnedAchievements.map(a => {
               const BadgeIcon = a.icon;
               return (
@@ -221,7 +221,7 @@ export default function DriverProfile({ username }: { username: string }) {
       )}
 
       {/* Personal Bests */}
-      <div className="section-title" style={{ marginTop: 28 }}>Personal Bests</div>
+      <div className="section-title" style={{ marginTop: 'var(--space-6)' }}>Personal Bests</div>
       {driver.pbs.length === 0 ? (
         <div className="table-wrap">
           <div className="empty-state">
@@ -254,7 +254,7 @@ export default function DriverProfile({ username }: { username: string }) {
       )}
 
       {/* Recent Sessions */}
-      <div className="section-title" style={{ marginTop: 28 }}>Recent Sessions</div>
+      <div className="section-title" style={{ marginTop: 'var(--space-6)' }}>Recent Sessions</div>
       {driver.recentSessions.length === 0 ? (
         <div className="table-wrap">
           <div className="empty-state">
@@ -291,7 +291,7 @@ export default function DriverProfile({ username }: { username: string }) {
       )}
 
       {/* Shareable URL */}
-      <div style={{ marginTop: 32, textAlign: 'center', padding: '16px 0', borderTop: '1px solid var(--border)' }}>
+      <div style={{ marginTop: 'var(--space-6)', textAlign: 'center', padding: '16px 0', borderTop: '1px solid var(--border)' }}>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
           Share this profile: <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>f1simhub.com/driver/{driver.username}</span>
         </div>

@@ -184,20 +184,20 @@ function DataCleanupModal({
             </div>
           ) : (
             <>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginBottom: 16, lineHeight: 1.5 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginBottom: 'var(--space-4)', lineHeight: 1.5 }}>
                 Scanned only sessions uploaded by the companion app (manually-logged sessions are never touched). Checked rows will be deleted — uncheck anything you want to keep.
               </div>
 
               {duplicateClusters.map((cluster, ci) => (
-                <div key={ci} style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <div key={ci} style={{ marginBottom: 'var(--space-5)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-2)' }}>
                     <AlertTriangle size={13} style={{ color: 'var(--yellow)' }} />
                     <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>
                       Duplicate — {trackNameForCleanup(cluster[0].trackId)} · {cluster[0].car} · {cluster[0].bestLap || '—'}
                     </span>
                   </div>
                   {cluster.map(s => (
-                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
                       <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--red)' }} />
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
                         {cleanupRowLabel(s)} — {s.laps?.length ?? 0} laps
@@ -209,15 +209,15 @@ function DataCleanupModal({
               ))}
 
               {emptySessions.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <div style={{ marginBottom: 'var(--space-3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-2)' }}>
                     <AlertTriangle size={13} style={{ color: 'var(--red)' }} />
                     <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>
                       Empty sessions (no laps recorded)
                     </span>
                   </div>
                   {emptySessions.map(s => (
-                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
                       <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--red)' }} />
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
                         {cleanupRowLabel(s)} — {trackNameForCleanup(s.trackId)} · {s.car}
@@ -230,9 +230,9 @@ function DataCleanupModal({
           )}
         </div>
         {totalIssues > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-3) var(--space-5)', borderTop: '1px solid var(--border)' }}>
             {deleteError && <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)' }}>{deleteError}</div>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--space-2)' }}>
               {deleting && progress && (
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>{progress.done} / {progress.total}</span>
               )}
@@ -243,7 +243,7 @@ function DataCleanupModal({
                 onClick={handleDeleteSelected}
                 disabled={deleting || selected.size === 0}
               >
-                <Trash2 size={11} style={{ marginRight: 4 }} />
+                <Trash2 size={11} style={{ marginRight: 'var(--space-1)' }} />
                 {deleting ? 'Deleting…' : `Delete Selected (${selected.size})`}
               </button>
             </div>
@@ -287,7 +287,7 @@ function LapRow({
         <select
           value={lap.tires || defaultTires}
           onChange={e => onChange('tires', e.target.value)}
-          style={{ width: '100%', minWidth: 70, fontSize: 11, padding: '4px 4px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)' }}
+          style={{ width: '100%', minWidth: 70, fontSize: 11, padding: 'var(--space-1) var(--space-1)', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)' }}
         >
           {TIRE_COMPOUNDS.map(t => <option key={t}>{t}</option>)}
         </select>
@@ -801,10 +801,10 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Session Log</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {dataIssuesCount > 0 && (
             <button className="btn btn-secondary" style={{ color: 'var(--yellow)', borderColor: 'var(--yellow)' }} onClick={() => setCleanupOpen(true)}>
-              <AlertTriangle size={12} style={{ marginRight: 4 }} /> Review Data ({dataIssuesCount})
+              <AlertTriangle size={12} style={{ marginRight: 'var(--space-1)' }} /> Review Data ({dataIssuesCount})
             </button>
           )}
           <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowAdvanced(hadDraft); setShowModal(true); }}>
@@ -993,7 +993,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                                 disabled={sharingId === s.id}
                                 title={s.isPublic ? 'Remove from Community' : 'Share to Community'}
                               >
-                                <Share2 size={11} style={{ marginRight: 4 }} />
+                                <Share2 size={11} style={{ marginRight: 'var(--space-1)' }} />
                                 {sharingId === s.id ? '…' : s.isPublic ? 'Shared' : 'Share'}
                               </button>
                             )}
@@ -1001,7 +1001,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                               className="btn btn-danger"
                               onClick={(e) => handleDelete(s.id, e)}
                             >
-                              <Trash2 size={11} style={{ marginRight: 4 }} />
+                              <Trash2 size={11} style={{ marginRight: 'var(--space-1)' }} />
                               Delete
                             </button>
                           </div>
@@ -1025,7 +1025,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               <button className="modal-close" onClick={() => setShareModal(null)}>×</button>
             </div>
             <div className="modal-body">
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginBottom: 16, lineHeight: 1.6 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginBottom: 'var(--space-4)', lineHeight: 1.6 }}>
                 Your private notes won't be shared. You can optionally add a public description visible to the community.
               </p>
               <div className="field">
@@ -1069,7 +1069,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
           <div className="modal" style={{ maxWidth: 780 }}>
             <div className="modal-header">
               <span className="modal-title">Log Session</span>
-              {localStorage.getItem(DRAFT_KEY) && <span style={{ fontSize: 10, color: 'var(--teal)', fontFamily: 'var(--font-body)', marginLeft: 8, fontWeight: 400 }}>Draft restored</span>}
+              {localStorage.getItem(DRAFT_KEY) && <span style={{ fontSize: 10, color: 'var(--teal)', fontFamily: 'var(--font-body)', marginLeft: 'var(--space-2)', fontWeight: 400 }}>Draft restored</span>}
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
@@ -1097,7 +1097,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               </div>
 
               {/* ── Everything else ── */}
-              <div style={{ borderTop: '1px solid var(--border)', marginTop: 16, paddingTop: 12 }}>
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)' }}>
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(v => !v)}
@@ -1118,7 +1118,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
                 {showAdvanced && (
                   <>
-                    <div className="form-grid" style={{ marginTop: 16 }}>
+                    <div className="form-grid" style={{ marginTop: 'var(--space-4)' }}>
                       <div className="field">
                         <label className="field-label">Date</label>
                         <input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
@@ -1215,13 +1215,13 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     </div>
 
                     {/* ── Laps ── */}
-                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 16 }}>
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-4)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: laps.length > 0 ? 12 : 0 }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
                           Laps <span style={{ color: 'var(--gray)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— paste lap-by-lap data from F1 25</span>
                         </div>
-                        <button type="button" className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 12px' }} onClick={addLap}>
-                          <Plus size={11} style={{ marginRight: 4 }} /> Add Lap
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: 11, padding: 'var(--space-1) var(--space-3)' }} onClick={addLap}>
+                          <Plus size={11} style={{ marginRight: 'var(--space-1)' }} /> Add Lap
                         </button>
                       </div>
 

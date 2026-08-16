@@ -692,7 +692,7 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
           <div style={sectionStyle}>{guide.characteristics}</div>
 
           <div style={labelStyle}>DRS Zones</div>
-          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+          <ul style={{ ...sectionStyle, paddingLeft: 'var(--space-4)', margin: 0 }}>
             {guide.drsZones.map((z, i) => <li key={i}>{z}</li>)}
           </ul>
 
@@ -700,7 +700,7 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
           <div style={sectionStyle}>{guide.tyreBehaviour}</div>
 
           <div style={labelStyle}>Common Mistakes</div>
-          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+          <ul style={{ ...sectionStyle, paddingLeft: 'var(--space-4)', margin: 0 }}>
             {guide.commonMistakes.map((m, i) => <li key={i}>{m}</li>)}
           </ul>
 
@@ -708,7 +708,7 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
           <div style={sectionStyle}>{guide.ersTips}</div>
 
           <div style={labelStyle}>Key Corners</div>
-          <ul style={{ ...sectionStyle, paddingLeft: 18, margin: 0 }}>
+          <ul style={{ ...sectionStyle, paddingLeft: 'var(--space-4)', margin: 0 }}>
             {guide.keyCorners.map((c, i) => <li key={i}>{c}</li>)}
           </ul>
 

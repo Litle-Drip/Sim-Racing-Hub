@@ -7,7 +7,7 @@ export default function DownloadPage() {
   const [, setLocation] = useLocation();
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '40px 24px' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: 'var(--space-7) var(--space-5)' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         {/* Back link */}
         <button
@@ -20,7 +20,7 @@ export default function DownloadPage() {
             fontSize: 12,
             color: 'var(--gray-mid)',
             padding: 0,
-            marginBottom: 28,
+            marginBottom: 'var(--space-6)',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -30,8 +30,8 @@ export default function DownloadPage() {
         </button>
 
         {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <div style={{ marginBottom: 'var(--space-6)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
             <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
               <div style={{ width: 5, height: 10, background: 'var(--red)' }} />
               <div style={{ width: 5, height: 16, background: 'var(--red)' }} />
@@ -51,14 +51,14 @@ export default function DownloadPage() {
         </div>
 
         {/* Download Card */}
-        <div className="card" style={{ padding: '24px', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 14 }}>
+        <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }}>
             Download
           </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 20 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-5)' }}>
             The companion app is a desktop app for Windows and macOS. It runs in your system tray, reads UDP telemetry from F1 25, and silently uploads sessions when you exit.
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
             <a
               href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases/latest"
               target="_blank"
@@ -66,13 +66,13 @@ export default function DownloadPage() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 'var(--space-2)',
                 fontFamily: 'var(--font-display)',
                 fontSize: 13,
                 letterSpacing: '0.06em',
                 color: 'var(--on-accent)',
                 background: 'var(--red)',
-                padding: '10px 20px',
+                padding: 'var(--space-2) var(--space-5)',
                 borderRadius: 3,
                 textDecoration: 'none',
               }}
@@ -86,14 +86,14 @@ export default function DownloadPage() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 'var(--space-2)',
                 fontFamily: 'var(--font-display)',
                 fontSize: 13,
                 letterSpacing: '0.06em',
                 color: 'var(--white)',
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)',
-                padding: '10px 20px',
+                padding: 'var(--space-2) var(--space-5)',
                 borderRadius: 3,
                 textDecoration: 'none',
               }}
@@ -110,7 +110,7 @@ export default function DownloadPage() {
                 fontFamily: 'var(--font-body)',
                 fontSize: 12,
                 color: 'var(--gray-mid)',
-                padding: '10px 12px',
+                padding: 'var(--space-2) var(--space-3)',
                 textDecoration: 'none',
               }}
             >
@@ -123,14 +123,14 @@ export default function DownloadPage() {
         </div>
 
         {/* F1 25 UDP Setup Guide */}
-        <div className="card" style={{ padding: '24px', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 14 }}>
+        <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }}>
             F1 25 UDP Setup Guide
           </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 20 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-5)' }}>
             Enable UDP telemetry in F1 25 so the companion app can read your session data in real time.
           </div>
-          <ol style={{ paddingLeft: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <ol style={{ paddingLeft: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             {[
               {
                 step: 'Open F1 25 and go to Settings',
@@ -157,7 +157,7 @@ export default function DownloadPage() {
                 detail: 'When you finish a practice, qualifying, or race session, the companion app automatically uploads it to your F1 Sim Hub account.',
               },
             ].map((item, i) => (
-              <li key={i} style={{ listStyle: 'none', display: 'flex', gap: 14 }}>
+              <li key={i} style={{ listStyle: 'none', display: 'flex', gap: 'var(--space-4)' }}>
                 <div style={{
                   flexShrink: 0,
                   width: 24,
@@ -176,7 +176,7 @@ export default function DownloadPage() {
                   {i + 1}
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 'var(--space-1)' }}>
                     {item.step}
                   </div>
                   <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', lineHeight: 1.6 }}>
@@ -189,14 +189,14 @@ export default function DownloadPage() {
         </div>
 
         {/* Sign-up nudge */}
-        <div className="card" style={{ padding: '24px', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 8 }}>
+        <div className="card" style={{ padding: 'var(--space-5)', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 'var(--space-2)' }}>
             Ready to track every session automatically?
           </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', lineHeight: 1.6, marginBottom: 20 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', lineHeight: 1.6, marginBottom: 'var(--space-5)' }}>
             Create a free F1 Sim Hub account to generate your API key and start logging sessions from the companion app.
           </div>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center', flexWrap: 'wrap' }}>
             <a
               href={`${basePath}/sign-up`}
               style={{
@@ -207,7 +207,7 @@ export default function DownloadPage() {
                 letterSpacing: '0.06em',
                 color: 'var(--on-accent)',
                 background: 'var(--red)',
-                padding: '10px 24px',
+                padding: 'var(--space-2) var(--space-5)',
                 borderRadius: 3,
                 textDecoration: 'none',
               }}
@@ -225,7 +225,7 @@ export default function DownloadPage() {
                 color: 'var(--gray-light)',
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)',
-                padding: '10px 24px',
+                padding: 'var(--space-2) var(--space-5)',
                 borderRadius: 3,
                 textDecoration: 'none',
               }}

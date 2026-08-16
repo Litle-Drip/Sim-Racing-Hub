@@ -266,7 +266,7 @@ function ChartTooltip({
     return isFinite(n) ? n.toFixed(digits) : '—';
   };
   return (
-    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '8px 12px' }}>
+    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: 'var(--space-2) var(--space-3)' }}>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>{String(d ?? '')}m</div>
       {payload.map((p, i) => (
         <div key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: p.color ?? 'var(--white)' }}>
@@ -303,8 +303,8 @@ function TelemetryTraceChart({
 }) {
   const hasCompare = data.length > 0 && data[0][`cmp_${dataKey}`] !== undefined;
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
           {label}
         </div>
@@ -366,8 +366,8 @@ function TelemetryTraceChart({
 function DeltaChart({ data, compareLabel }: { data: ChartRow[]; compareLabel: string }) {
   const finalDelta = data.length > 0 ? data[data.length - 1].delta ?? 0 : 0;
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', flexWrap: 'wrap' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
           Delta vs {compareLabel}
         </div>
@@ -540,7 +540,7 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
         const bestS3 = validS3.length > 0 ? validS3.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
         return (
           <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>Best Sectors (from laps)</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Best Sectors (from laps)</div>
             <div className="expanded-group-grid">
               {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>{bestS1}</div></div>}
               {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>{bestS2}</div></div>}
@@ -659,7 +659,7 @@ export function SessionDetailModal({ session, onClose }: { session: SessionRecor
             <button className="modal-close" onClick={onClose}>×</button>
           </div>
           <div className="modal-body" style={{ overflowY: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
                 <span className={session.isPB ? 'pb-time' : 'lap-time'} style={{ fontSize: 22 }}>{session.bestLap || '—'}</span>
@@ -672,7 +672,7 @@ export function SessionDetailModal({ session, onClose }: { session: SessionRecor
               </div>
             </div>
 
-            <div className="expanded-group-grid" style={{ marginBottom: 4 }}>
+            <div className="expanded-group-grid" style={{ marginBottom: 'var(--space-1)' }}>
               <div className="expanded-item"><div className="expanded-label">Avg Lap</div><div className="expanded-value">{session.avgLap || '—'}</div></div>
               <div className="expanded-item"><div className="expanded-label">Worst Lap</div><div className="expanded-value">{session.worstLap || '—'}</div></div>
               <div className="expanded-item"><div className="expanded-label">Tires</div><div className="expanded-value">{session.tires || '—'}</div></div>

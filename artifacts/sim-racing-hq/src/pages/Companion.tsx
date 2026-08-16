@@ -31,10 +31,10 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       className="btn btn-secondary"
-      style={{ fontSize: 11, padding: '4px 12px', flexShrink: 0 }}
+      style={{ fontSize: 11, padding: 'var(--space-1) var(--space-3)', flexShrink: 0 }}
       onClick={copy}
     >
-      {copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={12} aria-hidden="true" /> Copied</span> : 'Copy'}
+      {copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}><Check size={12} aria-hidden="true" /> Copied</span> : 'Copy'}
     </button>
   );
 }
@@ -107,26 +107,26 @@ export default function Companion() {
 
   return (
     <div className="page" style={{ maxWidth: 720, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 'var(--space-5)' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>
           Companion App
         </div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.04em', color: 'var(--white)', margin: 0 }}>
           F1 Sim Hub Companion
         </h1>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginTop: 8, lineHeight: 1.6, maxWidth: 560 }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginTop: 'var(--space-2)', lineHeight: 1.6, maxWidth: 560 }}>
           The companion app reads live telemetry from F1 25 and automatically uploads your sessions when you finish. No manual logging required.
         </p>
       </div>
 
       {/* API Key Card */}
-      <div className="card" style={{ padding: '20px', marginBottom: 16 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 14 }}>
+      <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }}>
           API Key
         </div>
 
         {error && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'rgba(232,0,45,0.08)', border: '1px solid rgba(232,0,45,0.2)', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)', marginBottom: 'var(--space-3)', padding: 'var(--space-2) var(--space-3)', background: 'rgba(232,0,45,0.08)', border: '1px solid rgba(232,0,45,0.2)', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
             <span>{error}</span>
             <button className="btn btn-secondary" style={{ fontSize: 11, padding: '3px 10px', flexShrink: 0 }} onClick={loadStatus}>Retry</button>
           </div>
@@ -141,12 +141,12 @@ export default function Companion() {
         ) : (
           <>
             {freshKey ? (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--teal)', marginBottom: 8 }}>
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--teal)', marginBottom: 'var(--space-2)' }}>
                   <KeyRound size={12} aria-hidden="true" />
                   Your new API key — copy it now, it won't be shown again
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
                   <div style={{
                     flex: 1,
                     fontFamily: 'var(--font-mono)',
@@ -155,7 +155,7 @@ export default function Companion() {
                     background: 'var(--bg-elevated)',
                     border: '1px solid var(--border)',
                     borderRadius: 3,
-                    padding: '8px 12px',
+                    padding: 'var(--space-2) var(--space-3)',
                     wordBreak: 'break-all',
                     lineHeight: 1.5,
                   }}>
@@ -168,24 +168,24 @@ export default function Companion() {
                 </div>
               </div>
             ) : status.hasKey ? (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--teal)', flexShrink: 0 }} />
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--white)' }}>Active API key</span>
                 </div>
                 {status.createdAt && (
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginLeft: 16 }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginLeft: 'var(--space-4)' }}>
                     Generated {new Date(status.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </div>
                 )}
               </div>
             ) : (
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginBottom: 16 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }}>
                 No API key yet. Generate one to connect the companion app.
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               <button
                 className="btn btn-primary"
                 style={{ fontSize: 12 }}
@@ -220,7 +220,7 @@ export default function Companion() {
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, margin: '0 0 20px' }}>
                 Revoke your API key? The companion app will stop working until you generate a new one.
               </p>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
                 <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setShowRevokeConfirm(false)}>
                   Cancel
                 </button>
@@ -238,14 +238,14 @@ export default function Companion() {
       )}
 
       {/* Download Card */}
-      <div className="card" style={{ padding: '20px', marginBottom: 16 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 14 }}>
+      <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }}>
           Download
         </div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 16 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-4)' }}>
           The companion app is a desktop app for Windows and macOS. It runs in your system tray, reads UDP telemetry from F1 25, and silently uploads sessions when you exit.
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-3)' }}>
           <a
             href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases/latest"
             target="_blank"
@@ -259,7 +259,7 @@ export default function Companion() {
               letterSpacing: '0.06em',
               color: 'var(--on-accent)',
               background: 'var(--red)',
-              padding: '8px 16px',
+              padding: 'var(--space-2) var(--space-4)',
               borderRadius: 3,
               textDecoration: 'none',
             }}
@@ -280,7 +280,7 @@ export default function Companion() {
               color: 'var(--white)',
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border)',
-              padding: '8px 16px',
+              padding: 'var(--space-2) var(--space-4)',
               borderRadius: 3,
               textDecoration: 'none',
             }}
@@ -297,7 +297,7 @@ export default function Companion() {
               fontFamily: 'var(--font-body)',
               fontSize: 12,
               color: 'var(--gray-mid)',
-              padding: '8px 12px',
+              padding: 'var(--space-2) var(--space-3)',
               textDecoration: 'none',
             }}
           >
@@ -310,16 +310,16 @@ export default function Companion() {
       </div>
 
       {/* F1 25 UDP Setup Guide */}
-      <div className="card" style={{ padding: '20px', marginBottom: 16 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 14 }}>
+      <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }}>
           F1 25 UDP Setup Guide
         </div>
 
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 16 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-4)' }}>
           Enable UDP telemetry in F1 25 so the companion app can read your session data in real time.
         </div>
 
-        <ol style={{ paddingLeft: 20, margin: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <ol style={{ paddingLeft: 'var(--space-5)', margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {[
             {
               step: 'Open F1 25 and go to Settings',
@@ -346,7 +346,7 @@ export default function Companion() {
               detail: 'When you finish a practice, qualifying, or race session, the companion app automatically uploads it to your F1 Sim Hub account.',
             },
           ].map((item, i) => (
-            <li key={i} style={{ listStyle: 'none', display: 'flex', gap: 14 }}>
+            <li key={i} style={{ listStyle: 'none', display: 'flex', gap: 'var(--space-4)' }}>
               <div style={{
                 flexShrink: 0,
                 width: 22,
@@ -378,11 +378,11 @@ export default function Companion() {
       </div>
 
       {/* API Reference */}
-      <div className="card" style={{ padding: '20px' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 14 }}>
+      <div className="card" style={{ padding: 'var(--space-5)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 'var(--space-4)' }}>
           API Reference
         </div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 12 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-3)' }}>
           Authenticate requests with your API key:
         </div>
         <div style={{
@@ -392,8 +392,8 @@ export default function Companion() {
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
           borderRadius: 3,
-          padding: '10px 14px',
-          marginBottom: 16,
+          padding: 'var(--space-2) var(--space-4)',
+          marginBottom: 'var(--space-4)',
         }}>
           Authorization: Bearer &lt;your-api-key&gt;
         </div>
@@ -405,7 +405,7 @@ export default function Companion() {
             desc: 'Upload a session. Lap times are computed from the laps array if bestLap is omitted.',
           },
         ].map(e => (
-          <div key={e.path} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+          <div key={e.path} style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
             <span style={{
               flexShrink: 0,
               fontFamily: 'var(--font-mono)',

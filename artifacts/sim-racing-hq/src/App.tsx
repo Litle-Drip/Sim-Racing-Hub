@@ -136,7 +136,7 @@ const authCardAppearance = {
       border: '1px solid #2A2A2A',
       borderTop: '2px solid #E8002D',
       borderRadius: 0,
-      padding: '32px',
+      padding: 'var(--space-6)',
     },
     footer: { boxShadow: 'none', border: 0, borderRadius: 0 },
     headerTitle: { fontWeight: '700', fontSize: '22px' },
@@ -144,9 +144,9 @@ const authCardAppearance = {
     socialButtonsBlockButtonText: { color: '#E8E8E8', fontWeight: '600' },
     socialButtonsBlockButtonArrow: { color: '#E8E8E8' },
     footerActionText: { color: '#BBBBBB' },
-    logoBox: { marginBottom: '16px' },
+    logoBox: { marginBottom: 'var(--space-4)' },
     logoImage: { height: '48px' },
-    socialButtons: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
+    socialButtons: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' },
     socialButtonsBlockButton: { backgroundColor: '#232323', border: '1px solid #3A3A3A', minHeight: '48px' },
     socialButtonsProviderIcon: { width: '20px', height: '20px' },
     formButtonPrimary: { minHeight: '48px' },
@@ -162,7 +162,7 @@ function AuthPageShell({ children }: { children: ReactNode }) {
       alignItems: 'center',
       justifyContent: 'center',
       background: 'var(--bg)',
-      padding: '16px',
+      padding: 'var(--space-4)',
       position: 'relative',
       overflow: 'hidden',
     }}>
@@ -321,7 +321,7 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
             </button>
           </div>
         </div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 10, letterSpacing: '0.01em' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 'var(--space-2)', letterSpacing: '0.01em' }}>
           The demo loads a real sample race weekend — dashboard, session log, lap history — right in your browser. Nothing is saved to an account.
         </p>
       </div>
@@ -352,7 +352,7 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
       {/* Browse Links */}
       <div className="landing-browse">
         <div className="landing-section-label">Browse without an account</div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/community')}>
             Community
           </button>
@@ -510,31 +510,31 @@ function GuestWall({ page, onSignIn }: { page: string; onSignIn: () => void }) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 0,
-      padding: '40px 24px',
+      padding: 'var(--space-7) var(--space-5)',
     }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 12 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 'var(--space-3)' }}>
         Free Account Required
       </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 8 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 'var(--space-2)' }}>
         Unlock your {PAGE_LABELS[page] || page}
       </div>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', textAlign: 'center', maxWidth: 380, lineHeight: 1.6, marginBottom: 24 }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', textAlign: 'center', maxWidth: 380, lineHeight: 1.6, marginBottom: 'var(--space-5)' }}>
         Create a free account — no credit card, no waiting. Everything syncs across your devices automatically.
       </div>
       {unlocks && (
-        <div style={{ marginBottom: 28, textAlign: 'left', maxWidth: 340 }}>
+        <div style={{ marginBottom: 'var(--space-6)', textAlign: 'left', maxWidth: 340 }}>
           {unlocks.bullets.map(b => (
-            <div key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+            <div key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
               <span style={{ color: 'var(--teal)', fontSize: 14, marginTop: 1, flexShrink: 0 }}>✓</span>
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>{b}</span>
             </div>
           ))}
         </div>
       )}
-      <button className="btn btn-primary" style={{ minWidth: 200, fontSize: 15, padding: '14px 28px' }} onClick={onSignIn}>
+      <button className="btn btn-primary" style={{ minWidth: 200, fontSize: 15, padding: 'var(--space-4) var(--space-6)' }} onClick={onSignIn}>
         Create Free Account
       </button>
-      <button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 12, color: 'var(--gray-mid)' }} onClick={onSignIn}>
+      <button className="btn btn-ghost" style={{ marginTop: 'var(--space-2)', fontSize: 12, color: 'var(--gray-mid)' }} onClick={onSignIn}>
         Already have an account? Sign in →
       </button>
     </div>
@@ -551,11 +551,11 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
       background: 'var(--bg-card)',
       borderTop: '1px solid var(--teal)',
       boxShadow: 'var(--shadow-pop)',
-      padding: '14px 24px',
+      padding: 'var(--space-4) var(--space-5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 16,
+      gap: 'var(--space-4)',
       flexWrap: 'wrap',
       zIndex: 800,
       backdropFilter: 'blur(8px)',
@@ -568,18 +568,18 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
           Create a free account to <strong style={{ color: 'var(--white)' }}>log sessions, save setups, and track your PBs</strong> across every device.
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexShrink: 0 }}>
         <button
           className="btn btn-ghost"
           onClick={onDismiss}
-          style={{ fontSize: 12, color: 'var(--gray-mid)', padding: '8px 14px' }}
+          style={{ fontSize: 12, color: 'var(--gray-mid)', padding: 'var(--space-2) var(--space-4)' }}
         >
           Maybe Later
         </button>
         <button
           className="btn btn-primary"
           onClick={onSignIn}
-          style={{ fontSize: 13, padding: '9px 20px', whiteSpace: 'nowrap' }}
+          style={{ fontSize: 13, padding: 'var(--space-2) var(--space-5)', whiteSpace: 'nowrap' }}
         >
           Create Free Account
         </button>
@@ -596,11 +596,11 @@ function DemoBanner({ onSignIn }: { onSignIn: () => void }) {
       zIndex: 700,
       background: 'var(--teal)',
       color: 'var(--black)',
-      padding: '8px 20px',
+      padding: 'var(--space-2) var(--space-5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 14,
+      gap: 'var(--space-4)',
       flexWrap: 'wrap',
       fontFamily: 'var(--font-body)',
       fontSize: 12,
@@ -866,20 +866,20 @@ export default function App() {
           alignItems: 'center',
           justifyContent: 'center',
           background: '#080808',
-          padding: 24,
+          padding: 'var(--space-5)',
           fontFamily: 'monospace',
         }}>
           <div style={{
             background: '#111',
             border: '1px solid #E8002D',
-            padding: '32px 40px',
+            padding: 'var(--space-6) var(--space-7)',
             maxWidth: 520,
             width: '100%',
           }}>
-            <div style={{ color: '#E8002D', fontSize: 12, letterSpacing: '0.12em', marginBottom: 16 }}>
+            <div style={{ color: '#E8002D', fontSize: 12, letterSpacing: '0.12em', marginBottom: 'var(--space-4)' }}>
               CONFIGURATION ERROR
             </div>
-            <div style={{ color: '#F0F0F0', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
+            <div style={{ color: '#F0F0F0', fontSize: 15, marginBottom: 'var(--space-5)', lineHeight: 1.6 }}>
               <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is not set.
             </div>
             <div style={{ color: '#A8A8A8', fontSize: 13, lineHeight: 1.7 }}>
