@@ -3442,6 +3442,140 @@ summary:focus-visible,
    RACE ENGINEER
    ========================================================= */
 
+/* One reading column for the whole page. The engineer page stacked cards at
+   four different max-widths (480 / 640 / 780) each centred on their own, while
+   the header ran the full container — so the controls at the top right sat
+   detached from the column they act on, and no two edges lined up. */
+.page--narrow {
+  max-width: 960px;
+}
+
+/* ── Radio transcript ──────────────────────────────────────────────────────
+   Two sides of a radio exchange, and they should not look alike. The engineer
+   transmits from the pit wall (accent edge, panel surface); the driver's own
+   calls come back as a distinct bubble instead of the bare unstyled text they
+   were, which read as stray copy in the middle of the transcript. */
+
+.radio-line {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+}
+
+.radio-line--engineer { align-self: flex-start; }
+.radio-line--driver { align-self: flex-end; align-items: flex-end; }
+
+.radio-callsign {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gray-mid);
+}
+
+.radio-line--driver .radio-callsign { flex-direction: row-reverse; }
+
+.radio-msg {
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.7;
+  color: var(--gray-light);
+  white-space: pre-wrap;
+}
+
+.radio-msg--engineer {
+  background: var(--surface);
+  border-left: 2px solid var(--red);
+}
+
+.radio-msg--driver {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius);
+  color: var(--white);
+}
+
+/* The engineer calls out numbers constantly — lap times, deltas, sector
+   splits. Emphasis inside a transmission is set in the mono face so those
+   read as instrument values rather than as shouting. */
+.radio-msg strong {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--white);
+}
+
+/* Console strip beside the page controls: connection state and which model is
+   answering, in the same place a pit wall shows its link status. */
+.engineer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--teal);
+  white-space: nowrap;
+}
+
+/* The transcript itself — a fixed-height console the page scrolls inside. */
+.engineer-console {
+  display: flex;
+  flex-direction: column;
+  height: 65vh;
+  min-height: 420px;
+}
+
+.engineer-transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.engineer-composer {
+  display: flex;
+  border-top: 1px solid var(--border);
+}
+
+.engineer-composer input {
+  flex: 1;
+  padding: var(--space-4);
+  background: transparent;
+  border: none;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  outline: none;
+}
+
+.engineer-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 767px) {
+  .radio-line { max-width: 100%; }
+  .engineer-transcript { padding: var(--space-4); }
+  .engineer-suggestions { padding: var(--space-3) var(--space-4); }
+}
+
 .engineer-live-dot {
   width: 7px;
   height: 7px;
