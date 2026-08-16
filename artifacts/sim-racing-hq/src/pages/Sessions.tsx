@@ -364,16 +364,12 @@ function computeGuestPBs(sessions: SessionRecord[]): SessionRecord[] {
 
 function SessionStatCard({ label, value, valueColor = 'var(--white)', icon }: { label: string; value: string; valueColor?: string; icon: React.ReactNode }) {
   return (
-    <div className="stat-card" style={{ overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', bottom: -8, right: -8, width: 80, height: 80, opacity: 0.07, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {icon}
-      </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 12 }}>
-        {label}
-      </div>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 32, fontWeight: 700, color: valueColor, lineHeight: 1 }}>
-        {value}
-      </div>
+    <div className="stat-card">
+      {/* Same icon treatment as the dashboard's stat cards — this row carried
+          an 80px watermark bleeding off the bottom-right corner instead. */}
+      <span className="stat-icon">{icon}</span>
+      <div className="stat-label">{label}</div>
+      <div className="stat-value" style={{ color: valueColor }}>{value}</div>
     </div>
   );
 }
@@ -818,27 +814,27 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
       </div>
 
       {sessions.length > 0 && (
-        <div className="stat-grid" style={{ marginBottom: 28 }}>
+        <div className="stat-grid">
           <SessionStatCard
             label="Total Sessions"
             value={String(sessions.length)}
-            icon={<Timer style={{ width: '100%', height: '100%' }} />}
+            icon={<Timer size={20} />}
           />
           <SessionStatCard
             label={statBestLap ? `Best Lap (${F1_TRACKS.find(t => t.id === statBestLap.trackId)?.short ?? statBestLap.trackId})` : 'Best Lap'}
             value={statBestLap?.bestLap || '—'}
             valueColor="var(--teal)"
-            icon={<Trophy style={{ width: '100%', height: '100%' }} />}
+            icon={<Trophy size={20} />}
           />
           <SessionStatCard
             label="Avg Consistency"
             value={statAvgConsistency !== null ? `${statAvgConsistency.toFixed(1)}%` : '—'}
-            icon={<CheckCircle2 style={{ width: '100%', height: '100%' }} />}
+            icon={<CheckCircle2 size={20} />}
           />
           <SessionStatCard
             label="Tracks Covered"
             value={`${statTracksCovered}/${F1_TRACKS.length}`}
-            icon={<Map style={{ width: '100%', height: '100%' }} />}
+            icon={<Map size={20} />}
           />
         </div>
       )}
@@ -931,14 +927,14 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                   >
                     <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {s.date}
-                      {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 10, marginTop: 1 }}>{localTimeStr(s.createdAt)}</div>}
+                      {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 'var(--fs-label)', marginTop: 'var(--space-1)' }}>{localTimeStr(s.createdAt)}</div>}
                     </td>
                     <td data-label="Track">
                       {trackName(s.trackId)}
                       {isDailyChallengeSession(s) && (
                         <span
                           title="Completed the Daily Challenge for this date"
-                          style={{ marginLeft: 6, fontSize: 10, fontFamily: 'var(--font-display)', letterSpacing: '0.04em', color: 'var(--teal)', border: '1px solid rgba(0,210,190,0.4)', borderRadius: 2, padding: '1px 5px', textTransform: 'uppercase' }}
+                          style={{ marginLeft: 'var(--space-2)', fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-display)', letterSpacing: '0.04em', color: 'var(--teal)', border: '1px solid rgba(0,210,190,0.4)', borderRadius: 'var(--radius)', padding: '1px 5px', textTransform: 'uppercase' }}
                         >
                           Challenge
                         </span>
@@ -951,19 +947,19 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     </td>
                     <td data-label="Type"><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
                     <td data-label="">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-2)', whiteSpace: 'nowrap' }}>
                         {/* NEW now means "you haven't opened this yet" rather
                             than "most recent" — it clears on click, alongside
                             the row glow. */}
                         {isNew(s.id) ? (
-                          <span title="Landed since you last looked — click to open" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>
+                          <span title="Landed since you last looked — click to open" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--teal)', fontSize: 'var(--fs-label)', fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>
                             <span className="session-new-dot" />NEW
                           </span>
                         ) : s.id === mostRecentId && (
-                          <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LATEST</span>
+                          <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 'var(--fs-label)', fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LATEST</span>
                         )}
-                        {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
-                        {validLaps(s.laps).length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{validLaps(s.laps).length}L</span>}
+                        {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 'var(--fs-label)', fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
+                        {validLaps(s.laps).length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 'var(--fs-label)', fontFamily: 'var(--font-body)' }}>{validLaps(s.laps).length}L</span>}
                         {s.notes && <FileText size={13} style={{ color: 'var(--gray)', verticalAlign: 'middle' }} />}
                         {expanded === s.id ? <ChevronUp size={13} style={{ color: 'var(--gray-mid)' }} /> : <ChevronDown size={13} style={{ color: 'var(--gray-mid)' }} />}
                       </div>
@@ -988,11 +984,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
                           <SessionDetailFields session={s} onViewTelemetry={(sessionId, lap) => setTelemetryLap({ sessionId, lap })} />
 
-                          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 12, marginTop: 4, borderTop: '1px solid var(--border)' }}>
+                          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
                             {!isGuest && (
                               <button
-                                className="btn btn-secondary"
-                                style={{ fontSize: 11, padding: '4px 10px', color: s.isPublic ? 'var(--teal)' : 'var(--gray-mid)', borderColor: s.isPublic ? 'var(--teal)' : 'var(--gray)' }}
+                                className="btn btn-secondary btn-sm"
+                                style={{ color: s.isPublic ? 'var(--teal)' : 'var(--gray-mid)', borderColor: s.isPublic ? 'var(--teal)' : 'var(--gray)' }}
                                 onClick={(e) => handleShare(s, e)}
                                 disabled={sharingId === s.id}
                                 title={s.isPublic ? 'Remove from Community' : 'Share to Community'}
@@ -1002,8 +998,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                               </button>
                             )}
                             <button
-                              className="btn btn-secondary"
-                              style={{ fontSize: 11, padding: '4px 10px', color: 'var(--red)', borderColor: 'var(--red)' }}
+                              className="btn btn-danger"
                               onClick={(e) => handleDelete(s.id, e)}
                             >
                               <Trash2 size={11} style={{ marginRight: 4 }} />

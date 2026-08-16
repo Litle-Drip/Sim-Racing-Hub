@@ -94,15 +94,13 @@ export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessio
   }, 0);
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto', marginTop: 12 }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
-        Lap Data
-      </div>
+    <div style={{ width: '100%', overflowX: 'auto', marginTop: 'var(--space-4)' }}>
+      <div className="panel-title" style={{ marginBottom: 'var(--space-3)' }}>Lap Data</div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
             {['Lap', 'Time', 'S1', 'S2', 'S3', 'Tires', 'Penalty', ''].map(h => (
-              <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--gray-mid)', fontWeight: 400, textTransform: 'uppercase' }}>{h}</th>
+              <th key={h} style={{ padding: 'var(--space-2) var(--space-3)', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -111,18 +109,17 @@ export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessio
             const isFastest = i === fastestIdx && laps.length > 1;
             return (
               <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: isFastest ? 'rgba(0,210,190,0.07)' : undefined }}>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.lap}</td>
-                <td style={{ padding: '5px 8px', color: isFastest ? 'var(--teal)' : 'var(--white)', fontWeight: isFastest ? 700 : 400 }}>{l.time || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s1 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s2 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-light)' }}>{l.s3 || '—'}</td>
-                <td style={{ padding: '5px 8px', color: 'var(--gray-mid)' }}>{l.tires || '—'}</td>
-                <td style={{ padding: '5px 8px', color: l.penalty ? 'var(--red)' : 'var(--gray-mid)' }}>{l.penalty || '—'}</td>
-                <td style={{ padding: '5px 8px' }}>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-mid)' }}>{l.lap}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: isFastest ? 'var(--teal)' : 'var(--white)', fontWeight: isFastest ? 700 : 400 }}>{l.time || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-light)' }}>{l.s1 || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-light)' }}>{l.s2 || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-light)' }}>{l.s3 || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: 'var(--gray-mid)' }}>{l.tires || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)', color: l.penalty ? 'var(--red)' : 'var(--gray-mid)' }}>{l.penalty || '—'}</td>
+                <td style={{ padding: 'var(--space-2) var(--space-3)' }}>
                   {/* Trace presence is unknown until LapTelemetryModal fetches full detail — list responses omit traces. */}
                   <button
-                    className="btn btn-secondary"
-                    style={{ fontSize: 10, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+                    className="btn btn-secondary btn-sm"
                     onClick={() => onViewTelemetry(sessionId, l)}
                     title="View speed/throttle/brake telemetry for this lap"
                   >
@@ -477,9 +474,9 @@ export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: stri
         </div>
         <div className="modal-body" style={{ overflowY: 'auto' }}>
           {isLoading ? (
-            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>Loading telemetry…</div>
+            <div style={{ padding: 'var(--space-5) 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>Loading telemetry…</div>
           ) : trace.length === 0 ? (
-            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>No telemetry data recorded for this lap.</div>
+            <div style={{ padding: 'var(--space-5) 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>No telemetry data recorded for this lap.</div>
           ) : (
             <>
               <LapStatStrip lap={lap} trace={trace} />
