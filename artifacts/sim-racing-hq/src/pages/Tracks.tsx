@@ -60,8 +60,8 @@ function DifficultyRating({
   const display = hover || rating;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Difficulty</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+      <span className="stat-label" style={{ marginBottom: 0 }}>Difficulty</span>
       <div style={{ display: 'flex', gap: 3 }}>
         {[1, 2, 3, 4, 5].map(i => (
           <span
@@ -81,10 +81,10 @@ function DifficultyRating({
         ))}
       </div>
       {guestFlash && (
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--teal)' }}>Sign in to save ratings</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--teal)' }}>Sign in to save ratings</span>
       )}
       {!guestFlash && display > 0 && (
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--gray-mid)' }}>{DIFFICULTY_LABELS[display]}</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>{DIFFICULTY_LABELS[display]}</span>
       )}
     </div>
   );
@@ -119,7 +119,7 @@ function CardDifficultyDots({
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, marginTop: 6 }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)', marginTop: 'var(--space-2)' }}
       onClick={e => e.stopPropagation()}
     >
       <div style={{ display: 'flex', gap: 3 }}>
@@ -140,12 +140,9 @@ function CardDifficultyDots({
           />
         ))}
       </div>
-      {guestFlash && (
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--teal)', whiteSpace: 'nowrap' }}>Sign in to save</span>
-      )}
-      {!guestFlash && display > 0 && (
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{DIFFICULTY_LABELS[display]}</span>
-      )}
+      <span className="track-card-difficulty-label" style={guestFlash ? { color: 'var(--teal)' } : undefined}>
+        {guestFlash ? 'Sign in to save' : display > 0 ? DIFFICULTY_LABELS[display] : ''}
+      </span>
     </div>
   );
 }
@@ -219,27 +216,18 @@ function TrackGrid({
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: allSessions.length > 0 ? 28 : 0 }}>
-        <h1 className="page-title" style={{ marginBottom: 0 }}>Track Bible</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Sort</span>
+      {/* Title and sort share the page header every other screen uses, and the
+          sort options are the app's chip (.badge-tab) rather than a fifth chip
+          style with its own radius, height and active treatment. */}
+      <div className="page-header" style={{ marginBottom: 'var(--space-4)' }}>
+        <h1 className="page-title">Track Bible</h1>
+        <div className="toolbar-chips">
+          <span className="stat-label" style={{ marginBottom: 0 }}>Sort</span>
           {SORT_OPTIONS.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setSort(key)}
-              style={{
-                background: sort === key ? 'var(--red)' : 'var(--bg-elevated)',
-                border: `1px solid ${sort === key ? 'var(--red)' : 'var(--border)'}`,
-                borderRadius: 4,
-                color: sort === key ? 'var(--white)' : 'var(--gray-mid)',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-display)',
-                fontSize: 11,
-                letterSpacing: '0.06em',
-                padding: '5px 10px',
-                textTransform: 'uppercase',
-                transition: 'all 0.15s',
-              }}
+              className={`badge-tab${sort === key ? ' badge-tab-active' : ''}`}
             >
               {label}
             </button>
@@ -538,24 +526,26 @@ function TrackDetail({
           >
             <div className="track-stat-label">{label}</div>
             <div className={`track-stat-value${!mono || value === '—' || value === 'Never' ? ' gray' : ''}`} style={onClick ? { textDecoration: 'underline', textUnderlineOffset: 3 } : undefined}>{value}</div>
-            {sub && <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>{sub}</div>}
+            {sub && <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>{sub}</div>}
           </div>
         ))}
       </div>
 
       {/* Tyre Compound Guide */}
       {tyreGuide && (
-        <div className="card" style={{ padding: 0, marginBottom: 24, overflow: 'hidden', border: '1px solid var(--border)' }}>
-          <div style={{ background: 'var(--bg-elevated)', padding: '10px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CircleDot size={13} aria-hidden="true" style={{ color: 'var(--gray-light)' }} />
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>Tyre Strategy Guide</span>
+        <div className="card" style={{ padding: 0, marginBottom: 'var(--space-5)', overflow: 'hidden' }}>
+          <div className="panel-header panel-header--bar">
+            <span className="panel-title">
+              <CircleDot size={13} aria-hidden="true" />
+              Tyre Strategy Guide
+            </span>
           </div>
-          <div style={{ padding: '14px 20px', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontFamily: 'var(--font-body)', fontSize: 12 }}>
-            <span style={{ color: 'var(--gray-mid)' }}>Compounds</span>
+          <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'var(--space-3) var(--space-5)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', alignItems: 'baseline' }}>
+            <span className="stat-label" style={{ marginBottom: 0 }}>Compounds</span>
             <span style={{ color: 'var(--white)' }}>{tyreGuide.compounds}</span>
-            <span style={{ color: 'var(--gray-mid)' }}>Strategy</span>
+            <span className="stat-label" style={{ marginBottom: 0 }}>Strategy</span>
             <span style={{ color: 'var(--white)' }}>{tyreGuide.strategy}</span>
-            <span style={{ color: 'var(--gray-mid)' }}>Notes</span>
+            <span className="stat-label" style={{ marginBottom: 0 }}>Notes</span>
             <span style={{ color: 'var(--gray-light)' }}>{tyreGuide.notes}</span>
           </div>
         </div>
@@ -567,19 +557,18 @@ function TrackDetail({
       {/* Video Clip Library */}
       <VideoClipLibrary trackId={track.id} />
 
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ marginBottom: 'var(--space-6)' }}>
+        <div className="panel-header" style={{ marginBottom: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <div className="section-title" style={{ marginBottom: 0 }}>Corner Breakdown</div>
             {isSaving && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Saving…</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Saving…</span>
             )}
             {!isSaving && hasSaveError && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                 Save failed —{' '}
                 <button
                   className="btn btn-secondary btn-sm"
-                  style={{ padding: '2px 8px', fontSize: 10 }}
                   onClick={() => { resetSave(); saveCorners(corners); }}
                 >
                   Retry
@@ -621,7 +610,7 @@ function TrackDetail({
                   <td><EditableCell value={c.lineNotes} onSave={v => saveCorner(c.id, 'lineNotes', v)} placeholder="click to add" /></td>
                   <td><EditableCell value={c.myNotes} onSave={v => saveCorner(c.id, 'myNotes', v)} placeholder="click to add" /></td>
                   <td>
-                    <button className="btn-danger" style={{ padding: '2px 6px', fontSize: 14, lineHeight: 1 }} onClick={() => deleteCorner(c.id)}>×</button>
+                    <button className="btn btn-danger" aria-label={`Delete corner ${c.number}`} onClick={() => deleteCorner(c.id)}><X size={12} /></button>
                   </td>
                 </tr>
               ))}
@@ -682,23 +671,24 @@ function CircuitSchoolSection({ trackId }: { trackId: string }) {
   const [expanded, setExpanded] = useState(false);
   if (!guide) return null;
 
-  const sectionStyle = { fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-light)', lineHeight: 1.7 };
-  const labelStyle = { fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--teal)', marginBottom: 6, marginTop: 16 };
+  const sectionStyle = { fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', lineHeight: 1.7 };
+  const labelStyle = { fontFamily: 'var(--font-display)', fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--teal)', marginBottom: 'var(--space-2)', marginTop: 'var(--space-5)' };
 
   return (
-    <div className="card card-accent card-accent--teal" style={{ padding: 0, marginBottom: 24, overflow: 'hidden' }}>
+    <div className="card card-accent card-accent--teal" style={{ padding: 0, marginBottom: 'var(--space-5)', overflow: 'hidden' }}>
       <div
         onClick={() => setExpanded(!expanded)}
-        style={{ background: 'var(--bg-elevated)', padding: '12px 20px', borderBottom: expanded ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        className="panel-header panel-header--bar"
+        style={{ borderBottom: expanded ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <BookOpen size={13} aria-hidden="true" style={{ color: 'var(--teal)' }} />
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)' }}>Circuit School</span>
-        </div>
+        <span className="panel-title panel-title--teal">
+          <BookOpen size={13} aria-hidden="true" />
+          Circuit School
+        </span>
         {expanded ? <ChevronUp size={14} style={{ color: 'var(--gray-mid)' }} /> : <ChevronDown size={14} style={{ color: 'var(--gray-mid)' }} />}
       </div>
       {expanded && (
-        <div style={{ padding: '8px 20px 20px' }}>
+        <div style={{ padding: 'var(--space-3) var(--space-5) var(--space-5)' }}>
           <div style={sectionStyle}>{guide.characteristics}</div>
 
           <div style={labelStyle}>DRS Zones</div>
@@ -778,19 +768,19 @@ function VideoClipLibrary({ trackId }: { trackId: string }) {
   const sorted = [...clips].sort((a, b) => b.votes - a.votes);
 
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ marginBottom: 'var(--space-5)' }}>
+      <div className="panel-header" style={{ marginBottom: 'var(--space-4)' }}>
+        <span className="panel-title">
           <Play size={14} style={{ color: 'var(--red)' }} />
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>Video Clip Library</span>
-        </div>
+          Video Clip Library
+        </span>
         <button className="btn btn-secondary btn-sm" onClick={() => setShowAdd(!showAdd)}>
           {showAdd ? <><X size={11} /> Cancel</> : <><Plus size={11} /> Add Clip</>}
         </button>
       </div>
 
       {showAdd && (
-        <div className="card" style={{ padding: '14px 16px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="card" style={{ padding: 'var(--space-4)', marginBottom: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <input
             className="input"
             placeholder="YouTube URL"
@@ -812,11 +802,11 @@ function VideoClipLibrary({ trackId }: { trackId: string }) {
       )}
 
       {sorted.length === 0 ? (
-        <div className="card" style={{ padding: '16px 20px', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>No video clips yet — add a YouTube link to build your reference library for this track.</div>
+        <div className="card" style={{ padding: 'var(--space-5)', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)' }}>No video clips yet — add a YouTube link to build your reference library for this track.</div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-4)' }}>
           {sorted.map(clip => {
             const ytId = extractYouTubeId(clip.url);
             return (
@@ -829,7 +819,7 @@ function VideoClipLibrary({ trackId }: { trackId: string }) {
                     </div>
                   </a>
                 )}
-                <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ padding: 'var(--space-2) var(--space-3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
                   <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--white)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{clip.label}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <button onClick={() => upvote(clip.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, color: 'var(--gray-mid)', fontSize: 11 }}>
