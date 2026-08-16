@@ -78,15 +78,26 @@ const QUICK_QUESTIONS = [
 function SpeakerLabel({ role }: { role: 'assistant' | 'user' }) {
   const Icon = role === 'assistant' ? Headphones : UserIcon;
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 5,
-      flexDirection: role === 'user' ? 'row-reverse' : 'row',
-      fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.08em',
-      color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 5,
-    }}>
+    <div className="radio-callsign">
       <Icon size={11} aria-hidden="true" />
       {role === 'assistant' ? 'Race Engineer' : 'You'}
     </div>
+  );
+}
+
+/**
+ * The engineer's replies come back with markdown emphasis around the figures
+ * that matter — "**0.131s**", "**What to log first:**". Unrendered, those
+ * asterisks sat in the middle of the transmission as literal characters. This
+ * renders the bold runs and nothing else: no HTML is interpreted, the text is
+ * split on the delimiter and the pieces are returned as React nodes.
+ */
+function RadioText({ text }: { text: string }) {
+  const parts = text.split(/\*\*(.+?)\*\*/gs);
+  return (
+    <>
+      {parts.map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part))}
+    </>
   );
 }
 
@@ -372,24 +383,23 @@ export default function RaceEngineer() {
   const uniqueTracks = new Set(sessions.map(s => s.trackId)).size;
 
   return (
-    <div className="page">
+    <div className="page page--narrow">
       <div className="page-header">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <Headphones size={20} style={{ color: 'var(--red)' }} />
-            <h1 className="page-title" style={{ marginBottom: 0 }}>Race Engineer</h1>
+            <h1 className="page-title">Race Engineer</h1>
           </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-mid)', marginTop: 6 }}>
-            AI coaching powered by your session data
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 8 }}>
-            <span className="engineer-live-dot" />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.08em', color: 'var(--teal)', textTransform: 'uppercase' }}>
-              {apiKey ? 'Live · Your key · Claude Sonnet 5' : 'Live · Claude Haiku 4.5'}
-            </span>
-          </div>
+          <div className="page-subtitle">AI coaching powered by your session data</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        {/* Link status sits with the controls, the way a pit wall keeps its
+            connection state beside the switches — it was a third stacked line
+            under the subtitle. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <span className="engineer-status">
+            <span className="engineer-live-dot" />
+            {apiKey ? 'Live · Your key · Claude Sonnet 5' : 'Live · Claude Haiku 4.5'}
+          </span>
           <button
             className="btn btn-secondary"
             onClick={() => { setKeyPanelOpen(o => !o); setKeyError(''); }}
@@ -407,7 +417,7 @@ export default function RaceEngineer() {
       </div>
 
       {keyPanelOpen && (
-        <div className="card" style={{ padding: '20px 24px', maxWidth: 640, margin: '0 auto 20px' }}>
+        <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-5)' }}>
           <ApiKeyPanel
             apiKey={apiKey}
             draft={keyDraft}
@@ -425,31 +435,24 @@ export default function RaceEngineer() {
       {recommendation && !locked && (
         <div
           className="card card-accent card-accent--red"
-          style={{ padding: '14px 20px', maxWidth: 780, margin: '0 auto 20px' }}
+          style={{ padding: 'var(--space-4) var(--space-5)', marginBottom: 'var(--space-5)' }}
         >
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>
-            Recommended Session
-          </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
-            {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
-          </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginBottom: 8 }}>
-            {recommendation.reason}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>Est. gain: {recommendation.gain}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Confidence: {recommendation.confidence}%</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Consistency: {recommendation.avgConsistency.toFixed(1)}%</span>
-            {recommendation.lastDaysAgo !== null && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)' }}>
-                Last: {recommendation.lastDaysAgo === 0 ? 'Today' : recommendation.lastDaysAgo === 1 ? 'Yesterday' : `${recommendation.lastDaysAgo}d ago`}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          {/* Call and action on one row: the button had a band of its own
+              below the readout, right-aligned against nothing. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 'var(--space-1)' }}>
+                Recommended Session
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--white)' }}>
+                {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
+              </div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
+                {recommendation.reason}
+              </div>
+            </div>
             <button
               className="btn btn-secondary"
-              style={{ fontSize: 11, padding: '5px 14px' }}
               disabled={loading}
               onClick={() => {
                 setStarted(true);
@@ -459,6 +462,16 @@ export default function RaceEngineer() {
               Ask Engineer
             </button>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap', marginTop: 'var(--space-3)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--teal)' }}>Est. gain: {recommendation.gain}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Confidence: {recommendation.confidence}%</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>Consistency: {recommendation.avgConsistency.toFixed(1)}%</span>
+            {recommendation.lastDaysAgo !== null && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-label)', color: 'var(--gray)' }}>
+                Last: {recommendation.lastDaysAgo === 0 ? 'Today' : recommendation.lastDaysAgo === 1 ? 'Yesterday' : `${recommendation.lastDaysAgo}d ago`}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
@@ -467,7 +480,7 @@ export default function RaceEngineer() {
         // show the "Ready for Debrief" empty state — otherwise a returning
         // user briefly sees (and can click into) the empty state before
         // their restored chat history snaps in.
-        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }} />
+        <div className="card" style={{ padding: 'var(--space-7) var(--space-6)', textAlign: 'center' }} />
       ) : locked ? (
         <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
           <Lock size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
@@ -511,17 +524,17 @@ export default function RaceEngineer() {
           />
         </div>
       ) : !started ? (
-        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
-          <Headphones size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 10, textTransform: 'uppercase' }}>
+        <div className="card" style={{ padding: 'var(--space-7) var(--space-6)', textAlign: 'center' }}>
+          <Headphones size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 'var(--space-4)' }} />
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 'var(--space-3)', textTransform: 'uppercase' }}>
             Ready for Debrief
           </div>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 28 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body)', color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-6)', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto' }}>
             Your engineer reads your real session history — lap times, sectors, consistency — and gives you specific,
             data-driven coaching. No generic advice.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 24, textAlign: 'left' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-5)', textAlign: 'left' }}>
             <div className={`engineer-data-pill${sessions.length > 0 ? ' engineer-data-pill--ready' : ''}`}>
               <div className="field-label">Sessions</div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, color: sessions.length > 0 ? 'var(--teal)' : 'var(--gray-mid)' }}>{sessions.length}</div>
@@ -541,42 +554,33 @@ export default function RaceEngineer() {
           </div>
 
           {!hasSessions && (
-            <div style={{ borderLeft: '3px solid var(--red)', background: 'rgba(232,0,45,0.06)', padding: '10px 14px', marginBottom: 24, textAlign: 'left' }}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>
+            <div style={{ borderLeft: '3px solid var(--red)', background: 'rgba(232,0,45,0.06)', padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-5)', textAlign: 'left' }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', lineHeight: 1.6 }}>
                 Log at least <strong style={{ color: 'var(--white)' }}>3 sessions</strong> to unlock a real debrief — the engineer needs data to work from.
               </div>
             </div>
           )}
 
-          <button className="btn btn-primary" style={{ minWidth: 220, padding: '14px 28px', fontSize: 14 }} onClick={startDebrief} disabled={!hasSessions}>
+          <button className="btn btn-primary" style={{ minWidth: 220, padding: 'var(--space-4) var(--space-6)' }} onClick={startDebrief} disabled={!hasSessions}>
             Start Debrief
           </button>
         </div>
       ) : (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', maxWidth: 780, margin: '0 auto', height: '65vh', minHeight: 420 }}>
-          <div ref={chatRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="card engineer-console">
+          <div ref={chatRef} className="engineer-transcript">
             {messages.map((m, i) => (
-              <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+              <div key={i} className={`radio-line radio-line--${m.role === 'user' ? 'driver' : 'engineer'}`}>
                 <SpeakerLabel role={m.role} />
-                <div style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 14,
-                  lineHeight: 1.7,
-                  color: 'var(--gray-light)',
-                  whiteSpace: 'pre-wrap',
-                  padding: '10px 14px',
-                  background: m.role === 'assistant' ? 'var(--surface)' : 'transparent',
-                  borderLeft: m.role === 'assistant' ? '2px solid var(--red)' : undefined,
-                }}>
-                  {m.content}
+                <div className={`radio-msg radio-msg--${m.role === 'user' ? 'driver' : 'engineer'}`}>
+                  <RadioText text={m.content} />
                 </div>
               </div>
             ))}
 
             {loading && !streamingText && (
-              <div style={{ alignSelf: 'flex-start' }}>
+              <div className="radio-line radio-line--engineer">
                 <SpeakerLabel role="assistant" />
-                <div style={{ display: 'flex', gap: 4, padding: '12px 14px', background: 'var(--surface)', borderLeft: '2px solid var(--red)' }}>
+                <div className="radio-msg radio-msg--engineer" style={{ display: 'flex', gap: 'var(--space-1)' }}>
                   <span className="engineer-typing-dot" />
                   <span className="engineer-typing-dot" />
                   <span className="engineer-typing-dot" />
@@ -585,16 +589,16 @@ export default function RaceEngineer() {
             )}
 
             {loading && streamingText && (
-              <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
+              <div className="radio-line radio-line--engineer">
                 <SpeakerLabel role="assistant" />
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.7, color: 'var(--gray-light)', whiteSpace: 'pre-wrap', padding: '10px 14px', background: 'var(--surface)', borderLeft: '2px solid var(--red)' }}>
-                  {streamingText}<span className="engineer-cursor" />
+                <div className="radio-msg radio-msg--engineer">
+                  <RadioText text={streamingText} /><span className="engineer-cursor" />
                 </div>
               </div>
             )}
           </div>
 
-          <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+          <div className="engineer-composer">
             <input
               ref={inputRef}
               type="text"
@@ -603,11 +607,10 @@ export default function RaceEngineer() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') sendMessage(input); }}
-              style={{ flex: 1, padding: '14px 16px', background: 'transparent', border: 'none', color: 'var(--white)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none' }}
             />
             <button
               className="btn btn-primary"
-              style={{ borderRadius: 0, textTransform: 'uppercase', padding: '0 24px' }}
+              style={{ padding: '0 var(--space-5)' }}
               onClick={() => sendMessage(input)}
               disabled={!input.trim() || loading}
             >
@@ -615,7 +618,7 @@ export default function RaceEngineer() {
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '12px 24px', borderTop: '1px solid var(--border)' }}>
+          <div className="engineer-suggestions">
             {QUICK_QUESTIONS.map(q => (
               <button
                 key={q}
@@ -634,7 +637,7 @@ export default function RaceEngineer() {
           fine print — a driver about to run out needs to see it, not find it.
           Per-message cost is gone: it's noise to the driver and reads as a
           charge they're about to pay. */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-5)' }}>
         {apiKey ? (
           <span className="engineer-quota engineer-quota--unlimited">
             <Key size={12} aria-hidden="true" />
@@ -652,7 +655,7 @@ export default function RaceEngineer() {
             );
           })()
         ) : null}
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>
           Your data is never stored by the AI
         </div>
       </div>
