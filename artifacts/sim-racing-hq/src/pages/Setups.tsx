@@ -423,9 +423,7 @@ export default function Setups() {
             </div>
             <div className="modal-body">
               {saveError && (
-                <div style={{ background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)', color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '10px 14px', marginBottom: 16 }}>
-                  {saveError}
-                </div>
+                <div className="notice notice--error">{saveError}</div>
               )}
               <div className="form-grid">
                 <div className="field">

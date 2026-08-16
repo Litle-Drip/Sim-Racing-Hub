@@ -1285,12 +1285,16 @@ summary:focus-visible,
   font-size: 11px;
 }
 
+/* Destructive actions always sit beside a `btn-ghost btn-sm` (Delete next to
+   Share, Delete next to View). It kept .btn's 36px height against their 28px,
+   so the pair never lined up — it now carries the small metrics itself. */
 .btn-danger {
   background: transparent;
   color: var(--red);
   border: 1px solid rgba(232,0,45,0.3);
+  min-height: 28px;
+  padding: 5px var(--space-3);
   font-size: 11px;
-  padding: 4px 10px;
 }
 
 .btn-danger:hover {
