@@ -2495,6 +2495,47 @@ summary:focus-visible,
    TRACK DETAIL
    ========================================================= */
 
+/* A titled strip at the top of a panel (Tyre Strategy Guide, Circuit School,
+   Video Clip Library). All three were built inline at 10px/0.14em, a size
+   below the label scale and unlike the .section-title headings around them. */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.panel-header--bar {
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gray-light);
+}
+
+.panel-title--teal { color: var(--teal); }
+
+/* Rated and unrated circuits sit side by side in the grid, and only the rated
+   ones carried a label line — which left the card bottoms ragged. */
+.track-card-difficulty-label {
+  min-height: 16px;
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  color: var(--gray-mid);
+  white-space: nowrap;
+}
+
 .track-detail-header {
   display: flex;
   align-items: center;
@@ -2507,9 +2548,11 @@ summary:focus-visible,
   line-height: 1;
 }
 
+/* Matches .page-title — this is the page's heading, and it read a size
+   smaller than the title on every other screen. */
 .track-detail-info h1 {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: var(--fs-page);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2523,11 +2566,13 @@ summary:focus-visible,
   color: var(--gray-mid);
 }
 
+/* Auto-fit, not a fixed six: there are seven stats, so a hard six-column
+   grid stranded "Last Driven" alone on a second row beside five empty cells. */
 .track-stats-row {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
 }
 
 .track-stat {
