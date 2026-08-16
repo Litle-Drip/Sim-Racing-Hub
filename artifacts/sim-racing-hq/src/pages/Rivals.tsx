@@ -90,17 +90,17 @@ function ChallengeCard({
   const winner = c.winnerUserId === c.creator.userId ? c.creator : c.winnerUserId === c.opponent.userId ? c.opponent : null;
 
   return (
-    <div className="card" style={{ padding: 18 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
-        <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--white)', letterSpacing: '0.03em' }}>
+    <div className="card" style={{ padding: 'var(--space-5)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-title)', fontWeight: 700, color: 'var(--white)', letterSpacing: '0.03em' }}>
             {trackLabel(c.trackId)} · {c.car}
           </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginTop: 2 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
             {lapCountLabel(c.lapCount)} · {c.creator.name}{c.creator.isMe ? ' (You)' : ''} vs {c.opponent.name}{c.opponent.isMe ? ' (You)' : ''}
           </div>
           {c.message && (
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginTop: 8, fontStyle: 'italic' }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', marginTop: 'var(--space-2)', fontStyle: 'italic' }}>
               "{c.message}"
             </div>
           )}
@@ -112,7 +112,7 @@ function ChallengeCard({
 
       {c.status === 'completed' && c.opponentSession ? (
         <>
-          <div className="table-wrap" style={{ marginTop: 14 }}>
+          <div className="table-wrap" style={{ marginTop: 'var(--space-4)' }}>
             <table className="data-table">
               <thead>
                 <tr>
@@ -150,39 +150,41 @@ function ChallengeCard({
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.05em', color: resultColor(c) }}>
+          <div style={{ marginTop: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', color: resultColor(c) }}>
             <Flag size={13} aria-hidden="true" />
             {winner ? `${winner.name}${winner.isMe ? ' (You)' : ''} wins` : 'Dead heat — nothing between them'}
           </div>
         </>
       ) : (
         <>
-          {/* The time on the table. Both drivers see it from the moment the
-              challenge is sent — the whole point is knowing what you have to
-              beat before you go out. */}
-          <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
-              Time to beat
-            </span>
-            <span className="lap-time" style={{ fontSize: 18 }}>{targetTime(c) ?? '—'}</span>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-              set by {c.creator.name}{c.creator.isMe ? ' (You)' : ''}
-              {c.lapCount > 1 ? ` across ${c.lapCount} laps` : ''}
-            </span>
-          </div>
+          {/* The time on the table and the move you make about it sit on one
+              row. Both drivers see the target from the moment the challenge is
+              sent — the whole point is knowing what you have to beat before
+              you go out — and the action belongs next to it, not in a band of
+              its own below. */}
+          <div style={{ marginTop: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', flexWrap: 'wrap', minWidth: 0 }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
+                Time to beat
+              </span>
+              <span className="lap-time" style={{ fontSize: 18 }}>{targetTime(c) ?? '—'}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>
+                set by {c.creator.name}{c.creator.isMe ? ' (You)' : ''}
+                {c.lapCount > 1 ? ` across ${c.lapCount} laps` : ''}
+              </span>
+            </div>
 
-          <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             {isYourTurn && (
-              <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={onSubmitAttempt}>
+              <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={onSubmitAttempt}>
                 Submit Your Attempt
               </button>
             )}
             {isWaiting && (
               <>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', alignSelf: 'center', marginRight: 'auto' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-mid)', marginLeft: 'auto' }}>
                   Waiting for {c.opponent.name} to respond
                 </span>
-                <button className="btn btn-secondary" style={{ fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }} onClick={onCancel} disabled={cancelling}>
+                <button className="btn btn-secondary btn-sm" style={{ color: 'var(--red)', borderColor: 'var(--red)' }} onClick={onCancel} disabled={cancelling}>
                   {cancelling ? 'Cancelling…' : 'Cancel Challenge'}
                 </button>
               </>
@@ -298,12 +300,12 @@ function NewChallengeModal({
         </div>
         <div className="modal-body">
           {sorted.length === 0 ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', lineHeight: 1.6 }}>
               Log a session first — you need a lap or race on record to challenge someone to beat it.
             </p>
           ) : (
-            <>
-              <div className="field" style={{ marginBottom: 14 }}>
+            <div className="form-stack">
+              <div className="field">
                 <label className="field-label">Session to Challenge With</label>
                 <select value={sessionId} onChange={e => setSessionId(e.target.value)}>
                   {sorted.map(s => (
@@ -314,9 +316,9 @@ function NewChallengeModal({
                 </select>
               </div>
 
-              <div className="field" style={{ marginBottom: 14 }}>
-                <label className="field-label" style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none' }}>
-                  <input type="checkbox" checked={isRace} onChange={e => setIsRace(e.target.checked)} style={{ accentColor: 'var(--red)' }} />
+              <div className="field">
+                <label className="field-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', textTransform: 'none' }}>
+                  <input type="checkbox" checked={isRace} onChange={e => setIsRace(e.target.checked)} />
                   Race total time instead of best lap
                 </label>
                 {isRace && (
@@ -327,9 +329,9 @@ function NewChallengeModal({
                       max={99}
                       value={lapCount}
                       onChange={e => setLapCount(Math.max(2, Number(e.target.value) || 2))}
-                      style={{ marginTop: 8, maxWidth: 100 }}
+                      style={{ marginTop: 'var(--space-2)', maxWidth: 100 }}
                     />
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 4 }}>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)', marginTop: 'var(--space-1)' }}>
                       Compares total time across the first {lapCount} laps
                       {availableLaps > 0 ? ` (this session has ${availableLaps} logged).` : ' — this session has no per-lap times logged, so avg lap × laps will be used as an estimate.'}
                     </div>
@@ -337,13 +339,13 @@ function NewChallengeModal({
                 )}
               </div>
 
-              <div className="field" style={{ marginBottom: 14 }}>
+              <div className="field">
                 <label className="field-label">Opponent</label>
                 {friends.length > 0 && (
                   <select
                     value={opponent && friends.some(f => f.username === opponent.name) ? opponent.name : ''}
                     onChange={e => pickFriend(e.target.value)}
-                    style={{ marginBottom: 8 }}
+                    style={{ marginBottom: 'var(--space-2)' }}
                   >
                     <option value="">Pick a friend…</option>
                     {friends.map(f => (
@@ -352,7 +354,7 @@ function NewChallengeModal({
                     <option value="__other__">Someone else (type a username)</option>
                   </select>
                 )}
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                   <input
                     type="text"
                     placeholder={friends.length > 0 ? 'or type any username' : 'their-username'}
@@ -366,12 +368,12 @@ function NewChallengeModal({
                   </button>
                 </div>
                 {opponent && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--teal)', marginTop: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--teal)', marginTop: 'var(--space-2)' }}>
                     <Check size={13} aria-hidden="true" /> Challenging {opponent.name}
                   </div>
                 )}
                 {lookupError && (
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)', marginTop: 6 }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--red)', marginTop: 'var(--space-2)' }}>
                     {lookupError}
                   </div>
                 )}
@@ -381,7 +383,7 @@ function NewChallengeModal({
                 <label className="field-label">Message <span style={{ color: 'var(--gray-mid)', fontWeight: 400 }}>(optional)</span></label>
                 <textarea rows={2} placeholder="Beat this if you can..." value={message} onChange={e => setMessage(e.target.value)} style={{ resize: 'vertical' }} />
               </div>
-            </>
+            </div>
           )}
         </div>
         <div className="modal-footer">
@@ -438,24 +440,24 @@ function AttemptModal({
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginBottom: 12, lineHeight: 1.6 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', marginBottom: 'var(--space-4)', lineHeight: 1.6 }}>
             {challenge.creator.name} is challenging you to beat their {lapCountLabel(challenge.lapCount).toLowerCase()} at {trackLabel(challenge.trackId)} in the {challenge.car}.
           </p>
           {/* The number they set. Racing blind against an unknown time was
               the complaint — this is the whole brief for the session. */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-5)', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
               Time to beat
             </span>
             <span className="lap-time" style={{ fontSize: 22 }}>{targetTime(challenge) ?? '—'}</span>
             {challenge.lapCount > 1 && (
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-label)', color: 'var(--gray-mid)' }}>
                 total across {challenge.lapCount} laps
               </span>
             )}
           </div>
           {eligible.length === 0 ? (
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--yellow)', lineHeight: 1.6 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--yellow)', lineHeight: 1.6 }}>
               You haven't logged a session at {trackLabel(challenge.trackId)} yet. Race it, log the session, then come back here to submit it.
             </p>
           ) : (
@@ -532,35 +534,29 @@ export default function Rivals() {
           the result is the payoff, so it doesn't get to vanish silently. */}
       {unseenResults.map(c => {
         const outcome = resultFor(c);
-        const tint = outcome === 'won' ? '0,210,190' : outcome === 'lost' ? '232,0,45' : '136,136,136';
         return (
           <div
             key={c.id}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-              background: `rgba(${tint},0.12)`, border: `1px solid rgba(${tint},0.4)`,
-              padding: '10px 14px', marginBottom: 10,
-            }}
+            className={`notice notice--${outcome === 'won' ? 'teal' : outcome === 'lost' ? 'red' : 'gray'}`}
           >
             {outcome === 'won'
               ? <Trophy size={14} aria-hidden="true" style={{ color: resultColor(c), flexShrink: 0 }} />
               : <Flag size={14} aria-hidden="true" style={{ color: resultColor(c), flexShrink: 0 }} />}
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--white)' }}>
+            <span className="notice-text">
               <strong style={{ color: resultColor(c) }}>{resultHeadline(c)}</strong>
               {' '}at {trackLabel(c.trackId)} — {targetTime(c) ?? '—'} vs{' '}
               {c.lapCount > 1
                 ? (c.opponentSession?.raceTimeSeconds != null ? secsToClock(c.opponentSession.raceTimeSeconds) : '—')
                 : (c.opponentSession?.bestLap || '—')}
             </span>
-            <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <div className="notice-actions">
               <button
-                className="btn btn-secondary"
-                style={{ fontSize: 12 }}
+                className="btn btn-secondary btn-sm"
                 onClick={() => { setTab('completed'); markSeen({ id: c.id }); }}
               >
                 See Result
               </button>
-              <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => markSeen({ id: c.id })}>
+              <button className="btn btn-ghost btn-sm" onClick={() => markSeen({ id: c.id })}>
                 Dismiss
               </button>
             </div>
@@ -571,54 +567,59 @@ export default function Rivals() {
       {/* Stays put until the attempt is actually submitted — there is no
           dismiss, and simply opening this tab doesn't clear it. */}
       {yourTurn.length > 0 && (
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-            background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)',
-            padding: '10px 14px', marginBottom: 16,
-          }}
-        >
+        <div className="notice notice--red">
           <Swords size={14} aria-hidden="true" style={{ color: 'var(--red)', flexShrink: 0 }} />
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--white)' }}>
+          <span className="notice-text">
             {yourTurn.length === 1
               ? `${yourTurn[0].creator.name} is waiting on your time at ${trackLabel(yourTurn[0].trackId)}.`
               : `${yourTurn.length} challenges are waiting on your time.`}
           </span>
-          <button
-            className="btn btn-primary"
-            style={{ fontSize: 12, marginLeft: 'auto' }}
-            onClick={() => { setTab('yourTurn'); if (yourTurn.length === 1) setAttemptFor(yourTurn[0]); }}
-          >
-            {yourTurn.length === 1 ? 'Submit Your Attempt' : 'See Them'}
-          </button>
+          <div className="notice-actions">
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => { setTab('yourTurn'); if (yourTurn.length === 1) setAttemptFor(yourTurn[0]); }}
+            >
+              {yourTurn.length === 1 ? 'Submit Your Attempt' : 'See Them'}
+            </button>
+          </div>
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button className="btn btn-primary" onClick={() => setShowNew(true)}>
-          <Swords size={12} /> Challenge Someone
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        <button className={`badge-tab${tab === 'yourTurn' ? ' badge-tab-active' : ''}`} onClick={() => setTab('yourTurn')}>
-          Your Turn{yourTurn.length > 0 ? ` (${yourTurn.length})` : ''}
-        </button>
-        <button className={`badge-tab${tab === 'waiting' ? ' badge-tab-active' : ''}`} onClick={() => setTab('waiting')}>
-          Waiting on Them{waiting.length > 0 ? ` (${waiting.length})` : ''}
-        </button>
-        <button className={`badge-tab${tab === 'completed' ? ' badge-tab-active' : ''}`} onClick={() => setTab('completed')}>
-          Completed{completed.length > 0 ? ` (${completed.length})` : ''}
-          {unseenResults.length > 0 && (
-            <span
-              aria-label={`${unseenResults.length} new result${unseenResults.length === 1 ? '' : 's'}`}
-              style={{
-                display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                background: 'var(--red)', marginLeft: 6, verticalAlign: 'middle',
-              }}
-            />
-          )}
-        </button>
+      {/* State chips and the one action that isn't tied to a card share a
+          single row. They used to be two full-width rows — the button alone on
+          the first, hard right, with nothing beside it. */}
+      <div className="toolbar">
+        <div className="toolbar-chips">
+          <button className={`badge-tab${tab === 'yourTurn' ? ' badge-tab-active' : ''}`} onClick={() => setTab('yourTurn')}>
+            Your Turn{yourTurn.length > 0 ? ` (${yourTurn.length})` : ''}
+          </button>
+          <button className={`badge-tab${tab === 'waiting' ? ' badge-tab-active' : ''}`} onClick={() => setTab('waiting')}>
+            Waiting on Them{waiting.length > 0 ? ` (${waiting.length})` : ''}
+          </button>
+          <button className={`badge-tab${tab === 'completed' ? ' badge-tab-active' : ''}`} onClick={() => setTab('completed')}>
+            Completed{completed.length > 0 ? ` (${completed.length})` : ''}
+            {unseenResults.length > 0 && (
+              <span
+                aria-label={`${unseenResults.length} new result${unseenResults.length === 1 ? '' : 's'}`}
+                style={{
+                  display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                  background: 'var(--red)', marginLeft: 2, verticalAlign: 'middle',
+                }}
+              />
+            )}
+          </button>
+        </div>
+        <div className="toolbar-actions">
+          {/* Solid red while it's the page's main move; when a challenge is
+              actually waiting on you, that banner owns the red and this steps
+              back so there's one obvious next step instead of two. */}
+          <button
+            className={`btn ${yourTurn.length > 0 ? 'btn-secondary' : 'btn-primary'}`}
+            onClick={() => setShowNew(true)}
+          >
+            <Swords size={12} /> Challenge Someone
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -638,7 +639,7 @@ export default function Rivals() {
           />
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {visible.map(c => (
             <ChallengeCard
               key={c.id}
