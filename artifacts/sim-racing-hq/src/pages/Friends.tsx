@@ -3,15 +3,13 @@ import { Check, ExternalLink, UserPlus, Users, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useGetFriends,
-  useGetFriendSessions,
   useAddFriend,
   useAcceptFriendRequest,
   useRemoveFriend,
   getGetFriendsQueryKey,
-  getGetFriendSessionsQueryKey,
 } from '@workspace/api-client-react';
 import type { FriendRecord } from '@workspace/api-client-react';
-import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
+import { F1_TRACKS } from '../data/f1Tracks';
 import { formatLastActive } from '../lib/lastActive';
 import { Toast } from '../components/Toast';
 import { EmptyState } from '../components/EmptyState';
@@ -51,6 +49,11 @@ function Avatar({ friend, size = 38 }: { friend: FriendRecord; size?: number }) 
   );
 }
 
+/**
+ * A friend row is a link to their profile — that's where their sessions live,
+ * so the whole card is the target rather than just the name. Remove stays a
+ * real button and stops the click from following the link.
+ */
 function FriendRow({
   friend,
   onRemove,
@@ -61,19 +64,23 @@ function FriendRow({
   busy: boolean;
 }) {
   return (
-    <div className="card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    <a
+      href={profileHref(friend.username)}
+      className="card friend-row"
+      title={`View ${friend.username}'s profile and sessions`}
+      style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', textDecoration: 'none' }}
+    >
       <Avatar friend={friend} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <a
-          href={profileHref(friend.username)}
+      <div className="friend-row-meta">
+        <span
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5, textDecoration: 'none',
+            display: 'inline-flex', alignItems: 'center', gap: 5,
             fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.03em', color: 'var(--white)',
           }}
         >
           {friend.username}
           <ExternalLink size={11} aria-hidden="true" style={{ color: 'var(--gray-mid)' }} />
-        </a>
+        </span>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 2 }}>
           Last on {formatLastActive(friend.lastActiveAt).toLowerCase()} · {friend.sharedSessions} shared session{friend.sharedSessions === 1 ? '' : 's'}
         </div>
@@ -84,15 +91,16 @@ function FriendRow({
           </div>
         )}
       </div>
+      <span className="friend-row-view">View sessions →</span>
       <button
         className="btn btn-secondary"
         style={{ fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }}
-        onClick={onRemove}
+        onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
         disabled={busy}
       >
         {busy ? '…' : 'Remove'}
       </button>
-    </div>
+    </a>
   );
 }
 
@@ -136,7 +144,6 @@ function RequestRow({
 export default function Friends() {
   const qc = useQueryClient();
   const { data, isLoading } = useGetFriends();
-  const { data: feed = [] } = useGetFriendSessions();
   const [username, setUsername] = useState('');
   const [toast, setToast] = useState('');
   const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success');
@@ -148,7 +155,6 @@ export default function Friends() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getGetFriendsQueryKey() });
-    qc.invalidateQueries({ queryKey: getGetFriendSessionsQueryKey() });
   };
 
   const fail = (fallback: string) => (e: unknown) => {
@@ -267,52 +273,10 @@ export default function Friends() {
         </>
       )}
 
-      {/* Friends' shared sessions — the reason to have a friends list at all */}
-      {friends.length > 0 && (
-        <>
-          <div className="section-title" style={{ marginTop: 28 }}>Friend Activity</div>
-          {feed.length === 0 ? (
-            <div className="table-wrap">
-              <div className="empty-state">
-                <div className="empty-state-desc">
-                  None of your friends have shared a session yet. Sessions show up here once they're shared to the community.
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Driver</th>
-                    <th>Date</th>
-                    <th>Track</th>
-                    <th>Car</th>
-                    <th>Best Lap</th>
-                    <th>Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {feed.map(s => (
-                    <tr key={s.id}>
-                      <td>
-                        <a href={profileHref(s.username)} style={{ color: 'var(--white)', fontWeight: 600, textDecoration: 'none' }}>
-                          {s.username}
-                        </a>
-                      </td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
-                      <td>{trackLabel(s.trackId)}</td>
-                      <td style={{ color: 'var(--white)' }}>{s.car}</td>
-                      <td><span className="lap-time">{s.bestLap || '—'}</span></td>
-                      <td><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
+      {/* The aggregated Friend Activity table used to sit here. It duplicated
+          what each driver's own profile already shows, and the answer to
+          "what has this friend been driving" is better read on their page —
+          so a friend row now opens their profile instead. */}
 
       {toast && <Toast message={toast} variant={toastVariant} onDone={() => setToast('')} />}
     </>

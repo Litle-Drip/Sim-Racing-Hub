@@ -24,6 +24,7 @@ import {
   type LapEntry,
 } from '../components/SessionDetail';
 import { FOCUS_SESSION_KEY, OPEN_LOG_KEY, takeFocusTrack } from '../lib/storage';
+import { useUnseenSessions } from '../lib/newSessions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -415,6 +416,9 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     () => new Set(sessions.map(s => s.trackId).filter(id => F1_TRACKS.some(t => t.id === id))).size,
     [sessions]
   );
+
+  // Sessions that landed since the driver last looked glow until opened.
+  const { isNew, newCount, markSeen, markAllSeen } = useUnseenSessions(sessions);
 
   const [showModal, setShowModal] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -850,6 +854,20 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       )}
 
+      {/* Sessions that arrived while the driver was elsewhere. The rows glow on
+          their own; this is the way out when several land at once. */}
+      {newCount > 0 && (
+        <div style={{ background: 'rgba(0,210,190,0.07)', border: '1px solid rgba(0,210,190,0.28)', borderRadius: 4, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)' }}>
+            <span className="session-new-dot" />
+            <span><span style={{ color: 'var(--teal)', fontWeight: 600 }}>{newCount} new session{newCount === 1 ? '' : 's'}</span> since you last looked — open one to clear it.</span>
+          </div>
+          <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px', whiteSpace: 'nowrap', flexShrink: 0 }} onClick={markAllSeen}>
+            Mark All Read
+          </button>
+        </div>
+      )}
+
       {/* One filter. Track is the only axis anyone actually narrows a session
           list by — type, car and conditions each had their own dropdown for a
           list most drivers scroll rather than query. */}
@@ -901,7 +919,12 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
             <tbody>
               {filtered.map(s => (
                 <React.Fragment key={s.id}>
-                  <tr id={`session-row-${s.id}`} onClick={() => setExpanded(expanded === s.id ? null : s.id)} style={{ cursor: 'pointer' }}>
+                  <tr
+                    id={`session-row-${s.id}`}
+                    className={isNew(s.id) ? 'session-row--new' : undefined}
+                    onClick={() => { markSeen(s.id); setExpanded(expanded === s.id ? null : s.id); }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {s.date}
                       {s.createdAt && <div style={{ color: 'var(--gray-mid)', fontSize: 10, marginTop: 1 }}>{localTimeStr(s.createdAt)}</div>}
@@ -925,7 +948,16 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     <td data-label="Type"><span className={`badge ${getTypeBadgeClass(s.type)}`}>{s.type}</span></td>
                     <td data-label="">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, whiteSpace: 'nowrap' }}>
-                        {s.id === mostRecentId && <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>NEW</span>}
+                        {/* NEW now means "you haven't opened this yet" rather
+                            than "most recent" — it clears on click, alongside
+                            the row glow. */}
+                        {isNew(s.id) ? (
+                          <span title="Landed since you last looked — click to open" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>
+                            <span className="session-new-dot" />NEW
+                          </span>
+                        ) : s.id === mostRecentId && (
+                          <span title="Most recently logged session" style={{ color: 'var(--red)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LATEST</span>
+                        )}
                         {s.isPublic && <span title="Shared" style={{ color: 'var(--teal)', fontSize: 10, fontFamily: 'var(--font-body)', fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>}
                         {validLaps(s.laps).length > 0 && <span style={{ color: 'var(--gray-mid)', fontSize: 10, fontFamily: 'var(--font-body)' }}>{validLaps(s.laps).length}L</span>}
                         {s.notes && <FileText size={13} style={{ color: 'var(--gray)', verticalAlign: 'middle' }} />}

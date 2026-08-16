@@ -703,6 +703,44 @@ summary:focus-visible,
   border: 1px solid var(--border);
 }
 
+/* A friend row is a link to their profile, so it advertises itself as one. */
+.friend-row {
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.friend-row:hover {
+  border-color: var(--border-accent);
+  background: var(--bg-elevated);
+}
+
+/* The name/last-session block keeps a real basis so the Remove button wraps
+   below it on narrow cards instead of crushing it to one word per line. */
+.friend-row-meta {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.friend-row-view {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--teal);
+  opacity: 0;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.friend-row:hover .friend-row-view,
+.friend-row:focus-visible .friend-row-view {
+  opacity: 1;
+}
+
+/* Below the desktop breakpoint the hint is dropped from the layout entirely —
+   at opacity 0 it still reserves width, which squeezed the name column on a
+   phone. The whole card is tappable and the name carries a link icon. */
+@media (max-width: 767px) {
+  .friend-row-view { display: none; }
+}
+
 .stat-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -1116,6 +1154,166 @@ summary:focus-visible,
 .data-table {
   width: 100%;
   border-collapse: collapse;
+}
+
+/* =========================================================
+   NEW SESSION GLOW
+   A session that landed since the driver last looked breathes
+   quietly until they open it. Rows can't take a box-shadow under
+   border-collapse, so the cells carry the tint and the first cell
+   carries the accent edge.
+   ========================================================= */
+
+.session-row--new > td {
+  animation: sessionNewGlow 2.4s ease-in-out infinite;
+}
+
+.session-row--new > td:first-child {
+  box-shadow: inset 2px 0 0 var(--teal);
+}
+
+@keyframes sessionNewGlow {
+  0%, 100% { background-color: rgba(0, 210, 190, 0.05); }
+  50% { background-color: rgba(0, 210, 190, 0.13); }
+}
+
+/* Card-shaped surfaces (the Dashboard's Last Session panel) can take a real
+   halo, so they get one. */
+.session-card--new {
+  border-color: rgba(0, 210, 190, 0.45) !important;
+  animation: sessionNewHalo 2.4s ease-in-out infinite;
+}
+
+@keyframes sessionNewHalo {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 210, 190, 0.16); }
+  50% { box-shadow: 0 0 0 5px rgba(0, 210, 190, 0); }
+}
+
+/* Small teal marker that rides along with the glow. */
+.session-new-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex-shrink: 0;
+  animation: sessionNewDot 2.4s ease-in-out infinite;
+}
+
+@keyframes sessionNewDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* Stacked rows are real bordered cards on mobile, so the glow becomes a halo
+   there instead of a per-cell tint (which would read as stripes). */
+@media (max-width: 767px) {
+  .data-table--stack tr.session-row--new:not(.expanded-row) {
+    border-color: rgba(0, 210, 190, 0.45);
+    animation: sessionNewHalo 2.4s ease-in-out infinite;
+  }
+
+  .data-table--stack tr.session-row--new:not(.expanded-row) > td {
+    animation: none;
+    background-color: transparent;
+  }
+
+  .data-table--stack tr.session-row--new:not(.expanded-row) > td:first-child {
+    box-shadow: none;
+  }
+}
+
+/* Respect a reduced-motion preference: keep the highlight, drop the pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .session-row--new > td,
+  .session-card--new,
+  .session-new-dot,
+  .data-table--stack tr.session-row--new:not(.expanded-row) {
+    animation: none;
+  }
+  .session-row--new > td { background-color: rgba(0, 210, 190, 0.1); }
+  .session-card--new { box-shadow: 0 0 0 3px rgba(0, 210, 190, 0.14); }
+}
+
+/* =========================================================
+   DASHBOARD — LAST SESSION
+   The card runs the full content width, so on desktop the space beside the
+   track name carries the numbers worth knowing without opening it. On mobile
+   that same row would crowd the card, so it narrows to the best lap alone.
+   ========================================================= */
+
+.last-session-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.last-session-meta {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.last-session-notes {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--gray-light);
+  line-height: 1.45;
+  margin-top: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.last-session-metrics {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(84px, max-content);
+  gap: 20px;
+  margin-left: auto;
+}
+
+.last-session-metric {
+  text-align: right;
+}
+
+.last-session-metric-label {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-mid);
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+
+.last-session-metric-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--white);
+  white-space: nowrap;
+}
+
+/* Below the desktop breakpoint, drop back to the best lap on its own — the
+   supporting numbers are all one tap away in the session detail. */
+@media (max-width: 900px) {
+  .last-session-metrics {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    gap: 0;
+  }
+
+  .last-session-metric--secondary,
+  .last-session-notes {
+    display: none;
+  }
 }
 
 .data-table th {
@@ -2984,6 +3182,55 @@ summary:focus-visible,
 .engineer-data-pill--ready {
   border-color: rgba(0,210,190,0.35);
   background: rgba(0,210,190,0.06);
+}
+
+/* Remaining-message allowance. Reads as a chip so it registers before the
+   driver hits the wall, and shifts colour as the count runs down. */
+.engineer-quota {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-accent);
+  background: var(--surface);
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--gray-light);
+}
+
+.engineer-quota-count {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--white);
+}
+
+.engineer-quota--ok {
+  border-color: rgba(0,210,190,0.35);
+  background: rgba(0,210,190,0.08);
+}
+.engineer-quota--ok .engineer-quota-count { color: var(--teal); }
+
+.engineer-quota--low {
+  border-color: rgba(255,176,0,0.45);
+  background: rgba(255,176,0,0.1);
+  color: var(--white);
+}
+.engineer-quota--low .engineer-quota-count { color: var(--amber); }
+
+.engineer-quota--out {
+  border-color: rgba(232,0,45,0.5);
+  background: rgba(232,0,45,0.1);
+  color: var(--white);
+}
+.engineer-quota--out .engineer-quota-count { color: var(--red); }
+
+.engineer-quota--unlimited {
+  border-color: rgba(0,210,190,0.35);
+  background: rgba(0,210,190,0.08);
+  color: var(--teal);
 }
 
 /* =========================================================

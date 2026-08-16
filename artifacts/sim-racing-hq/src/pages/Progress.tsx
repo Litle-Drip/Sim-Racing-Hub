@@ -6,8 +6,7 @@ import {
 import { useGetSessions } from '@workspace/api-client-react';
 import { lapToSeconds } from '../lib/storage';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { lapTimeDelta, sessionConsistency } from '../lib/engagement';
-import { LapTimeInput } from '../components/LapTimeInput';
+import { sessionConsistency } from '../lib/engagement';
 import { EmptyState } from '../components/EmptyState';
 import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { useUnits } from '../lib/units';
@@ -588,9 +587,6 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         );
       })()}
 
-      {/* Lap Time Delta Tool */}
-      <LapTimeDeltaTool />
-
       {/* All-Time Personal Bests */}
       <AllTimePBsSection allTimePBs={allTimePBs} trackName={trackName} />
       </>
@@ -655,58 +651,6 @@ function AllTimePBsSection({
           </div>
         )
       )}
-    </div>
-  );
-}
-
-function LapTimeDeltaTool() {
-  const [time1, setTime1] = useState('');
-  const [time2, setTime2] = useState('');
-  const result = lapTimeDelta(time1, time2);
-
-  return (
-    <div style={{ marginTop: 40 }}>
-      <div className="section-title">Lap Time Delta Tool</div>
-      <div className="card" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-          <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 1</label>
-            <LapTimeInput value={time1} onChange={setTime1} style={{ width: 140 }} />
-          </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--gray)', marginTop: 16 }}>vs</span>
-          <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 2</label>
-            <LapTimeInput value={time2} onChange={setTime2} style={{ width: 140 }} />
-          </div>
-        </div>
-        {result && (
-          <div style={{ display: 'flex', gap: 24, alignItems: 'baseline' }}>
-            <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Gap</span>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--teal)', marginTop: 4 }}>
-                {result.diffMs >= 1000 ? `${(result.diffMs / 1000).toFixed(3)}s` : `${result.diffMs}ms`}
-              </div>
-            </div>
-            <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Percentage</span>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--white)', marginTop: 4 }}>
-                {result.diffPercent.toFixed(2)}%
-              </div>
-            </div>
-            <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Faster</span>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)', marginTop: 4 }}>
-                Time {result.faster}
-              </div>
-            </div>
-          </div>
-        )}
-        {!result && (time1 || time2) && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-            Enter both lap times in M:SS.SSS format to compare
-          </div>
-        )}
-      </div>
     </div>
   );
 }
