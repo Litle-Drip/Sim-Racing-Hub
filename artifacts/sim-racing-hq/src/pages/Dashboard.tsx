@@ -7,8 +7,9 @@ import { lapToSeconds } from '../lib/storage';
 import { calculateStreak, calculateRank, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
 import type { Achievement } from '../lib/engagement';
 import { SHOW_ACHIEVEMENTS, SHOW_XP, SHOW_NEXT_TARGET } from '../lib/features';
-import { SessionDetailModal } from '../components/SessionDetail';
+import { SessionDetailModal, validLaps } from '../components/SessionDetail';
 import { useRivalNotifications } from '../lib/rivalNotifications';
+import { useUnseenSessions } from '../lib/newSessions';
 import { Flame, Trophy } from 'lucide-react';
 
 const DIFF_COLORS: Record<string, string> = {
@@ -195,6 +196,12 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   const [badgeTab, setBadgeTab] = useState('Skill');
   const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
 
+  // Sessions that landed since the driver last looked glow here too — a live
+  // session arriving should be visible from whichever page they're on.
+  const { isNew, markSeen } = useUnseenSessions(sessions);
+
+  const openSession = (s: SessionRecord) => { markSeen(s.id); setDetailSession(s); };
+
   const startChallenge = () => {
     try {
       sessionStorage.setItem(PENDING_CHALLENGE_KEY, JSON.stringify({ trackId: daily.track.id, car: daily.car }));
@@ -288,6 +295,50 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       b.date.localeCompare(a.date) || (b.createdAt ?? '').localeCompare(a.createdAt ?? '')
     )[0];
   }, [sessions]);
+
+  // The Last Session card runs the full content width, and on desktop most of
+  // it was empty. These are the numbers worth knowing before deciding whether
+  // to open the session; CSS drops them on narrow screens so the card stays a
+  // one-line summary on a phone.
+  const lastSessionMetrics = useMemo(() => {
+    if (!lastSession) return [];
+    const out: { label: string; value: string; color?: string }[] = [];
+
+    if (lastSession.avgLap && lastSession.avgLap.trim() !== '') {
+      out.push({ label: 'Avg Lap', value: lastSession.avgLap });
+    }
+
+    const lapCount = validLaps(lastSession.laps).length;
+    if (lapCount > 0) out.push({ label: 'Laps', value: String(lapCount) });
+
+    const cons = sessionConsistency(lastSession);
+    if (cons !== null) {
+      out.push({
+        label: 'Consistency',
+        value: `${cons.toFixed(1)}%`,
+        color: cons >= 98 ? 'var(--teal)' : cons >= 95 ? 'var(--white)' : 'var(--amber)',
+      });
+    }
+
+    // Gap to the driver's own best at this circuit — the one number that says
+    // whether the run was actually any good.
+    const trackBest = sessions
+      .filter(s => s.trackId === lastSession.trackId && s.bestLap && s.bestLap.trim() !== '')
+      .map(s => lapToSeconds(s.bestLap))
+      .filter(v => isFinite(v) && v > 0);
+    const lastSecs = lapToSeconds(lastSession.bestLap);
+    if (trackBest.length > 0 && isFinite(lastSecs) && lastSecs > 0) {
+      const gap = lastSecs - Math.min(...trackBest);
+      out.push({
+        label: 'Δ PB',
+        value: gap <= 0 ? 'PB' : `+${gap.toFixed(3)}`,
+        color: gap <= 0 ? 'var(--teal)' : gap < 0.5 ? 'var(--amber)' : 'var(--red)',
+      });
+    }
+
+    // The grid is four columns wide; the best lap always takes the first.
+    return out.slice(0, 3);
+  }, [lastSession, sessions]);
 
   const mostDrivenTrack = useMemo(() => {
     if (sessions.length === 0) return null;
@@ -586,52 +637,8 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     return null;
   }, [sessions, achievements]);
 
-  // #10 Session Recommendation Engine
-  const recommendation = useMemo(() => {
-    if (sessions.length < 3) return null;
-    // Find track with best consistency + most sessions (good track to improve on)
-    const trackData: Record<string, { count: number; consistency: number[]; pb: number }> = {};
-    sessions.forEach(s => {
-      if (!trackData[s.trackId]) trackData[s.trackId] = { count: 0, consistency: [], pb: Infinity };
-      trackData[s.trackId].count++;
-      const c = sessionConsistency(s);
-      if (c !== null) trackData[s.trackId].consistency.push(c);
-      const secs = lapToSeconds(s.bestLap);
-      if (isFinite(secs) && secs > 0 && secs < trackData[s.trackId].pb) trackData[s.trackId].pb = secs;
-    });
-    // Score each track: high consistency + enough sessions = PB opportunity
-    let best: { trackId: string; score: number; avgCons: number; count: number } | null = null;
-    for (const [trackId, data] of Object.entries(trackData)) {
-      if (data.consistency.length < 2) continue;
-      const avgCons = data.consistency.reduce((a, b) => a + b, 0) / data.consistency.length;
-      const score = avgCons * 0.6 + Math.min(data.count, 10) * 4;
-      if (!best || score > best.score) {
-        best = { trackId, score, avgCons, count: data.count };
-      }
-    }
-    if (!best) return null;
-    const track = F1_TRACKS.find(t => t.id === best!.trackId);
-    // Pick a recent car used on that track
-    const trackSessions = sessions.filter(s => s.trackId === best!.trackId).sort((a, b) => b.date.localeCompare(a.date));
-    const car = trackSessions[0]?.car ?? 'Any car';
-    // Estimated gain: if high consistency, more likely to PB
-    const gain = best.avgCons >= 96 ? '0.05–0.15' : best.avgCons >= 92 ? '0.15–0.30' : '0.30+';
-    const confidence = Math.min(99, Math.round(best.avgCons * 0.85 + Math.min(best.count, 10) * 1.5));
-    const lastAttempt = trackSessions[0]?.date ?? '';
-    const lastDaysAgo = lastAttempt ? Math.floor((Date.now() - new Date(lastAttempt).getTime()) / 86400000) : null;
-    return {
-      trackName: track?.short ?? best.trackId,
-      trackFlag: track?.flag ?? '',
-      car,
-      reason: best.avgCons >= 96 ? 'Strong consistency, PB opportunity detected' : 'Good consistency, room to improve',
-      gain: `+${gain}s`,
-      confidence,
-      avgConsistency: best.avgCons,
-      lastDaysAgo,
-    };
-  }, [sessions]);
-
-  // Determine primary CTA priority
+  // Determine primary CTA priority. The session recommendation moved to the
+  // Race Engineer, so the Daily Challenge is the fallback the pulse lands on.
   const primaryCTA = useMemo(() => {
     // If daily challenge has no entries, push that
     if (daily.entries.length === 0) return 'challenge';
@@ -639,10 +646,8 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     // Next Target card is hidden, or the pulse would mark a card that
     // never renders and no CTA would be highlighted at all.
     if (SHOW_NEXT_TARGET && nextGoal?.gap) return 'goal';
-    // Otherwise recommendation
-    if (recommendation) return 'recommendation';
     return 'challenge';
-  }, [daily.entries.length, nextGoal, recommendation]);
+  }, [daily.entries.length, nextGoal]);
 
   // Badge tab filter
   const filteredBadges: Achievement[] = useMemo(() => {
@@ -788,17 +793,24 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       {/* ── Last Session Summary ─────────────────────────────────────────── */}
       {lastSession && (
         <div
-          className="card dash-stat-hover"
+          className={`card dash-stat-hover${isNew(lastSession.id) ? ' session-card--new' : ''}`}
           style={{ padding: '14px 20px', marginBottom: 16, cursor: 'pointer' }}
-          onClick={() => setDetailSession(lastSession)}
+          onClick={() => openSession(lastSession)}
           title="Click to view full session details"
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
+              {isNew(lastSession.id) && (
+                <span title="Landed since you last looked" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--teal)' }}>
+                  <span className="session-new-dot" />NEW
+                </span>
+              )}
+            </div>
             <button className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); setPage('sessions'); }}>View All</button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <div>
+          <div className="last-session-body">
+            <div className="last-session-meta">
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--white)' }}>
                 {F1_TRACKS.find(t => t.id === lastSession.trackId)?.flag} {trackName(lastSession.trackId)}
               </div>
@@ -808,15 +820,24 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
                   <> · {new Date(lastSession.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>
                 )}
               </div>
+              {lastSession.notes && <div className="last-session-notes">{lastSession.notes}</div>}
             </div>
-            {lastSession.bestLap && (
-              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 18, color: lastSession.isPB ? 'var(--yellow)' : 'var(--teal)', fontWeight: 700 }}>
-                  {lastSession.bestLap}{lastSession.isPB && <Trophy size={15} aria-label="Personal best" />}
+            <div className="last-session-metrics">
+              {lastSession.bestLap && (
+                <div className="last-session-metric">
+                  <div className="last-session-metric-label">Best Lap</div>
+                  <div className="last-session-metric-value" style={{ color: lastSession.isPB ? 'var(--yellow)' : 'var(--teal)' }}>
+                    {lastSession.bestLap}{lastSession.isPB && <Trophy size={13} aria-label="Personal best" />}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {lastSessionMetrics.map(m => (
+                <div key={m.label} className="last-session-metric last-session-metric--secondary">
+                  <div className="last-session-metric-label">{m.label}</div>
+                  <div className="last-session-metric-value" style={{ color: m.color }}>{m.value}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -983,6 +1004,41 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         </div>
       </div>
 
+      {/* Tracks needing attention — moved right after heatmap */}
+      {neglectedTracks.length > 0 && (
+        <>
+          <div className="section-title" style={{ marginTop: 8 }}>Needs Practice — 14+ Days</div>
+          <div style={{
+            display: 'flex',
+            gap: 10,
+            flexWrap: 'wrap',
+            padding: '12px 16px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            marginBottom: 20,
+          }}>
+            {neglectedTracks.map(t => (
+              <div
+                key={t.id}
+                title={`${t.short} — ${t.daysSince} day${t.daysSince !== 1 ? 's' : ''} ago`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                  cursor: 'pointer',
+                  opacity: 0.85,
+                }}
+                onClick={() => setPage('tracks')}
+              >
+                <span style={{ fontSize: 24 }}>{t.flag}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* The rank card that sat here is gone. Once XP and badges were hidden
           it held nothing but the tier name and the streak, and the streak now
           lives on the heatmap it is counted from. Rank is still shown on the
@@ -1050,33 +1106,6 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         </div>
       </div>
 
-      {/* ── #10 Session Recommendation Engine ──────────────────────────── */}
-      {recommendation && (
-        <div className="card dash-stat-hover card-accent card-accent--red" style={{ padding: '14px 20px', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>Recommended Session</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
-            {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
-          </div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginBottom: 6 }}>
-            {recommendation.reason}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 4 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>Est. gain: {recommendation.gain}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Confidence: {recommendation.confidence}%</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Consistency: {recommendation.avgConsistency.toFixed(1)}%</span>
-            {recommendation.lastDaysAgo !== null && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)' }}>
-                Last: {recommendation.lastDaysAgo === 0 ? 'Today' : recommendation.lastDaysAgo === 1 ? 'Yesterday' : `${recommendation.lastDaysAgo}d ago`}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <button className={`btn ${primaryCTA === 'recommendation' ? 'btn-primary dash-cta-pulse' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '5px 14px' }} onClick={() => setPage('sessions')}>
-              Run Session
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Recent Sessions (enhanced table with mini bars) ─────────────── */}
       {/* #polish: tightened spacing between heatmap and sessions */}
@@ -1108,7 +1137,13 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             </thead>
             <tbody>
               {recentWithDelta.map(s => (
-                <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => setDetailSession(s)} title="Click to view full session details">
+                <tr
+                  key={s.id}
+                  className={isNew(s.id) ? 'session-row--new' : undefined}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => openSession(s)}
+                  title="Click to view full session details"
+                >
                   <td data-label="Date" style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{s.date}</td>
                   <td data-label="Track">{trackName(s.trackId)}</td>
                   <td data-label="Car" style={{ color: 'var(--white)', fontWeight: 600 }}>{s.car}</td>
@@ -1155,40 +1190,6 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             </tbody>
           </table>
         </div>
-      )}
-
-      {/* Tracks needing attention */}
-      {neglectedTracks.length > 0 && (
-        <>
-          <div className="section-title" style={{ marginTop: 12 }}>Needs Practice — 14+ Days</div>
-          <div style={{
-            display: 'flex',
-            gap: 10,
-            flexWrap: 'wrap',
-            padding: '12px 16px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-          }}>
-            {neglectedTracks.map(t => (
-              <div
-                key={t.id}
-                title={`${t.short} — ${t.daysSince} day${t.daysSince !== 1 ? 's' : ''} ago`}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 4,
-                  cursor: 'pointer',
-                  opacity: 0.85,
-                }}
-                onClick={() => setPage('tracks')}
-              >
-                <span style={{ fontSize: 24 }}>{t.flag}</span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>{t.daysSince}d</span>
-              </div>
-            ))}
-          </div>
-        </>
       )}
 
       {detailSession && (

@@ -8,6 +8,7 @@ import {
   getGetEngineerUsageQueryKey,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { getSessionRecommendation } from '../lib/engagement';
 
 const HISTORY_STORAGE_PREFIX = 'f1simhub-engineer-history-';
 const MAX_STORED_MESSAGES = 50;
@@ -360,6 +361,11 @@ export default function RaceEngineer() {
     }
   };
 
+  // "What should I drive next" belongs with the engineer, not on the dashboard —
+  // it's the same question the debrief answers, and here it can be handed
+  // straight to the engineer as a prompt.
+  const recommendation = useMemo(() => getSessionRecommendation(sessions), [sessions]);
+
   const hasSessions = sessions.length >= 3;
   const hasAvgLaps = sessions.filter(s => s.avgLap).length >= 2;
   const hasSectors = sessions.filter(s => s.s1).length >= 2;
@@ -410,6 +416,49 @@ export default function RaceEngineer() {
             onSave={saveKey}
             onRemove={removeKey}
           />
+        </div>
+      )}
+
+      {/* ── Recommended Session ─────────────────────────────────────────
+          Moved off the Dashboard: the circuit most likely to yield a PB is
+          engineer territory, and here the driver can put it straight to them. */}
+      {recommendation && !locked && (
+        <div
+          className="card card-accent card-accent--red"
+          style={{ padding: '14px 20px', maxWidth: 780, margin: '0 auto 20px' }}
+        >
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 6 }}>
+            Recommended Session
+          </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 2 }}>
+            {recommendation.trackFlag} {recommendation.trackName} — {recommendation.car}
+          </div>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginBottom: 8 }}>
+            {recommendation.reason}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--teal)' }}>Est. gain: {recommendation.gain}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Confidence: {recommendation.confidence}%</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>Consistency: {recommendation.avgConsistency.toFixed(1)}%</span>
+            {recommendation.lastDaysAgo !== null && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray)' }}>
+                Last: {recommendation.lastDaysAgo === 0 ? 'Today' : recommendation.lastDaysAgo === 1 ? 'Yesterday' : `${recommendation.lastDaysAgo}d ago`}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: 11, padding: '5px 14px' }}
+              disabled={loading}
+              onClick={() => {
+                setStarted(true);
+                sendMessage(`Why is ${recommendation.trackName} in the ${recommendation.car} my best shot at a PB right now, and what should I focus on for that run?`);
+              }}
+            >
+              Ask Engineer
+            </button>
+          </div>
         </div>
       )}
 
@@ -581,18 +630,31 @@ export default function RaceEngineer() {
         </div>
       )}
 
-      <div style={{ textAlign: 'center', marginTop: 16, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
-        Your data is never stored by the AI
+      {/* Message allowance reads as its own chip rather than trailing a line of
+          fine print — a driver about to run out needs to see it, not find it.
+          Per-message cost is gone: it's noise to the driver and reads as a
+          charge they're about to pay. */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 20 }}>
         {apiKey ? (
-          <> · Billed to your Anthropic key · unlimited</>
-        ) : (
-          <>
-            {' '}· ~$0.003 per message
-            {usage && !usage.unlocked && (
-              <> · {Math.max(usage.limit - usage.count, 0)} free message{usage.limit - usage.count === 1 ? '' : 's'} left</>
-            )}
-          </>
-        )}
+          <span className="engineer-quota engineer-quota--unlimited">
+            <Key size={12} aria-hidden="true" />
+            Unlimited — billed to your Anthropic key
+          </span>
+        ) : usage && !usage.unlocked ? (
+          (() => {
+            const left = Math.max(usage.limit - usage.count, 0);
+            const tone = left === 0 ? 'out' : left <= 1 ? 'low' : 'ok';
+            return (
+              <span className={`engineer-quota engineer-quota--${tone}`}>
+                <span className="engineer-quota-count">{left}</span>
+                free message{left === 1 ? '' : 's'} left
+              </span>
+            );
+          })()
+        ) : null}
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
+          Your data is never stored by the AI
+        </div>
       </div>
     </div>
   );
