@@ -676,7 +676,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       </div>
 
       {/* ── Quick Action Buttons ────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
         <button className="btn btn-primary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('sessions')}>+ Session</button>
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('setups')}>Load Setup</button>
         <button className="btn btn-secondary" style={{ fontSize: 11, padding: '6px 14px' }} onClick={() => setPage('progress')}>Compare PB</button>
@@ -705,9 +705,9 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       {/* ── Achievements (tabbed by category) ──────────────────────────── */}
       {SHOW_ACHIEVEMENTS && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
             <div className="section-title" style={{ marginBottom: 0 }}>Achievements</div>
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               {BADGE_CATEGORIES.map(cat => (
                 <button
                   key={cat.label}
@@ -719,7 +719,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-5)' }}>
             {filteredBadges.map(a => {
               const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
               const BadgeIcon = a.icon;
@@ -794,11 +794,11 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       {lastSession && (
         <div
           className={`card dash-stat-hover${isNew(lastSession.id) ? ' session-card--new' : ''}`}
-          style={{ padding: '14px 20px', marginBottom: 16, cursor: 'pointer' }}
+          style={{ padding: 'var(--space-4) var(--space-5)', marginBottom: 'var(--space-4)', cursor: 'pointer' }}
           onClick={() => openSession(lastSession)}
           title="Click to view full session details"
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Last Session</div>
               {isNew(lastSession.id) && (
@@ -846,7 +846,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
              don't already carry. Session/PB/circuit counts live up there; if a
              number is on both, it was cut from here. ──────────────────────── */}
       {perfSnapshot && (perfSnapshot.strongestTrack || perfSnapshot.weakestTrack) && (
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)', marginBottom: 8 }}>Performance Snapshot</div>
           <div className="perf-snap-grid">
             {perfSnapshot.strongestTrack && (
@@ -1010,12 +1010,12 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
           <div className="section-title" style={{ marginTop: 8 }}>Needs Practice — 14+ Days</div>
           <div style={{
             display: 'flex',
-            gap: 10,
+            gap: 'var(--space-3)',
             flexWrap: 'wrap',
-            padding: '12px 16px',
+            padding: 'var(--space-3) var(--space-4)',
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            marginBottom: 20,
+            marginBottom: 'var(--space-4)',
           }}>
             {neglectedTracks.map(t => (
               <div
@@ -1046,8 +1046,8 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
       {/* ── #6 Next Goal ───────────────────────────────────────────────── */}
       {SHOW_NEXT_TARGET && nextGoal && (
-        <div className="card dash-next-goal card-accent card-accent--teal" style={{ padding: '14px 20px', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 6 }}>Next Target</div>
+        <div className="card dash-next-goal card-accent card-accent--teal" style={{ padding: 'var(--space-4) var(--space-5)', marginBottom: 'var(--space-4)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 'var(--space-2)' }}>Next Target</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 4 }}>
             {nextGoal.gap ? `Beat ${nextGoal.trackName} PB by ${nextGoal.gap}s` : `Practice ${nextGoal.trackName}`}
           </div>
@@ -1064,7 +1064,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
       )}
 
       {/* ── Daily Challenge ─────────────────────────────────────────────── */}
-      <div className="card dash-challenge card-accent card-accent--teal" style={{ padding: 0, marginBottom: 16, overflow: 'hidden' }}>
+      <div className="card dash-challenge card-accent card-accent--teal" style={{ padding: 0, marginBottom: 'var(--space-4)', overflow: 'hidden' }}>
         <div style={{ background: 'var(--bg-elevated)', padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
