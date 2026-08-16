@@ -146,7 +146,7 @@ input, select, textarea {
   color: var(--white);
   border: 1px solid var(--border-accent);
   border-bottom: 1px solid var(--border-accent);
-  padding: var(--space-2) 10px;
+  padding: var(--space-2) var(--space-3);
   font-size: var(--fs-body);
   outline: none;
   transition: border-color var(--transition), background var(--transition);
@@ -283,7 +283,7 @@ summary:focus-visible,
 }
 
 .nav-logo {
-  padding: 28px 20px 20px;
+  padding: var(--space-6) var(--space-5) var(--space-5);
   border-bottom: 1px solid var(--border);
 }
 
@@ -321,7 +321,7 @@ summary:focus-visible,
   align-items: center;
   gap: var(--space-3);
   width: 100%;
-  padding: var(--space-3) 20px;
+  padding: var(--space-3) var(--space-5);
   background: none;
   text-align: left;
   cursor: pointer;
@@ -371,7 +371,7 @@ summary:focus-visible,
   align-items: stretch;
   gap: 5px;
   width: 100%;
-  padding: var(--space-3) 20px;
+  padding: var(--space-3) var(--space-5);
   background: none;
   border: none;
   border-top: 1px solid var(--border);
@@ -393,7 +393,7 @@ summary:focus-visible,
 .nav-profile-top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -490,14 +490,14 @@ summary:focus-visible,
 }
 
 .nav-footer {
-  padding: 10px 20px 14px;
+  padding: var(--space-2) var(--space-5) var(--space-4);
   border-top: 1px solid var(--border);
 }
 
 .units-toggle {
   display: flex;
   gap: 2px;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -547,7 +547,7 @@ summary:focus-visible,
 .nav-footer-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   background: none;
   border: none;
   border-radius: 3px;
@@ -583,7 +583,7 @@ summary:focus-visible,
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   align-items: center;
-  padding: 0 14px;
+  padding: 0 var(--space-4);
 }
 
 .nav-hamburger {
@@ -1038,7 +1038,7 @@ summary:focus-visible,
   line-height: 1.0;
   color: var(--white);
   text-transform: uppercase;
-  margin-bottom: 28px;
+  margin-bottom: var(--space-6);
 }
 
 .landing-hero-headline .accent {
@@ -1058,7 +1058,7 @@ summary:focus-visible,
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--gray);
-  margin-bottom: 40px;
+  margin-bottom: var(--space-7);
   letter-spacing: 0.04em;
 }
 
@@ -1071,7 +1071,7 @@ summary:focus-visible,
 
 .landing-cta-row {
   display: flex;
-  gap: 10px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -1184,7 +1184,7 @@ summary:focus-visible,
   font-size: 13px;
   line-height: 1.55;
   color: var(--gray-mid);
-  padding-left: 14px;
+  padding-left: var(--space-4);
   position: relative;
 }
 
@@ -1221,7 +1221,7 @@ summary:focus-visible,
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: 9px 18px;
+  padding: var(--space-2) var(--space-4);
   min-height: var(--control-height);
   font-family: var(--font-display);
   font-size: 12px;
@@ -1737,7 +1737,7 @@ summary:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: var(--space-5);
 }
 
 .modal {
@@ -1871,7 +1871,7 @@ summary:focus-visible,
 
 .expanded-row td {
   background: var(--bg-elevated) !important;
-  padding: 18px var(--space-4) !important;
+  padding: var(--space-4) !important;
 }
 
 .expanded-content {
@@ -2009,7 +2009,7 @@ summary:focus-visible,
   color: var(--amber);
   border: 1px solid rgba(255, 152, 0, 0.35);
   border-radius: 3px;
-  padding: 3px 10px;
+  padding: 3px var(--space-2);
   white-space: nowrap;
 }
 
@@ -2036,7 +2036,7 @@ summary:focus-visible,
   gap: var(--space-3) var(--space-4);
   align-content: center;
   border-left: 1px solid var(--border);
-  padding-left: 20px;
+  padding-left: var(--space-5);
 }
 
 .heatmap-stat-label {
@@ -2096,7 +2096,7 @@ summary:focus-visible,
 .heatmap-months {
   display: flex;
   margin-bottom: var(--space-1);
-  padding-left: 20px;
+  padding-left: var(--space-5);
   gap: 0;
 }
 
@@ -2191,7 +2191,7 @@ summary:focus-visible,
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 5px var(--space-2);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -2292,7 +2292,7 @@ summary:focus-visible,
      so a long label like "BIGGEST TIME LOSS" would push the row wider than
      its container instead of wrapping inside its own card. */
   grid-auto-columns: minmax(0, 1fr);
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 /* Six across stops being readable before it stops fitting, so below this the
@@ -2460,7 +2460,7 @@ summary:focus-visible,
 
 .track-card-flag {
   font-size: 32px;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
   line-height: 1;
 }
 
@@ -2478,7 +2478,7 @@ summary:focus-visible,
   font-family: var(--font-body);
   font-size: 12px;
   color: var(--gray-mid);
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
 }
 
 .track-card-pb {
@@ -2541,7 +2541,7 @@ summary:focus-visible,
 .track-detail-header {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: var(--space-5);
   margin-bottom: var(--space-6);
 }
 
@@ -2580,7 +2580,7 @@ summary:focus-visible,
 .track-stat {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 14px var(--space-4);
+  padding: var(--space-4);
 }
 
 .track-stat-label {
@@ -2658,7 +2658,7 @@ summary:focus-visible,
 .setup-card-header {
   /* Extra right padding keeps the tag badge clear of the absolutely
      positioned selection checkbox (top:14/right:14, ~30px wide zone). */
-  padding: var(--space-4) 40px var(--space-4) var(--space-5);
+  padding: var(--space-4) var(--space-7) var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: flex-start;
@@ -2832,9 +2832,9 @@ summary:focus-visible,
 .hw-params {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: var(--space-2);
   border-top: 1px solid var(--border);
-  padding-top: 14px;
+  padding-top: var(--space-4);
 }
 
 .hw-param-item {
@@ -2866,7 +2866,7 @@ summary:focus-visible,
   line-height: 1.5;
   font-style: italic;
   border-top: 1px solid var(--border);
-  padding-top: 10px;
+  padding-top: var(--space-2);
 }
 
 .hw-card-actions {
@@ -2972,9 +2972,9 @@ summary:focus-visible,
 .community-card-params {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: var(--space-2);
   border-top: 1px solid var(--border);
-  padding-top: 14px;
+  padding-top: var(--space-4);
 }
 
 .community-param-item {
@@ -3101,7 +3101,7 @@ summary:focus-visible,
 }
 
 .chart-section .section-title {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 /* =========================================================
@@ -3215,7 +3215,7 @@ summary:focus-visible,
   .page-header {
     flex-wrap: wrap;
     gap: var(--space-3);
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
     align-items: flex-start;
   }
 
@@ -3225,11 +3225,11 @@ summary:focus-visible,
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-3);
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
   }
 
   .stat-card {
-    padding: 14px var(--space-4);
+    padding: var(--space-4);
   }
 
   .stat-value {
@@ -3239,7 +3239,7 @@ summary:focus-visible,
   /* Heatmap: horizontal scroll now lives on .heatmap-scroll year-round,
      just tighten the outer card padding on mobile */
   .heatmap-section {
-    padding: 14px;
+    padding: var(--space-4);
   }
 
   .heatmap-header {
@@ -3268,7 +3268,7 @@ summary:focus-visible,
   /* table-wrap already has overflow-x:auto — just tighten cell padding */
   .data-table th,
   .data-table td {
-    padding: var(--space-2) 10px;
+    padding: var(--space-2);
   }
 
   /* Sessions expanded row: 2 columns instead of 4 */
@@ -3295,7 +3295,7 @@ summary:focus-visible,
     flex-wrap: wrap;
     border: 1px solid var(--border);
     border-radius: 8px;
-    margin-bottom: 10px;
+    margin-bottom: var(--space-2);
     padding: var(--space-1) 0;
   }
 
@@ -3348,11 +3348,11 @@ summary:focus-visible,
   }
 
   .modal-header {
-    padding: 14px var(--space-4) var(--space-3);
+    padding: var(--space-4) var(--space-4) var(--space-3);
   }
 
   .modal-body {
-    padding: 14px var(--space-4);
+    padding: var(--space-4);
   }
 
   .modal-footer {
@@ -3363,7 +3363,7 @@ summary:focus-visible,
   /* ── Form grid: single column with bigger tap targets ── */
   .form-grid {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: var(--space-4);
   }
 
   .field.full {
@@ -3396,14 +3396,14 @@ summary:focus-visible,
   /* Compare bar: allow wrapping */
   .compare-bar {
     flex-wrap: wrap;
-    gap: 10px;
-    padding: 10px 14px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
   }
 
   /* ── Progress charts ── */
 
   .chart-section {
-    padding: 14px;
+    padding: var(--space-4);
     margin-bottom: var(--space-4);
   }
 
@@ -3412,13 +3412,13 @@ summary:focus-visible,
   /* Track grid: force single column */
   .track-grid {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: var(--space-2);
   }
 
   /* Track detail header */
   .track-detail-header {
-    gap: 14px;
-    margin-bottom: 20px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
     flex-wrap: wrap;
   }
 
@@ -3426,11 +3426,11 @@ summary:focus-visible,
   .track-stats-row {
     grid-template-columns: repeat(3, 1fr);
     gap: var(--space-2);
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
   }
 
   .track-stat {
-    padding: 10px var(--space-3);
+    padding: var(--space-2) var(--space-3);
   }
 
   .track-stat-value {
@@ -3641,7 +3641,7 @@ summary:focus-visible,
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 14px;
+  padding: 6px var(--space-4);
   border-radius: 999px;
   border: 1px solid var(--border-accent);
   background: var(--surface);
@@ -3690,16 +3690,16 @@ summary:focus-visible,
 
 @media (max-width: 767px) {
   .landing-nav-bar {
-    padding: var(--space-4) 20px;
+    padding: var(--space-4) var(--space-5);
   }
 
   .landing-hero {
-    padding: var(--space-7) 20px 40px;
+    padding: var(--space-7) var(--space-5) var(--space-7);
   }
 
   .landing-hero-headline {
     font-size: clamp(32px, 11vw, 56px);
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
   }
 
   .landing-hero-sub {
@@ -3721,7 +3721,7 @@ summary:focus-visible,
     justify-content: center;
     white-space: normal !important;
     text-align: center;
-    padding: 14px var(--space-4) !important;
+    padding: var(--space-4) !important;
     font-size: 12px !important;
     line-height: 1.4;
   }
@@ -3731,7 +3731,7 @@ summary:focus-visible,
   }
 
   .landing-features {
-    padding: 0 20px 40px;
+    padding: 0 var(--space-5) var(--space-7);
   }
 
   .landing-features > div[style] {
@@ -3739,15 +3739,15 @@ summary:focus-visible,
   }
 
   .landing-card {
-    padding: 18px;
+    padding: var(--space-4);
   }
 
   .landing-browse {
-    padding: 0 20px 40px;
+    padding: 0 var(--space-5) var(--space-7);
   }
 
   .landing-footer {
-    padding: 18px 20px;
+    padding: var(--space-4) var(--space-5);
   }
 }
 
@@ -3759,7 +3759,7 @@ summary:focus-visible,
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-3);
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .track-quick-link {
@@ -3770,7 +3770,7 @@ summary:focus-visible,
   text-align: left;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: var(--space-3) 14px;
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
   transition: border-color var(--transition), background var(--transition);
 }
@@ -3866,7 +3866,7 @@ summary:focus-visible,
 .setup-spec-sheet {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-4);
 }
 
 .setup-spec-group {
@@ -3883,15 +3883,15 @@ summary:focus-visible,
   color: var(--gray-light);
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
-  padding: 9px 14px;
+  padding: var(--space-2) var(--space-4);
 }
 
 .setup-spec-row {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 66px;
   align-items: center;
-  gap: 14px;
-  padding: 9px 14px;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border);
 }
 
@@ -4048,7 +4048,7 @@ summary:focus-visible,
   text-align: left;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 10px 14px;
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
   transition: border-color var(--transition), background var(--transition);
 }
