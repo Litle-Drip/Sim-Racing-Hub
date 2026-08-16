@@ -13,6 +13,7 @@ import type { CommunitySetupRecord, CommunitySessionRecord } from '@workspace/ap
 import { F1_TRACKS, F1_25_CARS, getTypeBadgeClass } from '../data/f1Tracks';
 import { getDailyChallenge } from '../lib/engagement';
 import { useRivalNotifications } from '../lib/rivalNotifications';
+import { takeFocusTrack } from '../lib/storage';
 import Rivals from './Rivals';
 
 const TAG_BADGE: Record<string, string> = {
@@ -165,6 +166,8 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
   const qc = useQueryClient();
   const { count: rivalNotificationCount } = useRivalNotifications();
   const [tab, setTab] = useState<CommunityTab>(initialTab ?? 'leaderboard');
+  // Set when arrived at from a track page's "Leaderboard" quick-link.
+  const [focusTrack] = useState(() => takeFocusTrack());
 
   // Land on Rivals when a challenge is waiting on you. The challenge list
   // usually hasn't loaded on first render, so this waits for it — but only
@@ -241,7 +244,13 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
       byTrack[s.trackId].push(s);
     });
 
-    return F1_TRACKS
+    // A track arrived at from its own page sorts to the front of the board so
+    // it's on screen without paging through "Show More".
+    const ordered = focusTrack
+      ? [...F1_TRACKS].sort((a, b) => Number(b.id === focusTrack) - Number(a.id === focusTrack))
+      : F1_TRACKS;
+
+    return ordered
       .filter(t => byTrack[t.id])
       .map(t => {
         const sorted = [...byTrack[t.id]].sort((a, b) => lapToSeconds(a.bestLap) - lapToSeconds(b.bestLap));
@@ -253,7 +262,7 @@ export default function Community({ isGuest, initialTab }: { isGuest?: boolean; 
         });
         return { track: t, entries: deduped.slice(0, 5) };
       });
-  }, [sessions]);
+  }, [sessions, focusTrack]);
 
   // Today's challenge is just the leaderboard scoped to one track + car, so it
   // sits pinned at the top of the board instead of owning a tab of its own.

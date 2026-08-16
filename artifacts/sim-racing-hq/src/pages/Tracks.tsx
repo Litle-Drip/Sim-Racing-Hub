@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen, CircleDot } from 'lucide-react';
+import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Play, ThumbsUp, BookOpen, CircleDot, Settings2, Trophy, ChevronRight } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { Toast } from '../components/Toast';
 import { F1_TRACKS, F1Track, CORNER_NAMES, getTypeBadgeClass } from '../data/f1Tracks';
@@ -14,7 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CornerNote, SessionRecord, TrackDifficultyRecord } from '@workspace/api-client-react';
-import { lapToSeconds, FOCUS_SESSION_KEY } from '../lib/storage';
+import { lapToSeconds, FOCUS_SESSION_KEY, FOCUS_TRACK_KEY } from '../lib/storage';
 import { trackConsistency, TYRE_GUIDES } from '../lib/engagement';
 import { CIRCUIT_SCHOOL } from '../data/circuitSchool';
 import { SessionDetailModal } from '../components/SessionDetail';
@@ -342,6 +342,39 @@ function EditableCell({
   );
 }
 
+/**
+ * Cross-links from a track to the pages that hold the rest of that track's
+ * data. Each one hands the track id off through sessionStorage so the
+ * destination opens scoped to this circuit instead of the full list.
+ */
+function TrackQuickLinks({ trackId, isGuest }: { trackId: string; isGuest?: boolean }) {
+  const go = (page: string) => {
+    try { sessionStorage.setItem(FOCUS_TRACK_KEY, trackId); } catch { /* storage unavailable — destination just opens unfiltered */ }
+    window.dispatchEvent(new CustomEvent('nav', { detail: page }));
+  };
+
+  const links: { label: string; sub: string; Icon: typeof Settings2; page: string; guestOk: boolean }[] = [
+    { label: 'Setups', sub: 'Your saved setups here', Icon: Settings2, page: 'setups', guestOk: false },
+    { label: 'Leaderboard', sub: 'Community times here', Icon: Trophy, page: 'community', guestOk: true },
+    { label: 'Sessions', sub: 'Every lap you’ve logged', Icon: BookOpen, page: 'sessions', guestOk: true },
+  ];
+
+  return (
+    <div className="track-quick-links">
+      {links.filter(l => l.guestOk || !isGuest).map(({ label, sub, Icon, page }) => (
+        <button key={label} className="track-quick-link" onClick={() => go(page)}>
+          <span className="track-quick-link-icon"><Icon size={15} aria-hidden="true" /></span>
+          <span className="track-quick-link-text">
+            <span className="track-quick-link-label">{label}</span>
+            <span className="track-quick-link-sub">{sub}</span>
+          </span>
+          <ChevronRight size={14} aria-hidden="true" className="track-quick-link-chevron" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function TrackDetail({
   track,
   onBack,
@@ -479,6 +512,8 @@ function TrackDetail({
           />
         </div>
       </div>
+
+      <TrackQuickLinks trackId={track.id} isGuest={isGuest} />
 
       <div className="track-stats-row">
         {[

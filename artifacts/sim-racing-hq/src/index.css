@@ -3299,3 +3299,276 @@ summary:focus-visible,
     padding: 18px 20px;
   }
 }
+
+/* ─── Track quick-links ─────────────────────────────────────────────────────
+   Cross-links from a track page to the Setups / Leaderboard / Sessions views
+   scoped to that circuit. */
+
+.track-quick-links {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.track-quick-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.track-quick-link:hover {
+  border-color: var(--border-accent);
+  background: var(--hover);
+}
+
+.track-quick-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.track-quick-link-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+  color: var(--teal);
+}
+
+.track-quick-link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.track-quick-link-label {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.track-quick-link-sub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--gray-mid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-quick-link-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--gray);
+}
+
+/* ─── Setup spec sheet ──────────────────────────────────────────────────────
+   Grouped parameter list with a fill bar showing where each value sits on its
+   in-game slider. */
+
+.setup-spec-meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.setup-spec-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.setup-spec-meta-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray);
+}
+
+.setup-spec-meta-value {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setup-spec-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setup-spec-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.setup-spec-group-title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-light);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  padding: 9px 14px;
+}
+
+.setup-spec-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 66px;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.setup-spec-row:last-child {
+  border-bottom: none;
+}
+
+.setup-spec-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-light);
+}
+
+.setup-spec-bar {
+  height: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.setup-spec-bar-fill {
+  height: 100%;
+  background: var(--teal);
+}
+
+.setup-spec-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--white);
+  text-align: right;
+}
+
+.setup-spec-notes {
+  margin-top: 16px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--gray-light);
+}
+
+/* ─── Lap telemetry modal ───────────────────────────────────────────────── */
+
+.lap-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.lap-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.lap-stat-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin-bottom: 3px;
+}
+
+.lap-stat-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lap-stat-value.accent {
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.lap-compare-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  margin-bottom: 18px;
+  color: var(--gray-mid);
+}
+
+.lap-compare-bar label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray-mid);
+}
+
+.lap-compare-bar select {
+  flex: 1;
+  min-width: 160px;
+}
+
+@media (max-width: 900px) {
+  .track-quick-links {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-spec-meta {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .lap-stat-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .setup-spec-row {
+    grid-template-columns: minmax(0, 1fr) 66px;
+  }
+
+  /* The bar is decoration next to the number — drop it before the label wraps. */
+  .setup-spec-bar {
+    display: none;
+  }
+}
