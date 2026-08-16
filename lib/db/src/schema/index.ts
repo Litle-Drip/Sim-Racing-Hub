@@ -206,6 +206,17 @@ export const setupsTable = pgTable("setups", {
   brakePressure: text("brake_pressure").notNull().default(""),
   onThrottle: text("on_throttle").notNull().default(""),
   offThrottle: text("off_throttle").notNull().default(""),
+  // Suspension geometry and tyre pressures. Added later than the rest, so
+  // setups saved before this default to "" rather than carrying a value —
+  // the UI renders those as "—" like any other blank field. The companion
+  // captures all six off the game's CarSetup packet, which is what makes
+  // "save setup from a session" able to fill them in without typing.
+  frontCamber: text("front_camber").notNull().default(""),
+  rearCamber: text("rear_camber").notNull().default(""),
+  frontToe: text("front_toe").notNull().default(""),
+  rearToe: text("rear_toe").notNull().default(""),
+  frontTyrePressure: text("front_tyre_pressure").notNull().default(""),
+  rearTyrePressure: text("rear_tyre_pressure").notNull().default(""),
   notes: text("notes").notNull().default(""),
   gameVersion: text("game_version").notNull().default(""),
   isPublic: boolean("is_public").notNull().default(false),

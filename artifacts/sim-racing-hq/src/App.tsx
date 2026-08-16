@@ -619,7 +619,7 @@ function DemoBanner({ onSignIn }: { onSignIn: () => void }) {
   );
 }
 
-function MainApp({ isGuest, isDemo, onSignIn, initialPage }: { isGuest?: boolean; isDemo?: boolean; onSignIn?: () => void; initialPage?: string }) {
+function MainApp({ isGuest, isDemo, onSignIn, initialPage, initialTrackId }: { isGuest?: boolean; isDemo?: boolean; onSignIn?: () => void; initialPage?: string; initialTrackId?: string }) {
   const [page, setPage] = useState(initialPage ?? 'dashboard');
 
   // Persist guest activity across same-session refreshes
@@ -689,7 +689,7 @@ function MainApp({ isGuest, isDemo, onSignIn, initialPage }: { isGuest?: boolean
     switch (page) {
       case 'dashboard': return <Dashboard setPage={handleSetPage} isGuest={isGuest} />;
       case 'sessions': return <Sessions isGuest={isGuest} />;
-      case 'tracks': return <Tracks isGuest={isGuest} />;
+      case 'tracks': return <Tracks isGuest={isGuest} initialTrackId={initialTrackId} />;
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
@@ -726,7 +726,7 @@ function MainApp({ isGuest, isDemo, onSignIn, initialPage }: { isGuest?: boolean
 // directly on a page instead of on the landing screen. They used to be separate
 // standalone components with their own trimmed-down copies of the same data;
 // now they're just entry points into the one app shell.
-function HomeRoute({ initialPage }: { initialPage?: string }) {
+function HomeRoute({ initialPage, initialTrackId }: { initialPage?: string; initialTrackId?: string }) {
   const [isGuest, setIsGuest] = useState(!!initialPage);
   const [isDemo, setIsDemo] = useState(false);
   const [, setLocation] = useLocation();
@@ -748,11 +748,11 @@ function HomeRoute({ initialPage }: { initialPage?: string }) {
     <>
       <Show when="signed-in">
         <GuestSessionMigrator />
-        <MainApp initialPage={initialPage} />
+        <MainApp initialPage={initialPage} initialTrackId={initialTrackId} />
       </Show>
       <Show when="signed-out">
         {isGuest
-          ? <MainApp isGuest isDemo={isDemo} onSignIn={handleSignIn} initialPage={initialPage} />
+          ? <MainApp isGuest isDemo={isDemo} onSignIn={handleSignIn} initialPage={initialPage} initialTrackId={initialTrackId} />
           : <LandingPage onGuest={() => setIsGuest(true)} onDemo={handleDemo} />
         }
       </Show>
@@ -842,6 +842,9 @@ function ClerkProviderWithRoutes() {
           <Route path="/setups">{() => <Redirect to="/community" />}</Route>
           <Route path="/leaderboard">{() => <Redirect to="/community" />}</Route>
           <Route path="/tracks">{() => <HomeRoute initialPage="tracks" />}</Route>
+          {/* Every circuit has its own address so track pages can be linked
+              and shared. */}
+          <Route path="/tracks/:trackId">{(params) => <HomeRoute initialPage="tracks" initialTrackId={params.trackId} />}</Route>
           <Route path="/download">{() => <DownloadPage />}</Route>
           <Route path="/log">{() => <LogRedirect />}</Route>
           <Route path="/driver/:username">{(params) => <DriverProfile username={params.username} />}</Route>
