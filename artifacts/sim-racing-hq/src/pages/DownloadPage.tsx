@@ -1,6 +1,7 @@
 import { useLocation } from 'wouter';
 import Footer from '../components/Footer';
 import { udpSettings, UDP_FORMAT } from '../data/udpSetup';
+import { RELEASES_URL } from '../data/companionDownload';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -48,7 +49,7 @@ export default function DownloadPage() {
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
             <a
               className="btn btn-primary"
-              href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases/latest"
+              href={RELEASES_URL}
               target="_blank"
               rel="noreferrer"
             >
@@ -56,7 +57,7 @@ export default function DownloadPage() {
             </a>
             <a
               className="btn btn-secondary"
-              href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases/latest"
+              href={RELEASES_URL}
               target="_blank"
               rel="noreferrer"
             >
@@ -64,7 +65,7 @@ export default function DownloadPage() {
             </a>
             <a
               className="btn btn-ghost"
-              href="https://github.com/Litle-Drip/Sim-Racing-Hub/releases"
+              href={RELEASES_URL}
               target="_blank"
               rel="noreferrer"
             >

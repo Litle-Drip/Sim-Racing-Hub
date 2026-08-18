@@ -2,6 +2,7 @@ import { useState, useCallback, type ReactNode } from 'react';
 import { Check, Download, KeyRound, Flag, Copy } from 'lucide-react';
 import { useCompanionKeyStatus, useGenerateCompanionKey } from '../lib/companionApi';
 import { UDP_FORMAT, UDP_PORT, UDP_IP_SAME_PC, UDP_SEND_RATE } from '../data/udpSetup';
+import { RELEASES_URL, detectOS, osLabel } from '../data/companionDownload';
 
 // The one thing a new driver has to accomplish is: app installed, key pasted,
 // lap driven. Everything else on the dashboard is meaningless until then, so
@@ -11,15 +12,6 @@ import { UDP_FORMAT, UDP_PORT, UDP_IP_SAME_PC, UDP_SEND_RATE } from '../data/udp
 
 const DOWNLOADED_KEY = 'f1simhub-companion-downloaded';
 const DISMISSED_KEY = 'f1simhub-getstarted-dismissed';
-
-const RELEASES_URL = 'https://github.com/Litle-Drip/Sim-Racing-Hub/releases';
-
-function detectOS(): 'windows' | 'mac' | 'other' {
-  const ua = navigator.userAgent;
-  if (/Win/i.test(ua)) return 'windows';
-  if (/Mac/i.test(ua)) return 'mac';
-  return 'other';
-}
 
 function readFlag(key: string): boolean {
   try { return localStorage.getItem(key) === '1'; } catch { return false; }
@@ -141,7 +133,7 @@ export default function GetStartedChecklist({
   if (hasSession || dismissed) return null;
 
   const os = detectOS();
-  const osLabel = os === 'mac' ? 'macOS' : os === 'windows' ? 'Windows' : 'your platform';
+  const platformLabel = osLabel(os);
 
   const steps = [downloaded, hasKey, false];
   const doneCount = 1 + steps.filter(Boolean).length; // account creation is already done
@@ -177,7 +169,7 @@ export default function GetStartedChecklist({
           done={downloaded}
           active={!downloaded}
           icon={<Download size={13} />}
-          title={`Download the companion app for ${osLabel}`}
+          title={`Download the companion app for ${platformLabel}`}
         >
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
             <a
@@ -187,7 +179,7 @@ export default function GetStartedChecklist({
               rel="noreferrer"
               onClick={handleDownload}
             >
-              ↓ Download for {osLabel}
+              ↓ Download for {platformLabel}
             </a>
             <button className="btn btn-ghost btn-sm" onClick={handleDownload}>
               Already installed

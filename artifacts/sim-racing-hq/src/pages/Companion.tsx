@@ -6,15 +6,7 @@ import {
   useRevokeCompanionKey,
 } from '../lib/companionApi';
 import { udpSettings, UDP_FORMAT, UDP_PORT } from '../data/udpSetup';
-
-const RELEASES_URL = 'https://github.com/Litle-Drip/Sim-Racing-Hub/releases';
-
-function detectOS(): 'windows' | 'mac' | 'other' {
-  const ua = navigator.userAgent;
-  if (/Win/i.test(ua)) return 'windows';
-  if (/Mac/i.test(ua)) return 'mac';
-  return 'other';
-}
+import { RELEASES_URL, detectOS, osLabel } from '../data/companionDownload';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -79,7 +71,7 @@ export default function Companion() {
   const [platform, setPlatform] = useState<'pc' | 'console'>('pc');
 
   const os = detectOS();
-  const osLabel = os === 'mac' ? 'macOS' : os === 'windows' ? 'Windows' : 'your platform';
+  const platformLabel = osLabel(os);
 
   const generateKey = useCallback(() => {
     generate.mutate(undefined, { onSuccess: key => setFreshKey(key) });
@@ -110,7 +102,7 @@ export default function Companion() {
       <div className="card-stack">
         {/* ── 1 · Download ─────────────────────────────────────────────── */}
         <div className="card card-pad">
-          <StepHeader n={1} title="Download the app" note={`Free desktop app for Windows and macOS — detected: ${osLabel}.`} />
+          <StepHeader n={1} title="Download the app" note={`Free desktop app for Windows and macOS — detected: ${platformLabel}.`} />
           <div className="card-text" style={{ marginBottom: 'var(--space-4)' }}>
             It sits in your system tray, listens for telemetry from F1 25, and uploads each session when you finish it.
           </div>
