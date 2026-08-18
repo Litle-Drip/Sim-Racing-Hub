@@ -97,10 +97,12 @@ This must always point to Render directly, never to Vercel.
 **F1 25 UDP settings for users:**
 - UDP Telemetry: On
 - UDP Broadcast Mode: Off
-- UDP IP Address: (user's computer local IP, shown in companion setup wizard)
+- UDP IP Address: `127.0.0.1` when F1 25 runs on the same PC as the companion; the PC's LAN IP (shown with a copy button in the companion setup wizard) when playing on Xbox or PlayStation
 - UDP Port: 20777
-- Format: 2024
+- Format: 2024 (2025 and 2026 are also accepted — see `SUPPORTED_FORMATS` in `companion/src/main/udp.ts`)
 - Send Rate: 60Hz
+
+These values are stated in four places: the companion wizard (`companion/src/renderer/src/pages/Wizard.tsx`), the signed-in Companion page, the public Download page, and the dashboard get-started checklist. The three web surfaces read them from `sim-racing-hq/src/data/udpSetup.ts` — change that file, not the pages. The wizard keeps its own copy (separate app, no shared module) with a comment pointing back at the parser.
 
 **Mac note:** The companion app is unsigned (no Apple Developer certificate). Mac users must right-click → Open to bypass Gatekeeper. macOS may also block incoming UDP for unsigned apps — this is a known limitation until the $99/year Apple Developer cert is obtained.
 
@@ -116,6 +118,9 @@ Render's free tier spins down after 15 minutes of inactivity. First request afte
 
 ### Session type showed "Unknown" for sessions before 2026-07-13 (fixed)
 Real Race and Time Trial sessions were saving as "Unknown". Root cause: F1 25 inserted 5 sprint-weekend session types before Race in its UDP numbering, shifting Race from id 10->15 and Time Trial from 13->18, but the companion's `SESSION_TYPES` lookup table (`session.ts`) still had the old F1 24 ids and had no entries for 15/18 — so those sessions fell through to "Unknown". Fixed in commit `b42a3f1` by updating the table to the shifted F1 25 ids. This was not a byte-offset bug in `udp.ts` (that parser is correct). Sessions from before the fix are permanently stuck with the "Unknown"/"Other" label since the raw numeric session type wasn't stored, only the resolved string — there's no way to backfill them.
+
+### The setup wizard told users to pick a UDP format the parser rejects (fixed)
+The companion's first-run wizard instructed drivers to set **UDP Format: 2023**, but `udp.ts` only parses 2024, 2025 and 2026 and silently drops anything else. A driver who followed the wizard exactly saw step 3 spin on "Listening on port 20777…" forever with no error, and the app's dashboard reported it as "Unsupported game" — which reads as *your game isn't supported*, not *change one dropdown*. This was the single worst new-user blocker: the setup instructions could not produce a working setup. Fixed by pulling the value into a `UDP_FORMAT` constant in the wizard, surfacing the format mismatch as its own actionable state on step 3 (the status object already carried `unsupportedFormat` — nothing was reading it), and rewording the dashboard row to name the fix. If `SUPPORTED_FORMATS` ever changes, update the wizard constant and `sim-racing-hq/src/data/udpSetup.ts` together.
 
 ### Clerk username lookups return the wrong user if you trust position
 `GET https://api.clerk.com/v1/users?username[]=…` is a *filter*, not a search, and any request Clerk can't apply the filter to degrades into "the first users in the instance" rather than an empty list. Taking `users[0]` therefore hands back an unrelated account — that's how a rival challenge addressed to `slumlordmillionaire` reached a different driver entirely. Every username lookup must confirm `user.username.toLowerCase() === wanted` before using the result, and fall back to `?query=` (Clerk's fuzzy search) for casing differences. Both places that do this — `routes/community.ts` (public driver profile) and `routes/rivalChallenges.ts` (`findUserByUsername`, also used by `routes/friends.ts`) — verify the match.
