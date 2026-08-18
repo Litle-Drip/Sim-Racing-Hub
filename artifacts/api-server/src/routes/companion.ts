@@ -136,7 +136,21 @@ function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string
 }
 
 async function recalcPBsForUser(userId: string) {
-  const rows = await db.select().from(sessionsTable).where(eq(sessionsTable.userId, userId));
+  // Only the columns the PB comparison below actually reads — this runs on
+  // every companion-app upload, so pulling the full row (including the
+  // per-lap telemetry traces in `laps`) would re-transfer a user's entire
+  // session history's worth of trace data on every upload.
+  const rows = await db
+    .select({
+      id: sessionsTable.id,
+      date: sessionsTable.date,
+      createdAt: sessionsTable.createdAt,
+      trackId: sessionsTable.trackId,
+      bestLap: sessionsTable.bestLap,
+      isPB: sessionsTable.isPB,
+    })
+    .from(sessionsTable)
+    .where(eq(sessionsTable.userId, userId));
   // Sort chronologically so, among sessions logged on the same calendar
   // date, the one uploaded/created first consistently wins tie-breaking
   // for which row keeps the isPB flag (date alone doesn't distinguish

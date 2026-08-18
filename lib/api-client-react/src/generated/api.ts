@@ -37,6 +37,7 @@ import type {
   FriendSessionRecord,
   GetCommunitySessionsParams,
   GetCommunitySetupsParams,
+  GetLapTrace200,
   HardwareRecord,
   HealthStatus,
   LookupRivalChallengeUserParams,
@@ -306,8 +307,8 @@ export const getGetSessionDetailUrl = (id: string,) => {
 }
 
 /**
- * GET /sessions omits lap telemetry traces to keep the list view fast and cheap; fetch this endpoint to load the full trace data for a single session (e.g. when opening the lap telemetry chart).
- * @summary Get one session, including full per-lap telemetry traces
+ * Like GET /sessions, this omits lap telemetry traces to stay fast and cheap — it's used for per-lap metadata (times, sectors) and to populate the lap comparison picker. Fetch GET /sessions/{id}/laps/{lapNumber}/trace for a specific lap's full trace data.
+ * @summary Get one session's per-lap metadata (no telemetry traces)
  */
 export const getSessionDetail = async (id: string, options?: RequestInit): Promise<SessionRecord> => {
 
@@ -354,7 +355,7 @@ export type GetSessionDetailQueryError = ErrorType<UnauthorizedResponse | NotFou
 
 
 /**
- * @summary Get one session, including full per-lap telemetry traces
+ * @summary Get one session's per-lap metadata (no telemetry traces)
  */
 
 export function useGetSessionDetail<TData = Awaited<ReturnType<typeof getSessionDetail>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
@@ -444,6 +445,89 @@ export const useDeleteSession = <TError = ErrorType<UnauthorizedResponse | NotFo
       > => {
       return useMutation(getDeleteSessionMutationOptions(options));
     }
+
+export const getGetLapTraceUrl = (id: string,
+    lapNumber: number,) => {
+
+
+
+
+  return `/api/sessions/${id}/laps/${lapNumber}/trace`
+}
+
+/**
+ * Fetches just the telemetry trace for a single lap, so viewing or comparing a lap's telemetry never has to load every other lap's trace in the session.
+ * @summary Get one lap's full telemetry trace
+ */
+export const getLapTrace = async (id: string,
+    lapNumber: number, options?: RequestInit): Promise<GetLapTrace200> => {
+
+  return customFetch<GetLapTrace200>(getGetLapTraceUrl(id,lapNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLapTraceQueryKey = (id: string,
+    lapNumber: number,) => {
+    return [
+    `/api/sessions/${id}/laps/${lapNumber}/trace`
+    ] as const;
+    }
+
+
+export const getGetLapTraceQueryOptions = <TData = Awaited<ReturnType<typeof getLapTrace>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string,
+    lapNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLapTrace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLapTraceQueryKey(id,lapNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLapTrace>>> = ({ signal }) => getLapTrace(id,lapNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id && lapNumber), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLapTrace>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLapTraceQueryResult = NonNullable<Awaited<ReturnType<typeof getLapTrace>>>
+export type GetLapTraceQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get one lap's full telemetry trace
+ */
+
+export function useGetLapTrace<TData = Awaited<ReturnType<typeof getLapTrace>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string,
+    lapNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLapTrace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLapTraceQueryOptions(id,lapNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getShareSessionUrl = (id: string,) => {
 

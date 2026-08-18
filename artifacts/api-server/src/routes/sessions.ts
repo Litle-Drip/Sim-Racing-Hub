@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { eq, and, inArray, sql, getTableColumns } from "drizzle-orm";
-import { db, sessionsTable, type DbSession, type DbLapRecord } from "@workspace/db";
+import { db, sessionsTable, type DbLapRecord } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
+import { lapsWithoutTrace } from "../lib/sessionQueries";
 import {
   CreateSessionBody,
   GetSessionsResponse,
   GetSessionDetailResponse,
+  GetLapTraceResponse,
 } from "@workspace/api-zod";
 
 const router = Router();
@@ -228,17 +230,6 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
   };
 }
 
-// Per-lap telemetry traces (up to 3000 points each) are only ever rendered
-// from the single-session detail view (see GET /sessions/:id below), never
-// from the list. Stripping them here in SQL — rather than fetching the full
-// JSONB and discarding `trace` in JS — keeps Postgres from reading and
-// transferring that data on every login/refresh, which is what was driving
-// up load time and Neon compute/egress.
-const lapsWithoutTrace = sql<DbSession["laps"]>`(
-  select jsonb_agg(lap_elem - 'trace')
-  from jsonb_array_elements(${sessionsTable.laps}) as lap_elem
-)`.as("laps");
-
 router.get("/sessions", requireAuth, async (req, res) => {
   const userId = (req as AuthRequest).userId as string;
   try {
@@ -259,8 +250,12 @@ router.get("/sessions/:id", requireAuth, async (req, res) => {
   const id = req.params.id as string;
 
   try {
+    // Same trace-stripped `laps` as the list endpoint. This is used to show
+    // per-lap metadata (times, sectors) and to populate the "compare with"
+    // lap picker in the telemetry modal — neither needs trace data, which
+    // GET /sessions/:id/laps/:lapNumber/trace fetches on demand instead.
     const [row] = await db
-      .select()
+      .select({ ...getTableColumns(sessionsTable), laps: lapsWithoutTrace })
       .from(sessionsTable)
       .where(and(eq(sessionsTable.id, id), eq(sessionsTable.userId, userId)));
 
@@ -272,6 +267,48 @@ router.get("/sessions/:id", requireAuth, async (req, res) => {
     res.json(GetSessionDetailResponse.parse(serializeSession(row)));
   } catch (err) {
     req.log.error({ err }, "Failed to get session detail");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/sessions/:id/laps/:lapNumber/trace", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).userId as string;
+  const id = req.params.id as string;
+  const lapNumber = Number(req.params.lapNumber);
+
+  if (!Number.isInteger(lapNumber)) {
+    res.status(400).json({ error: "lapNumber must be an integer" });
+    return;
+  }
+
+  try {
+    // Pulls just the one lap's trace out of the `laps` JSONB in SQL, so
+    // viewing/comparing a lap's telemetry never has to read or transfer
+    // every other lap's trace in the session.
+    const [row] = await db
+      .select({
+        exists: sql<boolean>`exists (
+          select 1 from jsonb_array_elements(${sessionsTable.laps}) as lap_elem
+          where (lap_elem ->> 'lap')::int = ${lapNumber}
+        )`,
+        trace: sql<DbLapRecord["trace"]>`(
+          select lap_elem -> 'trace'
+          from jsonb_array_elements(${sessionsTable.laps}) as lap_elem
+          where (lap_elem ->> 'lap')::int = ${lapNumber}
+          limit 1
+        )`,
+      })
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.id, id), eq(sessionsTable.userId, userId)));
+
+    if (!row || !row.exists) {
+      res.status(404).json({ error: "Lap not found" });
+      return;
+    }
+
+    res.json(GetLapTraceResponse.parse({ trace: row.trace ?? [] }));
+  } catch (err) {
+    req.log.error({ err }, "Failed to get lap trace");
     res.status(500).json({ error: "Internal server error" });
   }
 });
