@@ -211,8 +211,11 @@ export default function Dashboard({ onOpenSettings }: Props): React.ReactElement
           icon={<IconGamepad size={15} />}
           label="Game Connected"
           value={
+            // Not "unsupported game" — the game is fine, its UDP Format
+            // dropdown is on the wrong value, and that is fixable in ten
+            // seconds if we say so.
             status.unsupportedFormat
-              ? `Unsupported game (format ${status.unsupportedFormat})`
+              ? `Set UDP Format to 2024 (now ${status.unsupportedFormat})`
               : status.gameConnected
                 ? `${status.detectedGame ?? "F1"} detected`
                 : "Waiting…"
