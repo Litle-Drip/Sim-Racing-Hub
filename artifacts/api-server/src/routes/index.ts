@@ -10,6 +10,7 @@ import companionRouter from "./companion";
 import rivalChallengesRouter from "./rivalChallenges";
 import engineerUsageRouter from "./engineerUsage";
 import friendsRouter from "./friends";
+import leaguesRouter from "./leagues";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(companionRouter);
 router.use(rivalChallengesRouter);
 router.use(engineerUsageRouter);
 router.use(friendsRouter);
+router.use(leaguesRouter);
 
 export default router;

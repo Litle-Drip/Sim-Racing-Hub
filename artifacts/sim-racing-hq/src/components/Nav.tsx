@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { id: 'engineer', label: 'Race Engineer', Icon: Headphones, authRequired: true },
   { id: 'companion', label: 'Companion', Icon: Zap, authRequired: true },
   { id: 'community', label: 'Community', Icon: Users, authRequired: false },
+  { id: 'leagues', label: 'Leagues', Icon: Trophy, authRequired: true },
   { id: 'account', label: 'Account', Icon: User, authRequired: true },
 ];
 

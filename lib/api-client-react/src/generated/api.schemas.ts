@@ -723,6 +723,128 @@ export interface CreateHardwareRequest {
   notes: string;
 }
 
+export interface LeagueRecord {
+  id: string;
+  name: string;
+  description: string;
+  ownerId: string;
+  /** The invite code, returned to league staff only. */
+  joinCode?: string | null;
+  /** The current user's role — owner | admin | member. */
+  role: string;
+  /** True for owner and admin — the roles the admin views are gated on. */
+  isStaff: boolean;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface LeagueMemberRecord {
+  userId: string;
+  username: string;
+  avatarUrl?: string | null;
+  role: string;
+  joinedAt: string;
+  /** When they last logged a session. Staff only — null for members. */
+  lastActiveAt?: string | null;
+}
+
+export interface LeagueDetail {
+  league: LeagueRecord;
+  members: LeagueMemberRecord[];
+}
+
+export interface CreateLeagueRequest {
+  /** @maxLength 60 */
+  name: string;
+  /** @maxLength 300 */
+  description?: string;
+}
+
+export interface JoinLeagueRequest {
+  /** @maxLength 20 */
+  joinCode: string;
+}
+
+export interface UpdateLeagueMemberRoleRequest {
+  /** admin | member */
+  role: string;
+}
+
+export interface LeagueLeaderboardEntry {
+  userId: string;
+  username: string;
+  avatarUrl?: string | null;
+  role: string;
+  bestLap: string;
+  bestLapSeconds: number;
+  /** Seconds behind the fastest driver. 0 for the leader. */
+  gapToLeader?: number | null;
+  car: string;
+  date: string;
+  sessionId: string;
+  /** Sessions this driver logged on the track, inside the window. */
+  sessions: number;
+  laps: number;
+  lastDrivenAt?: string | null;
+}
+
+export interface LeagueLeaderboardTrackOption {
+  trackId: string;
+  drivers: number;
+  sessions: number;
+}
+
+export interface LeagueLeaderboard {
+  /** The track ranked. Null when nobody in the league has driven anything. */
+  trackId?: string | null;
+  days?: number | null;
+  entries: LeagueLeaderboardEntry[];
+  /** Members with no time on this track in the window. */
+  missing: LeagueMemberRecord[];
+  /** Tracks the league has driven, most driven first. */
+  trackOptions: LeagueLeaderboardTrackOption[];
+}
+
+export interface LeagueActivityDay {
+  date: string;
+  sessions: number;
+  drivers: number;
+}
+
+export interface LeagueActivityDriver {
+  userId: string;
+  username: string;
+  avatarUrl?: string | null;
+  role: string;
+  sessions: number;
+  laps: number;
+  seatTimeMinutes: number;
+  tracks: number;
+  daysActive: number;
+  lastActiveAt?: string | null;
+  /** Their fastest lap in the window, with the track it was set on. */
+  bestLap?: string | null;
+  bestLapTrackId?: string | null;
+  joinedAt: string;
+}
+
+export interface LeagueActivityTotals {
+  members: number;
+  activeDrivers: number;
+  dormantDrivers: number;
+  sessions: number;
+  laps: number;
+  seatTimeMinutes: number;
+}
+
+export interface LeagueActivity {
+  days: number;
+  generatedAt: string;
+  totals: LeagueActivityTotals;
+  drivers: LeagueActivityDriver[];
+  daily: LeagueActivityDay[];
+}
+
 /**
  * Unauthorized
  */
@@ -732,6 +854,11 @@ export type UnauthorizedResponse = ErrorResponse;
  * Not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+/**
+ * Forbidden
+ */
+export type ForbiddenResponse = ErrorResponse;
 
 export type GetLapTrace200 = {
   trace: LapTraceSample[];
@@ -750,5 +877,23 @@ gameVersion?: string;
 
 export type LookupRivalChallengeUserParams = {
 username: string;
+};
+
+export type GetLeagueLeaderboardParams = {
+/**
+ * Track to rank on. Defaults to the league's most driven track.
+ */
+trackId?: string;
+/**
+ * Only count sessions from the last N days. Omit for all time.
+ */
+days?: number;
+};
+
+export type GetLeagueActivityParams = {
+/**
+ * Window length in days (default 30).
+ */
+days?: number;
 };
 
