@@ -733,6 +733,10 @@ export type UnauthorizedResponse = ErrorResponse;
  */
 export type NotFoundResponse = ErrorResponse;
 
+export type GetLapTrace200 = {
+  trace: LapTraceSample[];
+};
+
 export type GetCommunitySessionsParams = {
 sort?: string;
 };

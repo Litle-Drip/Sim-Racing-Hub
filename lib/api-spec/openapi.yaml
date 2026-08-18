@@ -83,11 +83,13 @@ paths:
     get:
       operationId: getSessionDetail
       tags: [sessions]
-      summary: Get one session, including full per-lap telemetry traces
+      summary: Get one session's per-lap metadata (no telemetry traces)
       description: >-
-        GET /sessions omits lap telemetry traces to keep the list view fast
-        and cheap; fetch this endpoint to load the full trace data for a
-        single session (e.g. when opening the lap telemetry chart).
+        Like GET /sessions, this omits lap telemetry traces to stay fast and
+        cheap — it's used for per-lap metadata (times, sectors) and to
+        populate the lap comparison picker. Fetch
+        GET /sessions/{id}/laps/{lapNumber}/trace for a specific lap's full
+        trace data.
       parameters:
         - name: id
           in: path
@@ -96,7 +98,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Session with full lap telemetry
+          description: Session with per-lap metadata, traces omitted
           content:
             application/json:
               schema:
@@ -118,6 +120,45 @@ paths:
       responses:
         "204":
           description: Session deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /sessions/{id}/laps/{lapNumber}/trace:
+    get:
+      operationId: getLapTrace
+      tags: [sessions]
+      summary: Get one lap's full telemetry trace
+      description: >-
+        Fetches just the telemetry trace for a single lap, so viewing or
+        comparing a lap's telemetry never has to load every other lap's
+        trace in the session.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lapNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The lap's telemetry trace (empty if none was recorded)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trace:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LapTraceSample"
+                required:
+                  - trace
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":

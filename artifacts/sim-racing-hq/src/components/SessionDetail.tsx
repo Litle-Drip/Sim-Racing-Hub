@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { useGetSessionDetail, type SessionRecord } from '@workspace/api-client-react';
+import { useGetLapTrace, getGetLapTraceQueryKey, type SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
 import { useUnits } from '../lib/units';
 
@@ -86,7 +86,7 @@ export function ExpandedGroup({ label, show, icon: Icon, defaultOpen, children }
 
 // ─── Lap table (expanded view) ────────────────────────────────────────────────
 
-export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessionId: string; laps: SessionRecord['laps']; onViewTelemetry: (sessionId: string, lap: LapEntry) => void }) {
+export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessionId: string; laps: SessionRecord['laps']; onViewTelemetry: (sessionId: string, lap: LapEntry, siblingLaps: LapEntry[]) => void }) {
   const laps = validLaps(rawLaps);
   if (!laps || laps.length === 0) return null;
   const fastestIdx = laps.reduce((best, l, i) => {
@@ -120,7 +120,7 @@ export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessio
                   {/* Trace presence is unknown until LapTelemetryModal fetches full detail — list responses omit traces. */}
                   <button
                     className="btn btn-secondary btn-sm"
-                    onClick={() => onViewTelemetry(sessionId, l)}
+                    onClick={() => onViewTelemetry(sessionId, l, laps)}
                     title="View speed/throttle/brake telemetry for this lap"
                   >
                     <Activity size={11} /> Telemetry
@@ -442,22 +442,30 @@ function LapStatStrip({ lap, trace }: { lap: LapEntry; trace: Trace }) {
   );
 }
 
-export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: string; lap: LapEntry; onClose: () => void }) {
+export function LapTelemetryModal({ sessionId, lap, siblingLaps, onClose }: { sessionId: string; lap: LapEntry; siblingLaps: LapEntry[]; onClose: () => void }) {
   const { speedUnit, convertSpeed } = useUnits();
-  // The session list omits lap traces to stay fast/cheap to load, so the full
-  // trace for this one lap is fetched on demand when the modal opens.
-  const { data: fullSession, isLoading } = useGetSessionDetail(sessionId);
   const [compareLapNum, setCompareLapNum] = useState<number | null>(null);
 
-  const trace: Trace = fullSession?.laps?.find(l => l.lap === lap.lap)?.trace ?? [];
+  // Each lap's trace is fetched on its own — not the whole session's — so
+  // opening or comparing a lap never has to load every other lap's telemetry.
+  const { data: primaryTraceData, isLoading: isLoadingTrace } = useGetLapTrace(sessionId, lap.lap);
+  const trace: Trace = primaryTraceData?.trace ?? [];
 
-  // Only laps that carry a trace of their own can be compared against.
-  const comparableLaps = (fullSession?.laps ?? []).filter(
-    l => l.lap !== lap.lap && (l.trace?.length ?? 0) > 1,
-  );
+  // The caller already has the session's lap list (from the list/detail
+  // fetch it rendered this modal from) — reuse it instead of re-fetching.
+  // Whether a given lap actually has a trace isn't known until it's
+  // selected and fetched, so every other timed lap is offered as an option.
+  const comparableLaps = siblingLaps.filter(l => l.lap !== lap.lap && l.time && l.time.trim() !== '');
   const compareLap = comparableLaps.find(l => l.lap === compareLapNum) ?? null;
-  const compareTrace: Trace | null = compareLap?.trace ?? null;
   const compareLabel = compareLap ? `Lap ${compareLap.lap}${compareLap.time ? ` (${compareLap.time})` : ''}` : '';
+
+  const { data: compareTraceData, isLoading: isLoadingCompareTrace } = useGetLapTrace(
+    sessionId,
+    compareLapNum ?? 0,
+    { query: { queryKey: getGetLapTraceQueryKey(sessionId, compareLapNum ?? 0), enabled: compareLapNum != null } },
+  );
+  const compareTrace: Trace | null = compareLapNum != null ? (compareTraceData?.trace ?? null) : null;
+  const compareHasNoTrace = compareLapNum != null && !isLoadingCompareTrace && (compareTrace?.length ?? 0) < 2;
 
   const rows = useMemo(
     () => buildChartRows(trace, compareTrace, convertSpeed),
@@ -473,7 +481,7 @@ export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: stri
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body" style={{ overflowY: 'auto' }}>
-          {isLoading ? (
+          {isLoadingTrace ? (
             <div style={{ padding: 'var(--space-5) 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>Loading telemetry…</div>
           ) : trace.length === 0 ? (
             <div style={{ padding: 'var(--space-5) 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>No telemetry data recorded for this lap.</div>
@@ -495,10 +503,16 @@ export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: stri
                       <option key={l.lap} value={l.lap}>Lap {l.lap}{l.time ? ` — ${l.time}` : ''}</option>
                     ))}
                   </select>
+                  {compareLapNum != null && isLoadingCompareTrace && (
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Loading…</span>
+                  )}
+                  {compareHasNoTrace && (
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>No telemetry recorded for that lap.</span>
+                  )}
                 </div>
               )}
 
-              {compareTrace && rows.length > 0 && <DeltaChart data={rows} compareLabel={compareLabel} />}
+              {compareTrace && compareTrace.length >= 2 && rows.length > 0 && <DeltaChart data={rows} compareLabel={compareLabel} />}
 
               <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="var(--teal)" unit={` ${speedUnit}`} data={rows} compareLabel={compareLabel} />
               <TelemetryTraceChart dataKey="throttle" label="Throttle" color="var(--green)" unit="%" domain={[0, 100]} data={rows} compareLabel={compareLabel} />
@@ -518,7 +532,7 @@ export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: stri
 // ─── Full session detail fields — reused by Sessions row expansion and the
 // standalone modal opened from Dashboard / Tracks. ─────────────────────────
 
-export function SessionDetailFields({ session: s, onViewTelemetry }: { session: SessionRecord; onViewTelemetry: (sessionId: string, lap: LapEntry) => void }) {
+export function SessionDetailFields({ session: s, onViewTelemetry }: { session: SessionRecord; onViewTelemetry: (sessionId: string, lap: LapEntry, siblingLaps: LapEntry[]) => void }) {
   const { formatTemp, formatSpeed } = useUnits();
 
   return (
@@ -644,8 +658,8 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
 // opened for a full look without navigating to the Sessions page. ──────────
 
 export function SessionDetailModal({ session, onClose }: { session: SessionRecord; onClose: () => void }) {
-  const [telemetryLap, setTelemetryLap] = useState<LapEntry | null>(null);
-  const onViewTelemetry = (_sessionId: string, lap: LapEntry) => setTelemetryLap(lap);
+  const [telemetryLap, setTelemetryLap] = useState<{ lap: LapEntry; siblingLaps: LapEntry[] } | null>(null);
+  const onViewTelemetry = (_sessionId: string, lap: LapEntry, siblingLaps: LapEntry[]) => setTelemetryLap({ lap, siblingLaps });
   const trackMeta = F1_TRACKS.find(t => t.id === session.trackId);
 
   return (
@@ -685,7 +699,7 @@ export function SessionDetailModal({ session, onClose }: { session: SessionRecor
           </div>
         </div>
       </div>
-      {telemetryLap && <LapTelemetryModal sessionId={session.id} lap={telemetryLap} onClose={() => setTelemetryLap(null)} />}
+      {telemetryLap && <LapTelemetryModal sessionId={session.id} lap={telemetryLap.lap} siblingLaps={telemetryLap.siblingLaps} onClose={() => setTelemetryLap(null)} />}
     </>
   );
 }

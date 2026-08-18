@@ -314,7 +314,10 @@ export const rivalChallengesTable = pgTable("rival_challenges", {
   // alive after the opponent finishes.
   creatorSeenResult: boolean("creator_seen_result").notNull().default(false),
   opponentSeenResult: boolean("opponent_seen_result").notNull().default(false),
-});
+}, (t) => [
+  index("rival_challenges_creator_id_idx").on(t.creatorId),
+  index("rival_challenges_opponent_id_idx").on(t.opponentId),
+]);
 
 export type DbRivalChallenge = typeof rivalChallengesTable.$inferSelect;
 export type InsertDbRivalChallenge = typeof rivalChallengesTable.$inferInsert;
