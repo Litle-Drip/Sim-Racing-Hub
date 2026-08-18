@@ -11,6 +11,7 @@ import { SessionDetailModal, validLaps } from '../components/SessionDetail';
 import { useRivalNotifications } from '../lib/rivalNotifications';
 import { useUnseenSessions } from '../lib/newSessions';
 import { Flame, Trophy } from 'lucide-react';
+import GetStartedChecklist from '../components/GetStartedChecklist';
 
 const DIFF_COLORS: Record<string, string> = {
   Easy: 'var(--green)',
@@ -675,6 +676,15 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
           </div>
         )}
       </div>
+
+      {/* ── Get Started ─────────────────────────────────────────────────
+          Nothing else on this page means anything to a driver with no laps
+          on it, so the path to their first one sits above all of it and
+          disappears the moment a session lands. Guests can't hold an API key,
+          so they see the sign-up nudges instead. */}
+      {!isGuest && (
+        <GetStartedChecklist hasSession={sessions.length > 0} setPage={setPage} />
+      )}
 
       {/* ── Quick Action Buttons ────────────────────────────────────────── */}
       <div className="toolbar">

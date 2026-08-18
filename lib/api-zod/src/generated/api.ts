@@ -325,8 +325,8 @@ export const CreateSessionBody = zod.object({
 
 
 /**
- * GET /sessions omits lap telemetry traces to keep the list view fast and cheap; fetch this endpoint to load the full trace data for a single session (e.g. when opening the lap telemetry chart).
- * @summary Get one session, including full per-lap telemetry traces
+ * Like GET /sessions, this omits lap telemetry traces to stay fast and cheap — it's used for per-lap metadata (times, sectors) and to populate the lap comparison picker. Fetch GET /sessions/{id}/laps/{lapNumber}/trace for a specific lap's full trace data.
+ * @summary Get one session's per-lap metadata (no telemetry traces)
  */
 export const GetSessionDetailParams = zod.object({
   "id": zod.coerce.string()
@@ -536,6 +536,29 @@ export const GetSessionDetailResponse = zod.object({
  */
 export const DeleteSessionParams = zod.object({
   "id": zod.coerce.string()
+})
+
+
+/**
+ * Fetches just the telemetry trace for a single lap, so viewing or comparing a lap's telemetry never has to load every other lap's trace in the session.
+ * @summary Get one lap's full telemetry trace
+ */
+export const GetLapTraceParams = zod.object({
+  "id": zod.coerce.string(),
+  "lapNumber": zod.coerce.number()
+})
+
+export const GetLapTraceResponse = zod.object({
+  "trace": zod.array(zod.object({
+  "d": zod.number(),
+  "speed": zod.number(),
+  "throttle": zod.number(),
+  "brake": zod.number(),
+  "steer": zod.number(),
+  "gear": zod.number().optional(),
+  "rpm": zod.number().optional(),
+  "drs": zod.number().optional()
+}))
 })
 
 

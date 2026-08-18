@@ -301,21 +301,27 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
           Companion
         </h1>
         <p className="landing-hero-sub">
-          Everything you need to log sessions, chase PBs, and master every circuit — all in one place.
+          Install the free companion app, drive a lap in F1 25, and your session is logged here
+          automatically — lap times, sectors, consistency and PBs, without touching a form.
         </p>
         <p className="landing-hero-platform">
           For F1 25 on Xbox, PlayStation, and PC — wheel or controller.
         </p>
+        {/* The demo used to be the loud button and signing up a small one
+            beside "Continue as Guest". Nothing here works — no companion app,
+            no auto-logged laps, no PBs that persist — without an account, so
+            the account is the primary action and the demo is the way to look
+            first. */}
         <div className="landing-cta-group">
-          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={onDemo}>
-            Try the Live Demo — Sample Data, No Sign Up →
+          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={() => setLocation('/sign-up')}>
+            Create Free Account — Start Auto-Logging Laps →
           </button>
           <div className="landing-cta-row">
+            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={onDemo}>
+              Try the Live Demo
+            </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={onGuest}>
               Continue as Guest
-            </button>
-            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setLocation('/sign-up')}>
-              Create Free Account
             </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setLocation('/sign-in')}>
               Sign In
@@ -323,8 +329,48 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
           </div>
         </div>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 'var(--space-2)', letterSpacing: '0.01em' }}>
-          The demo loads a real sample race weekend — dashboard, session log, lap history — right in your browser. Nothing is saved to an account.
+          Free, no credit card. Sign up, install the companion app, drive a lap — it appears here on its own.
+          Prefer to look first? The demo loads a real sample race weekend in your browser, saved to nothing.
         </p>
+      </div>
+
+      {/* How it works — the path from this page to a logged lap, up front.
+          The feature list below only matters to someone who has already
+          decided; this is for someone deciding. */}
+      <div className="landing-features">
+        <div className="landing-section-label">From here to your first auto-logged lap</div>
+        <div className="landing-feature-categories">
+          {[
+            { n: '1', title: 'Create your free account', desc: 'Under a minute. No credit card.' },
+            { n: '2', title: 'Install the companion app', desc: 'Windows or macOS. Paste in your API key — the dashboard hands it to you.' },
+            { n: '3', title: 'Drive a lap', desc: 'Flip on UDP telemetry in F1 25 and go. Every session uploads on its own from then on.' },
+          ].map(step => (
+            <div key={step.n} className="landing-feature-category">
+              <div className="landing-feature-category-title">
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  border: '1px solid var(--red)',
+                  color: 'var(--red)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}>{step.n}</span>
+                {step.title}
+              </div>
+              <ul className="landing-feature-list">
+                <li className="landing-feature-item">
+                  <span className="landing-feature-item-desc">{step.desc}</span>
+                </li>
+              </ul>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Feature Categories */}

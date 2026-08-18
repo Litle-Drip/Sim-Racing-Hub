@@ -427,7 +427,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [filterTrack, setFilterTrack] = useState(() => takeFocusTrack());
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
-  const [telemetryLap, setTelemetryLap] = useState<{ sessionId: string; lap: LapEntry } | null>(null);
+  const [telemetryLap, setTelemetryLap] = useState<{ sessionId: string; lap: LapEntry; siblingLaps: LapEntry[] } | null>(null);
   const [cleanupOpen, setCleanupOpen] = useState(false);
   const [toast, setToast] = useState('');
   // Everything past track/car/best-lap is collapsed by default. Logging a lap
@@ -982,7 +982,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           {s.tires && <div className="expanded-item"><div className="expanded-label">Tires</div><div className="expanded-value">{s.tires}</div></div>}
                           {s.rating > 0 && <div className="expanded-item"><div className="expanded-label">Rating</div><div className="expanded-value"><RatingDots rating={s.rating} /></div></div>}
 
-                          <SessionDetailFields session={s} onViewTelemetry={(sessionId, lap) => setTelemetryLap({ sessionId, lap })} />
+                          <SessionDetailFields session={s} onViewTelemetry={(sessionId, lap, siblingLaps) => setTelemetryLap({ sessionId, lap, siblingLaps })} />
 
                           <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
                             {!isGuest && (
@@ -1051,7 +1051,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
       {/* ── Lap Telemetry Modal ───────────────────────────────────────────── */}
       {telemetryLap && (
-        <LapTelemetryModal sessionId={telemetryLap.sessionId} lap={telemetryLap.lap} onClose={() => setTelemetryLap(null)} />
+        <LapTelemetryModal sessionId={telemetryLap.sessionId} lap={telemetryLap.lap} siblingLaps={telemetryLap.siblingLaps} onClose={() => setTelemetryLap(null)} />
       )}
 
       {cleanupOpen && (

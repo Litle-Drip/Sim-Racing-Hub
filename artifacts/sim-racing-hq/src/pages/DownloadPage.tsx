@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
 import Footer from '../components/Footer';
+import { udpSettings, UDP_FORMAT } from '../data/udpSetup';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -75,39 +76,33 @@ export default function DownloadPage() {
           </div>
         </div>
 
-        {/* F1 25 UDP Setup Guide */}
+        {/* How it works — the order a driver actually does it in, and the
+            same telemetry values the in-app Companion page and the desktop
+            wizard use (src/data/udpSetup.ts), so the three can't drift. */}
         <div className="card card-pad">
           <div className="section-title">
-            F1 25 UDP Setup Guide
+            How it works
           </div>
           <div className="card-text" style={{ marginBottom: 'var(--space-5)' }}>
-            Enable UDP telemetry in F1 25 so the companion app can read your session data in real time.
+            Four steps, about five minutes — then it runs itself.
           </div>
           <ol className="step-list">
             {[
               {
-                step: 'Open F1 25 and go to Settings',
-                detail: 'From the main menu, select Settings → Telemetry Settings.',
+                step: 'Create a free account',
+                detail: 'Takes under a minute. Your account is what the app uploads sessions to.',
               },
               {
-                step: 'Enable UDP Telemetry',
-                detail: 'Set "UDP Telemetry" to On.',
+                step: 'Install the app and paste your API key',
+                detail: 'Generate a key on the Companion page after signing in, then paste it into the app\'s first setup screen. The app verifies it on the spot.',
               },
               {
-                step: 'Set the broadcast mode',
-                detail: 'Set "UDP Broadcast Mode" to Off. Set "UDP IP Address" to 127.0.0.1 (localhost).',
+                step: 'Turn on UDP telemetry in F1 25',
+                detail: `Settings → Telemetry Settings. Set UDP Telemetry to On, Port to 20777, Send Rate to 60Hz and — this one matters — UDP Format to ${UDP_FORMAT}. Playing on this PC, set the IP to 127.0.0.1; on Xbox or PlayStation, use your PC's local IP, which the app shows you with a copy button.`,
               },
               {
-                step: 'Configure port and format',
-                detail: 'Set "UDP Port" to 20777. Set "UDP Send Rate" to 60Hz. Set "UDP Format" to 2024.',
-              },
-              {
-                step: 'Install and launch the companion app',
-                detail: 'Download and install the companion app above. Paste your API key into Settings → API Key (generate one from the Companion page after signing in). The app will appear in your system tray.',
-              },
-              {
-                step: 'Start a session in F1 25',
-                detail: 'When you finish a practice, qualifying, or race session, the companion app automatically uploads it to your F1 Sim Hub account.',
+                step: 'Drive',
+                detail: 'Finish any practice, qualifying, race or Time Trial session and it uploads automatically — lap times, sectors, consistency and all.',
               },
             ].map((item, i) => (
               <li key={i} className="step-item">
@@ -119,6 +114,39 @@ export default function DownloadPage() {
               </li>
             ))}
           </ol>
+        </div>
+
+        {/* The exact settings, so a driver can set the game up before they
+            have even downloaded anything. */}
+        <div className="card card-pad">
+          <div className="section-title">
+            F1 25 telemetry settings
+          </div>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Setting</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {udpSettings('pc').map(s => (
+                  <tr key={s.label}>
+                    <td>{s.label}</td>
+                    <td>
+                      <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)', fontWeight: 600 }}>{s.value}</span>
+                      {s.note && <div className="card-note" style={{ marginTop: 2 }}>{s.note}</div>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="card-note" style={{ marginTop: 'var(--space-3)' }}>
+            Playing on Xbox or PlayStation? Everything above is the same except the IP address — use your PC's
+            local IP instead of 127.0.0.1. The companion app displays it for you with a copy button.
+          </div>
         </div>
 
         {/* Sign-up nudge: the last card is the page's next step, so it carries

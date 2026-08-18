@@ -30,6 +30,7 @@ export * from './friendSessionRecord';
 export * from './friendSessionSummary';
 export * from './getCommunitySessionsParams';
 export * from './getCommunitySetupsParams';
+export * from './getLapTrace200';
 export * from './getLeagueActivityParams';
 export * from './getLeagueLeaderboardParams';
 export * from './hardwareRecord';

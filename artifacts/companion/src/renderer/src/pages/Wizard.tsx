@@ -11,6 +11,19 @@ interface Props {
 
 type Step = 1 | 2 | 3;
 
+// Where the game runs relative to this app. It decides one setting — the UDP
+// IP address — but it is the setting people get wrong most often, so it is
+// asked outright rather than left as a footnote. On PC the game and the
+// companion share a machine and loopback always works; from a console the
+// packets have to cross the network to this PC's LAN address.
+type Platform = "pc" | "console";
+
+// F1 25 offers several packet formats. The parser (src/main/udp.ts) accepts
+// 2024, 2025 and 2026 and silently drops everything else, so the wizard must
+// only ever name one of those three — an unlisted format looks to the driver
+// like the app is broken.
+const UDP_FORMAT = "2024";
+
 function StepIndicator({ current, total }: { current: Step; total: number }): React.ReactElement {
   return (
     <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 28 }}>
@@ -36,7 +49,10 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
   const [localIPs, setLocalIPs] = useState<string[]>([]);
+  const [platform, setPlatform] = useState<Platform>("pc");
   const [waitingForPacket, setWaitingForPacket] = useState(false);
+  const [wrongFormat, setWrongFormat] = useState<number | null>(null);
+  const [waitedLong, setWaitedLong] = useState(false);
   const [copiedIP, setCopiedIP] = useState(false);
 
   useEffect(() => {
@@ -45,9 +61,13 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
     }
     if (step === 3) {
       setWaitingForPacket(true);
+      setWaitedLong(false);
       // Poll for game connection
       const interval = setInterval(async () => {
         const status = await window.companion.getStatus();
+        // Packets arriving in a format the parser rejects look identical to
+        // no packets at all on a spinner, so surface it as its own answer.
+        setWrongFormat(status.unsupportedFormat);
         if (status.gameConnected) {
           clearInterval(interval);
           setWaitingForPacket(false);
@@ -55,7 +75,12 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
           setTimeout(onComplete, 1500);
         }
       }, 1000);
-      return () => clearInterval(interval);
+      // Nobody should stare at a spinner with no idea what to try next.
+      const nudge = setTimeout(() => setWaitedLong(true), 25_000);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(nudge);
+      };
     }
     return undefined;
   }, [step, onComplete]);
@@ -80,7 +105,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
         await window.companion.setSettings({ apiKey: apiKey.trim() });
         setStep(2);
       } else {
-        setVerifyError("Key not recognised — check you copied it correctly from f1simhub.com/companion.");
+        setVerifyError("Key not recognised — check you copied the whole key from the Companion page.");
       }
     } catch {
       setVerifyError("Could not reach F1SimHub. Check your internet connection.");
@@ -88,6 +113,19 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
       setVerifying(false);
     }
   }
+
+  // The one setting that depends on where the game runs.
+  const udpIp = platform === "pc" ? "127.0.0.1" : (localIPs[0] ?? "Your PC's local IP");
+  const ipIsCopyable = platform === "console" && !!localIPs[0];
+
+  const settingsRows: [string, string][] = [
+    ["UDP Telemetry", "On"],
+    ["UDP Broadcast Mode", "Off"],
+    ["UDP IP Address", udpIp],
+    ["UDP Port", "20777"],
+    ["UDP Send Rate", "60Hz"],
+    ["UDP Format", UDP_FORMAT],
+  ];
 
   return (
     <div
@@ -110,7 +148,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
         <WindowControls />
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "8px 24px 32px" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "8px 24px 32px", overflowY: "auto" }}>
       {/* Logo */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
         <LogoMark size={32} />
@@ -124,16 +162,19 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
           <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
             Paste your API Key
           </h2>
-          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
-            Get your key from{" "}
-            <span
-              style={{ color: theme.teal, cursor: "pointer" }}
-              onClick={() => window.companion.openF1SimHub()}
-            >
-              f1simhub.com/companion
-            </span>{" "}
-            under "Generate API Key".
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 16, lineHeight: 1.6 }}>
+            Your key lives on the Companion page of your F1SimHub account. Open it, hit{" "}
+            <strong style={{ color: theme.grayLight }}>Generate Key</strong>, and copy it here.
           </p>
+          {/* The link is a button, not a URL to retype: it deep-links straight
+              to the page holding the key. */}
+          <Button
+            variant="secondary"
+            onClick={() => window.companion.openF1SimHub("/companion")}
+            style={{ width: "100%", padding: "10px", fontSize: 13, marginBottom: 16 }}
+          >
+            Open my API key page ↗
+          </Button>
           <input
             type="password"
             placeholder="Paste key here…"
@@ -171,6 +212,37 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
           <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
             Configure F1 25
           </h2>
+
+          {/* Ask where the game runs before showing the settings, because it
+              changes one of them. */}
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 10, lineHeight: 1.6 }}>
+            Where do you play F1 25?
+          </p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+            {([
+              ["pc", "This PC"],
+              ["console", "Xbox / PlayStation"],
+            ] as [Platform, string][]).map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => setPlatform(value)}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  background: platform === value ? theme.tealDim : theme.bgElevated,
+                  border: `1px solid ${platform === value ? theme.teal : theme.border}`,
+                  color: platform === value ? theme.teal : theme.gray,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <p style={{ color: theme.gray, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
             In F1 25, go to <strong style={{ color: theme.grayLight }}>Settings → Telemetry Settings</strong> and set:
           </p>
@@ -180,17 +252,10 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
               border: `1px solid ${theme.border}`,
               borderRadius: 10,
               overflow: "hidden",
-              marginBottom: 20,
+              marginBottom: 16,
             }}
           >
-            {[
-              ["UDP Telemetry", "On"],
-              ["UDP Broadcast Mode", "Off"],
-              ["UDP IP Address", localIPs[0] ?? "Your PC's local IP"],
-              ["UDP Port", "20777"],
-              ["UDP Send Rate", "60Hz"],
-              ["UDP Format", "2023"],
-            ].map(([label, value]) => (
+            {settingsRows.map(([label, value]) => (
               <div
                 key={label}
                 style={{
@@ -202,9 +267,9 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                 }}
               >
                 <span style={{ color: theme.gray, fontSize: 12 }}>{label}</span>
-                {label === "UDP IP Address" && localIPs[0] ? (
+                {label === "UDP IP Address" && ipIsCopyable ? (
                   <button
-                    onClick={() => handleCopyIP(localIPs[0])}
+                    onClick={() => handleCopyIP(udpIp)}
                     title="Copy to clipboard"
                     style={{
                       display: "flex",
@@ -231,9 +296,13 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
                 ) : (
                   <span
                     style={{
-                      color: value === "On" || value === "20777" ? theme.teal : theme.white,
+                      color:
+                        value === "On" || value === "20777" || value === UDP_FORMAT
+                          ? theme.teal
+                          : theme.white,
                       fontWeight: 500,
                       fontSize: 12,
+                      fontFamily: label === "UDP IP Address" ? "monospace" : undefined,
                     }}
                   >
                     {value}
@@ -242,6 +311,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
               </div>
             ))}
           </div>
+
           <div
             style={{
               background: theme.tealDim,
@@ -250,11 +320,42 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
               padding: "10px 14px",
               fontSize: 12,
               color: theme.teal,
-              marginBottom: 24,
+              marginBottom: 16,
+              lineHeight: 1.6,
             }}
           >
-            💡 To find your IP: open Command Prompt and type <code>ipconfig</code> (Windows) or Terminal → <code>ifconfig</code> (macOS). Look for IPv4 / inet.
+            {platform === "pc" ? (
+              <>
+                💡 <strong>127.0.0.1</strong> is correct for playing on this PC — the game sends telemetry
+                to itself and the companion picks it up. No network setup needed.
+              </>
+            ) : (
+              <>
+                💡 That IP is this PC, read off your network — type it into the console exactly as shown.
+                Your console and this PC must be on the same Wi-Fi or router.
+              </>
+            )}
           </div>
+
+          {/* Getting the format wrong is the single most common reason
+              telemetry never arrives, so it gets called out on its own. */}
+          <div
+            style={{
+              background: theme.bgElevated,
+              border: `1px solid ${theme.border}`,
+              borderRadius: 8,
+              padding: "10px 14px",
+              fontSize: 12,
+              color: theme.gray,
+              marginBottom: 24,
+              lineHeight: 1.6,
+            }}
+          >
+            <strong style={{ color: theme.grayLight }}>UDP Format matters.</strong> It must be{" "}
+            <strong style={{ color: theme.white }}>{UDP_FORMAT}</strong> (2025 and 2026 also work).
+            Any other value and F1 25 sends packets the companion can't read.
+          </div>
+
           <Button variant="primary" onClick={() => setStep(3)} style={{ width: "100%", padding: "12px", fontSize: 14 }}>
             Done — Continue →
           </Button>
@@ -264,13 +365,11 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
       {step === 3 && (
         <>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.white, marginBottom: 8 }}>
-            Waiting for first packet
+            Drive your first lap
           </h2>
-          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 28, lineHeight: 1.6 }}>
-            Start F1 25 and load into a session. The companion will detect the connection automatically.
-            Assetto Corsa and Assetto Corsa Competizione are also supported — after finishing this setup, use the{" "}
-            <strong style={{ color: theme.grayLight }}>Game Setup</strong> section in Settings to enable them with
-            one click each, no manual file editing required.
+          <p style={{ color: theme.gray, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+            Start F1 25 and load into any session — Time Trial is quickest. The companion detects the
+            connection automatically and uploads the session when you finish it.
           </p>
           <div
             style={{
@@ -280,6 +379,7 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
               gap: 16,
               flex: 1,
               justifyContent: "center",
+              minHeight: 140,
             }}
           >
             {waitingForPacket ? (
@@ -319,9 +419,62 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
               </>
             )}
           </div>
+
+          {/* Packets are arriving but in a format the parser rejects — the one
+              case where the driver is nearly there and just has one dropdown
+              to change. */}
+          {wrongFormat !== null && waitingForPacket && (
+            <div
+              style={{
+                background: "rgba(232,0,45,0.1)",
+                border: `1px solid ${theme.red}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+                fontSize: 12,
+                color: theme.grayLight,
+                marginBottom: 12,
+                lineHeight: 1.6,
+              }}
+            >
+              Telemetry is reaching the companion, but F1 25 is sending format{" "}
+              <strong style={{ color: theme.white }}>{wrongFormat}</strong>. Change{" "}
+              <strong style={{ color: theme.white }}>UDP Format</strong> to{" "}
+              <strong style={{ color: theme.white }}>{UDP_FORMAT}</strong> in Telemetry Settings.
+            </div>
+          )}
+
+          {waitedLong && wrongFormat === null && waitingForPacket && (
+            <div
+              style={{
+                background: theme.bgElevated,
+                border: `1px solid ${theme.border}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+                fontSize: 12,
+                color: theme.gray,
+                marginBottom: 12,
+                lineHeight: 1.7,
+              }}
+            >
+              <strong style={{ color: theme.grayLight }}>Nothing yet? Check, in order:</strong>
+              <div>1. UDP Telemetry is <strong style={{ color: theme.white }}>On</strong> and Port is <strong style={{ color: theme.white }}>20777</strong>.</div>
+              <div>2. UDP IP Address is <strong style={{ color: theme.white }}>{udpIp}</strong>.</div>
+              <div>3. You're actually out on track — the menus send nothing.</div>
+              <div>4. Windows Firewall may be blocking the app — allow it on private networks.</div>
+              <div style={{ marginTop: 6 }}>
+                You can finish setup now and this will keep working in the background.
+              </div>
+            </div>
+          )}
+
           <Button variant="secondary" onClick={onComplete} style={{ width: "100%", padding: "12px" }}>
             Skip — I'll test later
           </Button>
+
+          <p style={{ color: theme.gray, fontSize: 11.5, marginTop: 14, lineHeight: 1.6, textAlign: "center" }}>
+            Assetto Corsa and ACC are supported too — enable them in{" "}
+            <strong style={{ color: theme.grayLight }}>Settings → Game Setup</strong> once you're set up here.
+          </p>
         </>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

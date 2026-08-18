@@ -427,7 +427,12 @@ ipcMain.handle("get-local-ips", () => {
   return ips.length > 0 ? ips : ["127.0.0.1"];
 });
 
-ipcMain.handle("open-f1simhub", () => shell.openExternal("https://f1simhub.com"));
+// Always www: the apex domain redirects, and the wizard sends people
+// straight to the page that holds their API key rather than the landing
+// page they then have to navigate out of.
+ipcMain.handle("open-f1simhub", (_event, path?: string) =>
+  shell.openExternal(`https://www.f1simhub.com${path ?? ""}`),
+);
 ipcMain.handle("open-log-file", () => shell.openPath(getLogFilePath()));
 // Not /releases/latest — that endpoint specifically excludes prereleases,
 // and the companion build is always published as one (see

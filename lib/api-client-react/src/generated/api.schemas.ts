@@ -860,6 +860,10 @@ export type NotFoundResponse = ErrorResponse;
  */
 export type ForbiddenResponse = ErrorResponse;
 
+export type GetLapTrace200 = {
+  trace: LapTraceSample[];
+};
+
 export type GetCommunitySessionsParams = {
 sort?: string;
 };
