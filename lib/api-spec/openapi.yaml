@@ -28,6 +28,8 @@ tags:
     description: AI Race Engineer free-tier usage limit and unlock
   - name: friends
     description: Friend requests, friend list and the friends activity feed
+  - name: leagues
+    description: Leagues, membership, and the staff-only leaderboard and activity views
 paths:
   /healthz:
     get:
@@ -875,6 +877,299 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /leagues:
+    get:
+      operationId: getLeagues
+      tags: [leagues]
+      summary: Leagues the current user belongs to
+      responses:
+        "200":
+          description: Leagues, staff ones first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeagueRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createLeague
+      tags: [leagues]
+      summary: Create a league — the creator becomes its owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeagueRequest"
+      responses:
+        "201":
+          description: League created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeagueRecord"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /leagues/join:
+    post:
+      operationId: joinLeague
+      tags: [leagues]
+      summary: Join a league with its invite code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinLeagueRequest"
+      responses:
+        "201":
+          description: Joined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeagueRecord"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Already a member of that league
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /leagues/{id}:
+    get:
+      operationId: getLeague
+      tags: [leagues]
+      summary: One league and its roster
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: League and members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeagueDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteLeague
+      tags: [leagues]
+      summary: Delete a league (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leagues/{id}/join-code:
+    post:
+      operationId: regenerateLeagueJoinCode
+      tags: [leagues]
+      summary: Issue a fresh invite code, retiring the old one (staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: League with its new code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeagueRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leagues/{id}/members/{userId}:
+    patch:
+      operationId: updateLeagueMemberRole
+      tags: [leagues]
+      summary: Promote or demote a member (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeagueMemberRoleRequest"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeagueMemberRecord"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: removeLeagueMember
+      tags: [leagues]
+      summary: Remove a member, or leave the league yourself
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Removed
+        "400":
+          description: The owner cannot leave their own league
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leagues/{id}/leaderboard:
+    get:
+      operationId: getLeagueLeaderboard
+      tags: [leagues]
+      summary: League leaderboard for one track (staff only)
+      description: >
+        Best lap per member on a track, with the gap to the leader and who
+        has not set a time yet. Staff only — this is the view league
+        organisers get that members do not.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trackId
+          in: query
+          required: false
+          description: Track to rank on. Defaults to the league's most driven track.
+          schema:
+            type: string
+        - name: days
+          in: query
+          required: false
+          description: Only count sessions from the last N days. Omit for all time.
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeagueLeaderboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leagues/{id}/activity:
+    get:
+      operationId: getLeagueActivity
+      tags: [leagues]
+      summary: Who is actually practising in this league (staff only)
+      description: >
+        Per-driver practice activity over a rolling window — sessions, laps,
+        seat time, tracks driven and when they were last on — plus league
+        totals and a daily session count. Staff only.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: days
+          in: query
+          required: false
+          description: Window length in days (default 30).
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity board
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeagueActivity"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
 components:
   responses:
     Unauthorized:
@@ -885,6 +1180,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     NotFound:
       description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
       content:
         application/json:
           schema:
@@ -2648,3 +2949,300 @@ components:
         - linearity
         - steeringRange
         - notes
+
+    LeagueRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        ownerId:
+          type: string
+        joinCode:
+          type: string
+          nullable: true
+          description: The invite code, returned to league staff only.
+        role:
+          type: string
+          description: The current user's role — owner | admin | member.
+        isStaff:
+          type: boolean
+          description: True for owner and admin — the roles the admin views are gated on.
+        memberCount:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - description
+        - ownerId
+        - role
+        - isStaff
+        - memberCount
+        - createdAt
+
+    LeagueMemberRecord:
+      type: object
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        role:
+          type: string
+        joinedAt:
+          type: string
+        lastActiveAt:
+          type: string
+          nullable: true
+          description: When they last logged a session. Staff only — null for members.
+      required:
+        - userId
+        - username
+        - role
+        - joinedAt
+
+    LeagueDetail:
+      type: object
+      properties:
+        league:
+          $ref: "#/components/schemas/LeagueRecord"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeagueMemberRecord"
+      required:
+        - league
+        - members
+
+    CreateLeagueRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 60
+        description:
+          type: string
+          maxLength: 300
+      required:
+        - name
+
+    JoinLeagueRequest:
+      type: object
+      properties:
+        joinCode:
+          type: string
+          maxLength: 20
+      required:
+        - joinCode
+
+    UpdateLeagueMemberRoleRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          description: admin | member
+      required:
+        - role
+
+    LeagueLeaderboardEntry:
+      type: object
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        role:
+          type: string
+        bestLap:
+          type: string
+        bestLapSeconds:
+          type: number
+        gapToLeader:
+          type: number
+          nullable: true
+          description: Seconds behind the fastest driver. 0 for the leader.
+        car:
+          type: string
+        date:
+          type: string
+        sessionId:
+          type: string
+        sessions:
+          type: integer
+          description: Sessions this driver logged on the track, inside the window.
+        laps:
+          type: integer
+        lastDrivenAt:
+          type: string
+          nullable: true
+      required:
+        - userId
+        - username
+        - role
+        - bestLap
+        - bestLapSeconds
+        - car
+        - date
+        - sessionId
+        - sessions
+        - laps
+
+    LeagueLeaderboardTrackOption:
+      type: object
+      properties:
+        trackId:
+          type: string
+        drivers:
+          type: integer
+        sessions:
+          type: integer
+      required:
+        - trackId
+        - drivers
+        - sessions
+
+    LeagueLeaderboard:
+      type: object
+      properties:
+        trackId:
+          type: string
+          nullable: true
+          description: The track ranked. Null when nobody in the league has driven anything.
+        days:
+          type: integer
+          nullable: true
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeagueLeaderboardEntry"
+        missing:
+          type: array
+          description: Members with no time on this track in the window.
+          items:
+            $ref: "#/components/schemas/LeagueMemberRecord"
+        trackOptions:
+          type: array
+          description: Tracks the league has driven, most driven first.
+          items:
+            $ref: "#/components/schemas/LeagueLeaderboardTrackOption"
+      required:
+        - entries
+        - missing
+        - trackOptions
+
+    LeagueActivityDay:
+      type: object
+      properties:
+        date:
+          type: string
+        sessions:
+          type: integer
+        drivers:
+          type: integer
+      required:
+        - date
+        - sessions
+        - drivers
+
+    LeagueActivityDriver:
+      type: object
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        role:
+          type: string
+        sessions:
+          type: integer
+        laps:
+          type: integer
+        seatTimeMinutes:
+          type: integer
+        tracks:
+          type: integer
+        daysActive:
+          type: integer
+        lastActiveAt:
+          type: string
+          nullable: true
+        bestLap:
+          type: string
+          nullable: true
+          description: Their fastest lap in the window, with the track it was set on.
+        bestLapTrackId:
+          type: string
+          nullable: true
+        joinedAt:
+          type: string
+      required:
+        - userId
+        - username
+        - role
+        - sessions
+        - laps
+        - seatTimeMinutes
+        - tracks
+        - daysActive
+        - joinedAt
+
+    LeagueActivityTotals:
+      type: object
+      properties:
+        members:
+          type: integer
+        activeDrivers:
+          type: integer
+        dormantDrivers:
+          type: integer
+        sessions:
+          type: integer
+        laps:
+          type: integer
+        seatTimeMinutes:
+          type: integer
+      required:
+        - members
+        - activeDrivers
+        - dormantDrivers
+        - sessions
+        - laps
+        - seatTimeMinutes
+
+    LeagueActivity:
+      type: object
+      properties:
+        days:
+          type: integer
+        generatedAt:
+          type: string
+        totals:
+          $ref: "#/components/schemas/LeagueActivityTotals"
+        drivers:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeagueActivityDriver"
+        daily:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeagueActivityDay"
+      required:
+        - days
+        - generatedAt
+        - totals
+        - drivers
+        - daily

@@ -22,6 +22,7 @@ import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
 import RaceEngineer from './pages/RaceEngineer';
 import Community from './pages/Community';
+import Leagues from './pages/Leagues';
 import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
 import Companion from './pages/Companion';
@@ -372,7 +373,7 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'companion', 'account'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'companion', 'account', 'leagues'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -446,6 +447,7 @@ const PAGE_LABELS: Record<string, string> = {
   engineer: 'Race Engineer',
   companion: 'Companion App Sync',
   account: 'Account',
+  leagues: 'League Admin',
 };
 
 const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
@@ -489,6 +491,13 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'Auto-upload sessions straight from F1 24/25/26 and Assetto Corsa',
       'Generate an API key to connect the desktop companion app',
       'Never manually log a lap time again',
+    ],
+  },
+  leagues: {
+    bullets: [
+      'Run a league and get a leaderboard across your whole grid',
+      "See who's actually practising between rounds — sessions, laps, seat time",
+      'Invite drivers with a code and manage the roster',
     ],
   },
   account: {
@@ -676,6 +685,7 @@ function MainApp({ isGuest, isDemo, onSignIn, initialPage, initialTrackId }: { i
       // Dashboard shortcut and the notification badge have somewhere to go
       // without Rivals becoming a second page that duplicates the tab.
       case 'rivals': return <Community isGuest={isGuest} initialTab="rivals" />;
+      case 'leagues': return <Leagues />;
       case 'companion': return <Companion />;
       case 'account': return <Account setPage={handleSetPage} />;
       default: return <Dashboard setPage={handleSetPage} />;
@@ -816,6 +826,7 @@ function ClerkProviderWithRoutes() {
               what Community already showed signed-in. They now land on the one
               Community surface. */}
           <Route path="/community">{() => <HomeRoute initialPage="community" />}</Route>
+          <Route path="/leagues">{() => <HomeRoute initialPage="leagues" />}</Route>
           <Route path="/setups">{() => <Redirect to="/community" />}</Route>
           <Route path="/leaderboard">{() => <Redirect to="/community" />}</Route>
           <Route path="/tracks">{() => <HomeRoute initialPage="tracks" />}</Route>

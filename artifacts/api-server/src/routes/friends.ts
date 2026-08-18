@@ -5,46 +5,12 @@ import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
 import { AddFriendBody } from "@workspace/api-zod";
 import { findUserByUsername } from "./rivalChallenges";
+import { getProfiles, type ClerkProfile } from "../lib/clerkProfiles";
 
 const router = Router();
 
 // How many sessions the friends feed returns across all friends.
 const FEED_LIMIT = 40;
-
-type ClerkProfile = { username: string; avatarUrl: string | null };
-
-// Usernames and avatars for a set of Clerk ids, in one request. Anyone Clerk
-// doesn't return (deleted account, lookup failure) is simply absent, and
-// callers fall back to "Unknown driver" rather than dropping the row —
-// a friendship shouldn't vanish from the list because Clerk had a bad minute.
-async function getProfiles(userIds: string[]): Promise<Record<string, ClerkProfile>> {
-  if (userIds.length === 0) return {};
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) return {};
-  try {
-    const params = new URLSearchParams();
-    userIds.forEach((id) => params.append("user_id[]", id));
-    params.set("limit", "100");
-    const resp = await fetch(`https://api.clerk.com/v1/users?${params}`, {
-      headers: { Authorization: `Bearer ${secretKey}` },
-    });
-    if (!resp.ok) return {};
-    const data = (await resp.json()) as Array<{
-      id: string;
-      username?: string | null;
-      image_url?: string | null;
-    }>;
-    const map: Record<string, ClerkProfile> = {};
-    for (const u of data) {
-      // Username only — a friend list is addressed by the name people chose
-      // to be known by here, never by the real name on the account.
-      map[u.id] = { username: u.username ?? "Unknown driver", avatarUrl: u.image_url ?? null };
-    }
-    return map;
-  } catch {
-    return {};
-  }
-}
 
 type Activity = {
   lastActiveAt: string | null;

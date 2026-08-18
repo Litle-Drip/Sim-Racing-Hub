@@ -353,3 +353,43 @@ export const engineerUsageTable = pgTable("engineer_usage", {
 
 export type DbEngineerUsage = typeof engineerUsageTable.$inferSelect;
 export type InsertDbEngineerUsage = typeof engineerUsageTable.$inferInsert;
+
+// A league is a private group run by whoever created it. Its point here is
+// the admin view: league staff get a leaderboard and a practice-activity
+// board over their members' sessions, which is the thing a league organiser
+// can't get anywhere else. Members see the roster and know, from the join
+// screen, that staff can see their practice activity.
+export const leaguesTable = pgTable("leagues", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  ownerId: text("owner_id").notNull(),
+  // Short, human-typeable invite code. Unique so a code resolves to exactly
+  // one league; regenerating it is how an admin closes an old invite.
+  joinCode: text("join_code").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  unique("leagues_join_code_uniq").on(t.joinCode),
+  index("leagues_owner_idx").on(t.ownerId),
+]);
+
+export type DbLeague = typeof leaguesTable.$inferSelect;
+export type InsertDbLeague = typeof leaguesTable.$inferInsert;
+
+// One row per driver in a league. `role` is owner | admin | member — owner
+// and admin are both "league staff" for permission purposes, and only the
+// owner can change roles or delete the league.
+export const leagueMembersTable = pgTable("league_members", {
+  id: text("id").primaryKey(),
+  leagueId: text("league_id").notNull(),
+  userId: text("user_id").notNull(),
+  role: text("role").notNull().default("member"), // owner | admin | member
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
+}, (t) => [
+  unique("league_members_uniq").on(t.leagueId, t.userId),
+  index("league_members_league_idx").on(t.leagueId),
+  index("league_members_user_idx").on(t.userId),
+]);
+
+export type DbLeagueMember = typeof leagueMembersTable.$inferSelect;
+export type InsertDbLeagueMember = typeof leagueMembersTable.$inferInsert;

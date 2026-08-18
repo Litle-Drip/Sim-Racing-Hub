@@ -1604,3 +1604,231 @@ export const RemoveFriendParams = zod.object({
 })
 
 
+/**
+ * @summary Leagues the current user belongs to
+ */
+export const GetLeaguesResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "ownerId": zod.string(),
+  "joinCode": zod.string().nullish().describe('The invite code, returned to league staff only.'),
+  "role": zod.string().describe('The current user\'s role — owner | admin | member.'),
+  "isStaff": zod.boolean().describe('True for owner and admin — the roles the admin views are gated on.'),
+  "memberCount": zod.number(),
+  "createdAt": zod.string()
+})
+export const GetLeaguesResponse = zod.array(GetLeaguesResponseItem)
+
+
+/**
+ * @summary Create a league — the creator becomes its owner
+ */
+export const createLeagueBodyNameMax = 60;
+
+export const createLeagueBodyDescriptionMax = 300;
+
+
+
+export const CreateLeagueBody = zod.object({
+  "name": zod.string().max(createLeagueBodyNameMax),
+  "description": zod.string().max(createLeagueBodyDescriptionMax).optional()
+})
+
+
+/**
+ * @summary Join a league with its invite code
+ */
+export const joinLeagueBodyJoinCodeMax = 20;
+
+
+
+export const JoinLeagueBody = zod.object({
+  "joinCode": zod.string().max(joinLeagueBodyJoinCodeMax)
+})
+
+
+/**
+ * @summary One league and its roster
+ */
+export const GetLeagueParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetLeagueResponse = zod.object({
+  "league": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "ownerId": zod.string(),
+  "joinCode": zod.string().nullish().describe('The invite code, returned to league staff only.'),
+  "role": zod.string().describe('The current user\'s role — owner | admin | member.'),
+  "isStaff": zod.boolean().describe('True for owner and admin — the roles the admin views are gated on.'),
+  "memberCount": zod.number(),
+  "createdAt": zod.string()
+}),
+  "members": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "joinedAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session. Staff only — null for members.')
+}))
+})
+
+
+/**
+ * @summary Delete a league (owner only)
+ */
+export const DeleteLeagueParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Issue a fresh invite code, retiring the old one (staff only)
+ */
+export const RegenerateLeagueJoinCodeParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RegenerateLeagueJoinCodeResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "ownerId": zod.string(),
+  "joinCode": zod.string().nullish().describe('The invite code, returned to league staff only.'),
+  "role": zod.string().describe('The current user\'s role — owner | admin | member.'),
+  "isStaff": zod.boolean().describe('True for owner and admin — the roles the admin views are gated on.'),
+  "memberCount": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Promote or demote a member (owner only)
+ */
+export const UpdateLeagueMemberRoleParams = zod.object({
+  "id": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+export const UpdateLeagueMemberRoleBody = zod.object({
+  "role": zod.string().describe('admin | member')
+})
+
+export const UpdateLeagueMemberRoleResponse = zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "joinedAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session. Staff only — null for members.')
+})
+
+
+/**
+ * @summary Remove a member, or leave the league yourself
+ */
+export const RemoveLeagueMemberParams = zod.object({
+  "id": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+
+/**
+ * Best lap per member on a track, with the gap to the leader and who has not set a time yet. Staff only — this is the view league organisers get that members do not.
+
+ * @summary League leaderboard for one track (staff only)
+ */
+export const GetLeagueLeaderboardParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetLeagueLeaderboardQueryParams = zod.object({
+  "trackId": zod.coerce.string().optional().describe('Track to rank on. Defaults to the league\'s most driven track.'),
+  "days": zod.coerce.number().optional().describe('Only count sessions from the last N days. Omit for all time.')
+})
+
+export const GetLeagueLeaderboardResponse = zod.object({
+  "trackId": zod.string().nullish().describe('The track ranked. Null when nobody in the league has driven anything.'),
+  "days": zod.number().nullish(),
+  "entries": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "bestLap": zod.string(),
+  "bestLapSeconds": zod.number(),
+  "gapToLeader": zod.number().nullish().describe('Seconds behind the fastest driver. 0 for the leader.'),
+  "car": zod.string(),
+  "date": zod.string(),
+  "sessionId": zod.string(),
+  "sessions": zod.number().describe('Sessions this driver logged on the track, inside the window.'),
+  "laps": zod.number(),
+  "lastDrivenAt": zod.string().nullish()
+})),
+  "missing": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "joinedAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session. Staff only — null for members.')
+})).describe('Members with no time on this track in the window.'),
+  "trackOptions": zod.array(zod.object({
+  "trackId": zod.string(),
+  "drivers": zod.number(),
+  "sessions": zod.number()
+})).describe('Tracks the league has driven, most driven first.')
+})
+
+
+/**
+ * Per-driver practice activity over a rolling window — sessions, laps, seat time, tracks driven and when they were last on — plus league totals and a daily session count. Staff only.
+
+ * @summary Who is actually practising in this league (staff only)
+ */
+export const GetLeagueActivityParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetLeagueActivityQueryParams = zod.object({
+  "days": zod.coerce.number().optional().describe('Window length in days (default 30).')
+})
+
+export const GetLeagueActivityResponse = zod.object({
+  "days": zod.number(),
+  "generatedAt": zod.string(),
+  "totals": zod.object({
+  "members": zod.number(),
+  "activeDrivers": zod.number(),
+  "dormantDrivers": zod.number(),
+  "sessions": zod.number(),
+  "laps": zod.number(),
+  "seatTimeMinutes": zod.number()
+}),
+  "drivers": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "sessions": zod.number(),
+  "laps": zod.number(),
+  "seatTimeMinutes": zod.number(),
+  "tracks": zod.number(),
+  "daysActive": zod.number(),
+  "lastActiveAt": zod.string().nullish(),
+  "bestLap": zod.string().nullish().describe('Their fastest lap in the window, with the track it was set on.'),
+  "bestLapTrackId": zod.string().nullish(),
+  "joinedAt": zod.string()
+})),
+  "daily": zod.array(zod.object({
+  "date": zod.string(),
+  "sessions": zod.number(),
+  "drivers": zod.number()
+}))
+})
+
+
