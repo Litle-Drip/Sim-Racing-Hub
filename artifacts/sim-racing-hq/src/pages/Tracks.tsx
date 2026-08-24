@@ -849,8 +849,18 @@ function VideoClipLibrary({ trackId }: { trackId: string }) {
   );
 }
 
+const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
+
 export default function Tracks({ isGuest, initialTrackId }: { isGuest?: boolean; initialTrackId?: string }) {
-  const { data: sessions = [] } = useGetSessions();
+  const { data: apiSessions = [] } = useGetSessions(isGuest ? { query: { enabled: false } as never } : undefined);
+  const [guestSessions] = useState<SessionRecord[]>(() => {
+    if (!isGuest) return [];
+    try {
+      const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
+      return raw ? (JSON.parse(raw) as SessionRecord[]) : [];
+    } catch { return []; }
+  });
+  const sessions: SessionRecord[] = isGuest ? guestSessions : (apiSessions as SessionRecord[]);
   const [, setLocation] = useLocation();
   // Opened straight onto a circuit when the URL names one. An id that matches
   // no circuit falls through to the grid rather than erroring.

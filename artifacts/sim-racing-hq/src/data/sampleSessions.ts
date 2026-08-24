@@ -62,10 +62,13 @@ export function buildSampleSessions(): SessionRecord[] {
     },
   ];
 
+  // Each sample session is the only one for its track/car combo, so each
+  // best lap is that combo's PB — mirrors what computeGuestPBs would derive.
+  // createdAt follows the session date so "most recent" ordering matches it.
   return raw.map(s => ({
     ...s,
-    createdAt: new Date().toISOString(),
-    isPB: false,
+    createdAt: new Date(`${s.date}T12:00:00Z`).toISOString(),
+    isPB: true,
     isPublic: false,
     sharedAt: null,
     publicNote: null,
