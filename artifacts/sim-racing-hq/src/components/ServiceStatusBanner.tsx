@@ -28,6 +28,10 @@ function useBackendHealth(): boolean {
   const consecutiveFailures = useRef(0);
 
   useEffect(() => {
+    // Local dev servers aren't in the production API's CORS allowlist, so the
+    // health probe always fails there and would show a permanent false outage.
+    if (import.meta.env.DEV) return;
+
     let cancelled = false;
 
     async function check() {

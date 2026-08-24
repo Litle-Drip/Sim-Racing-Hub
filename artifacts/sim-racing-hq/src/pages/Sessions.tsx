@@ -24,6 +24,7 @@ import {
   type LapEntry,
 } from '../components/SessionDetail';
 import { FOCUS_SESSION_KEY, OPEN_LOG_KEY, takeFocusTrack } from '../lib/storage';
+import { isDemoMode } from '../lib/demoStore';
 import { useUnseenSessions } from '../lib/newSessions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -608,7 +609,9 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const mostRecentId = useMemo(() => {
     if (sessions.length === 0) return null;
-    return [...sessions].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0].id;
+    return [...sessions].sort((a, b) =>
+      (b.createdAt ?? '').localeCompare(a.createdAt ?? '') || b.date.localeCompare(a.date)
+    )[0].id;
   }, [sessions]);
 
   // Jump-to-session handoff from other pages (e.g. Tracks' PB tile) — clear
@@ -839,7 +842,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       )}
 
-      {isGuest && (
+      {isGuest && !isDemoMode() && (
         <div className="notice notice--teal">
           <div className="notice-text" style={{ color: 'var(--gray-light)' }}>
             <span style={{ color: 'var(--teal)', fontWeight: 600 }}>Saved in this browser only.</span> Sessions will persist across refreshes on this device. Create a free account to sync across all your devices.

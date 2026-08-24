@@ -995,7 +995,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             <div className="heatmap-stat-label">Busiest Day</div>
             <div className="heatmap-stat-value">
               {heatmapStats.busiest ? heatmapStats.busiest.count : '—'}
-              {heatmapStats.busiest && <span className="heatmap-stat-unit">runs</span>}
+              {heatmapStats.busiest && <span className="heatmap-stat-unit">{heatmapStats.busiest.count === 1 ? 'run' : 'runs'}</span>}
             </div>
             <div className="heatmap-stat-sub">
               {heatmapStats.busiest
