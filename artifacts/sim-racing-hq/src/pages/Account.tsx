@@ -64,7 +64,9 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
 
   const totalSessions = sessions.length;
   const tracksPracticed = new Set(sessions.map(s => s.trackId)).size;
-  const pbsSet = sessions.filter(s => s.isPB).length;
+  // "PBs set" is a count of improvements, so it reads wasPB. The trackPBs
+  // table below is "what stands right now", so it reads isPB.
+  const pbsSet = sessions.filter(s => s.wasPB).length;
   const setupsSaved = setups.length;
 
   // Rank progress — computed the same way as Nav and Dashboard, from the

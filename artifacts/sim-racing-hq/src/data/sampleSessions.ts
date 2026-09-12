@@ -13,7 +13,7 @@ export function buildSampleSessions(): SessionRecord[] {
     return d.toISOString().slice(0, 10);
   };
 
-  const raw: Omit<SessionRecord, 'isPB' | 'isPublic' | 'sharedAt' | 'publicNote' | 'createdAt'>[] = [
+  const raw: Omit<SessionRecord, 'isPB' | 'wasPB' | 'isPublic' | 'sharedAt' | 'publicNote' | 'createdAt'>[] = [
     {
       id: 'demo-1', date: daysAgo(9), trackId: 'monza', car: 'Ferrari SF-25 — Leclerc', type: 'Race',
       bestLap: '1:20.412', avgLap: '1:22.108', worstLap: '1:24.902', s1: '25.011', s2: '31.204', s3: '24.197',
@@ -62,13 +62,15 @@ export function buildSampleSessions(): SessionRecord[] {
     },
   ];
 
-  // Each sample session is the only one for its track/car combo, so each
-  // best lap is that combo's PB — mirrors what computeGuestPBs would derive.
-  // createdAt follows the session date so "most recent" ordering matches it.
+  // Each sample session is the only one at its circuit, so each best lap both
+  // stands as that circuit's PB and was one when it was set — mirrors what
+  // computePBFlags derives. createdAt follows the session date so "most
+  // recent" ordering matches it.
   return raw.map(s => ({
     ...s,
     createdAt: new Date(`${s.date}T12:00:00Z`).toISOString(),
     isPB: true,
+    wasPB: true,
     isPublic: false,
     sharedAt: null,
     publicNote: null,

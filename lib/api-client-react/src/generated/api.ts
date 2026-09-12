@@ -21,6 +21,8 @@ import type {
 
 import type {
   AddFriendRequest,
+  BadRequestResponse,
+  CarAliasList,
   CommunitySessionRecord,
   CommunitySetupRecord,
   CompanionApiKeyResponse,
@@ -67,6 +69,8 @@ import type {
   UnauthorizedResponse,
   UnlockEngineerUsageRequest,
   UpdateLeagueMemberRoleRequest,
+  UpsertCarAliasRequest,
+  UpsertCarAliasResponse,
   UpsertTrackDifficultyRequest,
   UpsertTrackNotesRequest
 } from './api.schemas';
@@ -2753,6 +2757,227 @@ export const useUpsertTrackNotes = <TError = ErrorType<UnauthorizedResponse>,
         TContext
       > => {
       return useMutation(getUpsertTrackNotesMutationOptions(options));
+    }
+
+export const getGetCarAliasesUrl = () => {
+
+
+
+
+  return `/api/car-aliases`
+}
+
+/**
+ * @summary Names the driver has given to cars the companion could not identify
+ */
+export const getCarAliases = async ( options?: RequestInit): Promise<CarAliasList> => {
+
+  return customFetch<CarAliasList>(getGetCarAliasesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCarAliasesQueryKey = () => {
+    return [
+    `/api/car-aliases`
+    ] as const;
+    }
+
+
+export const getGetCarAliasesQueryOptions = <TData = Awaited<ReturnType<typeof getCarAliases>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCarAliases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCarAliasesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCarAliases>>> = ({ signal }) => getCarAliases({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCarAliases>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCarAliasesQueryResult = NonNullable<Awaited<ReturnType<typeof getCarAliases>>>
+export type GetCarAliasesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Names the driver has given to cars the companion could not identify
+ */
+
+export function useGetCarAliases<TData = Awaited<ReturnType<typeof getCarAliases>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCarAliases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCarAliasesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpsertCarAliasUrl = (teamId: number,) => {
+
+
+
+
+  return `/api/car-aliases/${teamId}`
+}
+
+/**
+ * Saves the name against the team id and applies it to every session the driver has already logged with that car, so correcting a label fixes the history rather than only what is captured from here on.
+ * @summary Name a car by its raw team id
+ */
+export const upsertCarAlias = async (teamId: number,
+    upsertCarAliasRequest: UpsertCarAliasRequest, options?: RequestInit): Promise<UpsertCarAliasResponse> => {
+
+  return customFetch<UpsertCarAliasResponse>(getUpsertCarAliasUrl(teamId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      upsertCarAliasRequest,)
+  }
+);}
+
+
+
+
+export const getUpsertCarAliasMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCarAlias>>, TError,{teamId: number;data: BodyType<UpsertCarAliasRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertCarAlias>>, TError,{teamId: number;data: BodyType<UpsertCarAliasRequest>}, TContext> => {
+
+const mutationKey = ['upsertCarAlias'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertCarAlias>>, {teamId: number;data: BodyType<UpsertCarAliasRequest>}> = (props) => {
+          const {teamId,data} = props ?? {};
+
+          return  upsertCarAlias(teamId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertCarAliasMutationResult = NonNullable<Awaited<ReturnType<typeof upsertCarAlias>>>
+    export type UpsertCarAliasMutationBody = BodyType<UpsertCarAliasRequest>
+    export type UpsertCarAliasMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Name a car by its raw team id
+ */
+export const useUpsertCarAlias = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCarAlias>>, TError,{teamId: number;data: BodyType<UpsertCarAliasRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertCarAlias>>,
+        TError,
+        {teamId: number;data: BodyType<UpsertCarAliasRequest>},
+        TContext
+      > => {
+      return useMutation(getUpsertCarAliasMutationOptions(options));
+    }
+
+export const getDeleteCarAliasUrl = (teamId: number,) => {
+
+
+
+
+  return `/api/car-aliases/${teamId}`
+}
+
+/**
+ * Drops the alias. Sessions keep the name already written onto them — removing an alias undoes the rule, not the history.
+ * @summary Remove a car name
+ */
+export const deleteCarAlias = async (teamId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCarAliasUrl(teamId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCarAliasMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCarAlias>>, TError,{teamId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCarAlias>>, TError,{teamId: number}, TContext> => {
+
+const mutationKey = ['deleteCarAlias'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCarAlias>>, {teamId: number}> = (props) => {
+          const {teamId} = props ?? {};
+
+          return  deleteCarAlias(teamId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCarAliasMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCarAlias>>>
+
+    export type DeleteCarAliasMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Remove a car name
+ */
+export const useDeleteCarAlias = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCarAlias>>, TError,{teamId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCarAlias>>,
+        TError,
+        {teamId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCarAliasMutationOptions(options));
     }
 
 export const getGetFriendsUrl = () => {

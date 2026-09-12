@@ -811,6 +811,74 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /car-aliases:
+    get:
+      operationId: getCarAliases
+      tags: [carAliases]
+      summary: Names the driver has given to cars the companion could not identify
+      responses:
+        "200":
+          description: Car aliases, plus the unidentified cars still awaiting a name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarAliasList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /car-aliases/{teamId}:
+    put:
+      operationId: upsertCarAlias
+      tags: [carAliases]
+      summary: Name a car by its raw team id
+      description: >-
+        Saves the name against the team id and applies it to every session the
+        driver has already logged with that car, so correcting a label fixes
+        the history rather than only what is captured from here on.
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertCarAliasRequest"
+      responses:
+        "200":
+          description: Alias saved, with the number of sessions relabelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertCarAliasResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: deleteCarAlias
+      tags: [carAliases]
+      summary: Remove a car name
+      description: >-
+        Drops the alias. Sessions keep the name already written onto them —
+        removing an alias undoes the rule, not the history.
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Alias removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /friends:
     get:
       operationId: getFriends
@@ -1231,6 +1299,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
 
   schemas:
     HealthStatus:
@@ -1613,7 +1687,48 @@ components:
           type: string
           maxLength: 5000
         isPB:
+          description: >-
+            This session holds the current personal best for its circuit. At
+            most one session per circuit carries it, and it moves to the new
+            session when a faster lap is logged. Use it for PB badges and
+            "your best here" figures.
           type: boolean
+        wasPB:
+          description: >-
+            This session beat everything logged before it at that circuit at
+            the time it was logged. Never moves once set. Use it for "personal
+            bests set" counters and progression charts, which are asking how
+            often the driver improved, not which lap currently stands.
+          type: boolean
+        teamId:
+          description: >-
+            The game's raw team id for the car driven. Null for sessions
+            logged by hand or captured before it was recorded. Kept so a car
+            label can be corrected later from the number it came from.
+          type: integer
+          nullable: true
+        gameYear:
+          description: >-
+            The telemetry header's game year (25 = F1 25) — which game was
+            running. Not the same as packetFormat.
+          type: integer
+          nullable: true
+        packetFormat:
+          description: >-
+            The telemetry output format selected in the game's own settings
+            (2024/2025/2026). A driver on F1 25 can and often does emit
+            2024-format packets, so this says which struct layout was parsed
+            and nothing about which game they own.
+          type: integer
+          nullable: true
+        contentEra:
+          description: >-
+            Which car roster the session was driven in — "2025" for the base
+            F1 25 grid, "2026" for the 2026 content pack's grid, "2024" for
+            the retro liveries. Null when the car's team id is not in a
+            confirmed block. Lap times are only comparable within one era.
+          type: string
+          nullable: true
         penalty:
           type: string
           nullable: true
@@ -2371,6 +2486,68 @@ components:
         s3:
           type: string
 
+    CarAliasRecord:
+      type: object
+      properties:
+        teamId:
+          type: integer
+        label:
+          type: string
+      required: [teamId, label]
+
+    UnidentifiedCar:
+      description: >-
+        A car in the driver's logged sessions that the companion could not put
+        a name to — either a team id no lookup table knows, or one the game
+        itself only described as generic. Offered to the driver to name.
+      type: object
+      properties:
+        teamId:
+          type: integer
+        car:
+          description: The label currently shown for it, e.g. "Unknown car (#129)".
+          type: string
+        sessions:
+          description: How many of the driver's sessions were logged with this car.
+          type: integer
+        lastSeen:
+          description: Date of the most recent session logged with it.
+          type: string
+      required: [teamId, car, sessions, lastSeen]
+
+    CarAliasList:
+      type: object
+      properties:
+        aliases:
+          type: array
+          items:
+            $ref: "#/components/schemas/CarAliasRecord"
+        unidentified:
+          type: array
+          items:
+            $ref: "#/components/schemas/UnidentifiedCar"
+      required: [aliases, unidentified]
+
+    UpsertCarAliasRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 60
+      required: [label]
+
+    UpsertCarAliasResponse:
+      type: object
+      properties:
+        teamId:
+          type: integer
+        label:
+          type: string
+        sessionsUpdated:
+          type: integer
+      required: [teamId, label, sessionsUpdated]
+
     CompanionSessionRequest:
       type: object
       properties:
@@ -2394,6 +2571,30 @@ components:
           type: string
         gameVersion:
           type: string
+        teamId:
+          description: >-
+            The game's raw team id for the car driven. Omitted when the
+            companion never resolved the player's car, which is a different
+            thing from a team id of 0 (Mercedes).
+          type: integer
+          minimum: 0
+          maximum: 255
+        gameYear:
+          description: The telemetry header's game year (25 = F1 25).
+          type: integer
+          minimum: 20
+          maximum: 99
+        packetFormat:
+          description: >-
+            The telemetry output format selected in the game's settings, which
+            is not the same as the game.
+          type: integer
+          minimum: 2000
+          maximum: 2100
+        contentEra:
+          description: Car roster the session was driven in ("2024"/"2025"/"2026").
+          type: string
+          maxLength: 16
         platform:
           type: string
         inputDevice:

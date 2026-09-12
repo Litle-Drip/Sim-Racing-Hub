@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { eq, and, inArray, sql, getTableColumns } from "drizzle-orm";
+import { eq, and, sql, getTableColumns } from "drizzle-orm";
 import { db, sessionsTable, type DbLapRecord } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
+import { lapToSeconds, secondsToLap, recalcPBsForUser } from "../lib/personalBests";
 import { lapsWithoutTrace } from "../lib/sessionQueries";
 import {
   CreateSessionBody,
@@ -33,34 +34,6 @@ function capTrace(laps: LapRecord[]): LapRecord[] {
   return laps;
 }
 
-function lapToSeconds(lap: string): number {
-  if (!lap || !lap.includes(":")) {
-    const n = parseFloat(lap);
-    return isNaN(n) ? Infinity : n;
-  }
-  const parts = lap.split(":");
-  const mins = parseFloat(parts[0]);
-  const secs = parseFloat(parts[1]);
-  if (isNaN(mins) || isNaN(secs)) return Infinity;
-  return mins * 60 + secs;
-}
-
-function secondsToLap(s: number): string {
-  // Round to whole milliseconds first so floor/toFixed can't disagree at a
-  // minute boundary (e.g. 119.99958 -> floor(1.999..)=1 but toFixed(3)
-  // rounds the remainder up to "60.000", producing "1:60.000").
-  const totalMs = Math.round(s * 1000);
-  const m = Math.floor(totalMs / 60000);
-  const remSec = (totalMs - m * 60000) / 1000;
-  return `${m}:${remSec.toFixed(3).padStart(6, "0")}`;
-}
-
-function isFasterLap(a: string, b: string): boolean {
-  if (!a || a.trim() === "") return false;
-  if (!b || b.trim() === "") return true;
-  return lapToSeconds(a) < lapToSeconds(b);
-}
-
 function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string; worstLap: string } {
   const valid = laps.filter(l => l.time && l.time.trim() !== "");
   if (valid.length === 0) return { bestLap: "", avgLap: "", worstLap: "" };
@@ -73,70 +46,6 @@ function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string
     avgLap: secondsToLap(avg),
     worstLap: secondsToLap(worst),
   };
-}
-
-async function recalcPBsForUser(userId: string) {
-  // Only the columns the PB comparison below actually reads — this runs on
-  // every session create/delete, so pulling the full row (including the
-  // per-lap telemetry traces in `laps`) would re-transfer a user's entire
-  // session history's worth of trace data on every upload.
-  const rows = await db
-    .select({
-      id: sessionsTable.id,
-      date: sessionsTable.date,
-      createdAt: sessionsTable.createdAt,
-      trackId: sessionsTable.trackId,
-      bestLap: sessionsTable.bestLap,
-      isPB: sessionsTable.isPB,
-    })
-    .from(sessionsTable)
-    .where(eq(sessionsTable.userId, userId));
-
-  // Sort chronologically so, among sessions logged on the same calendar
-  // date, the one uploaded/created first consistently wins tie-breaking
-  // for which row keeps the isPB flag (date alone doesn't distinguish
-  // same-day sessions, and without a stable secondary key the winner would
-  // depend on incidental DB row order).
-  const sorted = [...rows].sort((a, b) => {
-    const dateCmp = a.date.localeCompare(b.date);
-    if (dateCmp !== 0) return dateCmp;
-    return a.createdAt.getTime() - b.createdAt.getTime();
-  });
-  const pbMap: Record<string, string> = {};
-
-  // Only the rows whose isPB flag actually changes need writing — for a
-  // single new upload that's normally just the old PB (now demoted) and the
-  // new one, not every session the user has ever logged. Batching those
-  // into two IN-list updates instead of one UPDATE per row turns a
-  // recalc that used to cost O(session count) round-trips into O(1) for
-  // the common case.
-  const toSetTrue: string[] = [];
-  const toSetFalse: string[] = [];
-
-  for (const s of sorted) {
-    const key = normalizeTrackId(s.trackId);
-    const currentPB = pbMap[key];
-    const isNewPB = isFasterLap(s.bestLap, currentPB);
-    if (isNewPB && s.bestLap && s.bestLap.trim() !== "") {
-      pbMap[key] = s.bestLap;
-    }
-    if (isNewPB !== s.isPB) {
-      (isNewPB ? toSetTrue : toSetFalse).push(s.id);
-    }
-  }
-
-  if (toSetTrue.length > 0) {
-    await db
-      .update(sessionsTable)
-      .set({ isPB: true })
-      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetTrue)));
-  }
-  if (toSetFalse.length > 0) {
-    await db
-      .update(sessionsTable)
-      .set({ isPB: false })
-      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetFalse)));
-  }
 }
 
 function serializeSession(r: typeof sessionsTable.$inferSelect) {
@@ -168,6 +77,11 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     publicNote: r.publicNote ?? null,
     laps: r.laps ?? null,
     isPB: r.isPB,
+    wasPB: r.wasPB,
+    teamId: r.teamId ?? null,
+    gameYear: r.gameYear ?? null,
+    packetFormat: r.packetFormat ?? null,
+    contentEra: r.contentEra ?? null,
     position: r.position ?? '',
     trackTemperature: r.trackTemperature ?? null,
     airTemperature: r.airTemperature ?? null,
@@ -364,7 +278,11 @@ router.post("/sessions", requireAuth, async (req, res) => {
       inputDevice: data.inputDevice ?? "",
       laps: incomingLaps.length > 0 ? incomingLaps : null,
       position: data.position ?? '',
+      // Both PB flags are set by recalcPBsForUser once the row exists —
+      // whether this session is a personal best is a question about the
+      // driver's whole history, not about this payload.
       isPB: false,
+      wasPB: false,
       aiDifficulty: data.aiDifficulty ?? null,
       topSpeedKph: data.topSpeedKph ?? null,
       avgThrottlePct: data.avgThrottlePct ?? null,

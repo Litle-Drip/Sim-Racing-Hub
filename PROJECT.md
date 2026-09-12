@@ -99,7 +99,7 @@ This must always point to Render directly, never to Vercel.
 - UDP Broadcast Mode: Off
 - UDP IP Address: `127.0.0.1` when F1 25 runs on the same PC as the companion; the PC's LAN IP (shown with a copy button in the companion setup wizard) when playing on Xbox or PlayStation
 - UDP Port: 20777
-- Format: 2024 (2025 and 2026 are also accepted — see `SUPPORTED_FORMATS` in `companion/src/main/udp.ts`)
+- Format: the newest the game offers — 2025 on F1 25 (2024 and 2026 are also accepted — see `SUPPORTED_FORMATS` in `companion/src/main/udp.ts`)
 - Send Rate: 60Hz
 
 These values are stated in four places: the companion wizard (`companion/src/renderer/src/pages/Wizard.tsx`), the signed-in Companion page, the public Download page, and the dashboard get-started checklist. The three web surfaces read them from `sim-racing-hq/src/data/udpSetup.ts` — change that file, not the pages. The wizard keeps its own copy (separate app, no shared module) with a comment pointing back at the parser.
@@ -122,6 +122,67 @@ Real Race and Time Trial sessions were saving as "Unknown". Root cause: F1 25 in
 ### The setup wizard told users to pick a UDP format the parser rejects (fixed)
 The companion's first-run wizard instructed drivers to set **UDP Format: 2023**, but `udp.ts` only parses 2024, 2025 and 2026 and silently drops anything else. A driver who followed the wizard exactly saw step 3 spin on "Listening on port 20777…" forever with no error, and the app's dashboard reported it as "Unsupported game" — which reads as *your game isn't supported*, not *change one dropdown*. This was the single worst new-user blocker: the setup instructions could not produce a working setup. Fixed by pulling the value into a `UDP_FORMAT` constant in the wizard, surfacing the format mismatch as its own actionable state on step 3 (the status object already carried `unsupportedFormat` — nothing was reading it), and rewording the dashboard row to name the fix. If `SUPPORTED_FORMATS` ever changes, update the wizard constant and `sim-racing-hq/src/data/udpSetup.ts` together.
 
+### `m_packetFormat` is not the game — sessions were labelled "F1 24" wholesale (fixed)
+The session's `gameVersion` was derived from the packet header's
+`m_packetFormat`. That field is the **UDP output format the driver selects in
+the game's own telemetry settings**, not the game they own — and this document
+told every driver to select **2024**. So F1 25 and F1 26 sessions uploaded as
+"F1 24", en masse, exactly as instructed.
+
+The header's *other* field, `m_gameYear` at byte offset 2 (uint8: 24, 25, 26),
+is the game, and nothing read it. The parser now reads both and they answer
+different questions: **layout follows the format, content follows the year.**
+Struct strides and byte offsets key off `m_packetFormat`; the game version
+label, team ids and session types key off `m_gameYear`. This also explains the
+puzzle recorded in `session.ts` — a real F1 26 session sending
+`packetFormat=2024` with session-type ids that don't exist in the F1 24 enum.
+The game wasn't failing to bump a field; the driver had picked the legacy
+output format, and that doesn't renumber the game's own enums.
+
+The recommended format is now the driver's own year (`UDP_FORMAT` in
+`sim-racing-hq/src/data/udpSetup.ts` and in the companion wizard — change both
+together). Drivers still set to 2024 are unaffected: the game year is read from
+the header either way.
+
+### Car spec and game version are two different questions
+The 2026 content pack puts a full 2026-spec grid inside F1 25, with its own
+team ids (220-232). "F1 25" and "2026 cars" are both true of the same session
+and neither implies the other — and a 2026-spec lap is seconds off a 2025-spec
+one at the same circuit, so the two aren't comparable. Sessions therefore carry
+`content_era` ("2024"/"2025"/"2026", derived from the player's team id)
+alongside `game_version`, plus the raw `team_id`, `game_year` and
+`packet_format` they were derived from.
+
+Store the raw numbers, always. The sessions permanently stuck on
+"Unknown"/"Other" session types are stuck because only the resolved string was
+saved and the number behind it was thrown away.
+
+### Unrecognised team ids are reported, not guessed
+`TEAMS` in `companion/src/main/session.ts` only maps team ids someone has
+confirmed against a real session. An id outside it becomes
+`Unknown car (#129)`, never a guessed name — extrapolating the 2026 block from
+one McLaren sighting is what once labelled a Mercedes "Ferrari '26". When an
+unrecognised id appears, the companion logs the whole grid's
+`teamId#raceNumber` once, which is usually enough to identify which
+championship's roster it belongs to; add confirmed entries to `TEAMS` only.
+
+Drivers can name an unidentified car themselves (`PUT /car-aliases/{teamId}`),
+which relabels the sessions already logged with that id and every future
+upload of it. The alias is keyed by team id, not by the label text.
+
+### `isPB` meant two things at once (fixed)
+`recalcPBsForUser` walked a driver's sessions chronologically and set `isPB` on
+every one that beat the running best — so every lap that had *ever* been a
+record kept the ★ PB badge, and a driver could open Monza and find two badged
+PBs, one per car. Both flags now exist and mean one thing each:
+`is_pb` is the session currently holding the circuit's best (one per circuit,
+what a badge means), `was_pb` is a session that beat everything before it when
+it was logged (what "PBs set" counters and progression charts mean). PBs group
+per circuit, not per circuit-and-car. The rule lives in
+`api-server/src/lib/personalBests.ts` (mirrored for guest mode in
+`sim-racing-hq/src/lib/personalBests.ts`) — it used to be copy-pasted into two
+routes that had already drifted.
+
 ### Clerk username lookups return the wrong user if you trust position
 `GET https://api.clerk.com/v1/users?username[]=…` is a *filter*, not a search, and any request Clerk can't apply the filter to degrades into "the first users in the instance" rather than an empty list. Taking `users[0]` therefore hands back an unrelated account — that's how a rival challenge addressed to `slumlordmillionaire` reached a different driver entirely. Every username lookup must confirm `user.username.toLowerCase() === wanted` before using the result, and fall back to `?query=` (Clerk's fuzzy search) for casing differences. Both places that do this — `routes/community.ts` (public driver profile) and `routes/rivalChallenges.ts` (`findUserByUsername`, also used by `routes/friends.ts`) — verify the match.
 
@@ -138,6 +199,7 @@ Track-note saves failed with a 500 on every attempt because the route used `INSE
 | `pnpm-lock.yaml` | Do not edit manually — only regenerate via `pnpm install` |
 | `artifacts/companion/src/main/store.ts` | Contains default API URL — must point to Render |
 | `artifacts/companion/src/main/udp.ts` | Custom F1 25 binary packet parser — byte offsets are precise |
+| `artifacts/api-server/src/lib/personalBests.ts` | The only definition of what a personal best is — two routes depend on it agreeing with itself |
 | `artifacts/api-server/src/routes/companion.ts` | API key auth and session upload logic |
 
 ---

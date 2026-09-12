@@ -9,9 +9,19 @@
 //
 // If SUPPORTED_FORMATS in the companion parser changes, change UDP_FORMAT
 // here too.
+//
+// UDP_FORMAT was 2024 for everyone, which worked but cost us something else:
+// this dropdown sets the *packet layout the game emits*, and the header field
+// carrying it is not the game. Telling every F1 25 driver to emit 2024-format
+// packets is fine for parsing — the parser handles all three — but a chain of
+// code downstream read that number as the game and labelled their sessions
+// "F1 24". The companion now reads the game year out of the packet header
+// instead, so the label is right either way; recommending the driver's own
+// year keeps the two numbers agreeing and avoids the F1 24 struct layout,
+// which is a byte-offset fork the parser only maintains for real F1 24.
 
 export const UDP_PORT = '20777';
-export const UDP_FORMAT = '2024';
+export const UDP_FORMAT = '2025';
 export const UDP_SEND_RATE = '60Hz';
 
 /** The loopback address, correct whenever F1 25 runs on the same PC as the companion. */
@@ -44,7 +54,7 @@ export function udpSettings(platform: 'pc' | 'console'): UdpSetting[] {
     {
       label: 'UDP Format',
       value: UDP_FORMAT,
-      note: 'Must be 2024, 2025 or 2026. Any other value and the companion cannot read the packets.',
+      note: 'Pick the newest your game offers — 2025 on F1 25. 2024 and 2026 also work; anything else and the companion cannot read the packets.',
     },
   ];
 }

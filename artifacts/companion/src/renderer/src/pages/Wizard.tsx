@@ -22,7 +22,15 @@ type Platform = "pc" | "console";
 // 2024, 2025 and 2026 and silently drops everything else, so the wizard must
 // only ever name one of those three — an unlisted format looks to the driver
 // like the app is broken.
-const UDP_FORMAT = "2024";
+//
+// Keep this in step with UDP_FORMAT in
+// sim-racing-hq/src/data/udpSetup.ts, which says the same thing on the web.
+// It recommends the driver's own year rather than 2024: this dropdown picks
+// the packet layout the game emits, not the game, and recommending a legacy
+// layout to everyone means every session travels with a number that reads
+// like the wrong game. The companion reads the real game year out of the
+// packet header regardless, so a driver already set to 2024 stays fine.
+const UDP_FORMAT = "2025";
 
 function StepIndicator({ current, total }: { current: Step; total: number }): React.ReactElement {
   return (
@@ -351,9 +359,10 @@ export default function Wizard({ onComplete }: Props): React.ReactElement {
               lineHeight: 1.6,
             }}
           >
-            <strong style={{ color: theme.grayLight }}>UDP Format matters.</strong> It must be{" "}
-            <strong style={{ color: theme.white }}>{UDP_FORMAT}</strong> (2025 and 2026 also work).
-            Any other value and F1 25 sends packets the companion can't read.
+            <strong style={{ color: theme.grayLight }}>UDP Format matters.</strong> Pick the newest
+            your game offers —{" "}
+            <strong style={{ color: theme.white }}>{UDP_FORMAT}</strong> on F1 25 (2024 and 2026 also
+            work). Any other value and the game sends packets the companion can't read.
           </div>
 
           <Button variant="primary" onClick={() => setStep(3)} style={{ width: "100%", padding: "12px", fontSize: 14 }}>
