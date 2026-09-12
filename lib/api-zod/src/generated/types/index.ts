@@ -7,6 +7,9 @@
  */
 
 export * from './addFriendRequest';
+export * from './badRequestResponse';
+export * from './carAliasList';
+export * from './carAliasRecord';
 export * from './carSetupSnapshot';
 export * from './communitySessionRecord';
 export * from './communitySetupRecord';
@@ -68,8 +71,11 @@ export * from './trackDifficultyRecord';
 export * from './trackNotesRecord';
 export * from './tyreStintEntry';
 export * from './unauthorizedResponse';
+export * from './unidentifiedCar';
 export * from './unlockEngineerUsageRequest';
 export * from './updateLeagueMemberRoleRequest';
+export * from './upsertCarAliasRequest';
+export * from './upsertCarAliasResponse';
 export * from './upsertTrackDifficultyRequest';
 export * from './upsertTrackNotesRequest';
 export * from './wingDamage';

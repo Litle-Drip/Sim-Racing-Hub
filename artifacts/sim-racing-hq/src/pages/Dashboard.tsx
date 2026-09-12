@@ -94,7 +94,7 @@ function buildHeatmap(sessions: SessionRecord[]) {
   sessions.forEach(s => {
     if (s.date) {
       countMap[s.date] = (countMap[s.date] || 0) + 1;
-      if (s.isPB) pbMap[s.date] = (pbMap[s.date] || 0) + 1;
+      if (s.wasPB) pbMap[s.date] = (pbMap[s.date] || 0) + 1;
       if (s.bestLap && s.bestLap.trim()) {
         const secs = lapToSeconds(s.bestLap);
         const existing = bestLapMap[s.date];
@@ -219,7 +219,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     () => new Set(sessions.map(s => s.trackId).filter(id => F1_TRACKS.some(t => t.id === id))).size,
     [sessions],
   );
-  const pbsSet = sessions.filter(s => s.isPB).length;
+  const pbsSet = sessions.filter(s => s.wasPB).length;
   const setupsSaved = setups.length;
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
@@ -285,7 +285,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     for (let i = 13; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const ds = d.toISOString().slice(0, 10);
-      data.push(sessions.filter(s => s.isPB && s.date <= ds).length);
+      data.push(sessions.filter(s => s.wasPB && s.date <= ds).length);
     }
     return data;
   }, [sessions]);
@@ -351,7 +351,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   }, [sessions]);
 
   const lastPBDaysAgo = useMemo(() => {
-    const pbs = sessions.filter(s => s.isPB).sort((a, b) => b.date.localeCompare(a.date));
+    const pbs = sessions.filter(s => s.wasPB).sort((a, b) => b.date.localeCompare(a.date));
     if (pbs.length === 0) return null;
     const diff = Math.floor((Date.now() - new Date(pbs[0].date).getTime()) / 86400000);
     if (diff === 0) return 'Today';
@@ -532,7 +532,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     weekAgo.setDate(today.getDate() - 7);
     const weekStr = weekAgo.toISOString().slice(0, 10);
     const weekSessions = sessions.filter(s => s.date >= weekStr);
-    const pbs = weekSessions.filter(s => s.isPB).length;
+    const pbs = weekSessions.filter(s => s.wasPB).length;
     const totalMinutes = Math.round(estimateSeatTimeMinutes(weekSessions));
     return { sessions: weekSessions.length, pbs, seatTime: totalMinutes };
   }, [sessions]);

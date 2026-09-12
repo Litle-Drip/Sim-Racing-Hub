@@ -171,7 +171,18 @@ export interface SessionRecord {
   rating: number;
   /** @maxLength 5000 */
   notes: string;
+  /** This session holds the current personal best for its circuit. At most one session per circuit carries it, and it moves to the new session when a faster lap is logged. Use it for PB badges and "your best here" figures. */
   isPB: boolean;
+  /** This session beat everything logged before it at that circuit at the time it was logged. Never moves once set. Use it for "personal bests set" counters and progression charts, which are asking how often the driver improved, not which lap currently stands. */
+  wasPB?: boolean;
+  /** The game's raw team id for the car driven. Null for sessions logged by hand or captured before it was recorded. Kept so a car label can be corrected later from the number it came from. */
+  teamId?: number | null;
+  /** The telemetry header's game year (25 = F1 25) — which game was running. Not the same as packetFormat. */
+  gameYear?: number | null;
+  /** The telemetry output format selected in the game's own settings (2024/2025/2026). A driver on F1 25 can and often does emit 2024-format packets, so this says which struct layout was parsed and nothing about which game they own. */
+  packetFormat?: number | null;
+  /** Which car roster the session was driven in — "2025" for the base F1 25 grid, "2026" for the 2026 content pack's grid, "2024" for the retro liveries. Null when the car's team id is not in a confirmed block. Lap times are only comparable within one era. */
+  contentEra?: string | null;
   penalty?: string | null;
   gameVersion?: string | null;
   platform?: string | null;
@@ -461,6 +472,43 @@ export interface CompanionSessionSectors {
   s3?: string;
 }
 
+export interface CarAliasRecord {
+  teamId: number;
+  label: string;
+}
+
+/**
+ * A car in the driver's logged sessions that the companion could not put a name to — either a team id no lookup table knows, or one the game itself only described as generic. Offered to the driver to name.
+ */
+export interface UnidentifiedCar {
+  teamId: number;
+  /** The label currently shown for it, e.g. "Unknown car (#129)". */
+  car: string;
+  /** How many of the driver's sessions were logged with this car. */
+  sessions: number;
+  /** Date of the most recent session logged with it. */
+  lastSeen: string;
+}
+
+export interface CarAliasList {
+  aliases: CarAliasRecord[];
+  unidentified: UnidentifiedCar[];
+}
+
+export interface UpsertCarAliasRequest {
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  label: string;
+}
+
+export interface UpsertCarAliasResponse {
+  teamId: number;
+  label: string;
+  sessionsUpdated: number;
+}
+
 export interface CompanionSessionRequest {
   sessionType: string;
   track: string;
@@ -472,6 +520,29 @@ export interface CompanionSessionRequest {
   weather?: string;
   assists?: string;
   gameVersion?: string;
+  /**
+     * The game's raw team id for the car driven. Omitted when the companion never resolved the player's car, which is a different thing from a team id of 0 (Mercedes).
+     * @minimum 0
+     * @maximum 255
+     */
+  teamId?: number;
+  /**
+     * The telemetry header's game year (25 = F1 25).
+     * @minimum 20
+     * @maximum 99
+     */
+  gameYear?: number;
+  /**
+     * The telemetry output format selected in the game's settings, which is not the same as the game.
+     * @minimum 2000
+     * @maximum 2100
+     */
+  packetFormat?: number;
+  /**
+     * Car roster the session was driven in ("2024"/"2025"/"2026").
+     * @maxLength 16
+     */
+  contentEra?: string;
   platform?: string;
   inputDevice?: string;
   /** @maxItems 150 */
@@ -859,6 +930,11 @@ export type NotFoundResponse = ErrorResponse;
  * Forbidden
  */
 export type ForbiddenResponse = ErrorResponse;
+
+/**
+ * Bad request
+ */
+export type BadRequestResponse = ErrorResponse;
 
 export type GetLapTrace200 = {
   trace: LapTraceSample[];

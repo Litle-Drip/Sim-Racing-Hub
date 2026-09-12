@@ -2,6 +2,7 @@
 // acc-udp.ts's Broadcasting SDK client. Produces the same SessionSnapshot
 // shape session.ts (F1) and ac-session.ts (base AC) do, so it flows through
 // the same Uploader/API/DB unchanged.
+import { NO_TEAM } from "./session";
 import type { LapRecord, SessionSnapshot } from "./session";
 import type { AccRegistrationResult, AccTrackData, AccCarEntry, AccRealtimeUpdate, AccCarUpdate } from "./acc-udp";
 import { sessionTypeName } from "./acc-udp";
@@ -176,6 +177,10 @@ export class AccSessionTracker {
       position: 0,
       assists: "",
       gameVersion: "Assetto Corsa Competizione",
+      // Not an F1 title: there is no m_teamId to capture, and the car
+      // name above comes straight from the sim rather than a lookup
+      // table that could mislabel it.
+      teamId: NO_TEAM,
     };
 
     this.reset();

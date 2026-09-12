@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { useGetSessions } from '@workspace/api-client-react';
 import { lapToSeconds } from '../lib/storage';
+import { personalBestsByTrack, type TrackPB } from '../lib/personalBests';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { sessionConsistency } from '../lib/engagement';
 import { EmptyState } from '../components/EmptyState';
@@ -171,31 +172,9 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
     };
   }, [filtered, topSpeedData]);
 
-  const allTimePBs = useMemo(() => {
-    const pbMap: Record<string, { trackId: string; car: string; bestLap: string; date: string; sessions: number }> = {};
-    const sessionCounts: Record<string, number> = {};
-
-    const sessionsSorted = [...allSessions].sort((a, b) => a.date.localeCompare(b.date));
-
-    sessionsSorted.forEach(s => {
-      if (!s.bestLap || s.bestLap.trim() === '') return;
-      const key = s.trackId;
-      sessionCounts[key] = (sessionCounts[key] || 0) + 1;
-      if (!pbMap[key] || lapToSeconds(s.bestLap) < lapToSeconds(pbMap[key].bestLap)) {
-        pbMap[key] = {
-          trackId: s.trackId,
-          car: s.car,
-          bestLap: s.bestLap,
-          date: s.date,
-          sessions: sessionCounts[key],
-        };
-      } else {
-        pbMap[key].sessions = sessionCounts[key];
-      }
-    });
-
-    return Object.values(pbMap).sort((a, b) => a.trackId.localeCompare(b.trackId));
-  }, [allSessions]);
+  // One row per circuit, from the same helper the ★ PB badges come from, so
+  // this table and the badges elsewhere can't disagree about which lap stands.
+  const allTimePBs = useMemo(() => personalBestsByTrack(allSessions), [allSessions]);
 
   // Older imports can carry circuit ids the current track list doesn't know
   // (e.g. "track_42"); show a readable placeholder rather than the raw id.
@@ -599,7 +578,7 @@ function AllTimePBsSection({
   allTimePBs,
   trackName,
 }: {
-  allTimePBs: { trackId: string; car: string; bestLap: string; date: string; sessions: number }[];
+  allTimePBs: TrackPB[];
   trackName: (id: string) => string;
 }) {
   const [open, setOpen] = useState(true);

@@ -121,6 +121,30 @@ export class UdpListener extends EventEmitter {
     return this._isRunning && Date.now() - this._lastPacketAt < windowMs;
   }
 
+  // Packet header, identical across 2024/2025/2026 (29 bytes):
+  //   0  uint16 m_packetFormat          2024 / 2025 / 2026
+  //   2  uint8  m_gameYear              24 / 25 / 26
+  //   3  uint8  m_gameMajorVersion
+  //   4  uint8  m_gameMinorVersion
+  //   5  uint8  m_packetVersion
+  //   6  uint8  m_packetId
+  //   7  uint64 m_sessionUID
+  //   15 float  m_sessionTime
+  //   19 uint32 m_frameIdentifier
+  //   23 uint32 m_overallFrameIdentifier
+  //   27 uint8  m_playerCarIndex
+  //   28 uint8  m_secondaryPlayerCarIndex
+  //
+  // m_packetFormat and m_gameYear answer two different questions and are
+  // routinely not the same number. m_packetFormat is the *output format the
+  // driver picked in the game's telemetry settings* — F1 25 will happily
+  // emit 2024-format packets, and the setup wizard used to tell every driver
+  // to do exactly that — so it says which struct layout to read, and nothing
+  // about which game is running. m_gameYear is the game. Layout decisions
+  // (struct strides, field offsets) key off the format; anything describing
+  // what was driven — the game version label, team ids, session types —
+  // keys off the year. Reading the format as the game is what labelled real
+  // F1 25 and F1 26 sessions "F1 24".
   private handlePacket(buf: Buffer): void {
     if (buf.length < HEADER_SIZE) return;
 
@@ -133,12 +157,18 @@ export class UdpListener extends EventEmitter {
       return;
     }
 
+    // 0 on a game that doesn't populate the field; anything outside living
+    // memory of the series means we're reading a byte that isn't the year.
+    // Either way it's reported as unknown rather than guessed at.
+    const rawGameYear = buf.readUInt8(2);
+    const gameYear = rawGameYear >= 20 && rawGameYear <= 99 ? rawGameYear : null;
+
     const packetId = buf.readUInt8(6);
     const sessionUID = buf.readBigUInt64LE(7).toString();
     const playerCarIndex = buf.readUInt8(27);
 
     switch (packetId) {
-      case 1: this.parseSession(buf, sessionUID, packetFormat); break;
+      case 1: this.parseSession(buf, sessionUID, packetFormat, gameYear); break;
       case 2: this.parseLapData(buf); break;
       case 3: this.parseEvent(buf, playerCarIndex); break;
       case 4: this.parseParticipants(buf, playerCarIndex, packetFormat); break;
@@ -156,12 +186,13 @@ export class UdpListener extends EventEmitter {
   // F1 24's weather forecast array is longer, pushing m_aiDifficulty and
   // m_timeOfDay to different offsets (669/696 vs 605/632). Confirmed against
   // F1 24's own UDP spec (github.com/MacManley/f1-24-udp).
-  private parseSession(buf: Buffer, sessionUID: string, format: number): void {
+  private parseSession(buf: Buffer, sessionUID: string, format: number, gameYear: number | null): void {
     const aiDifficultyOffset = format === 2024 ? 669 : 605;
     const timeOfDayOffset = format === 2024 ? 696 : 632;
     if (buf.length < aiDifficultyOffset + 1) return;
     this.emit("session", {
       m_packetFormat: format,
+      m_gameYear: gameYear,
       m_sessionUID: sessionUID,
       m_weather: buf.readUInt8(29),
       m_trackTemperature: buf.readInt8(30),
@@ -338,6 +369,10 @@ export class UdpListener extends EventEmitter {
       m_participants.push({
         m_teamId: buf.readUInt8(o + 3),
         m_myTeam: buf.readUInt8(o + 4),
+        // Carried for diagnostics only: when a team id turns up that no
+        // lookup table knows, the race numbers on the grid are often enough
+        // to recognise which championship's roster it belongs to.
+        m_raceNumber: buf.readUInt8(o + 5),
         m_name,
       });
     }

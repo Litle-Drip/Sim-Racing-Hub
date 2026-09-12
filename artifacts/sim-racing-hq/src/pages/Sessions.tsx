@@ -24,6 +24,8 @@ import {
   type LapEntry,
 } from '../components/SessionDetail';
 import { FOCUS_SESSION_KEY, OPEN_LOG_KEY, takeFocusTrack } from '../lib/storage';
+import { computePBFlags } from '../lib/personalBests';
+import { UnidentifiedCars } from '../components/UnidentifiedCars';
 import { isDemoMode } from '../lib/demoStore';
 import { useUnseenSessions } from '../lib/newSessions';
 
@@ -342,24 +344,6 @@ const defaultForm = () => ({
 
 const DRAFT_KEY = 'session-draft';
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
-
-// ─── Guest PB helper ──────────────────────────────────────────────────────────
-
-function computeGuestPBs(sessions: SessionRecord[]): SessionRecord[] {
-  const bestByTrackCar: Record<string, number> = {};
-  for (const s of sessions) {
-    const key = `${s.trackId}:${s.car}`;
-    const t = secsFromLap(s.bestLap);
-    if (isFinite(t) && (bestByTrackCar[key] === undefined || t < bestByTrackCar[key])) {
-      bestByTrackCar[key] = t;
-    }
-  }
-  return sessions.map(s => {
-    const key = `${s.trackId}:${s.car}`;
-    const t = secsFromLap(s.bestLap);
-    return { ...s, isPB: isFinite(t) && t === bestByTrackCar[key] };
-  });
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -697,10 +681,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         sharedAt: null,
         publicNote: null,
         isPB: false,
+        wasPB: false,
         laps: lapRows && lapRows.length > 0 ? lapRows : null,
         position: form.type === 'Race' && form.position ? form.position : undefined,
       };
-      const updatedSessions = computeGuestPBs([...guestSessions, newSession]);
+      const updatedSessions = computePBFlags([...guestSessions, newSession]);
       try {
         localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(updatedSessions));
       } catch {
@@ -752,7 +737,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (isGuest) {
-      setGuestSessions(prev => computeGuestPBs(prev.filter(s => s.id !== id)));
+      setGuestSessions(prev => computePBFlags(prev.filter(s => s.id !== id)));
       return;
     }
     apiDeleteSession({ id });
@@ -763,7 +748,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const handleBulkDelete = async (ids: string[]) => {
     if (isGuest) {
-      setGuestSessions(prev => computeGuestPBs(prev.filter(s => !ids.includes(s.id))));
+      setGuestSessions(prev => computePBFlags(prev.filter(s => !ids.includes(s.id))));
       return;
     }
     for (const id of ids) {
@@ -841,6 +826,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
           />
         </div>
       )}
+
+      {/* Cars the companion logged but couldn't name. Signed-in only: aliases
+          live server-side against the driver's account, and guest sessions are
+          typed in by hand so they never carry an unrecognised team id. */}
+      {!isGuest && <UnidentifiedCars onToast={setToast} />}
 
       {isGuest && !isDemoMode() && (
         <div className="notice notice--teal">

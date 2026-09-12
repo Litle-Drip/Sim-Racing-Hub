@@ -107,7 +107,18 @@ export const sessionsTable = pgTable("sessions", {
   laps: jsonb("laps").$type<DbLapRecord[]>()
 ,
   position: text("position").notNull().default(""),
+  // `isPB` means "this session holds the current personal best for its
+  // circuit" — at most one row per (user, circuit) carries it, and it moves
+  // to the new row when a faster lap lands. `wasPB` means "this session beat
+  // everything that came before it at the time it was logged" and never
+  // moves once set. The two were one flag until 2026-09, which is why a
+  // driver could end up with several ★ PB badges on the same circuit: every
+  // session that had ever been a record kept the badge. Badges and "your PB
+  // at this track" read `isPB`; counters and progress charts that ask "how
+  // many PBs have I set" read `wasPB`. Both are recomputed together by
+  // recalcPBsForUser.
   isPB: boolean("is_pb").notNull().default(false),
+  wasPB: boolean("was_pb").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   // Extended telemetry — all nullable so existing sessions are unaffected
   trackTemperature: integer("track_temperature"),
@@ -177,6 +188,26 @@ export const sessionsTable = pgTable("sessions", {
   bestSector1LapNum: integer("best_sector1_lap_num"),
   bestSector2LapNum: integer("best_sector2_lap_num"),
   bestSector3LapNum: integer("best_sector3_lap_num"),
+  // Raw capture context, stored alongside the resolved `car` / `gameVersion`
+  // strings rather than instead of them. The lesson from the "Unknown"
+  // session types (PROJECT.md): a session that stored only the resolved
+  // label could never be corrected once the lookup table was fixed, because
+  // the number it was resolved from was gone. These keep that door open.
+  //
+  // teamId       — the game's raw m_teamId for the player's car.
+  // gameYear     — the header's m_gameYear (25 = F1 25). The actual game.
+  // packetFormat — the header's m_packetFormat (2024/2025/2026). This is the
+  //                UDP output format the *driver picked in the game's
+  //                settings menu*, not the game they own, so it must never
+  //                be used on its own to label a session's game version.
+  // contentEra   — which car roster the session was driven in, derived from
+  //                teamId: "2025" for the base F1 25 grid, "2026" for the
+  //                2026 content pack's grid, "2024" for the retro liveries.
+  //                Null when the team id isn't in a block we've confirmed.
+  teamId: integer("team_id"),
+  gameYear: integer("game_year"),
+  packetFormat: integer("packet_format"),
+  contentEra: text("content_era"),
 }, (t) => [
   index("sessions_user_id_idx").on(t.userId),
   index("sessions_user_id_date_idx").on(t.userId, t.date),
@@ -265,6 +296,33 @@ export const trackNotesTable = pgTable("track_notes", {
 
 export type DbTrackNotes = typeof trackNotesTable.$inferSelect;
 export type InsertDbTrackNotes = typeof trackNotesTable.$inferInsert;
+
+// A driver-supplied name for a car the companion couldn't identify.
+//
+// The companion resolves the game's raw m_teamId to a name through a table
+// that only contains ids someone has actually observed live — guessing the
+// rest is how a Mercedes once got labelled "Ferrari '26". An id outside that
+// table is uploaded honestly as "Unknown car (#129)", which is accurate but
+// useless to read. This table lets the driver name it once; the name is then
+// applied to that team id on every future upload and back-filled onto the
+// sessions already logged with it.
+//
+// Keyed by team id rather than by the label string so a rename survives the
+// label format changing, and scoped per user because one driver's "Team 129"
+// is another's, but only the driver who drove it knows what it was.
+export const carAliasesTable = pgTable("car_aliases", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  teamId: integer("team_id").notNull(),
+  label: text("label").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [
+  unique("car_aliases_uniq").on(t.userId, t.teamId),
+]);
+
+export type DbCarAlias = typeof carAliasesTable.$inferSelect;
+export type InsertDbCarAlias = typeof carAliasesTable.$inferInsert;
 
 export const hardwareSettingsTable = pgTable("hardware_settings", {
   id: text("id").primaryKey(),

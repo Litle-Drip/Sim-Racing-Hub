@@ -48,7 +48,12 @@ export const GetSessionsResponseItem = zod.object({
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string().max(getSessionsResponseNotesMax),
-  "isPB": zod.boolean(),
+  "isPB": zod.boolean().describe('This session holds the current personal best for its circuit. At most one session per circuit carries it, and it moves to the new session when a faster lap is logged. Use it for PB badges and \"your best here\" figures.'),
+  "wasPB": zod.boolean().optional().describe('This session beat everything logged before it at that circuit at the time it was logged. Never moves once set. Use it for \"personal bests set\" counters and progression charts, which are asking how often the driver improved, not which lap currently stands.'),
+  "teamId": zod.number().nullish().describe('The game\'s raw team id for the car driven. Null for sessions logged by hand or captured before it was recorded. Kept so a car label can be corrected later from the number it came from.'),
+  "gameYear": zod.number().nullish().describe('The telemetry header\'s game year (25 = F1 25) — which game was running. Not the same as packetFormat.'),
+  "packetFormat": zod.number().nullish().describe('The telemetry output format selected in the game\'s own settings (2024\/2025\/2026). A driver on F1 25 can and often does emit 2024-format packets, so this says which struct layout was parsed and nothing about which game they own.'),
+  "contentEra": zod.string().nullish().describe('Which car roster the session was driven in — \"2025\" for the base F1 25 grid, \"2026\" for the 2026 content pack\'s grid, \"2024\" for the retro liveries. Null when the car\'s team id is not in a confirmed block. Lap times are only comparable within one era.'),
   "penalty": zod.string().nullish(),
   "gameVersion": zod.string().nullish(),
   "platform": zod.string().nullish(),
@@ -360,7 +365,12 @@ export const GetSessionDetailResponse = zod.object({
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string().max(getSessionDetailResponseNotesMax),
-  "isPB": zod.boolean(),
+  "isPB": zod.boolean().describe('This session holds the current personal best for its circuit. At most one session per circuit carries it, and it moves to the new session when a faster lap is logged. Use it for PB badges and \"your best here\" figures.'),
+  "wasPB": zod.boolean().optional().describe('This session beat everything logged before it at that circuit at the time it was logged. Never moves once set. Use it for \"personal bests set\" counters and progression charts, which are asking how often the driver improved, not which lap currently stands.'),
+  "teamId": zod.number().nullish().describe('The game\'s raw team id for the car driven. Null for sessions logged by hand or captured before it was recorded. Kept so a car label can be corrected later from the number it came from.'),
+  "gameYear": zod.number().nullish().describe('The telemetry header\'s game year (25 = F1 25) — which game was running. Not the same as packetFormat.'),
+  "packetFormat": zod.number().nullish().describe('The telemetry output format selected in the game\'s own settings (2024\/2025\/2026). A driver on F1 25 can and often does emit 2024-format packets, so this says which struct layout was parsed and nothing about which game they own.'),
+  "contentEra": zod.string().nullish().describe('Which car roster the session was driven in — \"2025\" for the base F1 25 grid, \"2026\" for the 2026 content pack\'s grid, \"2024\" for the retro liveries. Null when the car\'s team id is not in a confirmed block. Lap times are only comparable within one era.'),
   "penalty": zod.string().nullish(),
   "gameVersion": zod.string().nullish(),
   "platform": zod.string().nullish(),
@@ -973,6 +983,17 @@ export const GenerateCompanionApiKeyResponse = zod.object({
 /**
  * @summary Upload a session from the companion app (API key auth)
  */
+export const uploadCompanionSessionBodyTeamIdMin = 0;
+export const uploadCompanionSessionBodyTeamIdMax = 255;
+
+export const uploadCompanionSessionBodyGameYearMin = 20;
+export const uploadCompanionSessionBodyGameYearMax = 99;
+
+export const uploadCompanionSessionBodyPacketFormatMin = 2000;
+export const uploadCompanionSessionBodyPacketFormatMax = 2100;
+
+export const uploadCompanionSessionBodyContentEraMax = 16;
+
 export const uploadCompanionSessionBodyLapsItemTraceMax = 3500;
 
 export const uploadCompanionSessionBodyLapsMax = 150;
@@ -998,6 +1019,10 @@ export const UploadCompanionSessionBody = zod.object({
   "weather": zod.string().optional(),
   "assists": zod.string().optional(),
   "gameVersion": zod.string().optional(),
+  "teamId": zod.coerce.number().min(uploadCompanionSessionBodyTeamIdMin).max(uploadCompanionSessionBodyTeamIdMax).optional().describe('The game\'s raw team id for the car driven. Omitted when the companion never resolved the player\'s car, which is a different thing from a team id of 0 (Mercedes).'),
+  "gameYear": zod.coerce.number().min(uploadCompanionSessionBodyGameYearMin).max(uploadCompanionSessionBodyGameYearMax).optional().describe('The telemetry header\'s game year (25 = F1 25).'),
+  "packetFormat": zod.coerce.number().min(uploadCompanionSessionBodyPacketFormatMin).max(uploadCompanionSessionBodyPacketFormatMax).optional().describe('The telemetry output format selected in the game\'s settings, which is not the same as the game.'),
+  "contentEra": zod.string().max(uploadCompanionSessionBodyContentEraMax).optional().describe('Car roster the session was driven in (\"2024\"\/\"2025\"\/\"2026\").'),
   "platform": zod.string().optional(),
   "inputDevice": zod.string().optional(),
   "laps": zod.array(zod.object({
@@ -1493,6 +1518,55 @@ export const UpsertTrackNotesResponse = zod.object({
   "lineNotes": zod.string(),
   "myNotes": zod.string()
 })).max(upsertTrackNotesResponseCornersMax)
+})
+
+
+/**
+ * @summary Names the driver has given to cars the companion could not identify
+ */
+export const GetCarAliasesResponse = zod.object({
+  "aliases": zod.array(zod.object({
+  "teamId": zod.number(),
+  "label": zod.string()
+})),
+  "unidentified": zod.array(zod.object({
+  "teamId": zod.number(),
+  "car": zod.string().describe('The label currently shown for it, e.g. \"Unknown car (#129)\".'),
+  "sessions": zod.number().describe('How many of the driver\'s sessions were logged with this car.'),
+  "lastSeen": zod.string().describe('Date of the most recent session logged with it.')
+}).describe('A car in the driver\'s logged sessions that the companion could not put a name to — either a team id no lookup table knows, or one the game itself only described as generic. Offered to the driver to name.'))
+})
+
+
+/**
+ * Saves the name against the team id and applies it to every session the driver has already logged with that car, so correcting a label fixes the history rather than only what is captured from here on.
+ * @summary Name a car by its raw team id
+ */
+export const UpsertCarAliasParams = zod.object({
+  "teamId": zod.coerce.number()
+})
+
+export const upsertCarAliasBodyLabelMax = 60;
+
+
+
+export const UpsertCarAliasBody = zod.object({
+  "label": zod.string().min(1).max(upsertCarAliasBodyLabelMax)
+})
+
+export const UpsertCarAliasResponse = zod.object({
+  "teamId": zod.number(),
+  "label": zod.string(),
+  "sessionsUpdated": zod.number()
+})
+
+
+/**
+ * Drops the alias. Sessions keep the name already written onto them — removing an alias undoes the rule, not the history.
+ * @summary Remove a car name
+ */
+export const DeleteCarAliasParams = zod.object({
+  "teamId": zod.coerce.number()
 })
 
 

@@ -565,6 +565,12 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
       })()}
       {s.conditions && <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions}</div></div>}
       {s.timeOfDay && <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay}</div></div>}
+      {/* The game and the car roster are separate facts: the 2026 content pack
+          puts a 2026-spec grid inside F1 25, and a 2026-spec lap is seconds
+          off a 2025-spec one at the same circuit. Shown together so a lap that
+          looks impossible next to its neighbours explains itself. */}
+      {s.gameVersion && <div className="expanded-item"><div className="expanded-label">Game</div><div className="expanded-value">{s.gameVersion}</div></div>}
+      {s.contentEra && <div className="expanded-item"><div className="expanded-label">Car Spec</div><div className="expanded-value">{s.contentEra} season</div></div>}
       {s.assists && <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>}
       {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
       {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
