@@ -36,6 +36,7 @@ import { F1_TRACKS } from '../data/f1Tracks';
 import { formatLastActive } from '../lib/lastActive';
 import { Toast } from '../components/Toast';
 import { EmptyState } from '../components/EmptyState';
+import { TapReadout, useTapReadout } from '../components/TapReadout';
 
 // Windows the two admin views offer. "All time" is leaderboard-only — an
 // activity board over all time stops being a picture of who's practising now.
@@ -412,22 +413,38 @@ function LeaderboardTab({ leagueId }: { leagueId: string }) {
 
 function ActivityBars({ daily }: { daily: Array<{ date: string; sessions: number }> }) {
   const peak = Math.max(1, ...daily.map(d => d.sessions));
+  // Each bar's date and count are in its `title`, which never opens on a
+  // touch screen — tapping one puts the same line in the readout below.
+  const bars = useTapReadout<{ id: string; label: string }>();
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 72 }}>
-      {daily.map(d => (
-        <div
-          key={d.date}
-          title={`${d.date} — ${d.sessions} session${d.sessions === 1 ? '' : 's'}`}
-          style={{
-            flex: 1,
-            minWidth: 2,
-            height: `${Math.max(2, (d.sessions / peak) * 100)}%`,
-            background: d.sessions > 0 ? 'var(--teal)' : 'var(--border)',
-            opacity: d.sessions > 0 ? 0.35 + 0.65 * (d.sessions / peak) : 1,
-          }}
-        />
-      ))}
-    </div>
+    <>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 72 }}>
+        {daily.map(d => {
+          const label = `${d.date} — ${d.sessions} session${d.sessions === 1 ? '' : 's'}`;
+          return (
+            <button
+              key={d.date}
+              type="button"
+              title={label}
+              aria-label={label}
+              aria-pressed={bars.isSelected(d.date)}
+              onClick={() => bars.toggle({ id: d.date, label })}
+              style={{
+                flex: 1,
+                minWidth: 2,
+                padding: 0,
+                border: 'none',
+                height: `${Math.max(2, (d.sessions / peak) * 100)}%`,
+                background: d.sessions > 0 ? 'var(--teal)' : 'var(--border)',
+                opacity: bars.isSelected(d.date) ? 1 : d.sessions > 0 ? 0.35 + 0.65 * (d.sessions / peak) : 1,
+                outline: bars.isSelected(d.date) ? '1px solid var(--focus)' : undefined,
+              }}
+            />
+          );
+        })}
+      </div>
+      <TapReadout text={bars.selected?.label ?? null} placeholder="Tap a bar for that day's count." />
+    </>
   );
 }
 

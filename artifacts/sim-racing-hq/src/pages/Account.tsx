@@ -4,6 +4,7 @@ import { Flame, Sun, Moon } from 'lucide-react';
 import { useUnits } from '../lib/units';
 import { useTheme } from '../lib/theme';
 import { SHOW_ACHIEVEMENTS, SHOW_XP } from '../lib/features';
+import { TapReadout, useTapReadout } from '../components/TapReadout';
 import { useGetSessions, useGetSetups } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -45,6 +46,7 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
   const { theme, toggleTheme } = useTheme();
   const { data: sessions = [] } = useGetSessions();
   const { data: setups = [] } = useGetSetups();
+  const badges = useTapReadout<{ id: string; name: string; desc: string }>();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
   const [detailSession, setDetailSession] = useState<SessionRecord | null>(null);
 
@@ -375,9 +377,16 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
             {achievements.map(a => {
               const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
               const BadgeIcon = a.icon;
+              const badgeDetail = `${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`;
               return (
-                <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
-                  title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
+                <button
+                  type="button"
+                  key={a.id}
+                  className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}${badges.isSelected(a.id) ? ' dash-badge--selected' : ''}`}
+                  title={badgeDetail}
+                  aria-label={badgeDetail}
+                  aria-pressed={badges.isSelected(a.id)}
+                  onClick={() => badges.toggle(a)}>
                   <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
                   <div className="dash-badge-info">
                     <span className="dash-badge-name">{a.name}</span>
@@ -390,10 +399,15 @@ export default function Account({ setPage }: { setPage?: (p: string) => void }) 
                       </div>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
+          {/* The description is `title`-only, which no touch device shows. */}
+          <TapReadout
+            text={badges.selected ? `${badges.selected.name}: ${badges.selected.desc}` : null}
+            placeholder="Tap a badge to see what it takes."
+          />
         </>
       )}
 
