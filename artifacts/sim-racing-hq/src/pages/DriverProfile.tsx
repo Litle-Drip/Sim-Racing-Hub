@@ -5,6 +5,7 @@ import { getRankColor, resolveRankTier } from '../lib/engagement';
 import type { RankInfo, Achievement } from '../lib/engagement';
 import { SHOW_ACHIEVEMENTS } from '../lib/features';
 import { formatLastActive } from '../lib/lastActive';
+import { TapReadout, useTapReadout } from '../components/TapReadout';
 
 interface DriverPB {
   trackId: string;
@@ -49,6 +50,7 @@ export default function DriverProfile({ username }: { username: string }) {
   const [driver, setDriver] = useState<DriverData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const badges = useTapReadout<{ id: string; name: string; desc: string }>();
 
   useEffect(() => {
     setLoading(true);
@@ -207,16 +209,25 @@ export default function DriverProfile({ username }: { username: string }) {
             {earnedAchievements.map(a => {
               const BadgeIcon = a.icon;
               return (
-              <div key={a.id} title={a.desc} style={{
+              <button key={a.id} type="button" title={a.desc} aria-label={`${a.name}: ${a.desc}`}
+                aria-pressed={badges.isSelected(a.id)}
+                onClick={() => badges.toggle(a)}
+                style={{
                 display: 'flex', alignItems: 'center', gap: 6,
-                padding: '6px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4,
+                padding: '6px 12px', background: 'var(--bg-card)',
+                border: `1px solid ${badges.isSelected(a.id) ? 'var(--focus)' : 'var(--border)'}`, borderRadius: 4,
               }}>
                 <BadgeIcon size={14} aria-hidden="true" style={{ color: 'var(--red)' }} />
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.06em', color: 'var(--white)' }}>{a.name}</span>
-              </div>
+              </button>
               );
             })}
           </div>
+          {/* `title` only, so unreadable on an iPad without this. */}
+          <TapReadout
+            text={badges.selected ? `${badges.selected.name}: ${badges.selected.desc}` : null}
+            placeholder="Tap a badge for what it was earned for."
+          />
         </>
       )}
 
