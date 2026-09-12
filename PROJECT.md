@@ -183,6 +183,30 @@ per circuit, not per circuit-and-car. The rule lives in
 `sim-racing-hq/src/lib/personalBests.ts`) — it used to be copy-pasted into two
 routes that had already drifted.
 
+### Schema changes apply themselves on deploy now (2026-09-12)
+Twice — 2026-08-13 and 2026-09-12 — a column was merged, deployed, and never
+created in Postgres, and both times the whole app stopped loading rather than
+just the new feature: drizzle names every column explicitly in its SELECTs, so
+one missing column makes Postgres reject *every* query against that table,
+reads included.
+
+The `.sql` files in `lib/db/sql/` are a record of intent, not a mechanism —
+they only reach the database if somebody remembers to run them at the right
+moment. `MIGRATE_SQL` in `artifacts/api-server/src/index.ts` is the mechanism:
+it runs on every API boot. It had drifted 31 columns and 5 tables behind by
+the second outage, which is what let that one happen. It is now in step, and
+**a new column goes in both places**.
+
+It applies statements one at a time on purpose. node-postgres sends a
+multi-statement string as one implicit transaction, so a single failing
+statement rolls back every other statement in the batch, including ones that
+already succeeded — verified against Postgres 16. Combined with the old code
+catching and merely logging the error, that meant a migration could silently
+undo itself while the app came up looking healthy and served 500s.
+
+`rival_challenges` was also only ever created by a hand-run `drizzle-kit push`
+— no `CREATE` existed anywhere in the repo. It does now.
+
 ### Clerk username lookups return the wrong user if you trust position
 `GET https://api.clerk.com/v1/users?username[]=…` is a *filter*, not a search, and any request Clerk can't apply the filter to degrades into "the first users in the instance" rather than an empty list. Taking `users[0]` therefore hands back an unrelated account — that's how a rival challenge addressed to `slumlordmillionaire` reached a different driver entirely. Every username lookup must confirm `user.username.toLowerCase() === wanted` before using the result, and fall back to `?query=` (Clerk's fuzzy search) for casing differences. Both places that do this — `routes/community.ts` (public driver profile) and `routes/rivalChallenges.ts` (`findUserByUsername`, also used by `routes/friends.ts`) — verify the match.
 
