@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, User, Zap, Headphones, Trophy, Lock, Flame } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Map, Settings2, TrendingUp, LogOut, Menu, X, Cpu, Users, User, Zap, Headphones, Trophy, Lock, Flame, Grid3X3 } from 'lucide-react';
 import { useClerk, useUser } from '@clerk/react';
 import { useGetSessions } from '@workspace/api-client-react';
 import { F1_TRACKS } from '../data/f1Tracks';
@@ -15,6 +15,7 @@ interface NavProps {
 // which already carried a 'challenges' tab covering the same head-to-head idea.
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, authRequired: false },
+  { id: 'gridline', label: 'Gridline', Icon: Grid3X3, authRequired: false },
   { id: 'tracks', label: 'Tracks', Icon: Map, authRequired: false },
   { id: 'sessions', label: 'Sessions', Icon: ClipboardList, authRequired: false },
   { id: 'progress', label: 'Progress', Icon: TrendingUp, authRequired: true },
