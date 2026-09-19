@@ -2,6 +2,7 @@
 // SessionSnapshot/LapRecord shapes (session.ts) so both games flow through
 // the same Uploader and the same API/DB row shape — only the fields each
 // game can actually supply differ.
+import { NO_TEAM } from "./session";
 import type { LapRecord, SessionSnapshot } from "./session";
 import type { AcHandshakeInfo, AcCarInfo, AcLapInfo } from "./ac-udp";
 
@@ -158,6 +159,10 @@ export class AcSessionTracker {
       position: 0,
       assists: "",
       gameVersion: "Assetto Corsa",
+      // Not an F1 title: there is no m_teamId to capture, and the car
+      // name above comes straight from the sim rather than a lookup
+      // table that could mislabel it.
+      teamId: NO_TEAM,
       speed: this.lastSpeed || undefined,
       throttle: this.lastThrottle || undefined,
       brake: this.lastBrake || undefined,

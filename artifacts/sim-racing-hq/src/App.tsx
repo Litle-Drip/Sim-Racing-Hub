@@ -5,11 +5,14 @@ import { setAuthTokenGetter, createSession as apiCreateSessionRaw, getGetSession
 import type { SessionRecord } from '@workspace/api-client-react';
 import { dark } from '@clerk/themes';
 import { Settings2, Map, Trophy, Activity, Bot, LayoutDashboard } from 'lucide-react';
-import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
+import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { UnitsProvider } from './lib/units';
+import { ThemeProvider } from './lib/theme';
+import { SHOW_ACHIEVEMENTS } from './lib/features';
 import Nav from './components/Nav';
+import { OPEN_LOG_KEY } from './lib/storage';
 import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
@@ -18,12 +21,8 @@ import Setups from './pages/Setups';
 import HardwareVault from './pages/HardwareVault';
 import Progress from './pages/Progress';
 import RaceEngineer from './pages/RaceEngineer';
-import Rivals from './pages/Rivals';
 import Community from './pages/Community';
-import PublicSetups from './pages/PublicSetups';
-import PublicTracks from './pages/PublicTracks';
-import PublicLeaderboard from './pages/PublicLeaderboard';
-import QuickLog from './pages/QuickLog';
+import Leagues from './pages/Leagues';
 import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
 import Companion from './pages/Companion';
@@ -138,7 +137,7 @@ const authCardAppearance = {
       border: '1px solid #2A2A2A',
       borderTop: '2px solid #E8002D',
       borderRadius: 0,
-      padding: '32px',
+      padding: 'var(--space-6)',
     },
     footer: { boxShadow: 'none', border: 0, borderRadius: 0 },
     headerTitle: { fontWeight: '700', fontSize: '22px' },
@@ -146,9 +145,9 @@ const authCardAppearance = {
     socialButtonsBlockButtonText: { color: '#E8E8E8', fontWeight: '600' },
     socialButtonsBlockButtonArrow: { color: '#E8E8E8' },
     footerActionText: { color: '#BBBBBB' },
-    logoBox: { marginBottom: '16px' },
+    logoBox: { marginBottom: 'var(--space-4)' },
     logoImage: { height: '48px' },
-    socialButtons: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
+    socialButtons: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' },
     socialButtonsBlockButton: { backgroundColor: '#232323', border: '1px solid #3A3A3A', minHeight: '48px' },
     socialButtonsProviderIcon: { width: '20px', height: '20px' },
     formButtonPrimary: { minHeight: '48px' },
@@ -164,7 +163,7 @@ function AuthPageShell({ children }: { children: ReactNode }) {
       alignItems: 'center',
       justifyContent: 'center',
       background: 'var(--bg)',
-      padding: '16px',
+      padding: 'var(--space-4)',
       position: 'relative',
       overflow: 'hidden',
     }}>
@@ -219,7 +218,6 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
       title: 'Session & Performance Tracking',
       items: [
         { title: 'Companion App Auto-Logging', desc: 'Free desktop app reads live F1 25 telemetry and uploads sessions automatically.' },
-        { title: 'Quick Log', desc: "Manually log a session's results in seconds." },
         { title: 'Session History', desc: 'Searchable log of every session with automatic PB detection.' },
         { title: 'Progress Dashboard', desc: 'Activity heatmap plus stats on sessions, tracks, and PBs.' },
         { title: 'Progress Analytics', desc: 'PB progression charts and lap-time consistency graphs.' },
@@ -251,18 +249,32 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
       Icon: Trophy,
       title: 'Community & Competition',
       items: [
-        { title: 'Community Hub', desc: 'Browse and import setups and sessions shared by other users.' },
-        { title: 'Public Leaderboards', desc: 'Compare lap times against the community, per track.' },
+        { title: 'Community Leaderboards', desc: 'Compare lap times against the community, per circuit.' },
+        { title: 'Shared Setups', desc: 'Browse and import car setups shared by other drivers.' },
         { title: 'Rivals & Challenges', desc: 'Challenge players head-to-head to beat a lap time.' },
-        { title: 'Driver Profiles', desc: 'Public pages showing your PBs, achievements, and recent sessions.' },
-        { title: 'Achievements', desc: 'Badges and milestones for consistency and progress.' },
+        // The landing page only advertises what a new driver will actually
+        // find inside, so the achievement entries follow the flag.
+        {
+          title: 'Driver Profiles',
+          desc: SHOW_ACHIEVEMENTS
+            ? 'Public pages showing your PBs, achievements, and recent sessions.'
+            : 'Public pages showing your PBs and recent sessions.',
+        },
+        ...(SHOW_ACHIEVEMENTS
+          ? [{ title: 'Achievements', desc: 'Badges and milestones for consistency and progress.' }]
+          : []),
       ],
     },
     {
       Icon: LayoutDashboard,
       title: 'Account',
       items: [
-        { title: 'Account Dashboard', desc: 'Setups, PBs, and achievement progress, synced across devices.' },
+        {
+          title: 'Account Dashboard',
+          desc: SHOW_ACHIEVEMENTS
+            ? 'Setups, PBs, and achievement progress, synced across devices.'
+            : 'Setups and PBs, synced across devices.',
+        },
       ],
     },
   ];
@@ -289,30 +301,76 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
           Companion
         </h1>
         <p className="landing-hero-sub">
-          Everything you need to log sessions, chase PBs, and master every circuit — all in one place.
+          Install the free companion app, drive a lap in F1 25, and your session is logged here
+          automatically — lap times, sectors, consistency and PBs, without touching a form.
         </p>
         <p className="landing-hero-platform">
           For F1 25 on Xbox, PlayStation, and PC — wheel or controller.
         </p>
+        {/* The demo used to be the loud button and signing up a small one
+            beside "Continue as Guest". Nothing here works — no companion app,
+            no auto-logged laps, no PBs that persist — without an account, so
+            the account is the primary action and the demo is the way to look
+            first. */}
         <div className="landing-cta-group">
-          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={onDemo}>
-            Try the Live Demo — Sample Data, No Sign Up →
+          <button className="btn btn-primary" style={{ minWidth: 320, fontSize: 13, padding: '15px 28px' }} onClick={() => setLocation('/sign-up')}>
+            Create Free Account — Start Auto-Logging Laps →
           </button>
           <div className="landing-cta-row">
+            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={onDemo}>
+              Try the Live Demo
+            </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={onGuest}>
               Continue as Guest
-            </button>
-            <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setLocation('/sign-up')}>
-              Create Free Account
             </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setLocation('/sign-in')}>
               Sign In
             </button>
           </div>
         </div>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 10, letterSpacing: '0.01em' }}>
-          The demo loads a real sample race weekend — dashboard, session log, lap history — right in your browser. Nothing is saved to an account.
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)', marginTop: 'var(--space-2)', letterSpacing: '0.01em' }}>
+          Free, no credit card. Sign up, install the companion app, drive a lap — it appears here on its own.
+          Prefer to look first? The demo loads a real sample race weekend in your browser, saved to nothing.
         </p>
+      </div>
+
+      {/* How it works — the path from this page to a logged lap, up front.
+          The feature list below only matters to someone who has already
+          decided; this is for someone deciding. */}
+      <div className="landing-features">
+        <div className="landing-section-label">From here to your first auto-logged lap</div>
+        <div className="landing-feature-categories">
+          {[
+            { n: '1', title: 'Create your free account', desc: 'Under a minute. No credit card.' },
+            { n: '2', title: 'Install the companion app', desc: 'Windows or macOS. Paste in your API key — the dashboard hands it to you.' },
+            { n: '3', title: 'Drive a lap', desc: 'Flip on UDP telemetry in F1 25 and go. Every session uploads on its own from then on.' },
+          ].map(step => (
+            <div key={step.n} className="landing-feature-category">
+              <div className="landing-feature-category-title">
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  border: '1px solid var(--red)',
+                  color: 'var(--red)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}>{step.n}</span>
+                {step.title}
+              </div>
+              <ul className="landing-feature-list">
+                <li className="landing-feature-item">
+                  <span className="landing-feature-item-desc">{step.desc}</span>
+                </li>
+              </ul>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Feature Categories */}
@@ -341,15 +399,12 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
       {/* Browse Links */}
       <div className="landing-browse">
         <div className="landing-section-label">Browse without an account</div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/setups')}>
-            Community Setups
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/community')}>
+            Community
           </button>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/tracks')}>
             Circuit Guide
-          </button>
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/leaderboard')}>
-            Leaderboard
           </button>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setLocation('/download')}>
             ↓ Download Companion App
@@ -364,7 +419,7 @@ function LandingPage({ onGuest, onDemo }: { onGuest?: () => void; onDemo?: () =>
   );
 }
 
-const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'rivals', 'companion', 'account'];
+const PROTECTED_PAGES = ['setups', 'hardware', 'progress', 'engineer', 'companion', 'account', 'leagues'];
 
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
 
@@ -436,9 +491,9 @@ const PAGE_LABELS: Record<string, string> = {
   hardware: 'Hardware Vault',
   progress: 'PB Progression',
   engineer: 'Race Engineer',
-  rivals: 'Rivals',
   companion: 'Companion App Sync',
   account: 'Account',
+  leagues: 'League Admin',
 };
 
 const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
@@ -477,18 +532,18 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
       'Ask follow-up questions about your pace and consistency',
     ],
   },
-  rivals: {
-    bullets: [
-      'Challenge a friend to beat one of your lap times or races',
-      'Race async — no need to be online at the same time',
-      'See a side-by-side comparison the moment they submit their attempt',
-    ],
-  },
   companion: {
     bullets: [
       'Auto-upload sessions straight from F1 24/25/26 and Assetto Corsa',
       'Generate an API key to connect the desktop companion app',
       'Never manually log a lap time again',
+    ],
+  },
+  leagues: {
+    bullets: [
+      'Run a league and get a leaderboard across your whole grid',
+      "See who's actually practising between rounds — sessions, laps, seat time",
+      'Invite drivers with a code and manage the roster',
     ],
   },
   account: {
@@ -503,40 +558,32 @@ const PAGE_UNLOCKS: Record<string, { bullets: string[] }> = {
 function GuestWall({ page, onSignIn }: { page: string; onSignIn: () => void }) {
   const unlocks = PAGE_UNLOCKS[page];
   return (
-    <div style={{
-      minHeight: '60vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 0,
-      padding: '40px 24px',
-    }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 12 }}>
-        Free Account Required
-      </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, letterSpacing: '0.04em', color: 'var(--white)', marginBottom: 8 }}>
-        Unlock your {PAGE_LABELS[page] || page}
-      </div>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-mid)', textAlign: 'center', maxWidth: 380, lineHeight: 1.6, marginBottom: 24 }}>
-        Create a free account — no credit card, no waiting. Everything syncs across your devices automatically.
-      </div>
-      {unlocks && (
-        <div style={{ marginBottom: 28, textAlign: 'left', maxWidth: 340 }}>
-          {unlocks.bullets.map(b => (
-            <div key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-              <span style={{ color: 'var(--teal)', fontSize: 14, marginTop: 1, flexShrink: 0 }}>✓</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>{b}</span>
-            </div>
-          ))}
+    <div className="guest-wall">
+      <div className="guest-wall-card">
+        <div className="guest-wall-eyebrow">Free Account Required</div>
+        <div className="guest-wall-title">Unlock your {PAGE_LABELS[page] || page}</div>
+        <p className="guest-wall-lede">
+          Create a free account — no credit card, no waiting. Everything syncs across your devices automatically.
+        </p>
+        {unlocks && (
+          <div className="guest-wall-bullets">
+            {unlocks.bullets.map(b => (
+              <div key={b} className="guest-wall-bullet">
+                <span>✓</span>
+                <span>{b}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="guest-wall-actions">
+          <button className="btn btn-primary btn-lg" onClick={onSignIn}>
+            Create Free Account
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={onSignIn}>
+            Already have an account? Sign in →
+          </button>
         </div>
-      )}
-      <button className="btn btn-primary" style={{ minWidth: 200, fontSize: 15, padding: '14px 28px' }} onClick={onSignIn}>
-        Create Free Account
-      </button>
-      <button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 12, color: 'var(--gray-mid)' }} onClick={onSignIn}>
-        Already have an account? Sign in →
-      </button>
+      </div>
     </div>
   );
 }
@@ -551,35 +598,34 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
       background: 'var(--bg-card)',
       borderTop: '1px solid var(--teal)',
       boxShadow: 'var(--shadow-pop)',
-      padding: '14px 24px',
+      padding: 'var(--space-4) var(--space-5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 16,
+      gap: 'var(--space-4)',
       flexWrap: 'wrap',
       zIndex: 800,
       backdropFilter: 'blur(8px)',
     }}>
       <div style={{ flex: 1, minWidth: 200 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--teal)', marginBottom: 3, textTransform: 'uppercase' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-label)', letterSpacing: '0.12em', color: 'var(--teal)', marginBottom: 'var(--space-1)', textTransform: 'uppercase' }}>
           You've been exploring F1 Sim Hub
         </div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.5 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--gray-light)', lineHeight: 1.5 }}>
           Create a free account to <strong style={{ color: 'var(--white)' }}>log sessions, save setups, and track your PBs</strong> across every device.
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexShrink: 0 }}>
         <button
           className="btn btn-ghost"
           onClick={onDismiss}
-          style={{ fontSize: 12, color: 'var(--gray-mid)', padding: '8px 14px' }}
         >
           Maybe Later
         </button>
         <button
           className="btn btn-primary"
           onClick={onSignIn}
-          style={{ fontSize: 13, padding: '9px 20px', whiteSpace: 'nowrap' }}
+          style={{ whiteSpace: 'nowrap' }}
         >
           Create Free Account
         </button>
@@ -590,28 +636,14 @@ function GuestNudge({ onSignIn, onDismiss }: { onSignIn: () => void; onDismiss: 
 
 function DemoBanner({ onSignIn }: { onSignIn: () => void }) {
   return (
-    <div style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 700,
-      background: 'var(--teal)',
-      color: 'var(--black)',
-      padding: '8px 20px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 14,
-      flexWrap: 'wrap',
-      fontFamily: 'var(--font-body)',
-      fontSize: 12,
-    }}>
+    <div className="demo-banner">
       <span>
         <strong>Live Demo</strong> — you're viewing sample telemetry, not a real account. Nothing you do here is saved.
       </span>
       <button
-        className="btn btn-primary"
+        className="btn btn-secondary btn-sm"
         onClick={onSignIn}
-        style={{ fontSize: 11, padding: '5px 14px', background: 'var(--black)', color: 'var(--teal)', border: 'none', whiteSpace: 'nowrap' }}
+        style={{ whiteSpace: 'nowrap' }}
       >
         Create Free Account →
       </button>
@@ -619,13 +651,8 @@ function DemoBanner({ onSignIn }: { onSignIn: () => void }) {
   );
 }
 
-const SHORTCUTS: Record<string, string> = {
-  d: 'dashboard', n: 'sessions', t: 'tracks', s: 'setups', h: 'hardware', p: 'progress', e: 'engineer', r: 'rivals', c: 'community', x: 'companion', a: 'account',
-};
-
-function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: boolean; onSignIn?: () => void }) {
-  const [page, setPage] = useState('dashboard');
-  const [showShortcuts, setShowShortcuts] = useState(false);
+function MainApp({ isGuest, isDemo, onSignIn, initialPage, initialTrackId }: { isGuest?: boolean; isDemo?: boolean; onSignIn?: () => void; initialPage?: string; initialTrackId?: string }) {
+  const [page, setPage] = useState(initialPage ?? 'dashboard');
 
   // Persist guest activity across same-session refreshes
   const [pageViews, setPageViews] = useState<number>(() => {
@@ -667,18 +694,6 @@ function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: bo
     sessionStorage.setItem('guestNudgeDismissed', '1');
   }, []);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === '?') { setShowShortcuts(v => !v); return; }
-      const dest = SHORTCUTS[e.key.toLowerCase()];
-      if (dest) handleSetPage(dest);
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [handleSetPage]);
-
   const showNudge = isGuest && !isDemo && (pageViews >= 3 || timeReached) && !nudgeDismissed;
 
   // Allow child pages to trigger top-level navigation via custom event
@@ -706,13 +721,17 @@ function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: bo
     switch (page) {
       case 'dashboard': return <Dashboard setPage={handleSetPage} isGuest={isGuest} />;
       case 'sessions': return <Sessions isGuest={isGuest} />;
-      case 'tracks': return <Tracks isGuest={isGuest} />;
+      case 'tracks': return <Tracks isGuest={isGuest} initialTrackId={initialTrackId} />;
       case 'setups': return <Setups />;
       case 'hardware': return <HardwareVault />;
       case 'progress': return <Progress setPage={handleSetPage} />;
       case 'engineer': return <RaceEngineer />;
-      case 'rivals': return <Rivals />;
-      case 'community': return <Community />;
+      case 'community': return <Community isGuest={isGuest} />;
+      // 'rivals' is Community opened straight onto its Rivals tab, so the
+      // Dashboard shortcut and the notification badge have somewhere to go
+      // without Rivals becoming a second page that duplicates the tab.
+      case 'rivals': return <Community isGuest={isGuest} initialTab="rivals" />;
+      case 'leagues': return <Leagues />;
       case 'companion': return <Companion />;
       case 'account': return <Account setPage={handleSetPage} />;
       default: return <Dashboard setPage={handleSetPage} />;
@@ -732,31 +751,16 @@ function MainApp({ isGuest, isDemo, onSignIn }: { isGuest?: boolean; isDemo?: bo
           onDismiss={handleDismiss}
         />
       )}
-
-      {/* Keyboard Shortcuts Modal */}
-      {showShortcuts && (
-        <div style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowShortcuts(false)}>
-          <div className="card" style={{ padding: '24px 32px', maxWidth: 360, width: '90%' }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.1em', color: 'var(--white)', marginBottom: 16, textTransform: 'uppercase' }}>Keyboard Shortcuts</div>
-            {Object.entries(SHORTCUTS).map(([key, dest]) => (
-              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontFamily: 'var(--font-body)', fontSize: 13 }}>
-                <span style={{ color: 'var(--gray-light)', textTransform: 'capitalize' }}>{dest}</span>
-                <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 3, color: 'var(--teal)' }}>{key.toUpperCase()}</kbd>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontFamily: 'var(--font-body)', fontSize: 13, borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
-              <span style={{ color: 'var(--gray-light)' }}>Toggle this panel</span>
-              <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: 3, color: 'var(--teal)' }}>?</kbd>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-function HomeRoute() {
-  const [isGuest, setIsGuest] = useState(false);
+// `initialPage` is how the public deep links (/community, /tracks, /log) land
+// directly on a page instead of on the landing screen. They used to be separate
+// standalone components with their own trimmed-down copies of the same data;
+// now they're just entry points into the one app shell.
+function HomeRoute({ initialPage, initialTrackId }: { initialPage?: string; initialTrackId?: string }) {
+  const [isGuest, setIsGuest] = useState(!!initialPage);
   const [isDemo, setIsDemo] = useState(false);
   const [, setLocation] = useLocation();
 
@@ -777,16 +781,26 @@ function HomeRoute() {
     <>
       <Show when="signed-in">
         <GuestSessionMigrator />
-        <MainApp />
+        <MainApp initialPage={initialPage} initialTrackId={initialTrackId} />
       </Show>
       <Show when="signed-out">
         {isGuest
-          ? <MainApp isGuest isDemo={isDemo} onSignIn={handleSignIn} />
+          ? <MainApp isGuest isDemo={isDemo} onSignIn={handleSignIn} initialPage={initialPage} initialTrackId={initialTrackId} />
           : <LandingPage onGuest={() => setIsGuest(true)} onDemo={handleDemo} />
         }
       </Show>
     </>
   );
+}
+
+// /log used to be its own Quick Log screen with a parallel, cut-down copy of
+// the session form. It now opens the real log form on the Sessions page, so
+// there is exactly one way to log a lap.
+function LogRedirect() {
+  useState(() => {
+    try { sessionStorage.setItem(OPEN_LOG_KEY, '1'); } catch { /* storage unavailable — form just opens blank */ }
+  });
+  return <HomeRoute initialPage="sessions" />;
 }
 
 function ClerkAuthTokenRegistrar() {
@@ -851,16 +865,24 @@ function ClerkProviderWithRoutes() {
         <ClerkAuthTokenRegistrar />
         <ClerkQueryClientCacheInvalidator />
         <Switch>
-          <Route path="/" component={HomeRoute} />
+          <Route path="/">{() => <HomeRoute />}</Route>
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
-          <Route path="/setups">{() => <PublicSetups onBack={() => window.location.href = basePath || '/'} />}</Route>
-          <Route path="/tracks">{() => <PublicTracks onBack={() => window.location.href = basePath || '/'} />}</Route>
-          <Route path="/leaderboard">{() => <PublicLeaderboard onBack={() => window.location.href = basePath || '/'} />}</Route>
+          {/* /setups and /leaderboard were standalone public pages duplicating
+              what Community already showed signed-in. They now land on the one
+              Community surface. */}
+          <Route path="/community">{() => <HomeRoute initialPage="community" />}</Route>
+          <Route path="/leagues">{() => <HomeRoute initialPage="leagues" />}</Route>
+          <Route path="/setups">{() => <Redirect to="/community" />}</Route>
+          <Route path="/leaderboard">{() => <Redirect to="/community" />}</Route>
+          <Route path="/tracks">{() => <HomeRoute initialPage="tracks" />}</Route>
+          {/* Every circuit has its own address so track pages can be linked
+              and shared. */}
+          <Route path="/tracks/:trackId">{(params) => <HomeRoute initialPage="tracks" initialTrackId={params.trackId} />}</Route>
           <Route path="/download">{() => <DownloadPage />}</Route>
-          <Route path="/log">{() => <QuickLog onDone={() => window.location.href = basePath || '/'} />}</Route>
+          <Route path="/log">{() => <LogRedirect />}</Route>
           <Route path="/driver/:username">{(params) => <DriverProfile username={params.username} />}</Route>
-          <Route component={HomeRoute} />
+          <Route>{() => <HomeRoute />}</Route>
         </Switch>
       </QueryClientProvider>
     </ClerkProvider>
@@ -878,20 +900,20 @@ export default function App() {
           alignItems: 'center',
           justifyContent: 'center',
           background: '#080808',
-          padding: 24,
+          padding: 'var(--space-5)',
           fontFamily: 'monospace',
         }}>
           <div style={{
             background: '#111',
             border: '1px solid #E8002D',
-            padding: '32px 40px',
+            padding: 'var(--space-6) var(--space-7)',
             maxWidth: 520,
             width: '100%',
           }}>
-            <div style={{ color: '#E8002D', fontSize: 12, letterSpacing: '0.12em', marginBottom: 16 }}>
+            <div style={{ color: '#E8002D', fontSize: 12, letterSpacing: '0.12em', marginBottom: 'var(--space-4)' }}>
               CONFIGURATION ERROR
             </div>
-            <div style={{ color: '#F0F0F0', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
+            <div style={{ color: '#F0F0F0', fontSize: 15, marginBottom: 'var(--space-5)', lineHeight: 1.6 }}>
               <strong>VITE_CLERK_PUBLISHABLE_KEY</strong> is not set.
             </div>
             <div style={{ color: '#A8A8A8', fontSize: 13, lineHeight: 1.7 }}>
@@ -908,9 +930,11 @@ export default function App() {
   return (
     <WouterRouter base={basePath}>
       <ServiceStatusBanner />
-      <UnitsProvider>
-        <ClerkProviderWithRoutes />
-      </UnitsProvider>
+      <ThemeProvider>
+        <UnitsProvider>
+          <ClerkProviderWithRoutes />
+        </UnitsProvider>
+      </ThemeProvider>
     </WouterRouter>
   );
 }

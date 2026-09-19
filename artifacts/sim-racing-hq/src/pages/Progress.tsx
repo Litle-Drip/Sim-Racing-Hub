@@ -5,9 +5,9 @@ import {
 } from 'recharts';
 import { useGetSessions } from '@workspace/api-client-react';
 import { lapToSeconds } from '../lib/storage';
+import { personalBestsByTrack, type TrackPB } from '../lib/personalBests';
 import { F1_TRACKS } from '../data/f1Tracks';
-import { lapTimeDelta, sessionConsistency } from '../lib/engagement';
-import { LapTimeInput } from '../components/LapTimeInput';
+import { sessionConsistency } from '../lib/engagement';
 import { EmptyState } from '../components/EmptyState';
 import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { useUnits } from '../lib/units';
@@ -49,7 +49,7 @@ interface TooltipProps {
 function LapTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
+    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: 'var(--space-2) var(--space-4)' }}>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
       {payload.map((p, i) => (
         <div key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: p.color, marginBottom: 2 }}>
@@ -172,31 +172,9 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
     };
   }, [filtered, topSpeedData]);
 
-  const allTimePBs = useMemo(() => {
-    const pbMap: Record<string, { trackId: string; car: string; bestLap: string; date: string; sessions: number }> = {};
-    const sessionCounts: Record<string, number> = {};
-
-    const sessionsSorted = [...allSessions].sort((a, b) => a.date.localeCompare(b.date));
-
-    sessionsSorted.forEach(s => {
-      if (!s.bestLap || s.bestLap.trim() === '') return;
-      const key = s.trackId;
-      sessionCounts[key] = (sessionCounts[key] || 0) + 1;
-      if (!pbMap[key] || lapToSeconds(s.bestLap) < lapToSeconds(pbMap[key].bestLap)) {
-        pbMap[key] = {
-          trackId: s.trackId,
-          car: s.car,
-          bestLap: s.bestLap,
-          date: s.date,
-          sessions: sessionCounts[key],
-        };
-      } else {
-        pbMap[key].sessions = sessionCounts[key];
-      }
-    });
-
-    return Object.values(pbMap).sort((a, b) => a.trackId.localeCompare(b.trackId));
-  }, [allSessions]);
+  // One row per circuit, from the same helper the ★ PB badges come from, so
+  // this table and the badges elsewhere can't disagree about which lap stands.
+  const allTimePBs = useMemo(() => personalBestsByTrack(allSessions), [allSessions]);
 
   // Older imports can carry circuit ids the current track list doesn't know
   // (e.g. "track_42"); show a readable placeholder rather than the raw id.
@@ -232,7 +210,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
       </div>
 
       {allSessions.length === 0 ? (
-        <div style={{ marginTop: 40 }}>
+        <div style={{ marginTop: 'var(--space-7)' }}>
           <EmptyState
             icon={<TrendingUp size={40} />}
             headline="No sessions logged yet"
@@ -243,7 +221,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         </div>
       ) : (
       <>
-      <div className="filter-bar" style={{ marginBottom: 28 }}>
+      <div className="filter-bar" style={{ marginBottom: 'var(--space-6)' }}>
         <select className="filter-select" value={filterTrack} onChange={e => handleTrackChange(e.target.value)}>
           <option value="">All Tracks</option>
           {F1_TRACKS.map(t => <option key={t.id} value={t.id}>{t.flag} {t.short}</option>)}
@@ -263,52 +241,52 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
       {telemetryStats.hasData && (
         <>
           <div className="section-title">Telemetry Insights{filterTrack ? ` — ${trackName(filterTrack)}` : ''}</div>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
             {telemetryStats.topSpeed > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Speed</div>
+              <div className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Top Speed</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--teal)', fontWeight: 700 }}>{formatSpeed(telemetryStats.topSpeed)}</div>
               </div>
             )}
             {telemetryStats.avgTyreWear > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Wear</div>
+              <div className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Avg Tyre Wear</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--purple)', fontWeight: 700 }}>{telemetryStats.avgTyreWear.toFixed(1)}%</div>
               </div>
             )}
             {telemetryStats.avgTyreTemp > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Tyre Temp</div>
+              <div className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Avg Tyre Temp</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{formatTemp(telemetryStats.avgTyreTemp)}</div>
               </div>
             )}
             {telemetryStats.totalDrs > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>DRS Activations</div>
+              <div className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>DRS Activations</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.totalDrs}</div>
               </div>
             )}
             {(telemetryStats.avgThrottle > 0 || telemetryStats.avgBrake > 0) && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Throttle / Brake</div>
+              <div className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Avg Throttle / Brake</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.avgThrottle.toFixed(0)}% / {telemetryStats.avgBrake.toFixed(0)}%</div>
               </div>
             )}
             {telemetryStats.maxRpm > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Max RPM</div>
+              <div className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Max RPM</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.maxRpm.toLocaleString()}</div>
               </div>
             )}
             {telemetryStats.topGear > 0 && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Top Gear</div>
+              <div className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Top Gear</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{telemetryStats.topGear}</div>
               </div>
             )}
             {(telemetryStats.avgTrackTemp !== 0 || telemetryStats.avgAirTemp !== 0) && (
-              <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>Track / Air Temp</div>
+              <div className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Track / Air Temp</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--white)', fontWeight: 700 }}>{formatTemp(telemetryStats.avgTrackTemp)} / {formatTemp(telemetryStats.avgAirTemp)}</div>
               </div>
             )}
@@ -344,14 +322,14 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         if (!hasSectors) return null;
         return (
           <>
-            <div className="section-title" style={{ marginTop: 24 }}>Best Sectors — {trackName(filterTrack)}</div>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div className="section-title" style={{ marginTop: 'var(--space-5)' }}>Best Sectors — {trackName(filterTrack)}</div>
+            <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
               {(['s1', 's2', 's3'] as const).map(key => {
                 const s = bestSectors[key];
                 if (!s) return null;
                 return (
-                  <div key={key} className="card" style={{ flex: '1 1 140px', padding: '16px 20px', textAlign: 'center' }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 8 }}>
+                  <div key={key} className="card" style={{ flex: '1 1 140px', padding: 'var(--space-4) var(--space-5)', textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.12em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>
                       Sector {key.slice(1)}
                     </div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, color: 'var(--purple)', fontWeight: 700 }}>{s.val}</div>
@@ -364,10 +342,10 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
         );
       })()}
 
-      <div className="chart-section" style={{ marginTop: 40 }}>
+      <div className="chart-section" style={{ marginTop: 'var(--space-7)' }}>
         <div className="section-title">PB Progression</div>
         {progressSummary && (
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap', marginBottom: 'var(--space-5)', paddingBottom: 'var(--space-4)', borderBottom: '1px solid var(--border)' }}>
             <div>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Current PB</div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, color: 'var(--teal)', fontWeight: 700, marginTop: 2 }}>{progressSummary.currentPB}</div>
@@ -436,7 +414,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           </ResponsiveContainer>
         )}
         {progressionData.length > 0 && (
-          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
               <span style={{ width: 20, height: 2, background: 'var(--teal)', display: 'inline-block' }} />
               Best Lap
@@ -488,7 +466,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           </ResponsiveContainer>
         )}
         {filterTrack && varianceData.length > 0 && (
-          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>
               <span style={{ width: 20, height: 2, background: 'var(--teal)', display: 'inline-block' }} />
               Best
@@ -537,7 +515,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
                 width={40}
               />
               <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
-                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: 'var(--space-2) var(--space-4)' }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>{Math.round(payload[0].value as number)} {speedUnit}</div>
                 </div>
@@ -549,7 +527,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
       </div>
 
       {/* Consistency Trend */}
-      <div className="section-title" style={{ marginTop: 40 }}>Consistency Score Trend</div>
+      <div className="section-title" style={{ marginTop: 'var(--space-7)' }}>Consistency Score Trend</div>
       {!filterTrack ? (
         <div className="table-wrap">
           <div className="empty-state">
@@ -576,7 +554,7 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
                 <XAxis dataKey="date" {...DATE_AXIS_PROPS} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} />
                 <YAxis domain={[90, 100]} tick={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--gray-mid)' }} tickFormatter={v => `${v}%`} />
                 <Tooltip content={({ active, payload, label }) => active && payload && payload.length > 0 ? (
-                  <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '10px 14px' }}>
+                  <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: 'var(--space-2) var(--space-4)' }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', marginBottom: 6 }}>{label}</div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--teal)' }}>{(payload[0].value as number).toFixed(1)}%</div>
                   </div>
@@ -587,9 +565,6 @@ export default function Progress({ setPage }: { setPage?: (p: string) => void })
           </div>
         );
       })()}
-
-      {/* Lap Time Delta Tool */}
-      <LapTimeDeltaTool />
 
       {/* All-Time Personal Bests */}
       <AllTimePBsSection allTimePBs={allTimePBs} trackName={trackName} />
@@ -603,13 +578,13 @@ function AllTimePBsSection({
   allTimePBs,
   trackName,
 }: {
-  allTimePBs: { trackId: string; car: string; bestLap: string; date: string; sessions: number }[];
+  allTimePBs: TrackPB[];
   trackName: (id: string) => string;
 }) {
   const [open, setOpen] = useState(true);
 
   return (
-    <div style={{ marginTop: 40 }}>
+    <div style={{ marginTop: 'var(--space-7)' }}>
       <div
         className="section-title"
         style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}
@@ -655,58 +630,6 @@ function AllTimePBsSection({
           </div>
         )
       )}
-    </div>
-  );
-}
-
-function LapTimeDeltaTool() {
-  const [time1, setTime1] = useState('');
-  const [time2, setTime2] = useState('');
-  const result = lapTimeDelta(time1, time2);
-
-  return (
-    <div style={{ marginTop: 40 }}>
-      <div className="section-title">Lap Time Delta Tool</div>
-      <div className="card" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-          <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 1</label>
-            <LapTimeInput value={time1} onChange={setTime1} style={{ width: 140 }} />
-          </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--gray)', marginTop: 16 }}>vs</span>
-          <div>
-            <label style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Time 2</label>
-            <LapTimeInput value={time2} onChange={setTime2} style={{ width: 140 }} />
-          </div>
-        </div>
-        {result && (
-          <div style={{ display: 'flex', gap: 24, alignItems: 'baseline' }}>
-            <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Gap</span>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--teal)', marginTop: 4 }}>
-                {result.diffMs >= 1000 ? `${(result.diffMs / 1000).toFixed(3)}s` : `${result.diffMs}ms`}
-              </div>
-            </div>
-            <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Percentage</span>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--white)', marginTop: 4 }}>
-                {result.diffPercent.toFixed(2)}%
-              </div>
-            </div>
-            <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>Faster</span>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--white)', marginTop: 4 }}>
-                Time {result.faster}
-              </div>
-            </div>
-          </div>
-        )}
-        {!result && (time1 || time2) && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)' }}>
-            Enter both lap times in M:SS.SSS format to compare
-          </div>
-        )}
-      </div>
     </div>
   );
 }

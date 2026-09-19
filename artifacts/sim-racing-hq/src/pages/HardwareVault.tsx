@@ -98,7 +98,7 @@ function HardwareDetailModal({ profile, onClose }: { profile: HardwareRecord; on
               ))}
               {profile.notes && (
                 <tr>
-                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 14 }}>Notes</td>
+                  <td style={{ fontFamily: 'var(--font-display)', fontSize: 11, color: 'var(--gray-mid)', letterSpacing: '0.08em', textTransform: 'uppercase', verticalAlign: 'top', paddingTop: 'var(--space-4)' }}>Notes</td>
                   <td style={{ fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6 }}>{profile.notes}</td>
                 </tr>
               )}
@@ -298,7 +298,7 @@ export default function HardwareVault() {
             </div>
             <div className="modal-body">
               {saveError && (
-                <div style={{ background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)', color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 13, padding: '10px 14px', marginBottom: 16 }}>
+                <div style={{ background: 'rgba(232,0,45,0.12)', border: '1px solid rgba(232,0,45,0.4)', color: 'var(--red)', fontFamily: 'var(--font-body)', fontSize: 13, padding: 'var(--space-2) var(--space-4)', marginBottom: 'var(--space-4)' }}>
                   {saveError}
                 </div>
               )}

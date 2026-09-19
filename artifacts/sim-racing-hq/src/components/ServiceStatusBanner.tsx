@@ -28,6 +28,10 @@ function useBackendHealth(): boolean {
   const consecutiveFailures = useRef(0);
 
   useEffect(() => {
+    // Local dev servers aren't in the production API's CORS allowlist, so the
+    // health probe always fails there and would show a permanent false outage.
+    if (import.meta.env.DEV) return;
+
     let cancelled = false;
 
     async function check() {
@@ -125,11 +129,11 @@ function Banner({ borderColor, bg, label, children }: { borderColor: string; bg:
         zIndex: 1000,
         background: bg,
         borderBottom: `1px solid ${borderColor}`,
-        padding: '10px 20px',
+        padding: 'var(--space-2) var(--space-5)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 10,
+        gap: 'var(--space-2)',
         flexWrap: 'wrap',
         textAlign: 'center',
         backdropFilter: 'blur(8px)',

@@ -23,6 +23,29 @@ export interface CompanionSessionRequest {
   weather?: string;
   assists?: string;
   gameVersion?: string;
+  /**
+     * The game's raw team id for the car driven. Omitted when the companion never resolved the player's car, which is a different thing from a team id of 0 (Mercedes).
+     * @minimum 0
+     * @maximum 255
+     */
+  teamId?: number;
+  /**
+     * The telemetry header's game year (25 = F1 25).
+     * @minimum 20
+     * @maximum 99
+     */
+  gameYear?: number;
+  /**
+     * The telemetry output format selected in the game's settings, which is not the same as the game.
+     * @minimum 2000
+     * @maximum 2100
+     */
+  packetFormat?: number;
+  /**
+     * Car roster the session was driven in ("2024"/"2025"/"2026").
+     * @maxLength 16
+     */
+  contentEra?: string;
   platform?: string;
   inputDevice?: string;
   /** @maxItems 150 */

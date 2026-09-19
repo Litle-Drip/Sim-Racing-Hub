@@ -20,21 +20,38 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AddFriendRequest,
+  BadRequestResponse,
+  CarAliasList,
   CommunitySessionRecord,
   CommunitySetupRecord,
   CompanionApiKeyResponse,
   CompanionApiKeyStatus,
   CompanionSessionRequest,
   CreateHardwareRequest,
+  CreateLeagueRequest,
   CreateRivalChallengeRequest,
   CreateSessionRequest,
   CreateSetupRequest,
   EngineerUsageStatus,
   ErrorResponse,
+  ForbiddenResponse,
+  FriendList,
+  FriendRecord,
+  FriendSessionRecord,
   GetCommunitySessionsParams,
   GetCommunitySetupsParams,
+  GetLapTrace200,
+  GetLeagueActivityParams,
+  GetLeagueLeaderboardParams,
   HardwareRecord,
   HealthStatus,
+  JoinLeagueRequest,
+  LeagueActivity,
+  LeagueDetail,
+  LeagueLeaderboard,
+  LeagueMemberRecord,
+  LeagueRecord,
   LookupRivalChallengeUserParams,
   NotFoundResponse,
   RateSetupRequest,
@@ -51,6 +68,9 @@ import type {
   TrackNotesRecord,
   UnauthorizedResponse,
   UnlockEngineerUsageRequest,
+  UpdateLeagueMemberRoleRequest,
+  UpsertCarAliasRequest,
+  UpsertCarAliasResponse,
   UpsertTrackDifficultyRequest,
   UpsertTrackNotesRequest
 } from './api.schemas';
@@ -302,8 +322,8 @@ export const getGetSessionDetailUrl = (id: string,) => {
 }
 
 /**
- * GET /sessions omits lap telemetry traces to keep the list view fast and cheap; fetch this endpoint to load the full trace data for a single session (e.g. when opening the lap telemetry chart).
- * @summary Get one session, including full per-lap telemetry traces
+ * Like GET /sessions, this omits lap telemetry traces to stay fast and cheap — it's used for per-lap metadata (times, sectors) and to populate the lap comparison picker. Fetch GET /sessions/{id}/laps/{lapNumber}/trace for a specific lap's full trace data.
+ * @summary Get one session's per-lap metadata (no telemetry traces)
  */
 export const getSessionDetail = async (id: string, options?: RequestInit): Promise<SessionRecord> => {
 
@@ -350,7 +370,7 @@ export type GetSessionDetailQueryError = ErrorType<UnauthorizedResponse | NotFou
 
 
 /**
- * @summary Get one session, including full per-lap telemetry traces
+ * @summary Get one session's per-lap metadata (no telemetry traces)
  */
 
 export function useGetSessionDetail<TData = Awaited<ReturnType<typeof getSessionDetail>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
@@ -440,6 +460,89 @@ export const useDeleteSession = <TError = ErrorType<UnauthorizedResponse | NotFo
       > => {
       return useMutation(getDeleteSessionMutationOptions(options));
     }
+
+export const getGetLapTraceUrl = (id: string,
+    lapNumber: number,) => {
+
+
+
+
+  return `/api/sessions/${id}/laps/${lapNumber}/trace`
+}
+
+/**
+ * Fetches just the telemetry trace for a single lap, so viewing or comparing a lap's telemetry never has to load every other lap's trace in the session.
+ * @summary Get one lap's full telemetry trace
+ */
+export const getLapTrace = async (id: string,
+    lapNumber: number, options?: RequestInit): Promise<GetLapTrace200> => {
+
+  return customFetch<GetLapTrace200>(getGetLapTraceUrl(id,lapNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLapTraceQueryKey = (id: string,
+    lapNumber: number,) => {
+    return [
+    `/api/sessions/${id}/laps/${lapNumber}/trace`
+    ] as const;
+    }
+
+
+export const getGetLapTraceQueryOptions = <TData = Awaited<ReturnType<typeof getLapTrace>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string,
+    lapNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLapTrace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLapTraceQueryKey(id,lapNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLapTrace>>> = ({ signal }) => getLapTrace(id,lapNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id && lapNumber), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLapTrace>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLapTraceQueryResult = NonNullable<Awaited<ReturnType<typeof getLapTrace>>>
+export type GetLapTraceQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get one lap's full telemetry trace
+ */
+
+export function useGetLapTrace<TData = Awaited<ReturnType<typeof getLapTrace>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string,
+    lapNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLapTrace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLapTraceQueryOptions(id,lapNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getShareSessionUrl = (id: string,) => {
 
@@ -2217,6 +2320,76 @@ export const useSubmitRivalChallengeAttempt = <TError = ErrorType<NotFoundRespon
       return useMutation(getSubmitRivalChallengeAttemptMutationOptions(options));
     }
 
+export const getMarkRivalChallengeSeenUrl = (id: string,) => {
+
+
+
+
+  return `/api/rival-challenges/${id}/seen`
+}
+
+/**
+ * @summary Acknowledge the result of a completed rival challenge
+ */
+export const markRivalChallengeSeen = async (id: string, options?: RequestInit): Promise<RivalChallengeRecord> => {
+
+  return customFetch<RivalChallengeRecord>(getMarkRivalChallengeSeenUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getMarkRivalChallengeSeenMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markRivalChallengeSeen>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markRivalChallengeSeen>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['markRivalChallengeSeen'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markRivalChallengeSeen>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  markRivalChallengeSeen(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkRivalChallengeSeenMutationResult = NonNullable<Awaited<ReturnType<typeof markRivalChallengeSeen>>>
+
+    export type MarkRivalChallengeSeenMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Acknowledge the result of a completed rival challenge
+ */
+export const useMarkRivalChallengeSeen = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markRivalChallengeSeen>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markRivalChallengeSeen>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getMarkRivalChallengeSeenMutationOptions(options));
+    }
+
 export const getGetEngineerUsageUrl = () => {
 
 
@@ -2585,4 +2758,1354 @@ export const useUpsertTrackNotes = <TError = ErrorType<UnauthorizedResponse>,
       > => {
       return useMutation(getUpsertTrackNotesMutationOptions(options));
     }
+
+export const getGetCarAliasesUrl = () => {
+
+
+
+
+  return `/api/car-aliases`
+}
+
+/**
+ * @summary Names the driver has given to cars the companion could not identify
+ */
+export const getCarAliases = async ( options?: RequestInit): Promise<CarAliasList> => {
+
+  return customFetch<CarAliasList>(getGetCarAliasesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCarAliasesQueryKey = () => {
+    return [
+    `/api/car-aliases`
+    ] as const;
+    }
+
+
+export const getGetCarAliasesQueryOptions = <TData = Awaited<ReturnType<typeof getCarAliases>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCarAliases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCarAliasesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCarAliases>>> = ({ signal }) => getCarAliases({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCarAliases>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCarAliasesQueryResult = NonNullable<Awaited<ReturnType<typeof getCarAliases>>>
+export type GetCarAliasesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Names the driver has given to cars the companion could not identify
+ */
+
+export function useGetCarAliases<TData = Awaited<ReturnType<typeof getCarAliases>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCarAliases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCarAliasesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpsertCarAliasUrl = (teamId: number,) => {
+
+
+
+
+  return `/api/car-aliases/${teamId}`
+}
+
+/**
+ * Saves the name against the team id and applies it to every session the driver has already logged with that car, so correcting a label fixes the history rather than only what is captured from here on.
+ * @summary Name a car by its raw team id
+ */
+export const upsertCarAlias = async (teamId: number,
+    upsertCarAliasRequest: UpsertCarAliasRequest, options?: RequestInit): Promise<UpsertCarAliasResponse> => {
+
+  return customFetch<UpsertCarAliasResponse>(getUpsertCarAliasUrl(teamId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      upsertCarAliasRequest,)
+  }
+);}
+
+
+
+
+export const getUpsertCarAliasMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCarAlias>>, TError,{teamId: number;data: BodyType<UpsertCarAliasRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertCarAlias>>, TError,{teamId: number;data: BodyType<UpsertCarAliasRequest>}, TContext> => {
+
+const mutationKey = ['upsertCarAlias'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertCarAlias>>, {teamId: number;data: BodyType<UpsertCarAliasRequest>}> = (props) => {
+          const {teamId,data} = props ?? {};
+
+          return  upsertCarAlias(teamId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertCarAliasMutationResult = NonNullable<Awaited<ReturnType<typeof upsertCarAlias>>>
+    export type UpsertCarAliasMutationBody = BodyType<UpsertCarAliasRequest>
+    export type UpsertCarAliasMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Name a car by its raw team id
+ */
+export const useUpsertCarAlias = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCarAlias>>, TError,{teamId: number;data: BodyType<UpsertCarAliasRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertCarAlias>>,
+        TError,
+        {teamId: number;data: BodyType<UpsertCarAliasRequest>},
+        TContext
+      > => {
+      return useMutation(getUpsertCarAliasMutationOptions(options));
+    }
+
+export const getDeleteCarAliasUrl = (teamId: number,) => {
+
+
+
+
+  return `/api/car-aliases/${teamId}`
+}
+
+/**
+ * Drops the alias. Sessions keep the name already written onto them — removing an alias undoes the rule, not the history.
+ * @summary Remove a car name
+ */
+export const deleteCarAlias = async (teamId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCarAliasUrl(teamId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCarAliasMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCarAlias>>, TError,{teamId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCarAlias>>, TError,{teamId: number}, TContext> => {
+
+const mutationKey = ['deleteCarAlias'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCarAlias>>, {teamId: number}> = (props) => {
+          const {teamId} = props ?? {};
+
+          return  deleteCarAlias(teamId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCarAliasMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCarAlias>>>
+
+    export type DeleteCarAliasMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Remove a car name
+ */
+export const useDeleteCarAlias = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCarAlias>>, TError,{teamId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCarAlias>>,
+        TError,
+        {teamId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCarAliasMutationOptions(options));
+    }
+
+export const getGetFriendsUrl = () => {
+
+
+
+
+  return `/api/friends`
+}
+
+/**
+ * @summary Get the current user's friends and pending friend requests
+ */
+export const getFriends = async ( options?: RequestInit): Promise<FriendList> => {
+
+  return customFetch<FriendList>(getGetFriendsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFriendsQueryKey = () => {
+    return [
+    `/api/friends`
+    ] as const;
+    }
+
+
+export const getGetFriendsQueryOptions = <TData = Awaited<ReturnType<typeof getFriends>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFriends>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFriendsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFriends>>> = ({ signal }) => getFriends({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFriends>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFriendsQueryResult = NonNullable<Awaited<ReturnType<typeof getFriends>>>
+export type GetFriendsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get the current user's friends and pending friend requests
+ */
+
+export function useGetFriends<TData = Awaited<ReturnType<typeof getFriends>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFriends>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFriendsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAddFriendUrl = () => {
+
+
+
+
+  return `/api/friends`
+}
+
+/**
+ * @summary Send a friend request by username
+ */
+export const addFriend = async (addFriendRequest: AddFriendRequest, options?: RequestInit): Promise<FriendRecord> => {
+
+  return customFetch<FriendRecord>(getAddFriendUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      addFriendRequest,)
+  }
+);}
+
+
+
+
+export const getAddFriendMutationOptions = <TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addFriend>>, TError,{data: BodyType<AddFriendRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addFriend>>, TError,{data: BodyType<AddFriendRequest>}, TContext> => {
+
+const mutationKey = ['addFriend'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addFriend>>, {data: BodyType<AddFriendRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  addFriend(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddFriendMutationResult = NonNullable<Awaited<ReturnType<typeof addFriend>>>
+    export type AddFriendMutationBody = BodyType<AddFriendRequest>
+    export type AddFriendMutationError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Send a friend request by username
+ */
+export const useAddFriend = <TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addFriend>>, TError,{data: BodyType<AddFriendRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addFriend>>,
+        TError,
+        {data: BodyType<AddFriendRequest>},
+        TContext
+      > => {
+      return useMutation(getAddFriendMutationOptions(options));
+    }
+
+export const getGetFriendSessionsUrl = () => {
+
+
+
+
+  return `/api/friends/sessions`
+}
+
+/**
+ * @summary Recent shared sessions from the current user's friends
+ */
+export const getFriendSessions = async ( options?: RequestInit): Promise<FriendSessionRecord[]> => {
+
+  return customFetch<FriendSessionRecord[]>(getGetFriendSessionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFriendSessionsQueryKey = () => {
+    return [
+    `/api/friends/sessions`
+    ] as const;
+    }
+
+
+export const getGetFriendSessionsQueryOptions = <TData = Awaited<ReturnType<typeof getFriendSessions>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFriendSessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFriendSessionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFriendSessions>>> = ({ signal }) => getFriendSessions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFriendSessions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFriendSessionsQueryResult = NonNullable<Awaited<ReturnType<typeof getFriendSessions>>>
+export type GetFriendSessionsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Recent shared sessions from the current user's friends
+ */
+
+export function useGetFriendSessions<TData = Awaited<ReturnType<typeof getFriendSessions>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFriendSessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFriendSessionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAcceptFriendRequestUrl = (id: string,) => {
+
+
+
+
+  return `/api/friends/${id}/accept`
+}
+
+/**
+ * @summary Accept a friend request sent to you
+ */
+export const acceptFriendRequest = async (id: string, options?: RequestInit): Promise<FriendRecord> => {
+
+  return customFetch<FriendRecord>(getAcceptFriendRequestUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getAcceptFriendRequestMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptFriendRequest>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptFriendRequest>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['acceptFriendRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptFriendRequest>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  acceptFriendRequest(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptFriendRequestMutationResult = NonNullable<Awaited<ReturnType<typeof acceptFriendRequest>>>
+
+    export type AcceptFriendRequestMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Accept a friend request sent to you
+ */
+export const useAcceptFriendRequest = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptFriendRequest>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acceptFriendRequest>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAcceptFriendRequestMutationOptions(options));
+    }
+
+export const getRemoveFriendUrl = (id: string,) => {
+
+
+
+
+  return `/api/friends/${id}`
+}
+
+/**
+ * @summary Remove a friend, decline a request, or cancel one you sent
+ */
+export const removeFriend = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveFriendUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveFriendMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeFriend>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeFriend>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['removeFriend'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeFriend>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  removeFriend(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveFriendMutationResult = NonNullable<Awaited<ReturnType<typeof removeFriend>>>
+
+    export type RemoveFriendMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Remove a friend, decline a request, or cancel one you sent
+ */
+export const useRemoveFriend = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeFriend>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeFriend>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRemoveFriendMutationOptions(options));
+    }
+
+export const getGetLeaguesUrl = () => {
+
+
+
+
+  return `/api/leagues`
+}
+
+/**
+ * @summary Leagues the current user belongs to
+ */
+export const getLeagues = async ( options?: RequestInit): Promise<LeagueRecord[]> => {
+
+  return customFetch<LeagueRecord[]>(getGetLeaguesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeaguesQueryKey = () => {
+    return [
+    `/api/leagues`
+    ] as const;
+    }
+
+
+export const getGetLeaguesQueryOptions = <TData = Awaited<ReturnType<typeof getLeagues>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagues>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeaguesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeagues>>> = ({ signal }) => getLeagues({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeagues>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeaguesQueryResult = NonNullable<Awaited<ReturnType<typeof getLeagues>>>
+export type GetLeaguesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Leagues the current user belongs to
+ */
+
+export function useGetLeagues<TData = Awaited<ReturnType<typeof getLeagues>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagues>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeaguesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateLeagueUrl = () => {
+
+
+
+
+  return `/api/leagues`
+}
+
+/**
+ * @summary Create a league — the creator becomes its owner
+ */
+export const createLeague = async (createLeagueRequest: CreateLeagueRequest, options?: RequestInit): Promise<LeagueRecord> => {
+
+  return customFetch<LeagueRecord>(getCreateLeagueUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createLeagueRequest,)
+  }
+);}
+
+
+
+
+export const getCreateLeagueMutationOptions = <TError = ErrorType<ErrorResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLeague>>, TError,{data: BodyType<CreateLeagueRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLeague>>, TError,{data: BodyType<CreateLeagueRequest>}, TContext> => {
+
+const mutationKey = ['createLeague'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLeague>>, {data: BodyType<CreateLeagueRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLeague(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLeagueMutationResult = NonNullable<Awaited<ReturnType<typeof createLeague>>>
+    export type CreateLeagueMutationBody = BodyType<CreateLeagueRequest>
+    export type CreateLeagueMutationError = ErrorType<ErrorResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Create a league — the creator becomes its owner
+ */
+export const useCreateLeague = <TError = ErrorType<ErrorResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLeague>>, TError,{data: BodyType<CreateLeagueRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLeague>>,
+        TError,
+        {data: BodyType<CreateLeagueRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateLeagueMutationOptions(options));
+    }
+
+export const getJoinLeagueUrl = () => {
+
+
+
+
+  return `/api/leagues/join`
+}
+
+/**
+ * @summary Join a league with its invite code
+ */
+export const joinLeague = async (joinLeagueRequest: JoinLeagueRequest, options?: RequestInit): Promise<LeagueRecord> => {
+
+  return customFetch<LeagueRecord>(getJoinLeagueUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      joinLeagueRequest,)
+  }
+);}
+
+
+
+
+export const getJoinLeagueMutationOptions = <TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinLeague>>, TError,{data: BodyType<JoinLeagueRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof joinLeague>>, TError,{data: BodyType<JoinLeagueRequest>}, TContext> => {
+
+const mutationKey = ['joinLeague'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof joinLeague>>, {data: BodyType<JoinLeagueRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  joinLeague(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type JoinLeagueMutationResult = NonNullable<Awaited<ReturnType<typeof joinLeague>>>
+    export type JoinLeagueMutationBody = BodyType<JoinLeagueRequest>
+    export type JoinLeagueMutationError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Join a league with its invite code
+ */
+export const useJoinLeague = <TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinLeague>>, TError,{data: BodyType<JoinLeagueRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof joinLeague>>,
+        TError,
+        {data: BodyType<JoinLeagueRequest>},
+        TContext
+      > => {
+      return useMutation(getJoinLeagueMutationOptions(options));
+    }
+
+export const getGetLeagueUrl = (id: string,) => {
+
+
+
+
+  return `/api/leagues/${id}`
+}
+
+/**
+ * @summary One league and its roster
+ */
+export const getLeague = async (id: string, options?: RequestInit): Promise<LeagueDetail> => {
+
+  return customFetch<LeagueDetail>(getGetLeagueUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeagueQueryKey = (id: string,) => {
+    return [
+    `/api/leagues/${id}`
+    ] as const;
+    }
+
+
+export const getGetLeagueQueryOptions = <TData = Awaited<ReturnType<typeof getLeague>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeague>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeagueQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeague>>> = ({ signal }) => getLeague(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeague>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeagueQueryResult = NonNullable<Awaited<ReturnType<typeof getLeague>>>
+export type GetLeagueQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary One league and its roster
+ */
+
+export function useGetLeague<TData = Awaited<ReturnType<typeof getLeague>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeague>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeagueQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDeleteLeagueUrl = (id: string,) => {
+
+
+
+
+  return `/api/leagues/${id}`
+}
+
+/**
+ * @summary Delete a league (owner only)
+ */
+export const deleteLeague = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteLeagueUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteLeagueMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLeague>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLeague>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteLeague'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLeague>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteLeague(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLeagueMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLeague>>>
+
+    export type DeleteLeagueMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Delete a league (owner only)
+ */
+export const useDeleteLeague = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLeague>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLeague>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteLeagueMutationOptions(options));
+    }
+
+export const getRegenerateLeagueJoinCodeUrl = (id: string,) => {
+
+
+
+
+  return `/api/leagues/${id}/join-code`
+}
+
+/**
+ * @summary Issue a fresh invite code, retiring the old one (staff only)
+ */
+export const regenerateLeagueJoinCode = async (id: string, options?: RequestInit): Promise<LeagueRecord> => {
+
+  return customFetch<LeagueRecord>(getRegenerateLeagueJoinCodeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRegenerateLeagueJoinCodeMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateLeagueJoinCode>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof regenerateLeagueJoinCode>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['regenerateLeagueJoinCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateLeagueJoinCode>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  regenerateLeagueJoinCode(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegenerateLeagueJoinCodeMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateLeagueJoinCode>>>
+
+    export type RegenerateLeagueJoinCodeMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Issue a fresh invite code, retiring the old one (staff only)
+ */
+export const useRegenerateLeagueJoinCode = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateLeagueJoinCode>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof regenerateLeagueJoinCode>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRegenerateLeagueJoinCodeMutationOptions(options));
+    }
+
+export const getUpdateLeagueMemberRoleUrl = (id: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/leagues/${id}/members/${userId}`
+}
+
+/**
+ * @summary Promote or demote a member (owner only)
+ */
+export const updateLeagueMemberRole = async (id: string,
+    userId: string,
+    updateLeagueMemberRoleRequest: UpdateLeagueMemberRoleRequest, options?: RequestInit): Promise<LeagueMemberRecord> => {
+
+  return customFetch<LeagueMemberRecord>(getUpdateLeagueMemberRoleUrl(id,userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateLeagueMemberRoleRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateLeagueMemberRoleMutationOptions = <TError = ErrorType<ErrorResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLeagueMemberRole>>, TError,{id: string;userId: string;data: BodyType<UpdateLeagueMemberRoleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLeagueMemberRole>>, TError,{id: string;userId: string;data: BodyType<UpdateLeagueMemberRoleRequest>}, TContext> => {
+
+const mutationKey = ['updateLeagueMemberRole'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLeagueMemberRole>>, {id: string;userId: string;data: BodyType<UpdateLeagueMemberRoleRequest>}> = (props) => {
+          const {id,userId,data} = props ?? {};
+
+          return  updateLeagueMemberRole(id,userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLeagueMemberRoleMutationResult = NonNullable<Awaited<ReturnType<typeof updateLeagueMemberRole>>>
+    export type UpdateLeagueMemberRoleMutationBody = BodyType<UpdateLeagueMemberRoleRequest>
+    export type UpdateLeagueMemberRoleMutationError = ErrorType<ErrorResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Promote or demote a member (owner only)
+ */
+export const useUpdateLeagueMemberRole = <TError = ErrorType<ErrorResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLeagueMemberRole>>, TError,{id: string;userId: string;data: BodyType<UpdateLeagueMemberRoleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLeagueMemberRole>>,
+        TError,
+        {id: string;userId: string;data: BodyType<UpdateLeagueMemberRoleRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateLeagueMemberRoleMutationOptions(options));
+    }
+
+export const getRemoveLeagueMemberUrl = (id: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/leagues/${id}/members/${userId}`
+}
+
+/**
+ * @summary Remove a member, or leave the league yourself
+ */
+export const removeLeagueMember = async (id: string,
+    userId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveLeagueMemberUrl(id,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveLeagueMemberMutationOptions = <TError = ErrorType<ErrorResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeLeagueMember>>, TError,{id: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeLeagueMember>>, TError,{id: string;userId: string}, TContext> => {
+
+const mutationKey = ['removeLeagueMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeLeagueMember>>, {id: string;userId: string}> = (props) => {
+          const {id,userId} = props ?? {};
+
+          return  removeLeagueMember(id,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveLeagueMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeLeagueMember>>>
+
+    export type RemoveLeagueMemberMutationError = ErrorType<ErrorResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Remove a member, or leave the league yourself
+ */
+export const useRemoveLeagueMember = <TError = ErrorType<ErrorResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeLeagueMember>>, TError,{id: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeLeagueMember>>,
+        TError,
+        {id: string;userId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveLeagueMemberMutationOptions(options));
+    }
+
+export const getGetLeagueLeaderboardUrl = (id: string,
+    params?: GetLeagueLeaderboardParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/leagues/${id}/leaderboard?${stringifiedParams}` : `/api/leagues/${id}/leaderboard`
+}
+
+/**
+ * Best lap per member on a track, with the gap to the leader and who has not set a time yet. Staff only — this is the view league organisers get that members do not.
+
+ * @summary League leaderboard for one track (staff only)
+ */
+export const getLeagueLeaderboard = async (id: string,
+    params?: GetLeagueLeaderboardParams, options?: RequestInit): Promise<LeagueLeaderboard> => {
+
+  return customFetch<LeagueLeaderboard>(getGetLeagueLeaderboardUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeagueLeaderboardQueryKey = (id: string,
+    params?: GetLeagueLeaderboardParams,) => {
+    return [
+    `/api/leagues/${id}/leaderboard`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLeagueLeaderboardQueryOptions = <TData = Awaited<ReturnType<typeof getLeagueLeaderboard>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string,
+    params?: GetLeagueLeaderboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagueLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeagueLeaderboardQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeagueLeaderboard>>> = ({ signal }) => getLeagueLeaderboard(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeagueLeaderboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeagueLeaderboardQueryResult = NonNullable<Awaited<ReturnType<typeof getLeagueLeaderboard>>>
+export type GetLeagueLeaderboardQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary League leaderboard for one track (staff only)
+ */
+
+export function useGetLeagueLeaderboard<TData = Awaited<ReturnType<typeof getLeagueLeaderboard>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string,
+    params?: GetLeagueLeaderboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagueLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeagueLeaderboardQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetLeagueActivityUrl = (id: string,
+    params?: GetLeagueActivityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/leagues/${id}/activity?${stringifiedParams}` : `/api/leagues/${id}/activity`
+}
+
+/**
+ * Per-driver practice activity over a rolling window — sessions, laps, seat time, tracks driven and when they were last on — plus league totals and a daily session count. Staff only.
+
+ * @summary Who is actually practising in this league (staff only)
+ */
+export const getLeagueActivity = async (id: string,
+    params?: GetLeagueActivityParams, options?: RequestInit): Promise<LeagueActivity> => {
+
+  return customFetch<LeagueActivity>(getGetLeagueActivityUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeagueActivityQueryKey = (id: string,
+    params?: GetLeagueActivityParams,) => {
+    return [
+    `/api/leagues/${id}/activity`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLeagueActivityQueryOptions = <TData = Awaited<ReturnType<typeof getLeagueActivity>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string,
+    params?: GetLeagueActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagueActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeagueActivityQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeagueActivity>>> = ({ signal }) => getLeagueActivity(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeagueActivity>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeagueActivityQueryResult = NonNullable<Awaited<ReturnType<typeof getLeagueActivity>>>
+export type GetLeagueActivityQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Who is actually practising in this league (staff only)
+ */
+
+export function useGetLeagueActivity<TData = Awaited<ReturnType<typeof getLeagueActivity>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string,
+    params?: GetLeagueActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagueActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeagueActivityQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

@@ -56,7 +56,7 @@ export interface CompanionAPI {
   verifyApiKey(key: string): Promise<boolean>;
   getLocalIPs(): Promise<string[]>;
   onStatusUpdate(cb: (status: CompanionStatus) => void): () => void;
-  openF1SimHub(): Promise<void>;
+  openF1SimHub(path?: string): Promise<void>;
   openLogFile(): Promise<void>;
   openReleasesPage(): Promise<void>;
   forceFlush(): Promise<void>;
@@ -82,7 +82,7 @@ const api: CompanionAPI = {
     ipcRenderer.on("status-update", handler);
     return () => ipcRenderer.removeListener("status-update", handler);
   },
-  openF1SimHub: () => ipcRenderer.invoke("open-f1simhub"),
+  openF1SimHub: (path) => ipcRenderer.invoke("open-f1simhub", path),
   openLogFile: () => ipcRenderer.invoke("open-log-file"),
   openReleasesPage: () => ipcRenderer.invoke("open-releases-page"),
   forceFlush: () => ipcRenderer.invoke("force-flush"),

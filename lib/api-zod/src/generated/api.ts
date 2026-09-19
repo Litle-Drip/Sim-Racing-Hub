@@ -48,7 +48,12 @@ export const GetSessionsResponseItem = zod.object({
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string().max(getSessionsResponseNotesMax),
-  "isPB": zod.boolean(),
+  "isPB": zod.boolean().describe('This session holds the current personal best for its circuit. At most one session per circuit carries it, and it moves to the new session when a faster lap is logged. Use it for PB badges and \"your best here\" figures.'),
+  "wasPB": zod.boolean().optional().describe('This session beat everything logged before it at that circuit at the time it was logged. Never moves once set. Use it for \"personal bests set\" counters and progression charts, which are asking how often the driver improved, not which lap currently stands.'),
+  "teamId": zod.number().nullish().describe('The game\'s raw team id for the car driven. Null for sessions logged by hand or captured before it was recorded. Kept so a car label can be corrected later from the number it came from.'),
+  "gameYear": zod.number().nullish().describe('The telemetry header\'s game year (25 = F1 25) — which game was running. Not the same as packetFormat.'),
+  "packetFormat": zod.number().nullish().describe('The telemetry output format selected in the game\'s own settings (2024\/2025\/2026). A driver on F1 25 can and often does emit 2024-format packets, so this says which struct layout was parsed and nothing about which game they own.'),
+  "contentEra": zod.string().nullish().describe('Which car roster the session was driven in — \"2025\" for the base F1 25 grid, \"2026\" for the 2026 content pack\'s grid, \"2024\" for the retro liveries. Null when the car\'s team id is not in a confirmed block. Lap times are only comparable within one era.'),
   "penalty": zod.string().nullish(),
   "gameVersion": zod.string().nullish(),
   "platform": zod.string().nullish(),
@@ -325,8 +330,8 @@ export const CreateSessionBody = zod.object({
 
 
 /**
- * GET /sessions omits lap telemetry traces to keep the list view fast and cheap; fetch this endpoint to load the full trace data for a single session (e.g. when opening the lap telemetry chart).
- * @summary Get one session, including full per-lap telemetry traces
+ * Like GET /sessions, this omits lap telemetry traces to stay fast and cheap — it's used for per-lap metadata (times, sectors) and to populate the lap comparison picker. Fetch GET /sessions/{id}/laps/{lapNumber}/trace for a specific lap's full trace data.
+ * @summary Get one session's per-lap metadata (no telemetry traces)
  */
 export const GetSessionDetailParams = zod.object({
   "id": zod.coerce.string()
@@ -360,7 +365,12 @@ export const GetSessionDetailResponse = zod.object({
   "assists": zod.string(),
   "rating": zod.number(),
   "notes": zod.string().max(getSessionDetailResponseNotesMax),
-  "isPB": zod.boolean(),
+  "isPB": zod.boolean().describe('This session holds the current personal best for its circuit. At most one session per circuit carries it, and it moves to the new session when a faster lap is logged. Use it for PB badges and \"your best here\" figures.'),
+  "wasPB": zod.boolean().optional().describe('This session beat everything logged before it at that circuit at the time it was logged. Never moves once set. Use it for \"personal bests set\" counters and progression charts, which are asking how often the driver improved, not which lap currently stands.'),
+  "teamId": zod.number().nullish().describe('The game\'s raw team id for the car driven. Null for sessions logged by hand or captured before it was recorded. Kept so a car label can be corrected later from the number it came from.'),
+  "gameYear": zod.number().nullish().describe('The telemetry header\'s game year (25 = F1 25) — which game was running. Not the same as packetFormat.'),
+  "packetFormat": zod.number().nullish().describe('The telemetry output format selected in the game\'s own settings (2024\/2025\/2026). A driver on F1 25 can and often does emit 2024-format packets, so this says which struct layout was parsed and nothing about which game they own.'),
+  "contentEra": zod.string().nullish().describe('Which car roster the session was driven in — \"2025\" for the base F1 25 grid, \"2026\" for the 2026 content pack\'s grid, \"2024\" for the retro liveries. Null when the car\'s team id is not in a confirmed block. Lap times are only comparable within one era.'),
   "penalty": zod.string().nullish(),
   "gameVersion": zod.string().nullish(),
   "platform": zod.string().nullish(),
@@ -540,6 +550,29 @@ export const DeleteSessionParams = zod.object({
 
 
 /**
+ * Fetches just the telemetry trace for a single lap, so viewing or comparing a lap's telemetry never has to load every other lap's trace in the session.
+ * @summary Get one lap's full telemetry trace
+ */
+export const GetLapTraceParams = zod.object({
+  "id": zod.coerce.string(),
+  "lapNumber": zod.coerce.number()
+})
+
+export const GetLapTraceResponse = zod.object({
+  "trace": zod.array(zod.object({
+  "d": zod.number(),
+  "speed": zod.number(),
+  "throttle": zod.number(),
+  "brake": zod.number(),
+  "steer": zod.number(),
+  "gear": zod.number().optional(),
+  "rpm": zod.number().optional(),
+  "drs": zod.number().optional()
+}))
+})
+
+
+/**
  * @summary Toggle public sharing on a session
  */
 export const ShareSessionParams = zod.object({
@@ -586,6 +619,12 @@ export const GetSetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
+  "frontCamber": zod.string().optional(),
+  "rearCamber": zod.string().optional(),
+  "frontToe": zod.string().optional(),
+  "rearToe": zod.string().optional(),
+  "frontTyrePressure": zod.string().optional(),
+  "rearTyrePressure": zod.string().optional(),
   "notes": zod.string().max(getSetupsResponseNotesMax),
   "isPublic": zod.boolean().optional(),
   "sharedAt": zod.string().nullish(),
@@ -624,6 +663,12 @@ export const CreateSetupBody = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
+  "frontCamber": zod.string().optional(),
+  "rearCamber": zod.string().optional(),
+  "frontToe": zod.string().optional(),
+  "rearToe": zod.string().optional(),
+  "frontTyrePressure": zod.string().optional(),
+  "rearTyrePressure": zod.string().optional(),
   "notes": zod.string().max(createSetupBodyNotesMax),
   "gameVersion": zod.string().optional()
 })
@@ -721,6 +766,12 @@ export const GetCommunitySetupsResponseItem = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
+  "frontCamber": zod.string().optional(),
+  "rearCamber": zod.string().optional(),
+  "frontToe": zod.string().optional(),
+  "rearToe": zod.string().optional(),
+  "frontTyrePressure": zod.string().optional(),
+  "rearTyrePressure": zod.string().optional(),
   "notes": zod.string().max(getCommunitySetupsResponseNotesMax),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
@@ -766,6 +817,12 @@ export const GetCommunitySetupResponse = zod.object({
   "brakePressure": zod.string(),
   "onThrottle": zod.string(),
   "offThrottle": zod.string(),
+  "frontCamber": zod.string().optional(),
+  "rearCamber": zod.string().optional(),
+  "frontToe": zod.string().optional(),
+  "rearToe": zod.string().optional(),
+  "frontTyrePressure": zod.string().optional(),
+  "rearTyrePressure": zod.string().optional(),
   "notes": zod.string().max(getCommunitySetupResponseNotesMax),
   "authorName": zod.string(),
   "isOwn": zod.boolean(),
@@ -926,6 +983,17 @@ export const GenerateCompanionApiKeyResponse = zod.object({
 /**
  * @summary Upload a session from the companion app (API key auth)
  */
+export const uploadCompanionSessionBodyTeamIdMin = 0;
+export const uploadCompanionSessionBodyTeamIdMax = 255;
+
+export const uploadCompanionSessionBodyGameYearMin = 20;
+export const uploadCompanionSessionBodyGameYearMax = 99;
+
+export const uploadCompanionSessionBodyPacketFormatMin = 2000;
+export const uploadCompanionSessionBodyPacketFormatMax = 2100;
+
+export const uploadCompanionSessionBodyContentEraMax = 16;
+
 export const uploadCompanionSessionBodyLapsItemTraceMax = 3500;
 
 export const uploadCompanionSessionBodyLapsMax = 150;
@@ -951,6 +1019,10 @@ export const UploadCompanionSessionBody = zod.object({
   "weather": zod.string().optional(),
   "assists": zod.string().optional(),
   "gameVersion": zod.string().optional(),
+  "teamId": zod.coerce.number().min(uploadCompanionSessionBodyTeamIdMin).max(uploadCompanionSessionBodyTeamIdMax).optional().describe('The game\'s raw team id for the car driven. Omitted when the companion never resolved the player\'s car, which is a different thing from a team id of 0 (Mercedes).'),
+  "gameYear": zod.coerce.number().min(uploadCompanionSessionBodyGameYearMin).max(uploadCompanionSessionBodyGameYearMax).optional().describe('The telemetry header\'s game year (25 = F1 25).'),
+  "packetFormat": zod.coerce.number().min(uploadCompanionSessionBodyPacketFormatMin).max(uploadCompanionSessionBodyPacketFormatMax).optional().describe('The telemetry output format selected in the game\'s settings, which is not the same as the game.'),
+  "contentEra": zod.string().max(uploadCompanionSessionBodyContentEraMax).optional().describe('Car roster the session was driven in (\"2024\"\/\"2025\"\/\"2026\").'),
   "platform": zod.string().optional(),
   "inputDevice": zod.string().optional(),
   "laps": zod.array(zod.object({
@@ -1168,7 +1240,8 @@ export const GetRivalChallengesResponseItem = zod.object({
   "s3": zod.string(),
   "raceTimeSeconds": zod.number().nullish()
 }).nullish(),
-  "winnerUserId": zod.string().nullish()
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
 })
 export const GetRivalChallengesResponse = zod.array(GetRivalChallengesResponseItem)
 
@@ -1264,7 +1337,67 @@ export const SubmitRivalChallengeAttemptResponse = zod.object({
   "s3": zod.string(),
   "raceTimeSeconds": zod.number().nullish()
 }).nullish(),
-  "winnerUserId": zod.string().nullish()
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
+})
+
+
+/**
+ * @summary Acknowledge the result of a completed rival challenge
+ */
+export const MarkRivalChallengeSeenParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const markRivalChallengeSeenResponseIdMax = 200;
+
+export const markRivalChallengeSeenResponseCreatorSessionIdMax = 200;
+
+export const markRivalChallengeSeenResponseOpponentSessionOneIdMax = 200;
+
+
+
+export const MarkRivalChallengeSeenResponse = zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseIdMax),
+  "status": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "lapCount": zod.number(),
+  "message": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "creator": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "opponent": zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "isMe": zod.boolean()
+}),
+  "creatorSession": zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseCreatorSessionIdMax),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}),
+  "opponentSession": zod.object({
+  "id": zod.string().max(markRivalChallengeSeenResponseOpponentSessionOneIdMax),
+  "date": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "s1": zod.string(),
+  "s2": zod.string(),
+  "s3": zod.string(),
+  "raceTimeSeconds": zod.number().nullish()
+}).nullish(),
+  "winnerUserId": zod.string().nullish(),
+  "resultSeen": zod.boolean().describe('Whether the requesting driver has acknowledged the result. Only meaningful once status is completed — false is what keeps the \"you won \/ you lost\" notification up.\n')
 })
 
 
@@ -1385,6 +1518,414 @@ export const UpsertTrackNotesResponse = zod.object({
   "lineNotes": zod.string(),
   "myNotes": zod.string()
 })).max(upsertTrackNotesResponseCornersMax)
+})
+
+
+/**
+ * @summary Names the driver has given to cars the companion could not identify
+ */
+export const GetCarAliasesResponse = zod.object({
+  "aliases": zod.array(zod.object({
+  "teamId": zod.number(),
+  "label": zod.string()
+})),
+  "unidentified": zod.array(zod.object({
+  "teamId": zod.number(),
+  "car": zod.string().describe('The label currently shown for it, e.g. \"Unknown car (#129)\".'),
+  "sessions": zod.number().describe('How many of the driver\'s sessions were logged with this car.'),
+  "lastSeen": zod.string().describe('Date of the most recent session logged with it.')
+}).describe('A car in the driver\'s logged sessions that the companion could not put a name to — either a team id no lookup table knows, or one the game itself only described as generic. Offered to the driver to name.'))
+})
+
+
+/**
+ * Saves the name against the team id and applies it to every session the driver has already logged with that car, so correcting a label fixes the history rather than only what is captured from here on.
+ * @summary Name a car by its raw team id
+ */
+export const UpsertCarAliasParams = zod.object({
+  "teamId": zod.coerce.number()
+})
+
+export const upsertCarAliasBodyLabelMax = 60;
+
+
+
+export const UpsertCarAliasBody = zod.object({
+  "label": zod.string().min(1).max(upsertCarAliasBodyLabelMax)
+})
+
+export const UpsertCarAliasResponse = zod.object({
+  "teamId": zod.number(),
+  "label": zod.string(),
+  "sessionsUpdated": zod.number()
+})
+
+
+/**
+ * Drops the alias. Sessions keep the name already written onto them — removing an alias undoes the rule, not the history.
+ * @summary Remove a car name
+ */
+export const DeleteCarAliasParams = zod.object({
+  "teamId": zod.coerce.number()
+})
+
+
+/**
+ * @summary Get the current user's friends and pending friend requests
+ */
+export const GetFriendsResponse = zod.object({
+  "friends": zod.array(zod.object({
+  "id": zod.string().describe('Friendship id — the handle for accept\/remove.'),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "status": zod.string().describe('pending | accepted'),
+  "direction": zod.string().describe('incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.\n'),
+  "createdAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session, shared or not.'),
+  "sharedSessions": zod.number(),
+  "lastSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string()
+}).describe('The friend\'s most recent shared session, if they have one.').nullish()
+})),
+  "incoming": zod.array(zod.object({
+  "id": zod.string().describe('Friendship id — the handle for accept\/remove.'),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "status": zod.string().describe('pending | accepted'),
+  "direction": zod.string().describe('incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.\n'),
+  "createdAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session, shared or not.'),
+  "sharedSessions": zod.number(),
+  "lastSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string()
+}).describe('The friend\'s most recent shared session, if they have one.').nullish()
+})),
+  "outgoing": zod.array(zod.object({
+  "id": zod.string().describe('Friendship id — the handle for accept\/remove.'),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "status": zod.string().describe('pending | accepted'),
+  "direction": zod.string().describe('incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.\n'),
+  "createdAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session, shared or not.'),
+  "sharedSessions": zod.number(),
+  "lastSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string()
+}).describe('The friend\'s most recent shared session, if they have one.').nullish()
+}))
+})
+
+
+/**
+ * @summary Send a friend request by username
+ */
+export const addFriendBodyUsernameMax = 100;
+
+
+
+export const AddFriendBody = zod.object({
+  "username": zod.string().max(addFriendBodyUsernameMax)
+})
+
+
+/**
+ * @summary Recent shared sessions from the current user's friends
+ */
+export const GetFriendSessionsResponseItem = zod.object({
+  "id": zod.string(),
+  "username": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string(),
+  "avgLap": zod.string(),
+  "conditions": zod.string(),
+  "publicNote": zod.string().nullish(),
+  "sharedAt": zod.string().nullish()
+})
+export const GetFriendSessionsResponse = zod.array(GetFriendSessionsResponseItem)
+
+
+/**
+ * @summary Accept a friend request sent to you
+ */
+export const AcceptFriendRequestParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AcceptFriendRequestResponse = zod.object({
+  "id": zod.string().describe('Friendship id — the handle for accept\/remove.'),
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "status": zod.string().describe('pending | accepted'),
+  "direction": zod.string().describe('incoming (they asked you) | outgoing (you asked them). Set for accepted friendships too, reflecting who originally asked.\n'),
+  "createdAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session, shared or not.'),
+  "sharedSessions": zod.number(),
+  "lastSession": zod.object({
+  "id": zod.string(),
+  "date": zod.string(),
+  "trackId": zod.string(),
+  "car": zod.string(),
+  "type": zod.string(),
+  "bestLap": zod.string()
+}).describe('The friend\'s most recent shared session, if they have one.').nullish()
+})
+
+
+/**
+ * @summary Remove a friend, decline a request, or cancel one you sent
+ */
+export const RemoveFriendParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Leagues the current user belongs to
+ */
+export const GetLeaguesResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "ownerId": zod.string(),
+  "joinCode": zod.string().nullish().describe('The invite code, returned to league staff only.'),
+  "role": zod.string().describe('The current user\'s role — owner | admin | member.'),
+  "isStaff": zod.boolean().describe('True for owner and admin — the roles the admin views are gated on.'),
+  "memberCount": zod.number(),
+  "createdAt": zod.string()
+})
+export const GetLeaguesResponse = zod.array(GetLeaguesResponseItem)
+
+
+/**
+ * @summary Create a league — the creator becomes its owner
+ */
+export const createLeagueBodyNameMax = 60;
+
+export const createLeagueBodyDescriptionMax = 300;
+
+
+
+export const CreateLeagueBody = zod.object({
+  "name": zod.string().max(createLeagueBodyNameMax),
+  "description": zod.string().max(createLeagueBodyDescriptionMax).optional()
+})
+
+
+/**
+ * @summary Join a league with its invite code
+ */
+export const joinLeagueBodyJoinCodeMax = 20;
+
+
+
+export const JoinLeagueBody = zod.object({
+  "joinCode": zod.string().max(joinLeagueBodyJoinCodeMax)
+})
+
+
+/**
+ * @summary One league and its roster
+ */
+export const GetLeagueParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetLeagueResponse = zod.object({
+  "league": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "ownerId": zod.string(),
+  "joinCode": zod.string().nullish().describe('The invite code, returned to league staff only.'),
+  "role": zod.string().describe('The current user\'s role — owner | admin | member.'),
+  "isStaff": zod.boolean().describe('True for owner and admin — the roles the admin views are gated on.'),
+  "memberCount": zod.number(),
+  "createdAt": zod.string()
+}),
+  "members": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "joinedAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session. Staff only — null for members.')
+}))
+})
+
+
+/**
+ * @summary Delete a league (owner only)
+ */
+export const DeleteLeagueParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Issue a fresh invite code, retiring the old one (staff only)
+ */
+export const RegenerateLeagueJoinCodeParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RegenerateLeagueJoinCodeResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "ownerId": zod.string(),
+  "joinCode": zod.string().nullish().describe('The invite code, returned to league staff only.'),
+  "role": zod.string().describe('The current user\'s role — owner | admin | member.'),
+  "isStaff": zod.boolean().describe('True for owner and admin — the roles the admin views are gated on.'),
+  "memberCount": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Promote or demote a member (owner only)
+ */
+export const UpdateLeagueMemberRoleParams = zod.object({
+  "id": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+export const UpdateLeagueMemberRoleBody = zod.object({
+  "role": zod.string().describe('admin | member')
+})
+
+export const UpdateLeagueMemberRoleResponse = zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "joinedAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session. Staff only — null for members.')
+})
+
+
+/**
+ * @summary Remove a member, or leave the league yourself
+ */
+export const RemoveLeagueMemberParams = zod.object({
+  "id": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+
+/**
+ * Best lap per member on a track, with the gap to the leader and who has not set a time yet. Staff only — this is the view league organisers get that members do not.
+
+ * @summary League leaderboard for one track (staff only)
+ */
+export const GetLeagueLeaderboardParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetLeagueLeaderboardQueryParams = zod.object({
+  "trackId": zod.coerce.string().optional().describe('Track to rank on. Defaults to the league\'s most driven track.'),
+  "days": zod.coerce.number().optional().describe('Only count sessions from the last N days. Omit for all time.')
+})
+
+export const GetLeagueLeaderboardResponse = zod.object({
+  "trackId": zod.string().nullish().describe('The track ranked. Null when nobody in the league has driven anything.'),
+  "days": zod.number().nullish(),
+  "entries": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "bestLap": zod.string(),
+  "bestLapSeconds": zod.number(),
+  "gapToLeader": zod.number().nullish().describe('Seconds behind the fastest driver. 0 for the leader.'),
+  "car": zod.string(),
+  "date": zod.string(),
+  "sessionId": zod.string(),
+  "sessions": zod.number().describe('Sessions this driver logged on the track, inside the window.'),
+  "laps": zod.number(),
+  "lastDrivenAt": zod.string().nullish()
+})),
+  "missing": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "joinedAt": zod.string(),
+  "lastActiveAt": zod.string().nullish().describe('When they last logged a session. Staff only — null for members.')
+})).describe('Members with no time on this track in the window.'),
+  "trackOptions": zod.array(zod.object({
+  "trackId": zod.string(),
+  "drivers": zod.number(),
+  "sessions": zod.number()
+})).describe('Tracks the league has driven, most driven first.')
+})
+
+
+/**
+ * Per-driver practice activity over a rolling window — sessions, laps, seat time, tracks driven and when they were last on — plus league totals and a daily session count. Staff only.
+
+ * @summary Who is actually practising in this league (staff only)
+ */
+export const GetLeagueActivityParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetLeagueActivityQueryParams = zod.object({
+  "days": zod.coerce.number().optional().describe('Window length in days (default 30).')
+})
+
+export const GetLeagueActivityResponse = zod.object({
+  "days": zod.number(),
+  "generatedAt": zod.string(),
+  "totals": zod.object({
+  "members": zod.number(),
+  "activeDrivers": zod.number(),
+  "dormantDrivers": zod.number(),
+  "sessions": zod.number(),
+  "laps": zod.number(),
+  "seatTimeMinutes": zod.number()
+}),
+  "drivers": zod.array(zod.object({
+  "userId": zod.string(),
+  "username": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "sessions": zod.number(),
+  "laps": zod.number(),
+  "seatTimeMinutes": zod.number(),
+  "tracks": zod.number(),
+  "daysActive": zod.number(),
+  "lastActiveAt": zod.string().nullish(),
+  "bestLap": zod.string().nullish().describe('Their fastest lap in the window, with the track it was set on.'),
+  "bestLapTrackId": zod.string().nullish(),
+  "joinedAt": zod.string()
+})),
+  "daily": zod.array(zod.object({
+  "date": zod.string(),
+  "sessions": zod.number(),
+  "drivers": zod.number()
+}))
 })
 
 

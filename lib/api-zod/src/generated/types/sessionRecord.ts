@@ -32,7 +32,18 @@ export interface SessionRecord {
   rating: number;
   /** @maxLength 5000 */
   notes: string;
+  /** This session holds the current personal best for its circuit. At most one session per circuit carries it, and it moves to the new session when a faster lap is logged. Use it for PB badges and "your best here" figures. */
   isPB: boolean;
+  /** This session beat everything logged before it at that circuit at the time it was logged. Never moves once set. Use it for "personal bests set" counters and progression charts, which are asking how often the driver improved, not which lap currently stands. */
+  wasPB?: boolean;
+  /** The game's raw team id for the car driven. Null for sessions logged by hand or captured before it was recorded. Kept so a car label can be corrected later from the number it came from. */
+  teamId?: number | null;
+  /** The telemetry header's game year (25 = F1 25) — which game was running. Not the same as packetFormat. */
+  gameYear?: number | null;
+  /** The telemetry output format selected in the game's own settings (2024/2025/2026). A driver on F1 25 can and often does emit 2024-format packets, so this says which struct layout was parsed and nothing about which game they own. */
+  packetFormat?: number | null;
+  /** Which car roster the session was driven in — "2025" for the base F1 25 grid, "2026" for the 2026 content pack's grid, "2024" for the retro liveries. Null when the car's team id is not in a confirmed block. Lap times are only comparable within one era. */
+  contentEra?: string | null;
   penalty?: string | null;
   gameVersion?: string | null;
   platform?: string | null;

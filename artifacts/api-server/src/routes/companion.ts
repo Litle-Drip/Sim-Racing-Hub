@@ -1,9 +1,11 @@
 import { Router } from "express";
-import { eq, and, gte, inArray } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { db, sessionsTable, apiKeysTable, type DbLapRecord } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
+import { lapToSeconds, secondsToLap, recalcPBsForUser } from "../lib/personalBests";
+import { lookupCarAlias } from "../lib/carIdentity";
 import type { Request, Response, NextFunction } from "express";
 
 const router = Router();
@@ -89,34 +91,6 @@ function capTrace<T extends { trace?: unknown[] }>(laps: T[]): T[] {
   return laps;
 }
 
-function lapToSeconds(lap: string): number {
-  if (!lap || !lap.includes(":")) {
-    const n = parseFloat(lap);
-    return isNaN(n) ? Infinity : n;
-  }
-  const parts = lap.split(":");
-  const mins = parseFloat(parts[0]);
-  const secs = parseFloat(parts[1]);
-  if (isNaN(mins) || isNaN(secs)) return Infinity;
-  return mins * 60 + secs;
-}
-
-function secondsToLap(s: number): string {
-  // Round to whole milliseconds first so floor/toFixed can't disagree at a
-  // minute boundary (e.g. 119.99958 -> floor(1.999..)=1 but toFixed(3)
-  // rounds the remainder up to "60.000", producing "1:60.000").
-  const totalMs = Math.round(s * 1000);
-  const m = Math.floor(totalMs / 60000);
-  const remSec = (totalMs - m * 60000) / 1000;
-  return `${m}:${remSec.toFixed(3).padStart(6, "0")}`;
-}
-
-function isFasterLap(a: string, b: string): boolean {
-  if (!a || a.trim() === "") return false;
-  if (!b || b.trim() === "") return true;
-  return lapToSeconds(a) < lapToSeconds(b);
-}
-
 // Per-lap telemetry lives in the `laps` jsonb column, so the shape is
 // defined once alongside the table rather than restated here.
 type LapRecord = DbLapRecord;
@@ -133,53 +107,6 @@ function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string
     avgLap: secondsToLap(avg),
     worstLap: secondsToLap(worst),
   };
-}
-
-async function recalcPBsForUser(userId: string) {
-  const rows = await db.select().from(sessionsTable).where(eq(sessionsTable.userId, userId));
-  // Sort chronologically so, among sessions logged on the same calendar
-  // date, the one uploaded/created first consistently wins tie-breaking
-  // for which row keeps the isPB flag (date alone doesn't distinguish
-  // same-day sessions, and without a stable secondary key the winner would
-  // depend on incidental DB row order).
-  const sorted = [...rows].sort((a, b) => {
-    const dateCmp = a.date.localeCompare(b.date);
-    if (dateCmp !== 0) return dateCmp;
-    return a.createdAt.getTime() - b.createdAt.getTime();
-  });
-  const pbMap: Record<string, string> = {};
-
-  // Only the rows whose isPB flag actually changes need writing — for a
-  // single new upload that's normally just the old PB (now demoted) and the
-  // new one, not every session the user has ever logged. Batching those
-  // into two IN-list updates instead of one UPDATE per row turns a
-  // recalc that used to cost O(session count) round-trips into O(1) for
-  // the common case — this runs on every companion-app upload.
-  const toSetTrue: string[] = [];
-  const toSetFalse: string[] = [];
-
-  for (const s of sorted) {
-    const key = normalizeTrackId(s.trackId);
-    const currentPB = pbMap[key];
-    const isNewPB = isFasterLap(s.bestLap, currentPB ?? "");
-    if (isNewPB && s.bestLap && s.bestLap.trim() !== "") pbMap[key] = s.bestLap;
-    if (isNewPB !== s.isPB) {
-      (isNewPB ? toSetTrue : toSetFalse).push(s.id);
-    }
-  }
-
-  if (toSetTrue.length > 0) {
-    await db
-      .update(sessionsTable)
-      .set({ isPB: true })
-      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetTrue)));
-  }
-  if (toSetFalse.length > 0) {
-    await db
-      .update(sessionsTable)
-      .set({ isPB: false })
-      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetFalse)));
-  }
 }
 
 interface ApiKeyRequest extends Request {
@@ -282,6 +209,11 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     publicNote: r.publicNote ?? null,
     laps: r.laps ?? null,
     isPB: r.isPB,
+    wasPB: r.wasPB,
+    teamId: r.teamId ?? null,
+    gameYear: r.gameYear ?? null,
+    packetFormat: r.packetFormat ?? null,
+    contentEra: r.contentEra ?? null,
     position: r.position ?? "",
     trackTemperature: r.trackTemperature ?? null,
     airTemperature: r.airTemperature ?? null,
@@ -369,6 +301,10 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
       weather?: string;
       assists?: string;
       gameVersion?: string;
+      teamId?: number;
+      gameYear?: number;
+      packetFormat?: number;
+      contentEra?: string;
       platform?: string;
       inputDevice?: string;
       laps?: LapRecord[];
@@ -477,10 +413,15 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
     const sessionDate = body.date ?? new Date().toISOString().slice(0, 10);
     const trackId = normalizeTrackId(body.track);
 
+    // A name the driver has already given this car wins over whatever the
+    // companion could work out from the team id — they were the one driving.
+    const alias = await lookupCarAlias(userId, body.teamId);
+    const car = alias ?? body.car;
+
     const duplicate = await findRecentDuplicateSession({
       userId,
       trackId,
-      car: body.car,
+      car,
       type: body.sessionType,
       bestLap,
       avgLap,
@@ -500,7 +441,7 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         userId,
         date: sessionDate,
         trackId,
-        car: body.car,
+        car,
         type: body.sessionType,
         bestLap,
         avgLap,
@@ -521,10 +462,18 @@ router.post("/companion/session", requireApiKey, async (req: Request, res: Respo
         notes: body.notes ?? "",
         penalty: body.penalty ?? "",
         gameVersion: body.gameVersion ?? "",
+        teamId: body.teamId ?? null,
+        gameYear: body.gameYear ?? null,
+        packetFormat: body.packetFormat ?? null,
+        contentEra: body.contentEra ?? null,
         platform: body.platform ?? "",
         inputDevice: body.inputDevice ?? "",
         position: body.position ?? "",
+        // Both PB flags are set by recalcPBsForUser once the row exists —
+        // whether this session is a personal best is a question about the
+        // driver's whole history, not about this payload.
         isPB: false,
+        wasPB: false,
         isPublic: false,
         laps: laps.length > 0 ? JSON.parse(JSON.stringify(laps)) : null,
         trackTemperature: body.trackTemperature ?? null,

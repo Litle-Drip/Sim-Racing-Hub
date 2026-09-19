@@ -165,9 +165,11 @@ export function calculateRank(sessions: SessionRecord[]): RankInfo {
   // Tracks practiced (5pts each)
   const tracks = new Set(sessions.map(s => s.trackId));
   points += tracks.size * 5;
-  // PBs set (3pts each) — naturally self-limiting, since you can only PB
-  // once per track/car combination, so this is left uncapped.
-  points += sessions.filter(s => s.isPB).length * 3;
+  // PBs set (3pts each). `wasPB`, not `isPB`: this rewards the act of
+  // improving, so a lap that was a record when it was driven keeps its points
+  // after a later session beats it — otherwise a driver's rank would fall on
+  // a day they got faster.
+  points += sessions.filter(s => s.wasPB).length * 3;
   // Consistency bonus: sessions with >96% consistency are worth 2pts each,
   // capped at 20 qualifying sessions (40pts) so grinding easy hotlaps can't
   // dwarf the session-count, track-coverage, and PB terms above — those
@@ -221,8 +223,10 @@ export interface Achievement {
 
 export function calculateAchievements(sessions: SessionRecord[], setupCount: number): Achievement[] {
   const tracks = new Set(sessions.map(s => s.trackId));
-  const pbCount = sessions.filter(s => s.isPB).length;
-  const hasMonacoPB = sessions.some(s => s.isPB && s.trackId === 'monaco');
+  // Achievements count personal bests *set*, not the ones still standing —
+  // an earned achievement shouldn't un-earn itself when a later lap is faster.
+  const pbCount = sessions.filter(s => s.wasPB).length;
+  const hasMonacoPB = sessions.some(s => s.wasPB && s.trackId === 'monaco');
   const consistentSession = sessions.some(s => {
     const best = lapToSeconds(s.bestLap);
     const worst = lapToSeconds(s.worstLap);
@@ -248,16 +252,65 @@ export function calculateAchievements(sessions: SessionRecord[], setupCount: num
   ];
 }
 
-// ─── Lap Time Delta ──────────────────────────────────────────────────────────
+// ─── Session Recommendation ──────────────────────────────────────────────────
 
-export function lapTimeDelta(time1: string, time2: string): { diffMs: number; diffPercent: number; faster: 1 | 2 } | null {
-  const s1 = lapToSeconds(time1);
-  const s2 = lapToSeconds(time2);
-  if (!isFinite(s1) || !isFinite(s2) || s1 <= 0 || s2 <= 0) return null;
-  const diffMs = Math.round(Math.abs(s1 - s2) * 1000);
-  const slower = Math.max(s1, s2);
-  const diffPercent = (Math.abs(s1 - s2) / slower) * 100;
-  return { diffMs, diffPercent, faster: s1 <= s2 ? 1 : 2 };
+export interface SessionRecommendation {
+  trackName: string;
+  trackFlag: string;
+  car: string;
+  reason: string;
+  gain: string;
+  confidence: number;
+  avgConsistency: number;
+  lastDaysAgo: number | null;
+}
+
+/**
+ * Picks the circuit most likely to yield a PB next time out: high measured
+ * consistency means the driver already has the lap, so the remaining gap is
+ * reachable; session count weights it toward a circuit they actually know.
+ * Lives beside the Race Engineer, which is where a driver goes to be told
+ * what to drive next.
+ */
+export function getSessionRecommendation(sessions: SessionRecord[]): SessionRecommendation | null {
+  if (sessions.length < 3) return null;
+  const trackData: Record<string, { count: number; consistency: number[] }> = {};
+  sessions.forEach(s => {
+    if (!trackData[s.trackId]) trackData[s.trackId] = { count: 0, consistency: [] };
+    trackData[s.trackId].count++;
+    const c = sessionConsistency(s);
+    if (c !== null) trackData[s.trackId].consistency.push(c);
+  });
+
+  let best: { trackId: string; score: number; avgCons: number; count: number } | null = null;
+  for (const [trackId, data] of Object.entries(trackData)) {
+    if (data.consistency.length < 2) continue;
+    const avgCons = data.consistency.reduce((a, b) => a + b, 0) / data.consistency.length;
+    const score = avgCons * 0.6 + Math.min(data.count, 10) * 4;
+    if (!best || score > best.score) best = { trackId, score, avgCons, count: data.count };
+  }
+  if (!best) return null;
+
+  const track = F1_TRACKS.find(t => t.id === best.trackId);
+  const trackSessions = sessions
+    .filter(s => s.trackId === best.trackId)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const gain = best.avgCons >= 96 ? '0.05–0.15' : best.avgCons >= 92 ? '0.15–0.30' : '0.30+';
+  const lastAttempt = trackSessions[0]?.date ?? '';
+  const lastDaysAgo = lastAttempt
+    ? Math.floor((Date.now() - new Date(lastAttempt).getTime()) / 86400000)
+    : null;
+
+  return {
+    trackName: track?.short ?? best.trackId,
+    trackFlag: track?.flag ?? '',
+    car: trackSessions[0]?.car ?? 'Any car',
+    reason: best.avgCons >= 96 ? 'Strong consistency, PB opportunity detected' : 'Good consistency, room to improve',
+    gain: `+${gain}s`,
+    confidence: Math.min(99, Math.round(best.avgCons * 0.85 + Math.min(best.count, 10) * 1.5)),
+    avgConsistency: best.avgCons,
+    lastDaysAgo,
+  };
 }
 
 // ─── Tyre Compound Guide ─────────────────────────────────────────────────────
