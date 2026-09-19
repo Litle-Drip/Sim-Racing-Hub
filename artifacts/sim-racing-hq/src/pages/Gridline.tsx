@@ -19,13 +19,43 @@ function roundCode(race:any) {
   return known[country] ?? String(race.raceName).replace(/grand prix/i,'').trim().slice(0,3).toUpperCase();
 }
 
+// Jolpica caps `limit` well below a full season of result rows, and it pages over
+// rows rather than races, so a single race can straddle two pages. Walk every page
+// and stitch the split races back together by round.
+const PAGE_SIZE=100;
+const MAX_PAGES=40;
+
+async function fetchPages(root:string,path:string):Promise<any[]> {
+  const pages:any[]=[];
+  for(let offset=0;pages.length<MAX_PAGES;offset+=PAGE_SIZE){
+    const response=await fetch(`${root}/${path}/?limit=${PAGE_SIZE}&offset=${offset}`);
+    if(!response.ok) throw new Error(`Jolpica returned ${response.status}`);
+    const payload=await response.json();
+    const data=payload.MRData;
+    if(!data) break;
+    pages.push(data);
+    if(offset+PAGE_SIZE>=Number(data.total ?? 0)) break;
+  }
+  return pages;
+}
+
+function mergeRaces(pages:any[],key?:'Results'|'SprintResults') {
+  const byRound=new Map<string,any>();
+  pages.forEach(page=>(page?.RaceTable?.Races ?? []).forEach((race:any)=>{
+    const existing=byRound.get(race.round);
+    if(!existing){byRound.set(race.round,key?{...race,[key]:[...(race[key] ?? [])]}:race);return}
+    if(key) existing[key]=[...(existing[key] ?? []),...(race[key] ?? [])];
+  }));
+  return [...byRound.values()].sort((a,b)=>Number(a.round)-Number(b.round));
+}
+
 async function loadSeason(season:number): Promise<{rounds:Round[];drivers:Driver[];completed:number;updated:string}> {
   const root=`https://api.jolpi.ca/ergast/f1/${season}`;
-  const get=async(path:string)=>{const response=await fetch(`${root}/${path}/?limit=2000`);if(!response.ok)throw new Error(`Jolpica returned ${response.status}`);return response.json()};
-  const [schedulePayload,resultPayload,sprintPayload,standingsPayload]=await Promise.all([get('races'),get('results'),get('sprint'),get('driverstandings')]);
-  const schedules=schedulePayload.MRData?.RaceTable?.Races ?? [];
-  const races=resultPayload.MRData?.RaceTable?.Races ?? [];
-  const sprints=sprintPayload.MRData?.RaceTable?.Races ?? [];
+  const get=(path:string)=>fetchPages(root,path);
+  const [schedulePages,resultPages,sprintPages,standingsPages]=await Promise.all([get('races'),get('results'),get('sprint'),get('driverstandings')]);
+  const schedules=mergeRaces(schedulePages);
+  const races=mergeRaces(resultPages,'Results');
+  const sprints=mergeRaces(sprintPages,'SprintResults');
   if(!schedules.length) throw new Error(`No ${season} season data is available yet.`);
   const roundList:Round[]=schedules.map((race:any)=>[
     roundCode(race), race.raceName,
@@ -42,7 +72,7 @@ async function loadSeason(season:number): Promise<{rounds:Round[];drivers:Driver
   sprints.forEach((race:any)=>race.SprintResults?.forEach((result:any)=>{
     const driver=driverMap.get(result.Driver.driverId); if(driver) driver.points[Number(race.round)-1]+=(Number(result.points)||0);
   }));
-  const standings=standingsPayload.MRData?.StandingsTable?.StandingsLists?.at(-1)?.DriverStandings ?? [];
+  const standings=standingsPages.flatMap(page=>page?.StandingsTable?.StandingsLists?.at(-1)?.DriverStandings ?? []);
   standings.forEach((standing:any)=>{const driver=driverMap.get(standing.Driver.driverId);if(driver)driver.currentPoints=Number(standing.points)});
   return {rounds:roundList,drivers:[...driverMap.values()],completed:races.length,updated:new Date().toISOString()};
 }
@@ -115,7 +145,7 @@ export default function Gridline() {
         <div className="panel-heading"><div><p>CHAMPIONSHIP PULSE</p><h2>Weekend points intensity</h2></div><span><Info size={14}/> Box size shows points scored</span></div>
         <div className="pulse-heatmap" style={{gridTemplateColumns:`150px repeat(${rounds.length}, minmax(44px, 1fr))`}}>
           <div className="pulse-corner">TOP {Math.min(5,pulse.length)}</div>
-          {rounds.map((round,index)=><button key={round[0]} className={hoverRound===index+1||activeRound===index+1?'active':''} onClick={()=>setActiveRound(index+1)}><small>R{index+1}</small><b>{round[0]}</b></button>)}
+          {rounds.map((round,index)=><button key={index} className={hoverRound===index+1||activeRound===index+1?'active':''} onClick={()=>setActiveRound(index+1)}><small>R{index+1}</small><b>{round[0]}</b></button>)}
           {pulse.map(entity=><div className={`pulse-entity-row ${focus&&focus!==entity.id?'dimmed':''}`} key={entity.id} style={{display:'contents'}}>
             <button className="pulse-entity" onClick={()=>setFocus(entity.id)}><i style={{background:entity.color}}/><b>{entity.code}</b><span>{entity.name}</span></button>
             {entity.points.map((points,index)=>{const future=index>=completedRounds;const size=future?0:12+Math.round((points/Math.max(maxPoints,1))*28);return <button key={index} className={`pulse-box ${future?'future':''}`} onMouseEnter={()=>setHoverRound(index+1)} onMouseLeave={()=>setHoverRound(null)} onFocus={()=>setHoverRound(index+1)} onBlur={()=>setHoverRound(null)} onClick={()=>{setFocus(entity.id);setActiveRound(index+1)}} aria-label={`${entity.name}, ${rounds[index][1]}, ${points} points`}><i style={!future?{width:size,height:size,background:heat[Math.min(5,Math.ceil(points/Math.max(maxPoints,1)*5))]}:{}}>{future?'':points}</i></button>})}
@@ -128,7 +158,7 @@ export default function Gridline() {
         <div className="heatmap-scroll">
           <div className="heatmap-grid" style={{gridTemplateColumns:`230px repeat(${rounds.length}, 58px) 78px`}}>
             <div className="heat-corner">CHAMPIONSHIP ORDER</div>
-            {rounds.map((r,i)=><button key={r[0]} className={`round-head ${(hoverRound===i+1||activeRound===i+1)?'active':''}`} onMouseEnter={()=>setHoverRound(i+1)} onMouseLeave={()=>setHoverRound(null)} onClick={()=>setActiveRound(i+1)}><small>R{i+1}</small><b>{r[0]}</b></button>)}
+            {rounds.map((r,i)=><button key={i} className={`round-head ${(hoverRound===i+1||activeRound===i+1)?'active':''}`} onMouseEnter={()=>setHoverRound(i+1)} onMouseLeave={()=>setHoverRound(null)} onClick={()=>setActiveRound(i+1)}><small>R{i+1}</small><b>{r[0]}</b></button>)}
             <div className="total-head">TOTAL</div>
             {entities.map((e,ei)=><div className={`heat-row-wrap ${focus&&focus!==e.id?'dimmed':''}`} key={e.id} style={{display:'contents'}}>
               <button className="entity-head" onClick={()=>{setFocus(focus===e.id?null:e.id); if(view==='constructors')setExpanded(expanded===e.id?null:e.id)}}><span className="rank">{String(ei+1).padStart(2,'0')}</span><i style={{background:e.color}}/><span><b>{e.code}</b><small>{e.name}</small></span>{view==='constructors'&&<ChevronDown size={14}/>}</button>
