@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { eq, and, or } from "drizzle-orm";
-import { db, rivalChallengesTable, sessionsTable, type DbRivalChallenge, type DbSession } from "@workspace/db";
+import { eq, and, or, inArray } from "drizzle-orm";
+import { db, rivalChallengesTable, sessionsTable, type DbRivalChallenge } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
 import { CreateRivalChallengeBody, SubmitRivalChallengeAttemptBody } from "@workspace/api-zod";
 import { raceMetricSeconds, decideWinner } from "../lib/rivalResults";
+import { lapsWithoutTrace } from "../lib/sessionQueries";
 
 const router = Router();
 
@@ -82,7 +83,27 @@ export async function findUserByUsername(
   };
 }
 
-function summarizeSession(s: DbSession) {
+// Only the columns raceMetricSeconds/summarizeSession read — never the
+// full row, and never per-lap telemetry traces (`laps` is fetched with
+// trace already stripped, same as the session list endpoint).
+const CHALLENGE_SESSION_COLUMNS = {
+  id: sessionsTable.id,
+  date: sessionsTable.date,
+  bestLap: sessionsTable.bestLap,
+  avgLap: sessionsTable.avgLap,
+  s1: sessionsTable.s1,
+  s2: sessionsTable.s2,
+  s3: sessionsTable.s3,
+  laps: lapsWithoutTrace,
+};
+type ChallengeSession = Awaited<ReturnType<typeof fetchChallengeSessions>>[number];
+
+async function fetchChallengeSessions(sessionIds: string[]) {
+  if (sessionIds.length === 0) return [];
+  return db.select(CHALLENGE_SESSION_COLUMNS).from(sessionsTable).where(inArray(sessionsTable.id, sessionIds));
+}
+
+function summarizeSession(s: ChallengeSession) {
   return {
     id: s.id,
     date: s.date,
@@ -94,53 +115,66 @@ function summarizeSession(s: DbSession) {
   };
 }
 
+// Serializes a batch of challenges in a fixed number of queries — one for
+// every session referenced across the whole batch, and one for every
+// player's display name — instead of one of each per challenge. This is
+// the list endpoint's hot path: it's polled every 60s sitewide, so an
+// N+1 here was re-running for every signed-in user regardless of what
+// page they were on.
+async function serializeChallenges(rows: DbRivalChallenge[], currentUserId: string) {
+  const sessionIds = [...new Set(rows.flatMap((r) => [r.creatorSessionId, ...(r.opponentSessionId ? [r.opponentSessionId] : [])]))];
+  const sessions = await fetchChallengeSessions(sessionIds);
+  const sessionMap = new Map(sessions.map((s) => [s.id, s]));
+
+  const userIds = [...new Set(rows.flatMap((r) => [r.creatorId, r.opponentId]))];
+  const nameMap = await getDisplayNames(userIds);
+
+  return rows.map((row) => {
+    const creatorSession = sessionMap.get(row.creatorSessionId);
+    const opponentSession = row.opponentSessionId ? sessionMap.get(row.opponentSessionId) : undefined;
+
+    const winnerUserId =
+      creatorSession && opponentSession
+        ? decideWinner(
+            raceMetricSeconds(creatorSession, row.lapCount),
+            raceMetricSeconds(opponentSession, row.lapCount),
+            row.creatorId,
+            row.opponentId,
+          )
+        : null;
+
+    const isCreator = row.creatorId === currentUserId;
+
+    return {
+      id: row.id,
+      status: row.status,
+      trackId: normalizeTrackId(row.trackId),
+      car: row.car,
+      lapCount: row.lapCount,
+      message: row.message,
+      createdAt: row.createdAt.toISOString(),
+      completedAt: row.completedAt ? row.completedAt.toISOString() : null,
+      creator: { userId: row.creatorId, name: nameMap[row.creatorId] ?? "Anonymous", isMe: row.creatorId === currentUserId },
+      opponent: { userId: row.opponentId, name: nameMap[row.opponentId] ?? "Anonymous", isMe: row.opponentId === currentUserId },
+      creatorSession: creatorSession
+        ? { ...summarizeSession(creatorSession), raceTimeSeconds: raceMetricSeconds(creatorSession, row.lapCount) }
+        : null,
+      opponentSession: opponentSession
+        ? { ...summarizeSession(opponentSession), raceTimeSeconds: raceMetricSeconds(opponentSession, row.lapCount) }
+        : null,
+      winnerUserId,
+      // Whether *this* viewer has acknowledged the result. Only meaningful
+      // once the challenge is completed; that's what keeps the "you won /
+      // you lost" notification up for the driver who wasn't the one to
+      // finish it.
+      resultSeen: isCreator ? row.creatorSeenResult : row.opponentSeenResult,
+    };
+  });
+}
+
 async function serializeChallenge(row: DbRivalChallenge, currentUserId: string) {
-  const sessionIds = [row.creatorSessionId, ...(row.opponentSessionId ? [row.opponentSessionId] : [])];
-  const sessions = await db
-    .select()
-    .from(sessionsTable)
-    .where(or(...sessionIds.map((id) => eq(sessionsTable.id, id))));
-  const creatorSession = sessions.find((s) => s.id === row.creatorSessionId);
-  const opponentSession = row.opponentSessionId ? sessions.find((s) => s.id === row.opponentSessionId) : undefined;
-
-  const nameMap = await getDisplayNames([row.creatorId, row.opponentId]);
-
-  const winnerUserId =
-    creatorSession && opponentSession
-      ? decideWinner(
-          raceMetricSeconds(creatorSession, row.lapCount),
-          raceMetricSeconds(opponentSession, row.lapCount),
-          row.creatorId,
-          row.opponentId,
-        )
-      : null;
-
-  const isCreator = row.creatorId === currentUserId;
-
-  return {
-    id: row.id,
-    status: row.status,
-    trackId: normalizeTrackId(row.trackId),
-    car: row.car,
-    lapCount: row.lapCount,
-    message: row.message,
-    createdAt: row.createdAt.toISOString(),
-    completedAt: row.completedAt ? row.completedAt.toISOString() : null,
-    creator: { userId: row.creatorId, name: nameMap[row.creatorId] ?? "Anonymous", isMe: row.creatorId === currentUserId },
-    opponent: { userId: row.opponentId, name: nameMap[row.opponentId] ?? "Anonymous", isMe: row.opponentId === currentUserId },
-    creatorSession: creatorSession
-      ? { ...summarizeSession(creatorSession), raceTimeSeconds: raceMetricSeconds(creatorSession, row.lapCount) }
-      : null,
-    opponentSession: opponentSession
-      ? { ...summarizeSession(opponentSession), raceTimeSeconds: raceMetricSeconds(opponentSession, row.lapCount) }
-      : null,
-    winnerUserId,
-    // Whether *this* viewer has acknowledged the result. Only meaningful
-    // once the challenge is completed; that's what keeps the "you won /
-    // you lost" notification up for the driver who wasn't the one to
-    // finish it.
-    resultSeen: isCreator ? row.creatorSeenResult : row.opponentSeenResult,
-  };
+  const [result] = await serializeChallenges([row], currentUserId);
+  return result;
 }
 
 router.get("/rival-challenges", requireAuth, async (req, res) => {
@@ -151,7 +185,7 @@ router.get("/rival-challenges", requireAuth, async (req, res) => {
       .from(rivalChallengesTable)
       .where(or(eq(rivalChallengesTable.creatorId, userId), eq(rivalChallengesTable.opponentId, userId)));
 
-    const serialized = await Promise.all(rows.map((r) => serializeChallenge(r, userId)));
+    const serialized = await serializeChallenges(rows, userId);
     serialized.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     res.json(serialized);
   } catch (err) {

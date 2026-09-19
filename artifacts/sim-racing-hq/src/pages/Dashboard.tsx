@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect, useState } from 'react';
 import { useGetSessions, useGetSetups, useGetCommunitySessions } from '@workspace/api-client-react';
 import type { SessionRecord } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
+import { TapReadout, useTapReadout } from '../components/TapReadout';
 import { F1_TRACKS } from '../data/f1Tracks';
 import { lapToSeconds } from '../lib/storage';
 import { calculateStreak, calculateRank, getDailyChallenge, calculateAchievements, sessionConsistency, PENDING_CHALLENGE_KEY, estimateSeatTimeMinutes } from '../lib/engagement';
@@ -11,6 +12,7 @@ import { SessionDetailModal, validLaps } from '../components/SessionDetail';
 import { useRivalNotifications } from '../lib/rivalNotifications';
 import { useUnseenSessions } from '../lib/newSessions';
 import { Flame, Trophy } from 'lucide-react';
+import GetStartedChecklist from '../components/GetStartedChecklist';
 
 const DIFF_COLORS: Record<string, string> = {
   Easy: 'var(--green)',
@@ -82,6 +84,10 @@ function MiniBar({ value, label }: { value: number; label: string }) {
       <div className="mini-bar-bg">
         <div className="mini-bar-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
+      {/* The bar's own number is in the `title`, so a touch device only ever
+          sees the bar. CSS reveals this on coarse pointers and hides it on a
+          mouse, where the hover tooltip already covers it. */}
+      <span className="mini-bar-value">{value}/5</span>
     </div>
   );
 }
@@ -93,7 +99,7 @@ function buildHeatmap(sessions: SessionRecord[]) {
   sessions.forEach(s => {
     if (s.date) {
       countMap[s.date] = (countMap[s.date] || 0) + 1;
-      if (s.isPB) pbMap[s.date] = (pbMap[s.date] || 0) + 1;
+      if (s.wasPB) pbMap[s.date] = (pbMap[s.date] || 0) + 1;
       if (s.bestLap && s.bestLap.trim()) {
         const secs = lapToSeconds(s.bestLap);
         const existing = bestLapMap[s.date];
@@ -157,6 +163,24 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
+type HeatmapCell = { date: string; count: number; pbs: number; bestLap: string | null; bestTrack: string | null };
+
+/* The same facts as the tooltip, on one line. A `title` never opens on a
+   touch screen, so on an iPad this string — shown under the calendar when a
+   day is tapped — is the only way to read a cell. */
+function buildHeatmapSummary(cell: HeatmapCell): string {
+  const d = new Date(cell.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  if (cell.count === 0) return `${d} — no sessions`;
+  const parts = [`${cell.count} session${cell.count !== 1 ? 's' : ''}`];
+  if (cell.pbs > 0) parts.push(`${cell.pbs} PB${cell.pbs !== 1 ? 's' : ''}`);
+  parts.push(`~${cell.count * 10} mins`);
+  if (cell.bestLap && cell.bestTrack) {
+    const t = F1_TRACKS.find(tr => tr.id === cell.bestTrack);
+    parts.push(`Best: ${t?.short ?? cell.bestTrack} ${cell.bestLap}`);
+  }
+  return `${d} — ${parts.join(' · ')}`;
+}
+
 function buildHeatmapTooltip(cell: { date: string; count: number; pbs: number; bestLap: string | null; bestTrack: string | null }): string {
   const d = new Date(cell.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   let tip = `${d}\n${cell.count} session${cell.count !== 1 ? 's' : ''}`;
@@ -218,7 +242,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     () => new Set(sessions.map(s => s.trackId).filter(id => F1_TRACKS.some(t => t.id === id))).size,
     [sessions],
   );
-  const pbsSet = sessions.filter(s => s.isPB).length;
+  const pbsSet = sessions.filter(s => s.wasPB).length;
   const setupsSaved = setups.length;
 
   const streak = useMemo(() => calculateStreak(sessions), [sessions]);
@@ -284,7 +308,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     for (let i = 13; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const ds = d.toISOString().slice(0, 10);
-      data.push(sessions.filter(s => s.isPB && s.date <= ds).length);
+      data.push(sessions.filter(s => s.wasPB && s.date <= ds).length);
     }
     return data;
   }, [sessions]);
@@ -350,7 +374,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
   }, [sessions]);
 
   const lastPBDaysAgo = useMemo(() => {
-    const pbs = sessions.filter(s => s.isPB).sort((a, b) => b.date.localeCompare(a.date));
+    const pbs = sessions.filter(s => s.wasPB).sort((a, b) => b.date.localeCompare(a.date));
     if (pbs.length === 0) return null;
     const diff = Math.floor((Date.now() - new Date(pbs[0].date).getTime()) / 86400000);
     if (diff === 0) return 'Today';
@@ -531,13 +555,17 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
     weekAgo.setDate(today.getDate() - 7);
     const weekStr = weekAgo.toISOString().slice(0, 10);
     const weekSessions = sessions.filter(s => s.date >= weekStr);
-    const pbs = weekSessions.filter(s => s.isPB).length;
+    const pbs = weekSessions.filter(s => s.wasPB).length;
     const totalMinutes = Math.round(estimateSeatTimeMinutes(weekSessions));
     return { sessions: weekSessions.length, pbs, seatTime: totalMinutes };
   }, [sessions]);
 
   const { cells } = useMemo(() => buildHeatmap(sessions), [sessions]);
   const monthLabels = useMemo(() => buildMonthLabels(cells), [cells]);
+
+  // Tapping a heatmap cell selects it; tapping it again clears it.
+  const [selectedDay, setSelectedDay] = useState<HeatmapCell | null>(null);
+  const badges = useTapReadout<{ id: string; name: string; desc: string }>();
 
   // Summary rail beside the calendar — reads off the same 365-day cells the
   // grid is drawn from, so the two can't disagree. Columns are weeks and each
@@ -676,6 +704,15 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
         )}
       </div>
 
+      {/* ── Get Started ─────────────────────────────────────────────────
+          Nothing else on this page means anything to a driver with no laps
+          on it, so the path to their first one sits above all of it and
+          disappears the moment a session lands. Guests can't hold an API key,
+          so they see the sign-up nudges instead. */}
+      {!isGuest && (
+        <GetStartedChecklist hasSession={sessions.length > 0} setPage={setPage} />
+      )}
+
       {/* ── Quick Action Buttons ────────────────────────────────────────── */}
       <div className="toolbar">
         <button className="btn btn-primary" onClick={() => setPage('sessions')}>+ Session</button>
@@ -714,9 +751,16 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             {filteredBadges.map(a => {
               const nearComplete = !a.earned && a.target > 1 && a.progress / a.target >= 0.6;
               const BadgeIcon = a.icon;
+              const badgeDetail = `${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`;
               return (
-                <div key={a.id} className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}`}
-                  title={`${a.name}: ${a.desc}${!a.earned && a.target > 1 ? ` (${a.progress}/${a.target})` : ''}`}>
+                <button
+                  type="button"
+                  key={a.id}
+                  className={`dash-badge${a.earned ? ' earned' : ''}${nearComplete ? ' near' : ''}${badges.isSelected(a.id) ? ' dash-badge--selected' : ''}`}
+                  title={badgeDetail}
+                  aria-label={badgeDetail}
+                  aria-pressed={badges.isSelected(a.id)}
+                  onClick={() => badges.toggle(a)}>
                   <span className="dash-badge-icon"><BadgeIcon size={14} aria-hidden="true" /></span>
                   <div className="dash-badge-info">
                     <span className="dash-badge-name">{a.name}</span>
@@ -729,10 +773,16 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
                       </div>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
+          {/* Each badge's description lives only in its `title`, which an iPad
+              never shows. Tapping one puts it here instead. */}
+          <TapReadout
+            text={badges.selected ? `${badges.selected.name}: ${badges.selected.desc}` : null}
+            placeholder="Tap a badge to see what it takes."
+          />
         </>
       )}
 
@@ -793,7 +843,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <div className="stat-label" style={{ marginBottom: 0 }}>Last Session</div>
               {isNew(lastSession.id) && (
-                <span title="Landed since you last looked" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--teal)' }}>
+                <span title="Landed since you last looked" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--teal)' }}>
                   <span className="session-new-dot" />NEW
                 </span>
               )}
@@ -920,7 +970,9 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
 
         <div className="heatmap-body">
         <div className="heatmap-scroll" ref={heatmapRef}>
-          <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
+          {/* 14px, not a spacing token: this gutter lines the month labels up
+              with the 13px heatmap cell columns below them. */}
+          <div style={{ display: 'flex', marginBottom: 'var(--space-1)', paddingLeft: 14 }}>
             {monthLabels.map(({ label, col }, idx) => {
               const nextCol = monthLabels[idx + 1]?.col ?? cells.length;
               const spanWidth = (nextCol - col) * 13;
@@ -949,10 +1001,14 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
               {cells.map((col, ci) => (
                 <div key={ci} className="heatmap-col">
                   {col.map((cell, di) => (
-                    <div
+                    <button
                       key={di}
-                      className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}`}
+                      type="button"
+                      className={`heatmap-cell${cell.level > 0 ? ` l${cell.level}` : ''}${selectedDay?.date === cell.date ? ' heatmap-cell--selected' : ''}`}
                       title={buildHeatmapTooltip(cell)}
+                      aria-label={buildHeatmapSummary(cell)}
+                      aria-pressed={selectedDay?.date === cell.date}
+                      onClick={() => setSelectedDay(prev => (prev?.date === cell.date ? null : cell))}
                     />
                   ))}
                 </div>
@@ -983,7 +1039,7 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
             <div className="heatmap-stat-label">Busiest Day</div>
             <div className="heatmap-stat-value">
               {heatmapStats.busiest ? heatmapStats.busiest.count : '—'}
-              {heatmapStats.busiest && <span className="heatmap-stat-unit">runs</span>}
+              {heatmapStats.busiest && <span className="heatmap-stat-unit">{heatmapStats.busiest.count === 1 ? 'run' : 'runs'}</span>}
             </div>
             <div className="heatmap-stat-sub">
               {heatmapStats.busiest
@@ -993,6 +1049,16 @@ export default function Dashboard({ setPage, isGuest }: DashboardProps) {
           </div>
         </div>
         </div>
+
+        {/* A child of .heatmap-section, not of .heatmap-body: .heatmap-body is
+            a flex row, so in there the readout sat beside the calendar rather
+            than under it. Outside .heatmap-scroll too — in there it scrolled
+            with the calendar, which opens scrolled to today, so the line
+            started out of sight. */}
+        <TapReadout
+          text={selectedDay ? buildHeatmapSummary(selectedDay) : null}
+          placeholder="Tap a day for its sessions and best lap."
+        />
       </div>
 
       {/* Tracks needing attention — moved right after heatmap */}

@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { useGetSessionDetail, type SessionRecord } from '@workspace/api-client-react';
+import { useGetLapTrace, getGetLapTraceQueryKey, type SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
 import { useUnits } from '../lib/units';
 
@@ -86,7 +86,7 @@ export function ExpandedGroup({ label, show, icon: Icon, defaultOpen, children }
 
 // ─── Lap table (expanded view) ────────────────────────────────────────────────
 
-export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessionId: string; laps: SessionRecord['laps']; onViewTelemetry: (sessionId: string, lap: LapEntry) => void }) {
+export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessionId: string; laps: SessionRecord['laps']; onViewTelemetry: (sessionId: string, lap: LapEntry, siblingLaps: LapEntry[]) => void }) {
   const laps = validLaps(rawLaps);
   if (!laps || laps.length === 0) return null;
   const fastestIdx = laps.reduce((best, l, i) => {
@@ -120,7 +120,7 @@ export function LapTable({ sessionId, laps: rawLaps, onViewTelemetry }: { sessio
                   {/* Trace presence is unknown until LapTelemetryModal fetches full detail — list responses omit traces. */}
                   <button
                     className="btn btn-secondary btn-sm"
-                    onClick={() => onViewTelemetry(sessionId, l)}
+                    onClick={() => onViewTelemetry(sessionId, l, laps)}
                     title="View speed/throttle/brake telemetry for this lap"
                   >
                     <Activity size={11} /> Telemetry
@@ -266,7 +266,7 @@ function ChartTooltip({
     return isFinite(n) ? n.toFixed(digits) : '—';
   };
   return (
-    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: '8px 12px' }}>
+    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-accent)', padding: 'var(--space-2) var(--space-3)' }}>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gray-mid)' }}>{String(d ?? '')}m</div>
       {payload.map((p, i) => (
         <div key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: p.color ?? 'var(--white)' }}>
@@ -303,8 +303,8 @@ function TelemetryTraceChart({
 }) {
   const hasCompare = data.length > 0 && data[0][`cmp_${dataKey}`] !== undefined;
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
           {label}
         </div>
@@ -366,8 +366,8 @@ function TelemetryTraceChart({
 function DeltaChart({ data, compareLabel }: { data: ChartRow[]; compareLabel: string }) {
   const finalDelta = data.length > 0 ? data[data.length - 1].delta ?? 0 : 0;
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', flexWrap: 'wrap' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>
           Delta vs {compareLabel}
         </div>
@@ -442,22 +442,30 @@ function LapStatStrip({ lap, trace }: { lap: LapEntry; trace: Trace }) {
   );
 }
 
-export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: string; lap: LapEntry; onClose: () => void }) {
+export function LapTelemetryModal({ sessionId, lap, siblingLaps, onClose }: { sessionId: string; lap: LapEntry; siblingLaps: LapEntry[]; onClose: () => void }) {
   const { speedUnit, convertSpeed } = useUnits();
-  // The session list omits lap traces to stay fast/cheap to load, so the full
-  // trace for this one lap is fetched on demand when the modal opens.
-  const { data: fullSession, isLoading } = useGetSessionDetail(sessionId);
   const [compareLapNum, setCompareLapNum] = useState<number | null>(null);
 
-  const trace: Trace = fullSession?.laps?.find(l => l.lap === lap.lap)?.trace ?? [];
+  // Each lap's trace is fetched on its own — not the whole session's — so
+  // opening or comparing a lap never has to load every other lap's telemetry.
+  const { data: primaryTraceData, isLoading: isLoadingTrace } = useGetLapTrace(sessionId, lap.lap);
+  const trace: Trace = primaryTraceData?.trace ?? [];
 
-  // Only laps that carry a trace of their own can be compared against.
-  const comparableLaps = (fullSession?.laps ?? []).filter(
-    l => l.lap !== lap.lap && (l.trace?.length ?? 0) > 1,
-  );
+  // The caller already has the session's lap list (from the list/detail
+  // fetch it rendered this modal from) — reuse it instead of re-fetching.
+  // Whether a given lap actually has a trace isn't known until it's
+  // selected and fetched, so every other timed lap is offered as an option.
+  const comparableLaps = siblingLaps.filter(l => l.lap !== lap.lap && l.time && l.time.trim() !== '');
   const compareLap = comparableLaps.find(l => l.lap === compareLapNum) ?? null;
-  const compareTrace: Trace | null = compareLap?.trace ?? null;
   const compareLabel = compareLap ? `Lap ${compareLap.lap}${compareLap.time ? ` (${compareLap.time})` : ''}` : '';
+
+  const { data: compareTraceData, isLoading: isLoadingCompareTrace } = useGetLapTrace(
+    sessionId,
+    compareLapNum ?? 0,
+    { query: { queryKey: getGetLapTraceQueryKey(sessionId, compareLapNum ?? 0), enabled: compareLapNum != null } },
+  );
+  const compareTrace: Trace | null = compareLapNum != null ? (compareTraceData?.trace ?? null) : null;
+  const compareHasNoTrace = compareLapNum != null && !isLoadingCompareTrace && (compareTrace?.length ?? 0) < 2;
 
   const rows = useMemo(
     () => buildChartRows(trace, compareTrace, convertSpeed),
@@ -473,7 +481,7 @@ export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: stri
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body" style={{ overflowY: 'auto' }}>
-          {isLoading ? (
+          {isLoadingTrace ? (
             <div style={{ padding: 'var(--space-5) 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>Loading telemetry…</div>
           ) : trace.length === 0 ? (
             <div style={{ padding: 'var(--space-5) 0', textAlign: 'center', color: 'var(--gray-mid)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)' }}>No telemetry data recorded for this lap.</div>
@@ -495,10 +503,16 @@ export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: stri
                       <option key={l.lap} value={l.lap}>Lap {l.lap}{l.time ? ` — ${l.time}` : ''}</option>
                     ))}
                   </select>
+                  {compareLapNum != null && isLoadingCompareTrace && (
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>Loading…</span>
+                  )}
+                  {compareHasNoTrace && (
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray-mid)' }}>No telemetry recorded for that lap.</span>
+                  )}
                 </div>
               )}
 
-              {compareTrace && rows.length > 0 && <DeltaChart data={rows} compareLabel={compareLabel} />}
+              {compareTrace && compareTrace.length >= 2 && rows.length > 0 && <DeltaChart data={rows} compareLabel={compareLabel} />}
 
               <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="var(--teal)" unit={` ${speedUnit}`} data={rows} compareLabel={compareLabel} />
               <TelemetryTraceChart dataKey="throttle" label="Throttle" color="var(--green)" unit="%" domain={[0, 100]} data={rows} compareLabel={compareLabel} />
@@ -518,7 +532,7 @@ export function LapTelemetryModal({ sessionId, lap, onClose }: { sessionId: stri
 // ─── Full session detail fields — reused by Sessions row expansion and the
 // standalone modal opened from Dashboard / Tracks. ─────────────────────────
 
-export function SessionDetailFields({ session: s, onViewTelemetry }: { session: SessionRecord; onViewTelemetry: (sessionId: string, lap: LapEntry) => void }) {
+export function SessionDetailFields({ session: s, onViewTelemetry }: { session: SessionRecord; onViewTelemetry: (sessionId: string, lap: LapEntry, siblingLaps: LapEntry[]) => void }) {
   const { formatTemp, formatSpeed } = useUnits();
 
   return (
@@ -540,7 +554,7 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
         const bestS3 = validS3.length > 0 ? validS3.reduce((a, b) => a.secs < b.secs ? a : b).val : null;
         return (
           <div style={{ gridColumn: '1 / -1', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 10 }}>Best Sectors (from laps)</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>Best Sectors (from laps)</div>
             <div className="expanded-group-grid">
               {bestS1 && <div className="expanded-item"><div className="expanded-label">S1</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>{bestS1}</div></div>}
               {bestS2 && <div className="expanded-item"><div className="expanded-label">S2</div><div className="expanded-value" style={{ fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>{bestS2}</div></div>}
@@ -551,6 +565,12 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
       })()}
       {s.conditions && <div className="expanded-item"><div className="expanded-label">Conditions</div><div className="expanded-value">{s.conditions}</div></div>}
       {s.timeOfDay && <div className="expanded-item"><div className="expanded-label">Time of Day</div><div className="expanded-value">{s.timeOfDay}</div></div>}
+      {/* The game and the car roster are separate facts: the 2026 content pack
+          puts a 2026-spec grid inside F1 25, and a 2026-spec lap is seconds
+          off a 2025-spec one at the same circuit. Shown together so a lap that
+          looks impossible next to its neighbours explains itself. */}
+      {s.gameVersion && <div className="expanded-item"><div className="expanded-label">Game</div><div className="expanded-value">{s.gameVersion}</div></div>}
+      {s.contentEra && <div className="expanded-item"><div className="expanded-label">Car Spec</div><div className="expanded-value">{s.contentEra} season</div></div>}
       {s.assists && <div className="expanded-item"><div className="expanded-label">Assists</div><div className="expanded-value">{s.assists}</div></div>}
       {s.penalty && <div className="expanded-item"><div className="expanded-label">Penalty</div><div className="expanded-value" style={{ color: 'var(--red)' }}>{s.penalty}</div></div>}
       {!!s.aiDifficulty && <div className="expanded-item"><div className="expanded-label">AI Difficulty</div><div className="expanded-value">{s.aiDifficulty}</div></div>}
@@ -644,8 +664,8 @@ export function SessionDetailFields({ session: s, onViewTelemetry }: { session: 
 // opened for a full look without navigating to the Sessions page. ──────────
 
 export function SessionDetailModal({ session, onClose }: { session: SessionRecord; onClose: () => void }) {
-  const [telemetryLap, setTelemetryLap] = useState<LapEntry | null>(null);
-  const onViewTelemetry = (_sessionId: string, lap: LapEntry) => setTelemetryLap(lap);
+  const [telemetryLap, setTelemetryLap] = useState<{ lap: LapEntry; siblingLaps: LapEntry[] } | null>(null);
+  const onViewTelemetry = (_sessionId: string, lap: LapEntry, siblingLaps: LapEntry[]) => setTelemetryLap({ lap, siblingLaps });
   const trackMeta = F1_TRACKS.find(t => t.id === session.trackId);
 
   return (
@@ -659,7 +679,7 @@ export function SessionDetailModal({ session, onClose }: { session: SessionRecor
             <button className="modal-close" onClick={onClose}>×</button>
           </div>
           <div className="modal-body" style={{ overflowY: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
               <div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>Best Lap</div>
                 <span className={session.isPB ? 'pb-time' : 'lap-time'} style={{ fontSize: 22 }}>{session.bestLap || '—'}</span>
@@ -672,7 +692,7 @@ export function SessionDetailModal({ session, onClose }: { session: SessionRecor
               </div>
             </div>
 
-            <div className="expanded-group-grid" style={{ marginBottom: 4 }}>
+            <div className="expanded-group-grid" style={{ marginBottom: 'var(--space-1)' }}>
               <div className="expanded-item"><div className="expanded-label">Avg Lap</div><div className="expanded-value">{session.avgLap || '—'}</div></div>
               <div className="expanded-item"><div className="expanded-label">Worst Lap</div><div className="expanded-value">{session.worstLap || '—'}</div></div>
               <div className="expanded-item"><div className="expanded-label">Tires</div><div className="expanded-value">{session.tires || '—'}</div></div>
@@ -685,7 +705,7 @@ export function SessionDetailModal({ session, onClose }: { session: SessionRecor
           </div>
         </div>
       </div>
-      {telemetryLap && <LapTelemetryModal sessionId={session.id} lap={telemetryLap} onClose={() => setTelemetryLap(null)} />}
+      {telemetryLap && <LapTelemetryModal sessionId={session.id} lap={telemetryLap.lap} siblingLaps={telemetryLap.siblingLaps} onClose={() => setTelemetryLap(null)} />}
     </>
   );
 }

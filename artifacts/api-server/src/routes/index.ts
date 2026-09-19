@@ -7,9 +7,11 @@ import trackDifficultyRouter from "./trackDifficulty";
 import hardwareRouter from "./hardware";
 import communityRouter from "./community";
 import companionRouter from "./companion";
+import carAliasesRouter from "./carAliases";
 import rivalChallengesRouter from "./rivalChallenges";
 import engineerUsageRouter from "./engineerUsage";
 import friendsRouter from "./friends";
+import leaguesRouter from "./leagues";
 
 const router: IRouter = Router();
 
@@ -21,8 +23,10 @@ router.use(trackDifficultyRouter);
 router.use(hardwareRouter);
 router.use(communityRouter);
 router.use(companionRouter);
+router.use(carAliasesRouter);
 router.use(rivalChallengesRouter);
 router.use(engineerUsageRouter);
 router.use(friendsRouter);
+router.use(leaguesRouter);
 
 export default router;

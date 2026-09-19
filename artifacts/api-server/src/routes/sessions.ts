@@ -1,12 +1,15 @@
 import { Router } from "express";
-import { eq, and, inArray, sql, getTableColumns } from "drizzle-orm";
-import { db, sessionsTable, type DbSession, type DbLapRecord } from "@workspace/db";
+import { eq, and, sql, getTableColumns } from "drizzle-orm";
+import { db, sessionsTable, type DbLapRecord } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/requireAuth";
 import { normalizeTrackId } from "../lib/trackAlias";
+import { lapToSeconds, secondsToLap, recalcPBsForUser } from "../lib/personalBests";
+import { lapsWithoutTrace } from "../lib/sessionQueries";
 import {
   CreateSessionBody,
   GetSessionsResponse,
   GetSessionDetailResponse,
+  GetLapTraceResponse,
 } from "@workspace/api-zod";
 
 const router = Router();
@@ -31,34 +34,6 @@ function capTrace(laps: LapRecord[]): LapRecord[] {
   return laps;
 }
 
-function lapToSeconds(lap: string): number {
-  if (!lap || !lap.includes(":")) {
-    const n = parseFloat(lap);
-    return isNaN(n) ? Infinity : n;
-  }
-  const parts = lap.split(":");
-  const mins = parseFloat(parts[0]);
-  const secs = parseFloat(parts[1]);
-  if (isNaN(mins) || isNaN(secs)) return Infinity;
-  return mins * 60 + secs;
-}
-
-function secondsToLap(s: number): string {
-  // Round to whole milliseconds first so floor/toFixed can't disagree at a
-  // minute boundary (e.g. 119.99958 -> floor(1.999..)=1 but toFixed(3)
-  // rounds the remainder up to "60.000", producing "1:60.000").
-  const totalMs = Math.round(s * 1000);
-  const m = Math.floor(totalMs / 60000);
-  const remSec = (totalMs - m * 60000) / 1000;
-  return `${m}:${remSec.toFixed(3).padStart(6, "0")}`;
-}
-
-function isFasterLap(a: string, b: string): boolean {
-  if (!a || a.trim() === "") return false;
-  if (!b || b.trim() === "") return true;
-  return lapToSeconds(a) < lapToSeconds(b);
-}
-
 function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string; worstLap: string } {
   const valid = laps.filter(l => l.time && l.time.trim() !== "");
   if (valid.length === 0) return { bestLap: "", avgLap: "", worstLap: "" };
@@ -71,70 +46,6 @@ function computeLapSummary(laps: LapRecord[]): { bestLap: string; avgLap: string
     avgLap: secondsToLap(avg),
     worstLap: secondsToLap(worst),
   };
-}
-
-async function recalcPBsForUser(userId: string) {
-  // Only the columns the PB comparison below actually reads — this runs on
-  // every session create/delete, so pulling the full row (including the
-  // per-lap telemetry traces in `laps`) would re-transfer a user's entire
-  // session history's worth of trace data on every upload.
-  const rows = await db
-    .select({
-      id: sessionsTable.id,
-      date: sessionsTable.date,
-      createdAt: sessionsTable.createdAt,
-      trackId: sessionsTable.trackId,
-      bestLap: sessionsTable.bestLap,
-      isPB: sessionsTable.isPB,
-    })
-    .from(sessionsTable)
-    .where(eq(sessionsTable.userId, userId));
-
-  // Sort chronologically so, among sessions logged on the same calendar
-  // date, the one uploaded/created first consistently wins tie-breaking
-  // for which row keeps the isPB flag (date alone doesn't distinguish
-  // same-day sessions, and without a stable secondary key the winner would
-  // depend on incidental DB row order).
-  const sorted = [...rows].sort((a, b) => {
-    const dateCmp = a.date.localeCompare(b.date);
-    if (dateCmp !== 0) return dateCmp;
-    return a.createdAt.getTime() - b.createdAt.getTime();
-  });
-  const pbMap: Record<string, string> = {};
-
-  // Only the rows whose isPB flag actually changes need writing — for a
-  // single new upload that's normally just the old PB (now demoted) and the
-  // new one, not every session the user has ever logged. Batching those
-  // into two IN-list updates instead of one UPDATE per row turns a
-  // recalc that used to cost O(session count) round-trips into O(1) for
-  // the common case.
-  const toSetTrue: string[] = [];
-  const toSetFalse: string[] = [];
-
-  for (const s of sorted) {
-    const key = normalizeTrackId(s.trackId);
-    const currentPB = pbMap[key];
-    const isNewPB = isFasterLap(s.bestLap, currentPB);
-    if (isNewPB && s.bestLap && s.bestLap.trim() !== "") {
-      pbMap[key] = s.bestLap;
-    }
-    if (isNewPB !== s.isPB) {
-      (isNewPB ? toSetTrue : toSetFalse).push(s.id);
-    }
-  }
-
-  if (toSetTrue.length > 0) {
-    await db
-      .update(sessionsTable)
-      .set({ isPB: true })
-      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetTrue)));
-  }
-  if (toSetFalse.length > 0) {
-    await db
-      .update(sessionsTable)
-      .set({ isPB: false })
-      .where(and(eq(sessionsTable.userId, userId), inArray(sessionsTable.id, toSetFalse)));
-  }
 }
 
 function serializeSession(r: typeof sessionsTable.$inferSelect) {
@@ -166,6 +77,11 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
     publicNote: r.publicNote ?? null,
     laps: r.laps ?? null,
     isPB: r.isPB,
+    wasPB: r.wasPB,
+    teamId: r.teamId ?? null,
+    gameYear: r.gameYear ?? null,
+    packetFormat: r.packetFormat ?? null,
+    contentEra: r.contentEra ?? null,
     position: r.position ?? '',
     trackTemperature: r.trackTemperature ?? null,
     airTemperature: r.airTemperature ?? null,
@@ -228,17 +144,6 @@ function serializeSession(r: typeof sessionsTable.$inferSelect) {
   };
 }
 
-// Per-lap telemetry traces (up to 3000 points each) are only ever rendered
-// from the single-session detail view (see GET /sessions/:id below), never
-// from the list. Stripping them here in SQL — rather than fetching the full
-// JSONB and discarding `trace` in JS — keeps Postgres from reading and
-// transferring that data on every login/refresh, which is what was driving
-// up load time and Neon compute/egress.
-const lapsWithoutTrace = sql<DbSession["laps"]>`(
-  select jsonb_agg(lap_elem - 'trace')
-  from jsonb_array_elements(${sessionsTable.laps}) as lap_elem
-)`.as("laps");
-
 router.get("/sessions", requireAuth, async (req, res) => {
   const userId = (req as AuthRequest).userId as string;
   try {
@@ -259,8 +164,12 @@ router.get("/sessions/:id", requireAuth, async (req, res) => {
   const id = req.params.id as string;
 
   try {
+    // Same trace-stripped `laps` as the list endpoint. This is used to show
+    // per-lap metadata (times, sectors) and to populate the "compare with"
+    // lap picker in the telemetry modal — neither needs trace data, which
+    // GET /sessions/:id/laps/:lapNumber/trace fetches on demand instead.
     const [row] = await db
-      .select()
+      .select({ ...getTableColumns(sessionsTable), laps: lapsWithoutTrace })
       .from(sessionsTable)
       .where(and(eq(sessionsTable.id, id), eq(sessionsTable.userId, userId)));
 
@@ -272,6 +181,48 @@ router.get("/sessions/:id", requireAuth, async (req, res) => {
     res.json(GetSessionDetailResponse.parse(serializeSession(row)));
   } catch (err) {
     req.log.error({ err }, "Failed to get session detail");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/sessions/:id/laps/:lapNumber/trace", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).userId as string;
+  const id = req.params.id as string;
+  const lapNumber = Number(req.params.lapNumber);
+
+  if (!Number.isInteger(lapNumber)) {
+    res.status(400).json({ error: "lapNumber must be an integer" });
+    return;
+  }
+
+  try {
+    // Pulls just the one lap's trace out of the `laps` JSONB in SQL, so
+    // viewing/comparing a lap's telemetry never has to read or transfer
+    // every other lap's trace in the session.
+    const [row] = await db
+      .select({
+        exists: sql<boolean>`exists (
+          select 1 from jsonb_array_elements(${sessionsTable.laps}) as lap_elem
+          where (lap_elem ->> 'lap')::int = ${lapNumber}
+        )`,
+        trace: sql<DbLapRecord["trace"]>`(
+          select lap_elem -> 'trace'
+          from jsonb_array_elements(${sessionsTable.laps}) as lap_elem
+          where (lap_elem ->> 'lap')::int = ${lapNumber}
+          limit 1
+        )`,
+      })
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.id, id), eq(sessionsTable.userId, userId)));
+
+    if (!row || !row.exists) {
+      res.status(404).json({ error: "Lap not found" });
+      return;
+    }
+
+    res.json(GetLapTraceResponse.parse({ trace: row.trace ?? [] }));
+  } catch (err) {
+    req.log.error({ err }, "Failed to get lap trace");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -327,7 +278,11 @@ router.post("/sessions", requireAuth, async (req, res) => {
       inputDevice: data.inputDevice ?? "",
       laps: incomingLaps.length > 0 ? incomingLaps : null,
       position: data.position ?? '',
+      // Both PB flags are set by recalcPBsForUser once the row exists —
+      // whether this session is a personal best is a question about the
+      // driver's whole history, not about this payload.
       isPB: false,
+      wasPB: false,
       aiDifficulty: data.aiDifficulty ?? null,
       topSpeedKph: data.topSpeedKph ?? null,
       avgThrottlePct: data.avgThrottlePct ?? null,

@@ -67,7 +67,7 @@ export function CarCombobox({ value, onChange, error, placeholder = 'e.g. Ferrar
           {filtered.map((car, idx) => {
             if (car === '───') {
               return <div key="sep" style={{ borderTop: '1px solid var(--border)', margin: '4px 0', padding: 0 }}>
-                <div style={{ padding: '4px 12px', fontSize: 9, fontFamily: 'var(--font-display)', letterSpacing: '0.12em', color: 'var(--gray)', textTransform: 'uppercase' }}>F1 25 Grid</div>
+                <div style={{ padding: 'var(--space-1) var(--space-3)', fontSize: 9, fontFamily: 'var(--font-display)', letterSpacing: '0.12em', color: 'var(--gray)', textTransform: 'uppercase' }}>F1 25 Grid</div>
               </div>;
             }
             const isSelected = car === value;
@@ -76,7 +76,7 @@ export function CarCombobox({ value, onChange, error, placeholder = 'e.g. Ferrar
                 key={`${car}-${idx}`}
                 onMouseDown={e => { e.preventDefault(); onChange(car); setOpen(false); }}
                 style={{
-                  padding: '8px 12px',
+                  padding: 'var(--space-2) var(--space-3)',
                   cursor: 'pointer',
                   fontFamily: 'var(--font-body)',
                   fontSize: 13,

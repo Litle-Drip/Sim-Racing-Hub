@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { id: 'engineer', label: 'Race Engineer', Icon: Headphones, authRequired: true },
   { id: 'companion', label: 'Companion', Icon: Zap, authRequired: true },
   { id: 'community', label: 'Community', Icon: Users, authRequired: false },
+  { id: 'leagues', label: 'Leagues', Icon: Trophy, authRequired: true },
   { id: 'account', label: 'Account', Icon: User, authRequired: true },
 ];
 
@@ -115,7 +116,7 @@ export default function Nav({ page, setPage }: NavProps) {
       <nav className={`nav-sidebar${open ? ' nav-sidebar--open' : ''}`}>
         <div className="nav-logo">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <Trophy size={18} style={{ color: 'var(--red)', flexShrink: 0 }} />
               <div>
                 <div className="nav-logo-title">F1 Sim Hub</div>

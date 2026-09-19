@@ -118,7 +118,7 @@ function ApiKeyPanel({
 }) {
   return (
     <div style={{ textAlign: 'left' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
         <Key size={14} aria-hidden="true" style={{ color: 'var(--teal)' }} />
         <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.06em', color: 'var(--white)', textTransform: 'uppercase' }}>
           Your Own API Key
@@ -127,18 +127,18 @@ function ApiKeyPanel({
 
       {apiKey ? (
         <>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 14 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-4)' }}>
             Using <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)' }}>{maskApiKey(apiKey)}</span> — unlimited debriefs on the stronger model, billed to your Anthropic account.
           </p>
           <button className="btn btn-secondary btn-sm" onClick={onRemove}>Remove key</button>
         </>
       ) : (
         <>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 14 }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-4)' }}>
             Paste an Anthropic API key for unlimited debriefs on a stronger model. Typical cost is a fraction of a cent per message, billed to you.
             The key is stored only in this browser and is never saved to F1SimHub — it's sent with your own messages so Anthropic can bill them.
           </p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
             <input
               type="password"
               aria-label="Anthropic API key"
@@ -148,12 +148,12 @@ function ApiKeyPanel({
               value={draft}
               onChange={e => onDraftChange(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') onSave(); }}
-              style={{ flex: 1, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+              style={{ flex: 1, padding: 'var(--space-3) var(--space-4)', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
             />
             <button className="btn btn-primary" onClick={onSave} disabled={!draft.trim()}>Save</button>
           </div>
           {error && (
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--red)', marginBottom: 8 }}>{error}</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--red)', marginBottom: 'var(--space-2)' }}>{error}</div>
           )}
           <a
             href="https://console.anthropic.com/settings/keys"
@@ -482,15 +482,15 @@ export default function RaceEngineer() {
         // their restored chat history snaps in.
         <div className="card" style={{ padding: 'var(--space-7) var(--space-6)', textAlign: 'center' }} />
       ) : locked ? (
-        <div className="card" style={{ padding: '48px 32px', textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
-          <Lock size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 16 }} />
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 10, textTransform: 'uppercase' }}>
+        <div className="card" style={{ padding: 'var(--space-7) var(--space-6)', textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
+          <Lock size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 'var(--space-4)' }} />
+          <div className="state-title">
             Free Debriefs Used Up
           </div>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 24 }}>
+          <p className="state-text">
             You've used your {usage?.limit ?? 3} free Race Engineer messages. Enter the unlock password for unlimited access.
           </p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
             <input
               type="password"
               aria-label="Unlock password"
@@ -498,7 +498,7 @@ export default function RaceEngineer() {
               value={unlockPassword}
               onChange={e => setUnlockPassword(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') submitUnlock(); }}
-              style={{ flex: 1, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)', fontFamily: 'var(--font-body)', fontSize: 14 }}
+              style={{ flex: 1, minHeight: 'var(--control-height)', padding: 'var(--space-2) var(--space-3)', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)', fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body)' }}
             />
             <button
               className="btn btn-primary"
@@ -509,10 +509,10 @@ export default function RaceEngineer() {
             </button>
           </div>
           {unlockError && (
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--red)' }}>{unlockError}</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--red)' }}>{unlockError}</div>
           )}
 
-          <div style={{ borderTop: '1px solid var(--border)', margin: '24px 0 20px' }} />
+          <div style={{ borderTop: '1px solid var(--border)', margin: 'var(--space-5) 0' }} />
 
           <ApiKeyPanel
             apiKey={apiKey}
@@ -526,10 +526,10 @@ export default function RaceEngineer() {
       ) : !started ? (
         <div className="card" style={{ padding: 'var(--space-7) var(--space-6)', textAlign: 'center' }}>
           <Headphones size={36} aria-hidden="true" style={{ color: 'var(--red)', marginBottom: 'var(--space-4)' }} />
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--white)', marginBottom: 'var(--space-3)', textTransform: 'uppercase' }}>
+          <div className="state-title">
             Ready for Debrief
           </div>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body)', color: 'var(--gray-light)', lineHeight: 1.6, marginBottom: 'var(--space-6)', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto' }}>
+          <p className="state-text">
             Your engineer reads your real session history — lap times, sectors, consistency — and gives you specific,
             data-driven coaching. No generic advice.
           </p>

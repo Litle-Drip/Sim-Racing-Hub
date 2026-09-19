@@ -24,6 +24,9 @@ import {
   type LapEntry,
 } from '../components/SessionDetail';
 import { FOCUS_SESSION_KEY, OPEN_LOG_KEY, takeFocusTrack } from '../lib/storage';
+import { computePBFlags } from '../lib/personalBests';
+import { UnidentifiedCars } from '../components/UnidentifiedCars';
+import { isDemoMode } from '../lib/demoStore';
 import { useUnseenSessions } from '../lib/newSessions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -184,20 +187,20 @@ function DataCleanupModal({
             </div>
           ) : (
             <>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginBottom: 16, lineHeight: 1.5 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-mid)', marginBottom: 'var(--space-4)', lineHeight: 1.5 }}>
                 Scanned only sessions uploaded by the companion app (manually-logged sessions are never touched). Checked rows will be deleted — uncheck anything you want to keep.
               </div>
 
               {duplicateClusters.map((cluster, ci) => (
-                <div key={ci} style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <div key={ci} style={{ marginBottom: 'var(--space-5)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-2)' }}>
                     <AlertTriangle size={13} style={{ color: 'var(--yellow)' }} />
                     <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>
                       Duplicate — {trackNameForCleanup(cluster[0].trackId)} · {cluster[0].car} · {cluster[0].bestLap || '—'}
                     </span>
                   </div>
                   {cluster.map(s => (
-                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
                       <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--red)' }} />
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
                         {cleanupRowLabel(s)} — {s.laps?.length ?? 0} laps
@@ -209,15 +212,15 @@ function DataCleanupModal({
               ))}
 
               {emptySessions.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <div style={{ marginBottom: 'var(--space-3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-2)' }}>
                     <AlertTriangle size={13} style={{ color: 'var(--red)' }} />
                     <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--gray-light)' }}>
                       Empty sessions (no laps recorded)
                     </span>
                   </div>
                   {emptySessions.map(s => (
-                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '6px 8px', cursor: 'pointer', borderRadius: 3 }}>
                       <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, flexShrink: 0, accentColor: 'var(--red)' }} />
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--gray-light)', flex: 1 }}>
                         {cleanupRowLabel(s)} — {trackNameForCleanup(s.trackId)} · {s.car}
@@ -230,9 +233,9 @@ function DataCleanupModal({
           )}
         </div>
         {totalIssues > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-3) var(--space-5)', borderTop: '1px solid var(--border)' }}>
             {deleteError && <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--red)' }}>{deleteError}</div>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 'var(--space-2)' }}>
               {deleting && progress && (
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>{progress.done} / {progress.total}</span>
               )}
@@ -243,7 +246,7 @@ function DataCleanupModal({
                 onClick={handleDeleteSelected}
                 disabled={deleting || selected.size === 0}
               >
-                <Trash2 size={11} style={{ marginRight: 4 }} />
+                <Trash2 size={11} style={{ marginRight: 'var(--space-1)' }} />
                 {deleting ? 'Deleting…' : `Delete Selected (${selected.size})`}
               </button>
             </div>
@@ -287,7 +290,7 @@ function LapRow({
         <select
           value={lap.tires || defaultTires}
           onChange={e => onChange('tires', e.target.value)}
-          style={{ width: '100%', minWidth: 70, fontSize: 11, padding: '4px 4px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)' }}
+          style={{ width: '100%', minWidth: 70, fontSize: 11, padding: 'var(--space-1) var(--space-1)', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--white)' }}
         >
           {TIRE_COMPOUNDS.map(t => <option key={t}>{t}</option>)}
         </select>
@@ -341,24 +344,6 @@ const defaultForm = () => ({
 
 const DRAFT_KEY = 'session-draft';
 const GUEST_SESSIONS_KEY = 'f1simhub-guest-sessions';
-
-// ─── Guest PB helper ──────────────────────────────────────────────────────────
-
-function computeGuestPBs(sessions: SessionRecord[]): SessionRecord[] {
-  const bestByTrackCar: Record<string, number> = {};
-  for (const s of sessions) {
-    const key = `${s.trackId}:${s.car}`;
-    const t = secsFromLap(s.bestLap);
-    if (isFinite(t) && (bestByTrackCar[key] === undefined || t < bestByTrackCar[key])) {
-      bestByTrackCar[key] = t;
-    }
-  }
-  return sessions.map(s => {
-    const key = `${s.trackId}:${s.car}`;
-    const t = secsFromLap(s.bestLap);
-    return { ...s, isPB: isFinite(t) && t === bestByTrackCar[key] };
-  });
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -427,7 +412,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const [filterTrack, setFilterTrack] = useState(() => takeFocusTrack());
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareModal, setShareModal] = useState<{ id: string; publicNote: string } | null>(null);
-  const [telemetryLap, setTelemetryLap] = useState<{ sessionId: string; lap: LapEntry } | null>(null);
+  const [telemetryLap, setTelemetryLap] = useState<{ sessionId: string; lap: LapEntry; siblingLaps: LapEntry[] } | null>(null);
   const [cleanupOpen, setCleanupOpen] = useState(false);
   const [toast, setToast] = useState('');
   // Everything past track/car/best-lap is collapsed by default. Logging a lap
@@ -608,7 +593,9 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const mostRecentId = useMemo(() => {
     if (sessions.length === 0) return null;
-    return [...sessions].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0].id;
+    return [...sessions].sort((a, b) =>
+      (b.createdAt ?? '').localeCompare(a.createdAt ?? '') || b.date.localeCompare(a.date)
+    )[0].id;
   }, [sessions]);
 
   // Jump-to-session handoff from other pages (e.g. Tracks' PB tile) — clear
@@ -694,10 +681,11 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         sharedAt: null,
         publicNote: null,
         isPB: false,
+        wasPB: false,
         laps: lapRows && lapRows.length > 0 ? lapRows : null,
         position: form.type === 'Race' && form.position ? form.position : undefined,
       };
-      const updatedSessions = computeGuestPBs([...guestSessions, newSession]);
+      const updatedSessions = computePBFlags([...guestSessions, newSession]);
       try {
         localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(updatedSessions));
       } catch {
@@ -749,7 +737,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (isGuest) {
-      setGuestSessions(prev => computeGuestPBs(prev.filter(s => s.id !== id)));
+      setGuestSessions(prev => computePBFlags(prev.filter(s => s.id !== id)));
       return;
     }
     apiDeleteSession({ id });
@@ -760,7 +748,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
   const handleBulkDelete = async (ids: string[]) => {
     if (isGuest) {
-      setGuestSessions(prev => computeGuestPBs(prev.filter(s => !ids.includes(s.id))));
+      setGuestSessions(prev => computePBFlags(prev.filter(s => !ids.includes(s.id))));
       return;
     }
     for (const id of ids) {
@@ -801,10 +789,10 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Session Log</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {dataIssuesCount > 0 && (
             <button className="btn btn-secondary" style={{ color: 'var(--yellow)', borderColor: 'var(--yellow)' }} onClick={() => setCleanupOpen(true)}>
-              <AlertTriangle size={12} style={{ marginRight: 4 }} /> Review Data ({dataIssuesCount})
+              <AlertTriangle size={12} style={{ marginRight: 'var(--space-1)' }} /> Review Data ({dataIssuesCount})
             </button>
           )}
           <button className="btn btn-primary" onClick={() => { const hadDraft = loadDraft(); if (!hadDraft) { setForm(defaultForm()); setLaps([]); } setShowAdvanced(hadDraft); setShowModal(true); }}>
@@ -839,7 +827,12 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
         </div>
       )}
 
-      {isGuest && (
+      {/* Cars the companion logged but couldn't name. Signed-in only: aliases
+          live server-side against the driver's account, and guest sessions are
+          typed in by hand so they never carry an unrecognised team id. */}
+      {!isGuest && <UnidentifiedCars onToast={setToast} />}
+
+      {isGuest && !isDemoMode() && (
         <div className="notice notice--teal">
           <div className="notice-text" style={{ color: 'var(--gray-light)' }}>
             <span style={{ color: 'var(--teal)', fontWeight: 600 }}>Saved in this browser only.</span> Sessions will persist across refreshes on this device. Create a free account to sync across all your devices.
@@ -982,7 +975,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                           {s.tires && <div className="expanded-item"><div className="expanded-label">Tires</div><div className="expanded-value">{s.tires}</div></div>}
                           {s.rating > 0 && <div className="expanded-item"><div className="expanded-label">Rating</div><div className="expanded-value"><RatingDots rating={s.rating} /></div></div>}
 
-                          <SessionDetailFields session={s} onViewTelemetry={(sessionId, lap) => setTelemetryLap({ sessionId, lap })} />
+                          <SessionDetailFields session={s} onViewTelemetry={(sessionId, lap, siblingLaps) => setTelemetryLap({ sessionId, lap, siblingLaps })} />
 
                           <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
                             {!isGuest && (
@@ -993,7 +986,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                                 disabled={sharingId === s.id}
                                 title={s.isPublic ? 'Remove from Community' : 'Share to Community'}
                               >
-                                <Share2 size={11} style={{ marginRight: 4 }} />
+                                <Share2 size={11} style={{ marginRight: 'var(--space-1)' }} />
                                 {sharingId === s.id ? '…' : s.isPublic ? 'Shared' : 'Share'}
                               </button>
                             )}
@@ -1001,7 +994,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                               className="btn btn-danger"
                               onClick={(e) => handleDelete(s.id, e)}
                             >
-                              <Trash2 size={11} style={{ marginRight: 4 }} />
+                              <Trash2 size={11} style={{ marginRight: 'var(--space-1)' }} />
                               Delete
                             </button>
                           </div>
@@ -1025,7 +1018,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               <button className="modal-close" onClick={() => setShareModal(null)}>×</button>
             </div>
             <div className="modal-body">
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginBottom: 16, lineHeight: 1.6 }}>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gray-light)', marginBottom: 'var(--space-4)', lineHeight: 1.6 }}>
                 Your private notes won't be shared. You can optionally add a public description visible to the community.
               </p>
               <div className="field">
@@ -1051,7 +1044,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
       {/* ── Lap Telemetry Modal ───────────────────────────────────────────── */}
       {telemetryLap && (
-        <LapTelemetryModal sessionId={telemetryLap.sessionId} lap={telemetryLap.lap} onClose={() => setTelemetryLap(null)} />
+        <LapTelemetryModal sessionId={telemetryLap.sessionId} lap={telemetryLap.lap} siblingLaps={telemetryLap.siblingLaps} onClose={() => setTelemetryLap(null)} />
       )}
 
       {cleanupOpen && (
@@ -1069,7 +1062,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
           <div className="modal" style={{ maxWidth: 780 }}>
             <div className="modal-header">
               <span className="modal-title">Log Session</span>
-              {localStorage.getItem(DRAFT_KEY) && <span style={{ fontSize: 10, color: 'var(--teal)', fontFamily: 'var(--font-body)', marginLeft: 8, fontWeight: 400 }}>Draft restored</span>}
+              {localStorage.getItem(DRAFT_KEY) && <span style={{ fontSize: 10, color: 'var(--teal)', fontFamily: 'var(--font-body)', marginLeft: 'var(--space-2)', fontWeight: 400 }}>Draft restored</span>}
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
@@ -1097,7 +1090,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
               </div>
 
               {/* ── Everything else ── */}
-              <div style={{ borderTop: '1px solid var(--border)', marginTop: 16, paddingTop: 12 }}>
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)' }}>
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(v => !v)}
@@ -1118,7 +1111,7 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
 
                 {showAdvanced && (
                   <>
-                    <div className="form-grid" style={{ marginTop: 16 }}>
+                    <div className="form-grid" style={{ marginTop: 'var(--space-4)' }}>
                       <div className="field">
                         <label className="field-label">Date</label>
                         <input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
@@ -1215,13 +1208,13 @@ export default function Sessions({ isGuest }: { isGuest?: boolean }) {
                     </div>
 
                     {/* ── Laps ── */}
-                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 16 }}>
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-4)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: laps.length > 0 ? 12 : 0 }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gray-mid)' }}>
                           Laps <span style={{ color: 'var(--gray)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— paste lap-by-lap data from F1 25</span>
                         </div>
-                        <button type="button" className="btn btn-secondary" style={{ fontSize: 11, padding: '4px 12px' }} onClick={addLap}>
-                          <Plus size={11} style={{ marginRight: 4 }} /> Add Lap
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: 11, padding: 'var(--space-1) var(--space-3)' }} onClick={addLap}>
+                          <Plus size={11} style={{ marginRight: 'var(--space-1)' }} /> Add Lap
                         </button>
                       </div>
 

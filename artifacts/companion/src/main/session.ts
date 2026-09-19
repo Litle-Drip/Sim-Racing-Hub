@@ -138,6 +138,16 @@ export interface SessionSnapshot {
   position: number;
   assists: string;
   gameVersion: string;
+  // Raw capture context, uploaded alongside the resolved `car` and
+  // `gameVersion` strings so a label can be corrected later without the
+  // number it came from being gone. teamId is the game's own m_teamId,
+  // gameYear the header's m_gameYear (the game), packetFormat the header's
+  // m_packetFormat (the output format the driver picked in the game's
+  // settings, which is not the same question).
+  teamId: number;
+  gameYear?: number;
+  packetFormat?: number;
+  contentEra?: ContentEra;
   trackTemperature?: number;
   airTemperature?: number;
   totalLaps?: number;
@@ -319,6 +329,20 @@ const TYRE_ACTUAL_NAMES: Record<number, string> = {
   8: "Wet",
 };
 
+// Which car roster a session was driven in. The 2026 content pack ships a
+// second, complete grid alongside the base F1 25 one, with its own team ids
+// — a 2026-spec car and a 2025-spec car are seconds apart over a lap, so a
+// lap time is only comparable to another from the same era, and a session
+// that can't say which era it was driven in can't be compared to anything.
+export type ContentEra = "2024" | "2025" | "2026";
+
+interface TeamEntry {
+  name: string;
+  // Absent for ids that exist in every era (the generic car, a created My
+  // Team) — those genuinely have no era rather than an unknown one.
+  era?: ContentEra;
+}
+
 // Base ids confirmed against the current F1 25 team roster (AlphaTauri
 // rebranded to RB, Alfa Romeo rebranded to Sauber). The '24 retro-livery
 // block (185-194) is a genuine fixed +185-per-team offset, confirmed
@@ -334,46 +358,72 @@ const TYRE_ACTUAL_NAMES: Record<number, string> = {
 // sighting, only add entries here that have actually been observed —
 // guessing the rest mislabels drivers as a different team entirely
 // (this is exactly what caused a Mercedes car to show as "Ferrari '26").
-// An unmapped id falls through to `Team ${id}` (see flushSession) rather
-// than a guessed name, so an unconfirmed team shows up as a visible,
-// greppable anomaly instead of silently mislabeling as some other team.
-const TEAM_NAMES: Record<number, string> = {
-  0: "Mercedes",
-  1: "Ferrari",
-  2: "Red Bull Racing",
-  3: "Williams",
-  4: "Aston Martin",
-  5: "Alpine",
-  6: "RB",
-  7: "Haas",
-  8: "McLaren",
-  9: "Sauber",
-  41: "F1 Generic",
-  104: "My Team",
-  185: "Mercedes '24",
-  186: "Ferrari '24",
-  187: "Red Bull Racing '24",
-  188: "Williams '24",
-  189: "Aston Martin '24",
-  190: "Alpine '24",
-  191: "RB '24",
-  192: "Haas '24",
-  193: "McLaren '24",
-  194: "Sauber '24",
-  220: "Mercedes '26", // confirmed live, 2026-08-10
-  221: "Ferrari '26", // confirmed live, 2026-08-10
-  222: "Red Bull Racing '26", // confirmed live, 2026-08-10
-  223: "Williams '26", // confirmed live, 2026-08-10
-  224: "Aston Martin '26", // confirmed live, 2026-08-10
-  225: "Alpine '26", // confirmed live, 2026-08-10
-  226: "RB '26", // confirmed live, 2026-08-10
-  227: "Haas '26", // confirmed live, 2026-08-10
-  228: "McLaren '26", // confirmed live, 2026-07-21
-  229: "Audi '26", // confirmed live, 2026-08-10
-  230: "Cadillac '26", // confirmed live, 2026-08-10
-  232: "Red Bull Racing '26", // confirmed live, 2026-07-21
-  253: "My Team",
+// An unmapped id falls through to `Unknown car (#id)` (see teamLabel)
+// rather than a guessed name, so an unconfirmed team shows up as a visible,
+// greppable anomaly instead of silently mislabeling as some other team —
+// and the raw id travels with the session so a name can be attached to it
+// later, by the driver or by a corrected table, without the data being lost.
+const TEAMS: Record<number, TeamEntry> = {
+  0: { name: "Mercedes", era: "2025" },
+  1: { name: "Ferrari", era: "2025" },
+  2: { name: "Red Bull Racing", era: "2025" },
+  3: { name: "Williams", era: "2025" },
+  4: { name: "Aston Martin", era: "2025" },
+  5: { name: "Alpine", era: "2025" },
+  6: { name: "RB", era: "2025" },
+  7: { name: "Haas", era: "2025" },
+  8: { name: "McLaren", era: "2025" },
+  9: { name: "Sauber", era: "2025" },
+  // What the game reports for an unbranded car. Accurate, and it tells the
+  // driver nothing about what they drove, so the app offers to let them name
+  // it — the server recognises this exact string (api-server/src/lib/
+  // carIdentity.ts); change it there too if it ever changes here.
+  41: { name: "F1 Generic" },
+  104: { name: "My Team" },
+  185: { name: "Mercedes '24", era: "2024" },
+  186: { name: "Ferrari '24", era: "2024" },
+  187: { name: "Red Bull Racing '24", era: "2024" },
+  188: { name: "Williams '24", era: "2024" },
+  189: { name: "Aston Martin '24", era: "2024" },
+  190: { name: "Alpine '24", era: "2024" },
+  191: { name: "RB '24", era: "2024" },
+  192: { name: "Haas '24", era: "2024" },
+  193: { name: "McLaren '24", era: "2024" },
+  194: { name: "Sauber '24", era: "2024" },
+  220: { name: "Mercedes '26", era: "2026" }, // confirmed live, 2026-08-10
+  221: { name: "Ferrari '26", era: "2026" }, // confirmed live, 2026-08-10
+  222: { name: "Red Bull Racing '26", era: "2026" }, // confirmed live, 2026-08-10
+  223: { name: "Williams '26", era: "2026" }, // confirmed live, 2026-08-10
+  224: { name: "Aston Martin '26", era: "2026" }, // confirmed live, 2026-08-10
+  225: { name: "Alpine '26", era: "2026" }, // confirmed live, 2026-08-10
+  226: { name: "RB '26", era: "2026" }, // confirmed live, 2026-08-10
+  227: { name: "Haas '26", era: "2026" }, // confirmed live, 2026-08-10
+  228: { name: "McLaren '26", era: "2026" }, // confirmed live, 2026-07-21
+  229: { name: "Audi '26", era: "2026" }, // confirmed live, 2026-08-10
+  230: { name: "Cadillac '26", era: "2026" }, // confirmed live, 2026-08-10
+  232: { name: "Red Bull Racing '26", era: "2026" }, // confirmed live, 2026-07-21
+  253: { name: "My Team" },
 };
+
+// No participant data has identified the player's car yet. Distinct from
+// any real team id — defaulting it to My Team (253) meant a session whose
+// Participants packets never resolved was uploaded as a confident, wrong
+// "My Team" instead of admitting it didn't know.
+export const NO_TEAM = -1;
+
+// The name shown to the driver for a raw team id. An id we can't identify
+// is named as unidentified, with the number kept in the label so the
+// session it came from stays traceable to the id that produced it.
+export function teamLabel(teamId: number): string {
+  if (teamId === NO_TEAM) return "Unknown car";
+  return TEAMS[teamId]?.name ?? `Unknown car (#${teamId})`;
+}
+
+// Null when the id isn't in a block we've confirmed, and for ids that
+// legitimately span eras. Never guessed from the number's neighbourhood.
+export function teamContentEra(teamId: number): ContentEra | null {
+  return TEAMS[teamId]?.era ?? null;
+}
 
 // Generated once per flush and carried through every retry of that same
 // upload (network flakiness, a slow/cold server, or an accidental second
@@ -504,10 +554,14 @@ export class SessionTracker {
   // already refuses to parse any format outside this set, so by the time a
   // session packet reaches here the format is one we've verified offsets for.
   private packetFormat: number | null = null;
+  // The header's m_gameYear (25 = F1 25), null until a Session packet
+  // arrives or when the game doesn't populate the field. This — not
+  // packetFormat — is what the game is.
+  private gameYear: number | null = null;
   private trackId = -1;
   private weather = 0;
   private playerCarIdx = 255;
-  private teamId = 253;
+  private teamId = NO_TEAM;
   // True once the player's own car has been observed actually moving —
   // guards against resolving car/team identity from Participants data
   // seen while still in the garage / program-select screen (see
@@ -632,7 +686,16 @@ export class SessionTracker {
   }
 
   // null until the first Session packet of a supported format arrives.
+  //
+  // m_gameYear is the game. m_packetFormat is the UDP output format the
+  // driver chose in the game's telemetry settings — F1 25 emits 2024-format
+  // packets on request, and the setup wizard used to instruct every driver
+  // to select exactly that, so reading the format as the game labelled a
+  // whole population of F1 25 and F1 26 sessions "F1 24". The format is only
+  // consulted when the year is missing, where it is still a better guess
+  // than nothing.
   get gameVersion(): string | null {
+    if (this.gameYear !== null) return `F1 ${this.gameYear}`;
     switch (this.packetFormat) {
       case 2024: return "F1 24";
       case 2025: return "F1 25";
@@ -642,18 +705,31 @@ export class SessionTracker {
     }
   }
 
-  // m_packetFormat=2024 isn't a reliable signal that the F1-24 session-type
-  // enum applies — confirmed live on 2026-08-12/13: a real F1 26 session
-  // sent packetFormat=2024 with raw m_sessionType=18 (Time Trial) and,
-  // separately, 15 (Race), neither of which exist in the F1-24 table (it
-  // tops out at 13) — so the game apparently doesn't always bump this
-  // field on newer releases. Rather than hardcode each colliding id as
-  // it's found, fall through to the modern table whenever the id isn't
-  // recognized in the legacy one; this self-heals for ids the F1-24 table
-  // was never going to define and is inert for real F1 24 telemetry, whose
+  // Which car roster this session was driven in, from the player's team id.
+  // Independent of the game version on purpose: the 2026 content pack puts
+  // a 2026-spec grid inside F1 25, so "F1 25" and "2026 cars" are both true
+  // of the same session and neither one implies the other.
+  get contentEra(): ContentEra | null {
+    return teamContentEra(this.teamId);
+  }
+
+  // Session types are content, not layout, so they follow the game and not
+  // the output format. That resolves what looked like a contradiction:
+  // confirmed live on 2026-08-12/13, a real F1 26 session sent
+  // packetFormat=2024 with raw m_sessionType=18 (Time Trial) and, separately,
+  // 15 (Race) — ids that don't exist in the F1 24 table, which tops out at
+  // 13. The game wasn't failing to bump a field; the driver had selected the
+  // 2024 output format, and selecting a legacy struct layout doesn't
+  // renumber the game's own enums.
+  //
+  // The legacy table therefore applies when the *game* is F1 24, and only
+  // falls back to the format when the year is unknown. The fall-through to
+  // the modern table stays either way: it self-heals for ids the F1 24 table
+  // was never going to define, and is inert for real F1 24 telemetry, whose
   // own spec never sends ids outside the legacy table's range.
   private sessionTypeName(type: number): string {
-    if (this.packetFormat === 2024) {
+    const isF1_24 = this.gameYear !== null ? this.gameYear === 24 : this.packetFormat === 2024;
+    if (isF1_24) {
       const legacyName = SESSION_TYPES_F1_24[type];
       if (legacyName) return legacyName;
     }
@@ -666,6 +742,7 @@ export class SessionTracker {
 
   handleSessionPacket(data: {
     m_packetFormat?: number;
+    m_gameYear?: number | null;
     m_sessionUID?: string | number | bigint;
     m_sessionType?: number;
     m_trackId?: number;
@@ -681,6 +758,12 @@ export class SessionTracker {
     this.lastPacketTime = Date.now();
 
     if (data.m_packetFormat !== undefined) this.packetFormat = data.m_packetFormat;
+    if (data.m_gameYear !== undefined && data.m_gameYear !== null) {
+      if (this.gameYear !== data.m_gameYear) {
+        console.log(`[Session] game year ${data.m_gameYear} (packet format ${data.m_packetFormat ?? "?"})`);
+      }
+      this.gameYear = data.m_gameYear;
+    }
 
     const uid = String(data.m_sessionUID ?? "0");
     const sessionType = data.m_sessionType ?? 0;
@@ -748,7 +831,10 @@ export class SessionTracker {
     }
   }
 
-  handleParticipantsPacket(data: { m_playerCarIndex?: number; m_participants?: Array<{ m_teamId?: number }> }): void {
+  handleParticipantsPacket(data: {
+    m_playerCarIndex?: number;
+    m_participants?: Array<{ m_teamId?: number; m_myTeam?: number; m_raceNumber?: number; m_name?: string }>;
+  }): void {
     this.lastPacketTime = Date.now();
     if (data.m_playerCarIndex !== undefined) this.playerCarIdx = data.m_playerCarIndex;
     // Garage/program-select screens (choosing a Practice program, watching a
@@ -759,9 +845,21 @@ export class SessionTracker {
     // meaningful once the player's own car is confirmed moving on track.
     if (!this.seenOnTrack) return;
     if (data.m_participants && this.playerCarIdx < data.m_participants.length) {
-      const raw = data.m_participants[this.playerCarIdx]?.m_teamId ?? 253;
+      const raw = data.m_participants[this.playerCarIdx]?.m_teamId ?? NO_TEAM;
       if (raw !== this.teamId) {
-        console.log(`[Participants] player idx=${this.playerCarIdx} raw m_teamId=${raw} -> ${TEAM_NAMES[raw] ?? "(unmapped)"}`);
+        console.log(`[Participants] player idx=${this.playerCarIdx} raw m_teamId=${raw} -> ${teamLabel(raw)} (era ${teamContentEra(raw) ?? "unknown"})`);
+        // An id no table knows is the one case where the rest of the grid is
+        // worth printing: a roster's ids are contiguous, so seeing which
+        // block the whole field falls in — and the race numbers on it — is
+        // what turns "Team 129" into an identification. Logged once per new
+        // id rather than per packet, which arrives twice a second.
+        if (TEAMS[raw] === undefined) {
+          const grid = data.m_participants
+            .slice(0, data.m_participants.length)
+            .map((p, i) => `${i === this.playerCarIdx ? "*" : ""}${p.m_teamId ?? "?"}#${p.m_raceNumber ?? "?"}`)
+            .join(" ");
+          console.log(`[Participants] unrecognised team id ${raw}; grid teamId#raceNumber (player starred): ${grid}`);
+        }
       }
       this.teamId = raw;
     } else {
@@ -1417,6 +1515,11 @@ export class SessionTracker {
   // so they self-correct without needing to be zeroed here).
   private resetTelemetryState(): void {
     this.seenOnTrack = false;
+    // Car identity belongs to the session that was just cleared, not the
+    // next one. Keeping it would let a session whose Participants packets
+    // never resolved inherit the previous session's car — the quiet kind of
+    // wrong label that is impossible to spot afterwards.
+    this.teamId = NO_TEAM;
     this.lastTyreCompound = 0;
     this.lastFuelRemaining = 0;
     this.lastTractionControl = 0;
@@ -1542,7 +1645,7 @@ export class SessionTracker {
       sessionUID: this.sessionUID!,
       sessionType: this.sessionTypeName(this.sessionType),
       track: TRACK_NAMES[this.trackId] ?? `Track ${this.trackId}`,
-      car: TEAM_NAMES[this.teamId] ?? `Team ${this.teamId}`,
+      car: teamLabel(this.teamId),
       weather: WEATHER_NAMES[this.weather] ?? "Clear",
       laps: [...this.validLaps],
       fuelRemaining: this.lastFuelRemaining,
@@ -1550,6 +1653,10 @@ export class SessionTracker {
       position: this.lastPosition,
       assists: this.buildAssistsString(),
       gameVersion: this.gameVersion ?? "F1 25",
+      teamId: this.teamId,
+      gameYear: this.gameYear ?? undefined,
+      packetFormat: this.packetFormat ?? undefined,
+      contentEra: this.contentEra ?? undefined,
       trackTemperature: this.lastTrackTemperature || undefined,
       airTemperature: this.lastAirTemperature || undefined,
       totalLaps: this.lastTotalLaps || undefined,

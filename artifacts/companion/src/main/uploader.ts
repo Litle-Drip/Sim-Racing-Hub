@@ -18,6 +18,14 @@ export interface UploadPayload {
   weather: string;
   assists: string;
   gameVersion: string;
+  // Raw capture context. Sent alongside the resolved `car`/`gameVersion`
+  // labels, never instead of them, so a label can be corrected later from
+  // the numbers it was derived from — the sessions stuck forever on
+  // "Unknown"/"Other" session types are what storing only the label costs.
+  teamId?: number;
+  gameYear?: number;
+  packetFormat?: number;
+  contentEra?: string;
   platform: string;
   fuelRemaining: number;
   laps: LapRecord[];
@@ -180,6 +188,12 @@ export class Uploader {
       weather: session.weather,
       assists: session.assists,
       gameVersion: session.gameVersion,
+      // NO_TEAM (-1) means car identity was never resolved; sending it as
+      // absent keeps "we don't know" distinct from a real team id server-side.
+      teamId: session.teamId >= 0 ? session.teamId : undefined,
+      gameYear: session.gameYear,
+      packetFormat: session.packetFormat,
+      contentEra: session.contentEra,
       platform: "PC",
       fuelRemaining: session.fuelRemaining,
       laps: session.laps,

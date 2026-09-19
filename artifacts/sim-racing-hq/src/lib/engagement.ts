@@ -165,9 +165,11 @@ export function calculateRank(sessions: SessionRecord[]): RankInfo {
   // Tracks practiced (5pts each)
   const tracks = new Set(sessions.map(s => s.trackId));
   points += tracks.size * 5;
-  // PBs set (3pts each) — naturally self-limiting, since you can only PB
-  // once per track/car combination, so this is left uncapped.
-  points += sessions.filter(s => s.isPB).length * 3;
+  // PBs set (3pts each). `wasPB`, not `isPB`: this rewards the act of
+  // improving, so a lap that was a record when it was driven keeps its points
+  // after a later session beats it — otherwise a driver's rank would fall on
+  // a day they got faster.
+  points += sessions.filter(s => s.wasPB).length * 3;
   // Consistency bonus: sessions with >96% consistency are worth 2pts each,
   // capped at 20 qualifying sessions (40pts) so grinding easy hotlaps can't
   // dwarf the session-count, track-coverage, and PB terms above — those
@@ -221,8 +223,10 @@ export interface Achievement {
 
 export function calculateAchievements(sessions: SessionRecord[], setupCount: number): Achievement[] {
   const tracks = new Set(sessions.map(s => s.trackId));
-  const pbCount = sessions.filter(s => s.isPB).length;
-  const hasMonacoPB = sessions.some(s => s.isPB && s.trackId === 'monaco');
+  // Achievements count personal bests *set*, not the ones still standing —
+  // an earned achievement shouldn't un-earn itself when a later lap is faster.
+  const pbCount = sessions.filter(s => s.wasPB).length;
+  const hasMonacoPB = sessions.some(s => s.wasPB && s.trackId === 'monaco');
   const consistentSession = sessions.some(s => {
     const best = lapToSeconds(s.bestLap);
     const worst = lapToSeconds(s.worstLap);

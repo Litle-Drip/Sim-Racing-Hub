@@ -171,7 +171,18 @@ export interface SessionRecord {
   rating: number;
   /** @maxLength 5000 */
   notes: string;
+  /** This session holds the current personal best for its circuit. At most one session per circuit carries it, and it moves to the new session when a faster lap is logged. Use it for PB badges and "your best here" figures. */
   isPB: boolean;
+  /** This session beat everything logged before it at that circuit at the time it was logged. Never moves once set. Use it for "personal bests set" counters and progression charts, which are asking how often the driver improved, not which lap currently stands. */
+  wasPB?: boolean;
+  /** The game's raw team id for the car driven. Null for sessions logged by hand or captured before it was recorded. Kept so a car label can be corrected later from the number it came from. */
+  teamId?: number | null;
+  /** The telemetry header's game year (25 = F1 25) — which game was running. Not the same as packetFormat. */
+  gameYear?: number | null;
+  /** The telemetry output format selected in the game's own settings (2024/2025/2026). A driver on F1 25 can and often does emit 2024-format packets, so this says which struct layout was parsed and nothing about which game they own. */
+  packetFormat?: number | null;
+  /** Which car roster the session was driven in — "2025" for the base F1 25 grid, "2026" for the 2026 content pack's grid, "2024" for the retro liveries. Null when the car's team id is not in a confirmed block. Lap times are only comparable within one era. */
+  contentEra?: string | null;
   penalty?: string | null;
   gameVersion?: string | null;
   platform?: string | null;
@@ -461,6 +472,43 @@ export interface CompanionSessionSectors {
   s3?: string;
 }
 
+export interface CarAliasRecord {
+  teamId: number;
+  label: string;
+}
+
+/**
+ * A car in the driver's logged sessions that the companion could not put a name to — either a team id no lookup table knows, or one the game itself only described as generic. Offered to the driver to name.
+ */
+export interface UnidentifiedCar {
+  teamId: number;
+  /** The label currently shown for it, e.g. "Unknown car (#129)". */
+  car: string;
+  /** How many of the driver's sessions were logged with this car. */
+  sessions: number;
+  /** Date of the most recent session logged with it. */
+  lastSeen: string;
+}
+
+export interface CarAliasList {
+  aliases: CarAliasRecord[];
+  unidentified: UnidentifiedCar[];
+}
+
+export interface UpsertCarAliasRequest {
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  label: string;
+}
+
+export interface UpsertCarAliasResponse {
+  teamId: number;
+  label: string;
+  sessionsUpdated: number;
+}
+
 export interface CompanionSessionRequest {
   sessionType: string;
   track: string;
@@ -472,6 +520,29 @@ export interface CompanionSessionRequest {
   weather?: string;
   assists?: string;
   gameVersion?: string;
+  /**
+     * The game's raw team id for the car driven. Omitted when the companion never resolved the player's car, which is a different thing from a team id of 0 (Mercedes).
+     * @minimum 0
+     * @maximum 255
+     */
+  teamId?: number;
+  /**
+     * The telemetry header's game year (25 = F1 25).
+     * @minimum 20
+     * @maximum 99
+     */
+  gameYear?: number;
+  /**
+     * The telemetry output format selected in the game's settings, which is not the same as the game.
+     * @minimum 2000
+     * @maximum 2100
+     */
+  packetFormat?: number;
+  /**
+     * Car roster the session was driven in ("2024"/"2025"/"2026").
+     * @maxLength 16
+     */
+  contentEra?: string;
   platform?: string;
   inputDevice?: string;
   /** @maxItems 150 */
@@ -723,6 +794,128 @@ export interface CreateHardwareRequest {
   notes: string;
 }
 
+export interface LeagueRecord {
+  id: string;
+  name: string;
+  description: string;
+  ownerId: string;
+  /** The invite code, returned to league staff only. */
+  joinCode?: string | null;
+  /** The current user's role — owner | admin | member. */
+  role: string;
+  /** True for owner and admin — the roles the admin views are gated on. */
+  isStaff: boolean;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface LeagueMemberRecord {
+  userId: string;
+  username: string;
+  avatarUrl?: string | null;
+  role: string;
+  joinedAt: string;
+  /** When they last logged a session. Staff only — null for members. */
+  lastActiveAt?: string | null;
+}
+
+export interface LeagueDetail {
+  league: LeagueRecord;
+  members: LeagueMemberRecord[];
+}
+
+export interface CreateLeagueRequest {
+  /** @maxLength 60 */
+  name: string;
+  /** @maxLength 300 */
+  description?: string;
+}
+
+export interface JoinLeagueRequest {
+  /** @maxLength 20 */
+  joinCode: string;
+}
+
+export interface UpdateLeagueMemberRoleRequest {
+  /** admin | member */
+  role: string;
+}
+
+export interface LeagueLeaderboardEntry {
+  userId: string;
+  username: string;
+  avatarUrl?: string | null;
+  role: string;
+  bestLap: string;
+  bestLapSeconds: number;
+  /** Seconds behind the fastest driver. 0 for the leader. */
+  gapToLeader?: number | null;
+  car: string;
+  date: string;
+  sessionId: string;
+  /** Sessions this driver logged on the track, inside the window. */
+  sessions: number;
+  laps: number;
+  lastDrivenAt?: string | null;
+}
+
+export interface LeagueLeaderboardTrackOption {
+  trackId: string;
+  drivers: number;
+  sessions: number;
+}
+
+export interface LeagueLeaderboard {
+  /** The track ranked. Null when nobody in the league has driven anything. */
+  trackId?: string | null;
+  days?: number | null;
+  entries: LeagueLeaderboardEntry[];
+  /** Members with no time on this track in the window. */
+  missing: LeagueMemberRecord[];
+  /** Tracks the league has driven, most driven first. */
+  trackOptions: LeagueLeaderboardTrackOption[];
+}
+
+export interface LeagueActivityDay {
+  date: string;
+  sessions: number;
+  drivers: number;
+}
+
+export interface LeagueActivityDriver {
+  userId: string;
+  username: string;
+  avatarUrl?: string | null;
+  role: string;
+  sessions: number;
+  laps: number;
+  seatTimeMinutes: number;
+  tracks: number;
+  daysActive: number;
+  lastActiveAt?: string | null;
+  /** Their fastest lap in the window, with the track it was set on. */
+  bestLap?: string | null;
+  bestLapTrackId?: string | null;
+  joinedAt: string;
+}
+
+export interface LeagueActivityTotals {
+  members: number;
+  activeDrivers: number;
+  dormantDrivers: number;
+  sessions: number;
+  laps: number;
+  seatTimeMinutes: number;
+}
+
+export interface LeagueActivity {
+  days: number;
+  generatedAt: string;
+  totals: LeagueActivityTotals;
+  drivers: LeagueActivityDriver[];
+  daily: LeagueActivityDay[];
+}
+
 /**
  * Unauthorized
  */
@@ -732,6 +925,20 @@ export type UnauthorizedResponse = ErrorResponse;
  * Not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+/**
+ * Forbidden
+ */
+export type ForbiddenResponse = ErrorResponse;
+
+/**
+ * Bad request
+ */
+export type BadRequestResponse = ErrorResponse;
+
+export type GetLapTrace200 = {
+  trace: LapTraceSample[];
+};
 
 export type GetCommunitySessionsParams = {
 sort?: string;
@@ -746,5 +953,23 @@ gameVersion?: string;
 
 export type LookupRivalChallengeUserParams = {
 username: string;
+};
+
+export type GetLeagueLeaderboardParams = {
+/**
+ * Track to rank on. Defaults to the league's most driven track.
+ */
+trackId?: string;
+/**
+ * Only count sessions from the last N days. Omit for all time.
+ */
+days?: number;
+};
+
+export type GetLeagueActivityParams = {
+/**
+ * Window length in days (default 30).
+ */
+days?: number;
 };
 
