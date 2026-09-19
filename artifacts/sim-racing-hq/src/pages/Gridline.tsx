@@ -3,7 +3,8 @@ import { ArrowRight, CalendarDays, ChevronDown, CircleHelp, Flag, Info, X } from
 
 type View = 'drivers' | 'constructors';
 type Metric = 'points' | 'position';
-type Driver = { id: string; code: string; name: string; team: string; color: string; points: number[]; finishes: string[]; currentPoints?: number };
+type RoundEntry = { team: string; color: string; position: number };
+type Driver = { id: string; code: string; name: string; team: string; color: string; points: number[]; finishes: string[]; entries: (RoundEntry|null)[]; currentPoints?: number };
 type Entity = Driver & { total: number; members?: Driver[] };
 type Round = readonly [string, string, string, string];
 
@@ -17,6 +18,25 @@ function roundCode(race:any) {
   const country=String(race.Circuit?.Location?.country ?? '').toLowerCase();
   const known:Record<string,string>={australia:'AUS',china:'CHN',japan:'JPN',bahrain:'BHR','saudi arabia':'JED',usa:'USA',italy:'ITA',monaco:'MON',spain:'ESP',canada:'CAN',austria:'AUT',uk:'GBR',belgium:'BEL',hungary:'HUN',netherlands:'NED',azerbaijan:'AZE',singapore:'SIN',mexico:'MEX',brazil:'BRA',qatar:'QAT',uae:'ARE'};
   return known[country] ?? String(race.raceName).replace(/grand prix/i,'').trim().slice(0,3).toUpperCase();
+}
+
+// A country can host several rounds -- three in the USA, two in Italy -- so the
+// country code alone labels different columns identically. Fall back to the
+// circuit's locality for the rounds that would otherwise collide.
+function uniqueRoundCodes(schedules:any[]) {
+  const counts=new Map<string,number>();
+  const base=schedules.map((race:any)=>{const code=roundCode(race);counts.set(code,(counts.get(code) ?? 0)+1);return code});
+  const used=new Set<string>();
+  return base.map((code,i)=>{
+    let candidate=code;
+    if((counts.get(code) ?? 0)>1 || used.has(code)){
+      const locality=String(schedules[i].Circuit?.Location?.locality ?? '').replace(/[^a-z]/gi,'').toUpperCase();
+      candidate=[3,4,5].map(len=>locality.slice(0,len)).find(option=>option.length>=3 && !used.has(option)) ?? `R${i+1}`;
+    }
+    for(let n=2;used.has(candidate);n++) candidate=`${code.slice(0,2)}${n}`;
+    used.add(candidate);
+    return candidate;
+  });
 }
 
 // Jolpica caps `limit` well below a full season of result rows, and it pages over
@@ -57,17 +77,22 @@ async function loadSeason(season:number): Promise<{rounds:Round[];drivers:Driver
   const races=mergeRaces(resultPages,'Results');
   const sprints=mergeRaces(sprintPages,'SprintResults');
   if(!schedules.length) throw new Error(`No ${season} season data is available yet.`);
-  const roundList:Round[]=schedules.map((race:any)=>[
-    roundCode(race), race.raceName,
+  const codes=uniqueRoundCodes(schedules);
+  const roundList:Round[]=schedules.map((race:any,index:number)=>[
+    codes[index], race.raceName,
     race.Circuit?.circuitName ?? 'Circuit unavailable',
     new Date(`${race.date}T${race.time ?? '00:00:00Z'}`).toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
   ]);
   const driverMap=new Map<string,Driver>();
   races.forEach((race:any)=>race.Results?.forEach((result:any)=>{
     const id=result.Driver.driverId; const constructor=result.Constructor;
-    if(!driverMap.has(id)) driverMap.set(id,{id,code:result.Driver.code || result.Driver.familyName.slice(0,3).toUpperCase(),name:`${result.Driver.givenName} ${result.Driver.familyName}`,team:constructor.name,color:teamColors[constructor.constructorId] ?? '#8d94a3',points:Array(roundList.length).fill(0),finishes:Array(roundList.length).fill('—')});
+    const color=teamColors[constructor.constructorId] ?? '#8d94a3';
+    if(!driverMap.has(id)) driverMap.set(id,{id,code:result.Driver.code || result.Driver.familyName.slice(0,3).toUpperCase(),name:`${result.Driver.givenName} ${result.Driver.familyName}`,team:constructor.name,color,points:Array(roundList.length).fill(0),finishes:Array(roundList.length).fill('—'),entries:Array(roundList.length).fill(null)});
     const driver=driverMap.get(id)!; const index=Number(race.round)-1;
     driver.points[index]=Number(result.points)||0; driver.finishes[index]=result.positionText?.startsWith('R') ? result.status : `P${result.position}`;
+    // Races arrive in round order, so the last write leaves the driver's current seat.
+    driver.entries[index]={team:constructor.name,color,position:Number(result.position)||Number.MAX_SAFE_INTEGER};
+    driver.team=constructor.name; driver.color=color;
   }));
   sprints.forEach((race:any)=>race.SprintResults?.forEach((result:any)=>{
     const driver=driverMap.get(result.Driver.driverId); if(driver) driver.points[Number(race.round)-1]+=(Number(result.points)||0);
@@ -98,17 +123,30 @@ export default function Gridline() {
 
   const entities = useMemo<Entity[]>(() => {
     if (view === 'drivers') return drivers.map(d => ({...d, total:d.currentPoints ?? d.points.slice(0,completedRounds).reduce((a,b)=>a+b,0)})).sort((a,b)=>b.total-a.total);
-    return [...new Set(drivers.map(driver=>driver.team))].map(team => {
-      const members=drivers.filter(d=>d.team===team); const color=members[0]?.color ?? '#999';
-      const points=rounds.map((_,i)=>members.reduce((s,d)=>s+d.points[i],0));
-      return { id:team.toLowerCase().replaceAll(' ','-'), code:team.slice(0,3).toUpperCase(), name:team, team, color, points, finishes:points.map(()=>''), total:points.slice(0,completedRounds).reduce((a,b)=>a+b,0), members };
+    // Drivers change teams mid-season, so each round's points belong to the constructor
+    // that driver actually raced for in that round.
+    const teams=new Map<string,{color:string;points:number[]}>();
+    drivers.forEach(driver=>driver.entries.forEach((entry,i)=>{
+      if(!entry) return;
+      if(!teams.has(entry.team)) teams.set(entry.team,{color:entry.color,points:Array(rounds.length).fill(0)});
+      teams.get(entry.team)!.points[i]+=driver.points[i];
+    }));
+    return [...teams].map(([team,{color,points}]) => {
+      const members=drivers.filter(d=>d.entries.some(entry=>entry?.team===team))
+        .map(d=>({...d, points:d.points.map((pts,i)=>d.entries[i]?.team===team?pts:0)}));
+      return { id:team.toLowerCase().replaceAll(' ','-'), code:team.slice(0,3).toUpperCase(), name:team, team, color, points, finishes:points.map(()=>''), total:points.slice(0,completedRounds).reduce((a,b)=>a+b,0), members, entries:Array(rounds.length).fill(null) };
     }).sort((a,b)=>b.total-a.total);
   },[view,drivers,rounds,completedRounds]);
   const maxPoints=Math.max(...entities.flatMap(e=>e.points));
   const positions=rounds.map((_,ri)=>[...entities].sort((a,b)=>cumulative(b.points)[ri]-cumulative(a.points)[ri]).map(e=>e.id));
   const selectedRound=activeRound ? rounds[activeRound-1] : null;
-  const roundLeader=activeRound ? drivers.slice().sort((a,b)=>b.points[activeRound-1]-a.points[activeRound-1])[0] : null;
-  const roundTeamLeader=activeRound ? [...new Set(drivers.map(driver=>driver.team))].map(team=>({team,points:drivers.filter(driver=>driver.team===team).reduce((sum,driver)=>sum+driver.points[activeRound-1],0)})).sort((a,b)=>b.points-a.points)[0] : null;
+  // The drawer is a race classification, so order it by the race result rather than
+  // by points, which fold in sprint scoring and tie every non-scorer at zero.
+  const classification=activeRound ? drivers.filter(d=>d.entries[activeRound-1]).sort((a,b)=>a.entries[activeRound-1]!.position-b.entries[activeRound-1]!.position) : [];
+  const roundLeader=classification[0] ?? null;
+  const roundTeamPoints=new Map<string,number>();
+  if(activeRound) drivers.forEach(driver=>{const entry=driver.entries[activeRound-1];if(entry)roundTeamPoints.set(entry.team,(roundTeamPoints.get(entry.team) ?? 0)+driver.points[activeRound-1])});
+  const roundTeamLeader=[...roundTeamPoints].sort((a,b)=>b[1]-a[1])[0] ?? null;
   const pulse=entities.slice(0,5);
   const leader=entities[0]?.total ?? 0;
 
@@ -173,6 +211,6 @@ export default function Gridline() {
       <footer className="gridline-footer"><span><b>GRIDLINE</b> Fan-made championship visualization</span><span>Data provided by Jolpica • Not affiliated with Formula 1</span></footer>
     </div>
     {loadState==='error'&&<div className="gridline-data-error"><b>Live championship data could not load.</b><span>{loadError}</span><button onClick={()=>location.reload()}>Retry</button></div>}
-    {selectedRound&&<><button className="drawer-scrim" aria-label="Close race details" onClick={()=>setActiveRound(null)}/><aside className="race-drawer" aria-label="Race detail drawer"><div className="drawer-top"><span>ROUND {activeRound} OF {rounds.length}</span><button onClick={()=>setActiveRound(null)} aria-label="Close"><X/></button></div><div className="drawer-flag"><Flag size={22}/></div><h2>{selectedRound[1]}</h2><p className="drawer-track">{selectedRound[2]}</p><p className="drawer-date"><CalendarDays size={15}/> {selectedRound[3]} {season}</p><div className="drawer-callouts"><div><small>RACE WINNER</small><b>{activeRound!<=completedRounds?roundLeader?.name:'Awaiting result'}</b></div><div><small>MOST WEEKEND POINTS</small><b>{activeRound!<=completedRounds?roundTeamLeader?.team:'Awaiting result'}</b></div></div><h3>{activeRound!<=completedRounds?'Weekend classification':'Scheduled round'}</h3><div className="drawer-results">{activeRound!<=completedRounds&&drivers.slice().sort((a,b)=>b.points[activeRound!-1]-a.points[activeRound!-1]).map((d,i)=><div key={d.id}><span>{String(i+1).padStart(2,'0')}</span><i style={{background:d.color}}/><b>{d.code}</b><small>{d.finishes[activeRound!-1]}</small><strong>{d.points[activeRound!-1]} <em>PTS</em></strong></div>)}</div><button className="drawer-next" onClick={()=>setActiveRound(Math.min(rounds.length,(activeRound||1)+1))}>Next round <ArrowRight size={16}/></button></aside></>}
+    {selectedRound&&<><button className="drawer-scrim" aria-label="Close race details" onClick={()=>setActiveRound(null)}/><aside className="race-drawer" aria-label="Race detail drawer"><div className="drawer-top"><span>ROUND {activeRound} OF {rounds.length}</span><button onClick={()=>setActiveRound(null)} aria-label="Close"><X/></button></div><div className="drawer-flag"><Flag size={22}/></div><h2>{selectedRound[1]}</h2><p className="drawer-track">{selectedRound[2]}</p><p className="drawer-date"><CalendarDays size={15}/> {selectedRound[3]} {season}</p><div className="drawer-callouts"><div><small>RACE WINNER</small><b>{activeRound!<=completedRounds?roundLeader?.name ?? '—':'Awaiting result'}</b></div><div><small>MOST WEEKEND POINTS</small><b>{activeRound!<=completedRounds?roundTeamLeader?.[0] ?? '—':'Awaiting result'}</b></div></div><h3>{activeRound!<=completedRounds?'Weekend classification':'Scheduled round'}</h3><div className="drawer-results">{activeRound!<=completedRounds&&classification.map((d,i)=><div key={d.id}><span>{String(i+1).padStart(2,'0')}</span><i style={{background:d.color}}/><b>{d.code}</b><small>{d.finishes[activeRound!-1]}</small><strong>{d.points[activeRound!-1]} <em>PTS</em></strong></div>)}</div><button className="drawer-next" onClick={()=>setActiveRound(Math.min(rounds.length,(activeRound||1)+1))}>Next round <ArrowRight size={16}/></button></aside></>}
   </div>;
 }
