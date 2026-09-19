@@ -27,6 +27,7 @@ import DriverProfile from './pages/DriverProfile';
 import Account from './pages/Account';
 import Companion from './pages/Companion';
 import DownloadPage from './pages/DownloadPage';
+import Gridline from './pages/Gridline';
 import ServiceStatusBanner from './components/ServiceStatusBanner';
 import { buildSampleSessions } from './data/sampleSessions';
 import { enterDemoMode, exitDemoMode } from './lib/demoStore';
@@ -720,6 +721,7 @@ function MainApp({ isGuest, isDemo, onSignIn, initialPage, initialTrackId }: { i
     }
     switch (page) {
       case 'dashboard': return <Dashboard setPage={handleSetPage} isGuest={isGuest} />;
+      case 'gridline': return <Gridline />;
       case 'sessions': return <Sessions isGuest={isGuest} />;
       case 'tracks': return <Tracks isGuest={isGuest} initialTrackId={initialTrackId} />;
       case 'setups': return <Setups />;
@@ -872,6 +874,7 @@ function ClerkProviderWithRoutes() {
               what Community already showed signed-in. They now land on the one
               Community surface. */}
           <Route path="/community">{() => <HomeRoute initialPage="community" />}</Route>
+          <Route path="/gridline">{() => <HomeRoute initialPage="gridline" />}</Route>
           <Route path="/leagues">{() => <HomeRoute initialPage="leagues" />}</Route>
           <Route path="/setups">{() => <Redirect to="/community" />}</Route>
           <Route path="/leaderboard">{() => <Redirect to="/community" />}</Route>
