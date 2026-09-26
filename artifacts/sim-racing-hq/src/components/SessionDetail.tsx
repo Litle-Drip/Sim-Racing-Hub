@@ -7,6 +7,7 @@ import {
 import { useGetLapTrace, getGetLapTraceQueryKey, type SessionRecord } from '@workspace/api-client-react';
 import { F1_TRACKS, getTypeBadgeClass } from '../data/f1Tracks';
 import { useUnits } from '../lib/units';
+import { interpAt, cumulativeTime, compareLaps, type CornerComparison } from '../lib/lapAnalysis';
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
 
@@ -143,53 +144,6 @@ type TraceKey = 'speed' | 'throttle' | 'brake' | 'steer' | 'gear';
 /** A row of the merged chart series: the lap's values plus, when a comparison
  *  lap is selected, that lap's values resampled onto the same distance. */
 type ChartRow = { d: number } & Partial<Record<TraceKey, number>> & Partial<Record<`cmp_${TraceKey}`, number>> & { delta?: number };
-
-/**
- * Value of one channel at an arbitrary lap distance, linearly interpolated
- * between the two surrounding samples. Traces are recorded every Nth frame,
- * so two laps never share sample points — comparing them means resampling
- * both onto a common distance grid.
- */
-function interpAt(trace: Trace, key: TraceKey, d: number): number {
-  if (trace.length === 0) return 0;
-  if (d <= trace[0].d) return trace[0][key] ?? 0;
-  const last = trace[trace.length - 1];
-  if (d >= last.d) return last[key] ?? 0;
-  // Binary search for the sample pair bracketing d.
-  let lo = 0;
-  let hi = trace.length - 1;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1;
-    if (trace[mid].d <= d) lo = mid; else hi = mid;
-  }
-  const a = trace[lo];
-  const b = trace[hi];
-  const span = b.d - a.d;
-  const av = a[key] ?? 0;
-  const bv = b[key] ?? 0;
-  if (span <= 0) return av;
-  return av + (bv - av) * ((d - a.d) / span);
-}
-
-/**
- * Elapsed time at each grid point, integrated from the speed trace as
- * Σ Δdistance / speed. This is an approximation — the trace is sampled
- * coarsely and speed between samples is taken as linear — so the delta it
- * produces is a guide to where time is going, not a timing-loop-accurate
- * figure. Speed is clamped above zero so a standing start or a spin can't
- * divide by zero and blow the whole curve out.
- */
-function cumulativeTime(trace: Trace, grid: number[]): number[] {
-  const out = new Array<number>(grid.length);
-  out[0] = 0;
-  for (let i = 1; i < grid.length; i++) {
-    const dd = grid[i] - grid[i - 1];
-    const v0 = Math.max(interpAt(trace, 'speed', grid[i - 1]), 5) / 3.6;
-    const v1 = Math.max(interpAt(trace, 'speed', grid[i]), 5) / 3.6;
-    out[i] = out[i - 1] + dd / ((v0 + v1) / 2);
-  }
-  return out;
-}
 
 const GRID_STEPS = 400;
 
@@ -442,6 +396,168 @@ function LapStatStrip({ lap, trace }: { lap: LapEntry; trace: Trace }) {
   );
 }
 
+// ─── Corner analysis (lap vs. comparison lap) ────────────────────────────────
+
+/** Below these, a difference is inside the trace's own noise and isn't worth
+ *  a line — one sample is ~4m at speed. */
+const FINDING_MIN_BRAKE_M = 5;
+const FINDING_MIN_THROTTLE_M = 10;
+const FINDING_MIN_SPEED_KPH = 3;
+
+/** Plain-language differences that explain a corner's time, phrased from
+ *  the analysed lap's point of view. Entry covers braking and turn-in, exit
+ *  covers traction; minimum speed belongs to both, since it's where one
+ *  ends and the other begins. */
+function cornerFindings(c: CornerComparison, phase: 'entry' | 'exit', speedDiff: (kph: number) => string): string[] {
+  const out: string[] = [];
+  if (!c.lap) return ['Corner not matched on this lap — the line or a mistake moved the apex.'];
+  if (phase === 'entry') {
+    if (c.brakeOnsetDiffM != null && Math.abs(c.brakeOnsetDiffM) >= FINDING_MIN_BRAKE_M) {
+      out.push(`Braked ${Math.abs(Math.round(c.brakeOnsetDiffM))}m ${c.brakeOnsetDiffM < 0 ? 'earlier' : 'later'}`);
+    } else if (c.ref.brakeOnsetD != null && c.lap.brakeOnsetD == null) {
+      out.push('No brake here (reference braked)');
+    } else if (c.ref.brakeOnsetD == null && c.lap.brakeOnsetD != null) {
+      out.push('Braked here (reference didn\'t)');
+    }
+    if (c.lap.brakeReapplies > c.ref.brakeReapplies) {
+      out.push(`Brake released and reapplied ${c.lap.brakeReapplies}× (possible lock-up)`);
+    }
+  }
+  if (c.minSpeedDiffKph != null && Math.abs(c.minSpeedDiffKph) >= FINDING_MIN_SPEED_KPH) {
+    out.push(`Min speed ${speedDiff(c.minSpeedDiffKph)}`);
+  }
+  if (phase === 'exit') {
+    if (c.fullThrottleDiffM != null && Math.abs(c.fullThrottleDiffM) >= FINDING_MIN_THROTTLE_M) {
+      out.push(`Full throttle ${Math.abs(Math.round(c.fullThrottleDiffM))}m ${c.fullThrottleDiffM > 0 ? 'later' : 'sooner'}`);
+    } else if (c.ref.fullThrottleD != null && c.lap.fullThrottleD == null) {
+      out.push('Never back to full throttle before the next corner');
+    }
+    if (c.exitSpeedDiffKph != null && Math.abs(c.exitSpeedDiffKph) >= FINDING_MIN_SPEED_KPH) {
+      out.push(`Exit speed ${speedDiff(c.exitSpeedDiffKph)}`);
+    }
+    if (c.lap.throttleCorrections > c.ref.throttleCorrections) {
+      out.push(`${c.lap.throttleCorrections} throttle correction${c.lap.throttleCorrections === 1 ? '' : 's'} (reference ${c.ref.throttleCorrections})`);
+    }
+  }
+  return out;
+}
+
+function lossColor(s: number): string {
+  if (s >= 0.02) return 'var(--red)';
+  if (s <= -0.02) return 'var(--teal)';
+  return 'var(--gray-mid)';
+}
+
+function fmtLoss(s: number): string {
+  if (Math.abs(s) < 0.005) return '0.00s';
+  return `${s > 0 ? '+' : '−'}${Math.abs(s).toFixed(2)}s`;
+}
+
+const OPPORTUNITIES_SHOWN = 3;
+
+/**
+ * Where this lap lost time to the comparison lap, corner by corner. Corners
+ * are auto-detected from the comparison lap's speed dips (see
+ * lib/lapAnalysis.ts), so their numbers can differ from official turns.
+ */
+function CornerAnalysis({ trace, compareTrace, compareLabel }: { trace: Trace; compareTrace: Trace; compareLabel: string }) {
+  const { convertSpeed, speedUnit } = useUnits();
+  const analysis = useMemo(() => compareLaps(trace, compareTrace), [trace, compareTrace]);
+  if (!analysis || analysis.corners.length === 0) return null;
+
+  const speedDiff = (kph: number) => {
+    const v = Math.round(convertSpeed(kph));
+    return `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)} ${speedUnit}`;
+  };
+  const byIndex = new Map(analysis.corners.map(c => [c.ref.index, c]));
+  const top = analysis.opportunities.slice(0, OPPORTUNITIES_SHOWN);
+  const labelStyle: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.08em', color: 'var(--gray-mid)', textTransform: 'uppercase' };
+  const cell: React.CSSProperties = { padding: 'var(--space-2) var(--space-3)', whiteSpace: 'nowrap' };
+  const metres = (d: number | null) => (d == null ? '—' : `${Math.round(d)}m`);
+
+  return (
+    <div style={{ marginBottom: 'var(--space-5)', background: 'var(--bg-card)', border: '1px solid var(--border)', padding: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-2)' }}>
+        <div style={labelStyle}>Corner analysis vs {compareLabel}</div>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--amber)', border: '1px solid var(--amber)', padding: '1px 5px' }}>BETA</span>
+      </div>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginBottom: 'var(--space-4)' }}>
+        Corners are auto-detected, so numbers may not match the official turns. Times are estimated from the speed trace.
+      </div>
+
+      {top.length === 0 ? (
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-body-sm)', color: 'var(--teal)', marginBottom: 'var(--space-3)' }}>
+          No corner lost more than a couple of hundredths to {compareLabel}.
+        </div>
+      ) : (
+        <>
+          <div style={{ ...labelStyle, fontSize: 10, marginBottom: 'var(--space-2)' }}>Biggest opportunities</div>
+          <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            {top.map(o => {
+              const c = byIndex.get(o.corner)!;
+              const findings = cornerFindings(c, o.phase, speedDiff);
+              return (
+                <li key={`${o.corner}-${o.phase}`} style={{ borderLeft: '2px solid var(--red)', paddingLeft: 'var(--space-3)' }}>
+                  <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--white)' }}>
+                      Corner {o.corner} {o.phase}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--red)' }}>{fmtLoss(o.lossS)}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gray-mid)' }}>apex at {metres(c.ref.apexD)}</span>
+                  </div>
+                  {findings.length > 0 && (
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gray-light)', marginTop: 2 }}>
+                      {findings.join(' · ')}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </>
+      )}
+
+      <details>
+        <summary style={{ ...labelStyle, fontSize: 10, cursor: 'pointer' }}>
+          All {analysis.corners.length} corners
+        </summary>
+        <div style={{ width: '100%', overflowX: 'auto', marginTop: 'var(--space-3)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Corner', 'Apex', 'Entry', 'Exit', 'Brake pt', 'Min speed', 'Full throttle', 'Exit speed'].map(h => (
+                  <th key={h} style={{ ...cell, textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: 'var(--fs-label)', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--gray-mid)', textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.corners.map(c => (
+                <tr key={c.ref.index} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ ...cell, color: 'var(--white)' }}>{c.ref.index}</td>
+                  <td style={{ ...cell, color: 'var(--gray-mid)' }}>{metres(c.ref.apexD)}</td>
+                  <td style={{ ...cell, color: lossColor(c.entryLossS) }}>{fmtLoss(c.entryLossS)}</td>
+                  <td style={{ ...cell, color: lossColor(c.exitLossS) }}>{fmtLoss(c.exitLossS)}</td>
+                  <td style={{ ...cell, color: 'var(--gray-light)' }}>
+                    {c.brakeOnsetDiffM == null ? '—' : `${c.brakeOnsetDiffM > 0 ? '+' : ''}${Math.round(c.brakeOnsetDiffM)}m`}
+                  </td>
+                  <td style={{ ...cell, color: 'var(--gray-light)' }}>{c.minSpeedDiffKph == null ? '—' : speedDiff(c.minSpeedDiffKph)}</td>
+                  <td style={{ ...cell, color: 'var(--gray-light)' }}>
+                    {c.fullThrottleDiffM == null ? '—' : `${c.fullThrottleDiffM > 0 ? '+' : ''}${Math.round(c.fullThrottleDiffM)}m`}
+                  </td>
+                  <td style={{ ...cell, color: 'var(--gray-light)' }}>{c.exitSpeedDiffKph == null ? '—' : speedDiff(c.exitSpeedDiffKph)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gray)', marginTop: 'var(--space-2)' }}>
+            Entry/Exit: time lost (+) or gained (−) vs {compareLabel}. Brake pt: + = braked later. Full throttle: + = later.
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+}
+
 export function LapTelemetryModal({ sessionId, lap, siblingLaps, onClose }: { sessionId: string; lap: LapEntry; siblingLaps: LapEntry[]; onClose: () => void }) {
   const { speedUnit, convertSpeed } = useUnits();
   const [compareLapNum, setCompareLapNum] = useState<number | null>(null);
@@ -512,7 +628,12 @@ export function LapTelemetryModal({ sessionId, lap, siblingLaps, onClose }: { se
                 </div>
               )}
 
-              {compareTrace && compareTrace.length >= 2 && rows.length > 0 && <DeltaChart data={rows} compareLabel={compareLabel} />}
+              {compareTrace && compareTrace.length >= 2 && rows.length > 0 && (
+                <>
+                  <CornerAnalysis trace={trace} compareTrace={compareTrace} compareLabel={compareLabel} />
+                  <DeltaChart data={rows} compareLabel={compareLabel} />
+                </>
+              )}
 
               <TelemetryTraceChart dataKey="speed" label={`Speed (${speedUnit})`} color="var(--teal)" unit={` ${speedUnit}`} data={rows} compareLabel={compareLabel} />
               <TelemetryTraceChart dataKey="throttle" label="Throttle" color="var(--green)" unit="%" domain={[0, 100]} data={rows} compareLabel={compareLabel} />
