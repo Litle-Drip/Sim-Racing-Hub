@@ -215,6 +215,23 @@ Track-note saves failed with a 500 on every attempt because the route used `INSE
 
 ---
 
+### Corner analysis is computed on the fly, not stored (yet)
+`sim-racing-hq/src/lib/lapAnalysis.ts` is the lap analysis engine: it
+auto-detects corners from speed dips in a lap's trace, measures brake point,
+minimum speed, return to full throttle, throttle corrections and brake
+reapplies per corner, and splits the estimated time lost to a reference lap
+into entry and exit. The lap telemetry modal shows it as "Corner analysis"
+when a comparison lap is picked. It is pure TypeScript with no imports, so it
+can move to the API server unchanged when metrics need storing for the driver
+profile. Nothing is written to the database while the thresholds (the
+"Tuning" block at the top of the file) are still being checked against real
+laps — storing now would mean re-backfilling after every tuning change.
+
+Corner numbers are auto-detected, not official turn numbers, and every time
+figure is integrated from the speed trace (samples carry no timestamp), so
+the UI labels both. Tests: `node --test artifacts/sim-racing-hq/src/lib/lapAnalysis.test.ts`
+(Node 22.18+, no install needed).
+
 ## Files — Do Not Touch Without Understanding
 
 | File | Why it's sensitive |
