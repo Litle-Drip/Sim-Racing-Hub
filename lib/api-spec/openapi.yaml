@@ -2513,7 +2513,14 @@ components:
         lastSeen:
           description: Date of the most recent session logged with it.
           type: string
-      required: [teamId, car, sessions, lastSeen]
+        lastSeenAt:
+          description: >-
+            When the most recent session logged with it was saved, as an ISO
+            timestamp. The date alone doesn't tell apart two cars driven the
+            same day; the time of day does.
+          type: string
+          format: date-time
+      required: [teamId, car, sessions, lastSeen, lastSeenAt]
 
     CarAliasList:
       type: object
