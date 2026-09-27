@@ -17,4 +17,6 @@ export interface UnidentifiedCar {
   sessions: number;
   /** Date of the most recent session logged with it. */
   lastSeen: string;
+  /** When the most recent session logged with it was saved, as an ISO timestamp. The date alone doesn't tell apart two cars driven the same day; the time of day does. */
+  lastSeenAt: Date;
 }

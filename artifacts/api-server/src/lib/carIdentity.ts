@@ -48,6 +48,7 @@ export interface CarGroup {
   teamId: number | null;
   sessions: number;
   lastSeen: string | null;
+  lastSeenAt: string | null;
 }
 
 export interface UnidentifiedCar {
@@ -55,6 +56,7 @@ export interface UnidentifiedCar {
   car: string;
   sessions: number;
   lastSeen: string;
+  lastSeenAt: string;
 }
 
 // Reduces a driver's car/team-id groupings down to the cars worth offering to
@@ -77,9 +79,10 @@ export function unidentifiedCars(groups: CarGroup[]): UnidentifiedCar[] {
   const byTeamId = new Map<number, UnidentifiedCar>();
   for (const g of candidates) {
     const lastSeen = g.lastSeen ?? "";
+    const lastSeenAt = g.lastSeenAt ?? "";
     const existing = byTeamId.get(g.teamId);
     if (!existing) {
-      byTeamId.set(g.teamId, { teamId: g.teamId, car: g.car, sessions: g.sessions, lastSeen });
+      byTeamId.set(g.teamId, { teamId: g.teamId, car: g.car, sessions: g.sessions, lastSeen, lastSeenAt });
       continue;
     }
     existing.sessions += g.sessions;
@@ -89,6 +92,7 @@ export function unidentifiedCars(groups: CarGroup[]): UnidentifiedCar[] {
       existing.car = g.car;
       existing.lastSeen = lastSeen;
     }
+    if (lastSeenAt > existing.lastSeenAt) existing.lastSeenAt = lastSeenAt;
   }
 
   return [...byTeamId.values()].sort((a, b) => b.sessions - a.sessions || a.teamId - b.teamId);

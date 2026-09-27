@@ -1533,7 +1533,8 @@ export const GetCarAliasesResponse = zod.object({
   "teamId": zod.number(),
   "car": zod.string().describe('The label currently shown for it, e.g. \"Unknown car (#129)\".'),
   "sessions": zod.number().describe('How many of the driver\'s sessions were logged with this car.'),
-  "lastSeen": zod.string().describe('Date of the most recent session logged with it.')
+  "lastSeen": zod.string().describe('Date of the most recent session logged with it.'),
+  "lastSeenAt": zod.coerce.date().describe('When the most recent session logged with it was saved, as an ISO timestamp. The date alone doesn\'t tell apart two cars driven the same day; the time of day does.')
 }).describe('A car in the driver\'s logged sessions that the companion could not put a name to — either a team id no lookup table knows, or one the game itself only described as generic. Offered to the driver to name.'))
 })
 

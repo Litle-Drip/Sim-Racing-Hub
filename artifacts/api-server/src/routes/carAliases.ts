@@ -29,6 +29,11 @@ router.get("/car-aliases", requireAuth, async (req, res) => {
         teamId: sessionsTable.teamId,
         sessions: sql<number>`count(*)::int`,
         lastSeen: sql<string>`max(${sessionsTable.date})`,
+        // created_at has no zone and holds UTC (Drizzle reads it the same
+        // way), so it's formatted as ISO with a Z: that compares correctly as
+        // a string in unidentifiedCars and parses as the right instant in the
+        // browser, which shows it in the driver's local time.
+        lastSeenAt: sql<string>`to_char(max(${sessionsTable.createdAt}), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`,
       })
       .from(sessionsTable)
       .where(eq(sessionsTable.userId, userId))
