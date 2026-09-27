@@ -15,7 +15,6 @@ interface NavProps {
 // which already carried a 'challenges' tab covering the same head-to-head idea.
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, authRequired: false },
-  { id: 'gridline', label: 'Gridline', Icon: Grid3X3, authRequired: false },
   { id: 'tracks', label: 'Tracks', Icon: Map, authRequired: false },
   { id: 'sessions', label: 'Sessions', Icon: ClipboardList, authRequired: false },
   { id: 'progress', label: 'Progress', Icon: TrendingUp, authRequired: true },
@@ -26,6 +25,7 @@ const NAV_ITEMS = [
   { id: 'community', label: 'Community', Icon: Users, authRequired: false },
   { id: 'leagues', label: 'Leagues', Icon: Trophy, authRequired: true },
   { id: 'account', label: 'Account', Icon: User, authRequired: true },
+  { id: 'gridline', label: 'Gridline', Icon: Grid3X3, authRequired: false },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
